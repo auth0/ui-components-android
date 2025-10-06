@@ -10,7 +10,7 @@ interface TokenManager {
 
     suspend fun fetchApiCredentials(audience: String, scope: String): APICredentials
 
-    suspend fun saveCredentials(audience: String, credentials: APICredentials)
+    suspend fun saveApiCredentials(audience: String, credentials: APICredentials)
 
 
 }
