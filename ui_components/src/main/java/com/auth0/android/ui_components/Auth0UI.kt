@@ -3,7 +3,7 @@ package com.auth0.android.ui_components
 import android.app.Application
 import android.content.Context
 import com.auth0.android.Auth0
-import com.auth0.android.ui_components.token.TokenManager
+import com.auth0.android.ui_components.token.TokenProvider
 import java.util.concurrent.atomic.AtomicBoolean
 
 
@@ -12,7 +12,7 @@ public object Auth0UI {
     @Volatile
     private var initialized = AtomicBoolean(false)
     private lateinit var _account: Auth0
-    private lateinit var _tokenManager: TokenManager
+    private lateinit var _tokenProvider: TokenProvider
     private lateinit var _context: Application
     private lateinit var _authorizationParams: Map<String, String>
 
@@ -22,10 +22,10 @@ public object Auth0UI {
             return _account
         }
 
-    internal val tokenManager: TokenManager
+    internal val tokenProvider: TokenProvider
         get() {
             assertInitialized()
-            return _tokenManager
+            return _tokenProvider
         }
 
     internal val authorizationParams: Map<String, String>
@@ -43,12 +43,12 @@ public object Auth0UI {
 
     public fun initialize(
         account: Auth0,
-        tokenManager: TokenManager,
+        tokenProvider: TokenProvider,
         authorizationParams: Map<String, String>
     ) {
         if (initialized.get()) return
         _account = account
-        _tokenManager = tokenManager
+        _tokenProvider = tokenProvider
         _authorizationParams = authorizationParams
         initialized.set(true)
     }

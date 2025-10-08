@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
 android {
@@ -32,7 +33,19 @@ android {
 dependencies {
 
     implementation libs.auth0
+    implementation libs.androidx.lifecycle.runtime.ktx
     implementation libs.appcompat.v7
+
+    //compose
+    implementation platform(libs.androidx.compose.bom)
+    implementation libs.androidx.ui
+    implementation libs.androidx.ui.graphics
+    implementation libs.androidx.ui.tooling.preview
+    implementation libs.androidx.material3
+    implementation libs.compose.navigation
+    implementation libs.viewmodel
+
+
     testImplementation libs.junit
     androidTestImplementation libs.runner
     androidTestImplementation libs.espresso.core

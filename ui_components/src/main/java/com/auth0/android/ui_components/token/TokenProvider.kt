@@ -4,13 +4,11 @@ import com.auth0.android.result.APICredentials
 import com.auth0.android.result.Credentials
 
 
-interface TokenManager {
+interface TokenProvider {
 
     suspend fun fetchCredentials(): Credentials
 
     suspend fun fetchApiCredentials(audience: String, scope: String): APICredentials
 
     suspend fun saveApiCredentials(audience: String, credentials: APICredentials)
-
-
 }
