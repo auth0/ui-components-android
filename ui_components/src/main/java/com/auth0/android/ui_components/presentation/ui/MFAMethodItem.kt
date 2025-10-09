@@ -1,4 +1,4 @@
-package com.auth0.android.ui_components.ui
+package com.auth0.android.ui_components.presentation.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 val defaultClick = {}
 
 @Composable
-fun AuthenticatorRowItem(
+fun MFAMethodItem(
     title: String,
     subtitle: String,
     leadingIcon: ImageVector,
