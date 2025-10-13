@@ -1,18 +1,21 @@
 package com.auth0.android.ui_components.domain.model
 
+/**
+ * Represents an MFA method combining data from both factors and authentication_methods APIs
+ */
 data class MFAMethod(
-    val id: String,
-    val name: String,
     val type: AuthenticatorType,
-    val isActive: Boolean,
-    val createdAt: String,
-    val lastUsed: String?
+    val confirmed: Boolean,
+    val usage: List<String>
 )
 
 enum class AuthenticatorType {
+    PASSWORD,
     OTP,
+    TOTP,
     SMS,
     EMAIL,
     PUSH,
-    WEBAUTHN
+    WEBAUTHN,
+    UNKNOWN
 }

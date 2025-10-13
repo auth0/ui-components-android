@@ -8,7 +8,7 @@ interface TokenProvider {
 
     suspend fun fetchCredentials(): Credentials
 
-    suspend fun fetchApiCredentials(audience: String, scope: String): APICredentials
+    suspend fun fetchApiCredentials(audience: String, scope: String? = null): APICredentials
 
     suspend fun saveApiCredentials(audience: String, credentials: APICredentials)
 }

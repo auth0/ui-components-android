@@ -20,6 +20,8 @@ import com.auth0.android.request.DefaultClient
 import com.auth0.android.sample.ui.screens.LoginScreen
 import com.auth0.android.sample.ui.screens.Settings
 import com.auth0.android.sample.ui.theme.Ui_components_androidTheme
+import com.auth0.android.ui_components.Auth0UI
+import com.auth0.android.ui_components.token.DefaultTokenProvider
 
 class MainActivity : ComponentActivity() {
 
@@ -50,6 +52,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        Auth0UI.initialize(
+            account,
+            DefaultTokenProvider(
+                credentialsManager
+            )
+        )
         setContent {
             Ui_components_androidTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->

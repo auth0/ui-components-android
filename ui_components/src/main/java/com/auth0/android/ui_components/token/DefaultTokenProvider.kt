@@ -19,7 +19,7 @@ public class DefaultTokenProvider(private val credentialsManager: BaseCredential
 
     override suspend fun fetchApiCredentials(
         audience: String,
-        scope: String
+        scope: String?
     ): APICredentials {
         return credentialsManager.awaitApiCredentials(audience, scope)
     }

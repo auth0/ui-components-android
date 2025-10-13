@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -34,7 +35,7 @@ dependencies {
 
     implementation libs.auth0
     implementation libs.androidx.lifecycle.runtime.ktx
-    implementation libs.appcompat.v7
+//    implementation libs.appcompat.v7
 
     //compose
     implementation platform(libs.androidx.compose.bom)
@@ -44,9 +45,10 @@ dependencies {
     implementation libs.androidx.material3
     implementation libs.compose.navigation
     implementation libs.viewmodel
+    implementation libs.kotlinx.serialization.json
 
 
     testImplementation libs.junit
-    androidTestImplementation libs.runner
-    androidTestImplementation libs.espresso.core
+//    androidTestImplementation libs.runner
+//    androidTestImplementation libs.espresso.core
 }

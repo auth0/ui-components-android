@@ -1,4 +1,4 @@
-package com.auth0.android.ui_components.presentation.ui
+package com.auth0.android.ui_components.presentation.ui.mfa
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable

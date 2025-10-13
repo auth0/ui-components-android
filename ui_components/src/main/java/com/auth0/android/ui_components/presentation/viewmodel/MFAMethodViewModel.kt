@@ -35,7 +35,7 @@ class MFAMethodViewModel(
 
                 is Result.Error -> {
                     _uiState.value = MFAMethodUiState.Error(
-                        result.message ?: "Failed to load authenticators"
+                        result.exception.message ?: "Failed to load authenticators"
                     )
                 }
             }

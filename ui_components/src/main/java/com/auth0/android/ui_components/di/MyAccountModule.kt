@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.di
 
+import com.auth0.android.ui_components.data.MyAccountProvider
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.data.repository.MyAccountRepositoryImpl
 import com.auth0.android.ui_components.di.viewmodelfactory.MFAMethodViewModelFactory
@@ -12,17 +13,21 @@ object MyAccountModule {
 
     fun provideMFAMethodViewModelFactory(): MFAMethodViewModelFactory {
         return MFAMethodViewModelFactory(
-            getMFAMethodsUseCase = GetMFAMethodsUseCase(
-                repository = provideMyAccountRepository(),
-                dispatcherProvider = provideDispatcherProvider()
-            )
+            getMFAMethodsUseCase = provideGetMFAMethodsUseCase()
+        )
+    }
+
+    private fun provideGetMFAMethodsUseCase(): GetMFAMethodsUseCase {
+        return GetMFAMethodsUseCase(
+            repository = provideMyAccountRepository(),
+            tokenManager = provideTokenManager(),
+            dispatcherProvider = provideDispatcherProvider()
         )
     }
 
     private fun provideMyAccountRepository(): MyAccountRepository {
-        return MyAccountRepositoryImpl(provideTokenManager())
+        return MyAccountRepositoryImpl(MyAccountProvider())
     }
-
 
     private fun provideTokenManager(): TokenManager {
         return TokenManager()

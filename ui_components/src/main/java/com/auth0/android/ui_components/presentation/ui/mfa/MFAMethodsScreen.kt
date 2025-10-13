@@ -1,4 +1,4 @@
-package com.auth0.android.ui_components.presentation.ui
+package com.auth0.android.ui_components.presentation.ui.mfa
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,13 +21,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.auth0.android.ui_components.di.MyAccountModule
+import com.auth0.android.ui_components.di.viewmodelfactory.MFAMethodViewModelFactory
 import com.auth0.android.ui_components.presentation.viewmodel.MFAMethodUiState
 import com.auth0.android.ui_components.presentation.viewmodel.MFAMethodViewModel
 
 
 @Composable
 fun MFAMethodsScreen(
-    viewModel: MFAMethodViewModel,
+    modifier: Modifier,
+    viewModel: MFAMethodViewModel = viewModel(
+        factory = MyAccountModule.provideMFAMethodViewModelFactory()
+    ),
     onAuthenticatorClick: (String) -> Unit
 ) {
 
@@ -50,14 +56,14 @@ fun MFAMethodsScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(state.mfaMethods) { mfaMethods ->
+                    items(state.mfaMethods) { mfaMethod ->
                         MFAMethodItem(
-                            title = mfaMethods.name,
-                            subtitle = "Last used: ${mfaMethods.lastUsed ?: "Never"}",
+                            title = mfaMethod.type.name,
+                            subtitle = if (mfaMethod.confirmed) "Configured" else "Not configured",
                             leadingIcon = Icons.Default.AccountBox,
                             trailingIcon = Icons.Default.Check,
-                            tag = if (mfaMethods.isActive) "Active" else null,
-                            onClick = { onAuthenticatorClick(mfaMethods.id) }
+                            tag = if (mfaMethod.confirmed) "Active" else null,
+                            onClick = { onAuthenticatorClick(mfaMethod.type.name) }
                         )
                     }
                 }
