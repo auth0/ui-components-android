@@ -78,18 +78,15 @@ class GetMFAMethodsUseCase(
         factors: List<Factor>,
         authMethods: List<AuthenticationMethod>
     ): List<MFAMethod> {
-        // Filter MFA authentication methods (exclude password)
         val mfaAuthMethods = authMethods
             .filterIsInstance<MfaAuthenticationMethod>()
             .filter { it.type != "password" }
 
-        // Group authentication methods by normalized type
         val authMethodsByType = mfaAuthMethods.groupBy { normalizeType(it.type) }
 
         return factors.map { factor ->
             val normalizedFactorType = normalizeType(factor.type)
 
-            // Check if any authentication method of this type is confirmed
             val hasConfirmedAuthMethod = authMethodsByType[normalizedFactorType]
                 ?.any { it.confirmed == true } ?: false
 
@@ -107,7 +104,6 @@ class GetMFAMethodsUseCase(
      */
     private fun normalizeType(type: String): String {
         return when (type.lowercase()) {
-            "otp", "totp" -> "totp"
             "push", "push-notification" -> "push-notification"
             else -> type.lowercase()
         }
@@ -118,12 +114,12 @@ class GetMFAMethodsUseCase(
      */
     private fun mapTypeToAuthenticatorType(type: String): AuthenticatorType {
         return when (type.lowercase()) {
-            "otp", "totp" -> AuthenticatorType.TOTP
-            "sms" -> AuthenticatorType.SMS
+            "totp" -> AuthenticatorType.TOTP
+            "phone" -> AuthenticatorType.SMS
             "email" -> AuthenticatorType.EMAIL
             "push", "push-notification" -> AuthenticatorType.PUSH
-            "webauthn" -> AuthenticatorType.WEBAUTHN
-            else -> AuthenticatorType.UNKNOWN
+            "recovery_code" -> AuthenticatorType.RECOVERY_CODE
+            else -> AuthenticatorType.TOTP
         }
     }
 }

@@ -19,9 +19,12 @@ internal fun MFANavigationHost(
         startDestination = MFAMethodList
     ) {
         composable<MFAMethodList> {
-            MFAMethodsScreen(modifier) {
-                Log.d("TAG", "MFANavigationHost: ")
-            }
+            MFAMethodsScreen(
+                modifier = modifier,
+                onAuthenticatorClick = { value -> },
+                onBackPress = {
+                    Log.d("TAG", "onBackPress")
+                })
         }
     }
 }

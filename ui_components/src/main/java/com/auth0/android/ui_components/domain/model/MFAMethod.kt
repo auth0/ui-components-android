@@ -10,12 +10,9 @@ data class MFAMethod(
 )
 
 enum class AuthenticatorType {
-    PASSWORD,
-    OTP,
     TOTP,
     SMS,
     EMAIL,
     PUSH,
-    WEBAUTHN,
-    UNKNOWN
+    RECOVERY_CODE
 }
