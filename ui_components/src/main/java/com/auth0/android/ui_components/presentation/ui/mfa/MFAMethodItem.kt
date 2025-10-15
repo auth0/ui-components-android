@@ -26,13 +26,11 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.auth0.android.ui_components.theme.Gray
 import com.auth0.android.ui_components.theme.Green
 
 @Composable
 fun MFAMethodItem(
     title: String,
-    subtitle: String,
     leadingIcon: Painter,
     modifier: Modifier = Modifier,
     showDefaultTag: Boolean = false,
@@ -42,6 +40,7 @@ fun MFAMethodItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .height(60.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(12.dp),
         color = Color.White,
@@ -101,16 +100,7 @@ fun MFAMethodItem(
                         }
                     }
                 }
-
                 Spacer(modifier = Modifier.height(2.dp))
-
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 14.sp
-                    ),
-                    color = Gray
-                )
             }
 
             Spacer(modifier = Modifier.width(12.dp))

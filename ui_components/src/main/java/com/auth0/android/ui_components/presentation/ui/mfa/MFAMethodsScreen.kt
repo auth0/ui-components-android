@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
@@ -31,7 +30,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
-import com.auth0.android.ui_components.domain.model.MFAMethod
 import com.auth0.android.ui_components.presentation.ui.UiState
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
@@ -48,7 +46,7 @@ fun MFAMethodsScreen(
     viewModel: MFAMethodViewModel = viewModel(
         factory = MyAccountModule.provideMFAMethodViewModelFactory()
     ),
-    onAuthenticatorClick: (String) -> Unit,
+    onAuthenticatorClick: (MFAUiModel) -> Unit,
     onBackPress: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -61,6 +59,7 @@ fun MFAMethodsScreen(
             TopBar(
                 title = "Login & Security",
                 modifier = modifier,
+                showSeparator = false,
                 onBackClick = onBackPress
             )
         },
@@ -107,9 +106,9 @@ fun MFAMethodsScreen(
 @Composable
 fun MfaListScreen(
     mfaMethodList: List<MFAUiModel>,
-    onAuthenticatorClick: (String) -> Unit
+    onAuthenticatorClick: (MFAUiModel) -> Unit
 ) {
-
+    Spacer(modifier = Modifier.height(12.dp))
     Text(
         text = "Verification methods",
         style = MaterialTheme.typography.titleLarge.copy(
@@ -138,10 +137,9 @@ fun MfaListScreen(
         items(mfaMethodList) { mfaMethod ->
             MFAMethodItem(
                 title = mfaMethod.title,
-                subtitle = mfaMethod.description,
                 leadingIcon = getMFAMethodIcon(mfaMethod.type),
                 showDefaultTag = mfaMethod.confirmed,
-                onClick = { onAuthenticatorClick(mfaMethod.type.name) }
+                onClick = { onAuthenticatorClick(mfaMethod) }
             )
             Spacer(modifier = Modifier.height(12.dp))
         }

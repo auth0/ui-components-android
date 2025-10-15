@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 
 
 data class MFAUiModel(
-    val title: String, val description: String,
+    val title: String,
     val type: AuthenticatorType, val confirmed: Boolean
 )
 
@@ -48,33 +48,23 @@ class MFAMethodViewModel(
     private fun MFAMethod.toMFAUiModel(): MFAUiModel {
         return when (type) {
             AuthenticatorType.TOTP -> MFAUiModel(
-                "Authenticator App",
-                if (confirmed) "" else "No Authenticator configured",
-                type, confirmed
+                "Authenticator App", type, confirmed
             )
 
             AuthenticatorType.SMS -> MFAUiModel(
-                "SMS OTP",
-                if (confirmed) "" else "No Phone for SMS OTP added",
-                type, confirmed
+                "SMS OTP", type, confirmed
             )
 
             AuthenticatorType.EMAIL -> MFAUiModel(
-                "Email OTP",
-                if (confirmed) "" else "No email for OTP added",
-                type, confirmed
+                "Email OTP", type, confirmed
             )
 
             AuthenticatorType.PUSH -> MFAUiModel(
-                "Push Notification",
-                if (confirmed) "" else "No push notification configured",
-                type, confirmed
+                "Push Notification", type, confirmed
             )
 
             AuthenticatorType.RECOVERY_CODE -> MFAUiModel(
-                "Recovery Code",
-                if (confirmed) "" else "No recovery code created",
-                type, confirmed
+                "Recovery Code", type, confirmed
             )
         }
 

@@ -10,4 +10,7 @@ import com.auth0.android.result.Factor
 interface MyAccountRepository {
     suspend fun getFactors(accessToken: String): List<Factor>
     suspend fun getAuthenticatorMethods(accessToken: String): List<AuthenticationMethod>
+    suspend fun deleteAuthenticationMethod(
+        authenticationMethodId: String, accessToken: String
+    ): Void?
 }

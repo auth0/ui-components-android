@@ -9,10 +9,10 @@ data class MFAMethod(
     val usage: List<String>
 )
 
-enum class AuthenticatorType {
-    TOTP,
-    SMS,
-    EMAIL,
-    PUSH,
-    RECOVERY_CODE
+enum class AuthenticatorType(val type: String) {
+    TOTP("totp"),
+    SMS("sms"),
+    EMAIL("email"),
+    PUSH("push-notification"),
+    RECOVERY_CODE("recovery-code")
 }

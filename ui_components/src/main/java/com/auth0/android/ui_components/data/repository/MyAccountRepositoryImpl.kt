@@ -38,4 +38,17 @@ class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) 
         val client = myAccountProvider.getMyAccount(accessToken)
         return client.getAuthenticationMethods().await()
     }
+
+    /**
+     * Deletes an authentication method
+     *
+     */
+    override suspend fun deleteAuthenticationMethod(
+        authenticationMethodId: String,
+        accessToken: String
+    ): Void? {
+        Log.d(TAG, "Deleting authentication method $authenticationMethodId")
+        val client = myAccountProvider.getMyAccount(accessToken)
+        return client.deleteAuthenticationMethod(authenticationMethodId).await()
+    }
 }

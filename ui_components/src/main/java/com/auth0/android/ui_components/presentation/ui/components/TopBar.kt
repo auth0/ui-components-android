@@ -15,6 +15,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.auth0.android.ui_components.theme.Gray
@@ -26,6 +28,8 @@ fun TopBar(
     modifier: Modifier = Modifier,
     topBarColor: Color = Color.White,
     showSeparator: Boolean = true,
+    trailingIcon: Painter? = null,
+    trailingIconClick: () -> Unit = {},
     onBackClick: () -> Unit
 ) {
     Column {
@@ -45,6 +49,18 @@ fun TopBar(
                         contentDescription = "Navigate back",
                         tint = MaterialTheme.colorScheme.onSurface
                     )
+                }
+            },
+            actions = {
+                // Show trailing icon if provided
+                if (trailingIcon != null) {
+                    IconButton(onClick = trailingIconClick) {
+                        Icon(
+                            painter = trailingIcon,
+                            contentDescription = "Action",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
