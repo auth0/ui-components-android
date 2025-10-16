@@ -16,7 +16,7 @@ class MyAccountProvider(
      * @return MyAccountAPIClient instance ready to make API calls
      * @throws IllegalStateException if Auth0UI is not initialized
      */
-    suspend fun getMyAccount(accessToken: String): MyAccountAPIClient {
+    fun getMyAccount(accessToken: String): MyAccountAPIClient {
         val account = Auth0UI.account
         return MyAccountAPIClient(account, accessToken)
     }

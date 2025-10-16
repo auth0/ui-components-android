@@ -31,6 +31,7 @@ import com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod
 import com.auth0.android.ui_components.presentation.ui.UiState
 import com.auth0.android.ui_components.presentation.ui.UiUtils
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
+import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
 import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
 import com.auth0.android.ui_components.presentation.ui.components.InfoCard
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
@@ -45,7 +46,7 @@ import com.auth0.android.ui_components.utils.DateUtil
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MFAEnrolledScreen(
+fun EnrolledAuthenticatorListScreen(
     authenticatorType: AuthenticatorType,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
@@ -142,7 +143,7 @@ private fun AuthenticatorListContent(
         )
 
         if (authenticators.isEmpty()) {
-            EmptyStateMessage()
+            EmptyAuthenticatorItem()
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -171,22 +172,8 @@ private fun AuthenticatorListContent(
     }
 }
 
-/**
- * Empty state message when no authenticators are available
- */
-@Composable
-private fun EmptyStateMessage() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "No authenticators found",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
+
+
 
 
 
