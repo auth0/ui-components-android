@@ -7,6 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorEnrollmentScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.EnrolledAuthenticatorListScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.MFAMethodsScreen
@@ -45,22 +46,38 @@ internal fun MFANavigationHost(
         }
 
         composable<EnrollAuthenticator> {
-            val args = it.toRoute<EnrolledAuthenticator>()
-            AuthenticatorEnrollmentScreen(authenticatorType = args.authenticatorType) { authenticationId, authSession ->
-                navController.navigate(
-                    OTPVerification(
-                        args.authenticatorType,
-                        authenticationId,
-                        authSession
-                    )
-                )
-            }
+            val args = it.toRoute<EnrollAuthenticator>()
+            AuthenticatorEnrollmentScreen(
+                authenticatorType = args.authenticatorType,
+                onContinue = { authenticationId, authSession, phoneNumberOrEmail ->
+                    when (args.authenticatorType) {
+                        AuthenticatorType.RECOVERY_CODE, AuthenticatorType.PUSH -> {
+                            navController.navigate(EnrolledAuthenticator(args.authenticatorType))
+                        }
+
+                        else -> {
+                            navController.navigate(
+                                OTPVerification(
+                                    authenticatorType = args.authenticatorType,
+                                    authenticationId = authenticationId,
+                                    authSession = authSession,
+                                    phoneNumberOrEmail = phoneNumberOrEmail
+                                )
+                            )
+                        }
+
+                    }
+                }
+            )
         }
 
         composable<OTPVerification> {
             val args = it.toRoute<OTPVerification>()
             OTPVerificationScreen(
-                args.authenticatorType, args.authenticationId, args.authSession,
+                authenticatorType = args.authenticatorType,
+                authenticationId = args.authenticationId,
+                authSession = args.authSession,
+                phoneNumberOrEmail = args.phoneNumberOrEmail,
                 onBackClick = {
                     navController.navigateUp()
                 },

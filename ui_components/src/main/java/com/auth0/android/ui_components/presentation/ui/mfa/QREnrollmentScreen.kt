@@ -66,9 +66,9 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
-import com.auth0.android.ui_components.domain.model.EnrollmentType
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
+import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
@@ -98,15 +98,9 @@ fun QREnrollmentScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    val enrollmentType = when (authenticatorType) {
-        AuthenticatorType.TOTP -> EnrollmentType.TOTP
-        AuthenticatorType.PUSH -> EnrollmentType.PUSH_NOTIFICATION
-        else -> EnrollmentType.TOTP
-    }
-
     // Start enrollment on screen load
     LaunchedEffect(authenticatorType) {
-        viewModel.startEnrollment(enrollmentType)
+        viewModel.startEnrollment(authenticatorType)
     }
 
     // Get display title based on authenticator type
@@ -145,9 +139,8 @@ fun QREnrollmentScreen(
                             QREnrollmentContent(
                                 authenticatorType = authenticatorType,
                                 totpEnrollment = result,
-                                onContinueClick = onContinueClick,
-                                manualCode = result.challenge.manualInputCode!!,
-                                barcodeUri = result.challenge.barcodeUri
+                                viewModel = viewModel,
+                                onContinueClick = onContinueClick
                             )
                         }
 
@@ -165,10 +158,17 @@ fun QREnrollmentScreen(
                 }
 
                 is EnrollmentUiState.Success -> {
-                    LaunchedEffect(Unit) {
-                        onEnrollmentSuccess()
+                    when (authenticatorType){
+                        AuthenticatorType.PUSH ->{
+                             onContinueClick(
+                                 state.authenticationMethod.id,
+                                 state.authenticationMethod.type
+                             )
+                        }
+                        else ->{
+                                // No need to handle the else state
+                        }
                     }
-                    SuccessContent()
                 }
 
                 is EnrollmentUiState.Error -> {
@@ -190,10 +190,14 @@ fun QREnrollmentScreen(
 private fun QREnrollmentContent(
     authenticatorType: AuthenticatorType,
     totpEnrollment: EnrollmentResult.TotpEnrollment,
-    onContinueClick: (String, String) -> Unit,
-    manualCode: String,
-    barcodeUri: String
+    viewModel: EnrollmentViewModel,
+    onContinueClick: (String, String) -> Unit
 ) {
+    val manualCode = totpEnrollment.challenge.manualInputCode
+    val barcodeUri = totpEnrollment.challenge.barcodeUri
+    val hasManualCode = !manualCode.isNullOrEmpty()
+    val isPushNotification = authenticatorType == AuthenticatorType.PUSH
+
     val clipboardManager = LocalClipboardManager.current
     var showSnackbar by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -211,96 +215,62 @@ private fun QREnrollmentContent(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = if (!hasManualCode) Arrangement.Center else Arrangement.Top
         ) {
-            Spacer(modifier = Modifier.height(40.dp))
+            // Top spacer only for TOTP (has manual code)
+            if (hasManualCode) {
+                Spacer(modifier = Modifier.height(40.dp))
+            }
 
-            // QR Code
-            QRCodeDisplay(
-                data = barcodeUri,
+            // QR Code Section
+            QRCodeSection(
+                barcodeUri = barcodeUri,
                 modifier = Modifier.size(200.dp)
             )
-            Spacer(modifier = Modifier.height(12.dp))
 
-            ManualCodeCard(
-                manualCode = manualCode,
-                onCopyClick = {
-                    clipboardManager.setText(AnnotatedString(manualCode))
-                    showSnackbar = true
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Instructions Text (moved below QR code)
+            InstructionsText(authenticatorType = authenticatorType)
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Manual Code Section (only for TOTP)
+            if (hasManualCode) {
+                ManualCodeSection(
+                    manualCode = manualCode,
+                    onCopyClick = {
+                        clipboardManager.setText(AnnotatedString(manualCode))
+                        showSnackbar = true
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+
+            // Continue Button
+            ContinueButtonSection(
+                onContinueClick = {
+                    if (isPushNotification) {
+                        // For Push: Verify without OTP immediately
+                        viewModel.verifyWithoutOtp(
+                            authenticationMethodId = totpEnrollment.authenticationMethodId,
+                            authSession = totpEnrollment.authSession
+                        )
+                    } else {
+                        // For TOTP: Navigate to OTP verification screen
+                        onContinueClick(
+                            totpEnrollment.authenticationMethodId,
+                            totpEnrollment.authSession
+                        )
+                    }
                 }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    clipboardManager.setText(AnnotatedString(manualCode))
-                    showSnackbar = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = MaterialTheme.shapes.medium,
-                border = BorderStroke(1.dp, Color.Gray),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 4.dp,
-                    pressedElevation = 8.dp,
-                    hoveredElevation = 6.dp,
-                    focusedElevation = 6.dp
-                ),
-                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
-                    contentDescription = "Copy",
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Copy as Code",
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Button(
-                onClick = {
-                    onContinueClick(
-                        totpEnrollment.authenticationMethodId,
-                        totpEnrollment.authSession
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBlack,
-                    contentColor = Color.White
-                ),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(
-                    text = "Continue",
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp
-                    )
-                )
-            }
-
-
-
             Spacer(modifier = Modifier.height(36.dp))
 
-            InstructionsText(authenticatorType = authenticatorType)
-
-            Spacer(modifier = Modifier.height(48.dp))
-
+            // Download Link (shown for both TOTP and Push)
             DownloadLinkText()
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -312,6 +282,107 @@ private fun QREnrollmentContent(
                 .align(Alignment.BottomCenter)
                 .padding(16.dp)
         )
+    }
+}
+
+/**
+ * QR Code display section
+ */
+@Composable
+private fun QRCodeSection(
+    barcodeUri: String,
+    modifier: Modifier = Modifier
+) {
+    QRCodeDisplay(
+        data = barcodeUri,
+        modifier = modifier
+    )
+}
+
+/**
+ * Manual code section with card and copy button
+ * Only shown for TOTP enrollment where manual code is available
+ */
+@Composable
+private fun ManualCodeSection(
+    manualCode: String,
+    onCopyClick: () -> Unit
+) {
+    // Manual Code Card
+    ManualCodeCard(
+        manualCode = manualCode,
+        onCopyClick = onCopyClick
+    )
+
+    Spacer(modifier = Modifier.height(24.dp))
+
+    // Copy as Code Button
+    CopyCodeButton(
+        manualCode = manualCode,
+        onCopyClick = onCopyClick
+    )
+}
+
+/**
+ * Copy as Code button
+ */
+@Composable
+private fun CopyCodeButton(
+    manualCode: String,
+    onCopyClick: () -> Unit
+) {
+    Button(
+        onClick = onCopyClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = MaterialTheme.shapes.medium,
+        border = BorderStroke(1.dp, Color.Gray),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.White,
+            contentColor = Color.Black
+        ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 4.dp,
+            pressedElevation = 8.dp,
+            hoveredElevation = 6.dp,
+            focusedElevation = 6.dp
+        ),
+        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
+    ) {
+        Icon(
+            imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
+            contentDescription = "Copy",
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "Copy as Code",
+            style = MaterialTheme.typography.labelLarge
+        )
+    }
+}
+
+/**
+ * Continue button section
+ */
+@Composable
+private fun ContinueButtonSection(
+    onContinueClick: () -> Unit
+) {
+    GradientButton(
+        text = "Continue",
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
+            colors = listOf(
+                Color.White.copy(alpha = 0.15f),
+                Color.Transparent
+            )
+        ),
+    ) {
+        onContinueClick()
     }
 }
 

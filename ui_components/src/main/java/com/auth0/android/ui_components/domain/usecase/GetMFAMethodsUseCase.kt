@@ -82,12 +82,11 @@ class GetMFAMethodsUseCase(
             .filterIsInstance<MfaAuthenticationMethod>()
             .filter { it.type != "password" }
 
-        val authMethodsByType = mfaAuthMethods.groupBy { normalizeType(it.type) }
+        val authMethodsByType = mfaAuthMethods.groupBy { it.type }
 
         return factors.map { factor ->
-            val normalizedFactorType = normalizeType(factor.type)
 
-            val hasConfirmedAuthMethod = authMethodsByType[normalizedFactorType]
+            val hasConfirmedAuthMethod = authMethodsByType[factor.type]
                 ?.any { it.confirmed == true } ?: false
 
             MFAMethod(
@@ -99,17 +98,6 @@ class GetMFAMethodsUseCase(
     }
 
     /**
-     * Normalizes type strings for comparison
-     * Maps similar type names to a common format
-     */
-    private fun normalizeType(type: String): String {
-        return when (type.lowercase()) {
-            "push", "push-notification" -> "push-notification"
-            else -> type.lowercase()
-        }
-    }
-
-    /**
      * Maps authentication method type to AuthenticatorType enum
      */
     private fun mapTypeToAuthenticatorType(type: String): AuthenticatorType {
@@ -117,8 +105,8 @@ class GetMFAMethodsUseCase(
             "totp" -> AuthenticatorType.TOTP
             "phone" -> AuthenticatorType.SMS
             "email" -> AuthenticatorType.EMAIL
-            "push", "push-notification" -> AuthenticatorType.PUSH
-            "recovery_code" -> AuthenticatorType.RECOVERY_CODE
+            "push-notification" -> AuthenticatorType.PUSH
+            "recovery-code" -> AuthenticatorType.RECOVERY_CODE
             else -> AuthenticatorType.TOTP
         }
     }

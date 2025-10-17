@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

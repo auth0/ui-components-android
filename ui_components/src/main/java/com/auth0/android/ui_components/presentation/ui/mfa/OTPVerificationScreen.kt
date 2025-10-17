@@ -30,6 +30,7 @@ import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
+import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
@@ -194,49 +195,38 @@ fun OTPVerificationScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             // Continue/Try Again Button
-            Button(
-                onClick = {
-                    if (otpValue.length == 6) {
-                        // Clear any existing errors
-                        isError = false
-                        errorMessage = ""
-
-                        // Call ViewModel to verify OTP
-                        viewModel.verifyWithOtp(
-                            authenticationMethodId = authenticationId,
-                            otpCode = otpValue,
-                            authSession = authSession
-                        )
-                    } else {
-                        isError = true
-                        errorMessage = "Please enter the complete 6-digit code"
-                    }
-                },
-                enabled = uiState !is EnrollmentUiState.Verifying,
+            GradientButton(
+                text = if (isError) "Try again" else "Continue",
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp),
-                colors = ButtonDefaults.buttonColors(
+                    .height(48.dp),
+                gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.15f),
+                        Color.Transparent
+                    )
+                ),
+                buttonDefaultColor = ButtonDefaults.buttonColors(
                     containerColor = ButtonBlack,
                     contentColor = Color.White,
                     disabledContainerColor = ButtonBlack.copy(alpha = 0.6f),
                     disabledContentColor = Color.White.copy(alpha = 0.6f)
-                ),
-                shape = RoundedCornerShape(28.dp)
+                )
             ) {
-                if (uiState is EnrollmentUiState.Verifying) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
+                if (otpValue.length == 6) {
+                    // Clear any existing errors
+                    isError = false
+                    errorMessage = ""
+
+                    // Call ViewModel to verify OTP
+                    viewModel.verifyWithOtp(
+                        authenticationMethodId = authenticationId,
+                        otpCode = otpValue,
+                        authSession = authSession
                     )
                 } else {
-                    Text(
-                        text = if (isError) "Try again" else "Continue",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    isError = true
+                    errorMessage = "Please enter the complete 6-digit code"
                 }
             }
 

@@ -70,7 +70,7 @@ class GetAuthenticationMethodsUseCase(
         return authMethods
             .filterIsInstance<MfaAuthenticationMethod>()
             .filter { it.type != "password" }
-            .filter { it.confirmed == true || it.type == "push-notification" }
+            .filter { it.confirmed == true }
             .filter { it.type == type.type }
             .map { it.toEnrolledAuthenticationMethod() }
     }

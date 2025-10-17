@@ -7,7 +7,6 @@ import com.auth0.android.ui_components.presentation.navigation.MFANavigationHost
 
 @Composable
 public fun MFAComponent(modifier: Modifier = Modifier) {
-
     val navController = rememberNavController()
     MFANavigationHost(
         modifier,

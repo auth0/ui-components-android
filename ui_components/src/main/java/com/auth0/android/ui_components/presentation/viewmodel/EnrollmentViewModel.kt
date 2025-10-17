@@ -4,9 +4,9 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.AuthenticationMethod
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
-import com.auth0.android.ui_components.domain.model.EnrollmentType
 import com.auth0.android.ui_components.domain.model.VerificationInput
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
@@ -35,18 +35,18 @@ class EnrollmentViewModel(
 
     /**
      * Initiates enrollment for specified authenticator type
-     * @param enrollmentType Type of authenticator to enroll
+     * @param authenticatorType Type of authenticator to enroll
      * @param input Additional input (email/phone) if required
      */
     fun startEnrollment(
-        enrollmentType: EnrollmentType,
+        authenticatorType: AuthenticatorType,
         input: EnrollmentInput = EnrollmentInput.None
     ) {
         viewModelScope.launch {
             _uiState.value = EnrollmentUiState.Loading
-            Log.d(TAG, "Starting enrollment: $enrollmentType")
+            Log.d(TAG, "Starting enrollment: $authenticatorType")
 
-            when (val result = enrollAuthenticatorUseCase(enrollmentType, input)) {
+            when (val result = enrollAuthenticatorUseCase(authenticatorType, input)) {
                 is Result.Success -> {
                     Log.d(TAG, "Enrollment initiated successfully")
                     _uiState.value = EnrollmentUiState.EnrollmentInitiated(result.data)

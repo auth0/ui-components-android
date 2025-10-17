@@ -4,9 +4,9 @@ import android.util.Log
 import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
-import com.auth0.android.ui_components.domain.model.EnrollmentType
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.util.Result
 import kotlinx.coroutines.withContext
@@ -29,16 +29,16 @@ class EnrollAuthenticatorUseCase(
 
     /**
      * Enrolls an authenticator based on type
-     * @param enrollmentType Type of authenticator to enroll
+     * @param authenticatorType Type of authenticator to enroll
      * @param input Additional input required (email/phone), or EnrollmentInput.None
      * @return Result with EnrollmentResult containing challenge data
      */
     suspend operator fun invoke(
-        enrollmentType: EnrollmentType,
+        authenticatorType: AuthenticatorType,
         input: EnrollmentInput = EnrollmentInput.None
     ): Result<EnrollmentResult> = withContext(dispatcherProvider.io) {
         try {
-            Log.d(TAG, "Starting enrollment for type: $enrollmentType")
+            Log.d(TAG, "Starting enrollment for type: $authenticatorType")
 
             // Fetch access token with required scopes
             val audience = tokenManager.getMyAccountAudience()
@@ -48,8 +48,8 @@ class EnrollAuthenticatorUseCase(
             )
 
             // Call appropriate repository method based on enrollment type
-            val result = when (enrollmentType) {
-                EnrollmentType.TOTP -> {
+            val result = when (authenticatorType) {
+                AuthenticatorType.TOTP -> {
                     val challenge = repository.enrollTotp(accessToken)
                     EnrollmentResult.TotpEnrollment(
                         challenge = challenge,
@@ -58,7 +58,7 @@ class EnrollAuthenticatorUseCase(
                     )
                 }
 
-                EnrollmentType.PUSH_NOTIFICATION -> {
+                AuthenticatorType.PUSH -> {
                     val challenge = repository.enrollPushNotification(accessToken)
                     EnrollmentResult.TotpEnrollment(
                         challenge = challenge,
@@ -67,7 +67,7 @@ class EnrollAuthenticatorUseCase(
                     )
                 }
 
-                EnrollmentType.RECOVERY_CODE -> {
+                AuthenticatorType.RECOVERY_CODE -> {
                     val challenge = repository.enrollRecoveryCode(accessToken)
                     EnrollmentResult.RecoveryCodeEnrollment(
                         challenge = challenge,
@@ -76,7 +76,7 @@ class EnrollAuthenticatorUseCase(
                     )
                 }
 
-                EnrollmentType.EMAIL -> {
+                AuthenticatorType.EMAIL -> {
                     require(input is EnrollmentInput.Email) {
                         "Email enrollment requires EnrollmentInput.Email"
                     }
@@ -88,7 +88,7 @@ class EnrollAuthenticatorUseCase(
                     )
                 }
 
-                EnrollmentType.PHONE -> {
+                AuthenticatorType.SMS -> {
                     require(input is EnrollmentInput.Phone) {
                         "Phone enrollment requires EnrollmentInput.Phone"
                     }
@@ -105,7 +105,7 @@ class EnrollAuthenticatorUseCase(
                 }
             }
 
-            Log.d(TAG, "Enrollment successful for type: $enrollmentType")
+            Log.d(TAG, "Enrollment successful for type: $authenticatorType")
             Result.Success(result)
 
         } catch (e: AuthenticationException) {

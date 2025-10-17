@@ -1,7 +1,6 @@
 package com.auth0.android.ui_components.presentation.navigation
 
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
-import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import kotlinx.serialization.Serializable
 
 
@@ -19,5 +18,6 @@ data class OTPVerification(
     val authenticatorType: AuthenticatorType,
     val authenticationId: String,
     val authSession: String,
+    val phoneNumberOrEmail: String? = null
 )
 
