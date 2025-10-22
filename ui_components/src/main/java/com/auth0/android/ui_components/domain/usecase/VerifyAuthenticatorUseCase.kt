@@ -1,15 +1,15 @@
 package com.auth0.android.ui_components.domain.usecase
 
 import android.util.Log
-import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
+import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.VerificationInput
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
-import com.auth0.android.ui_components.domain.util.Result
+import com.auth0.android.ui_components.domain.network.Result
+import com.auth0.android.ui_components.domain.network.safeCall
 import kotlinx.coroutines.withContext
-import java.io.IOException
 
 /**
  * Generic UseCase for verifying enrolled authenticators
@@ -23,7 +23,7 @@ class VerifyAuthenticatorUseCase(
 ) {
     private companion object {
         private const val TAG = "VerifyAuthenticatorUseCase"
-        private const val REQUIRED_SCOPES = "create:me:authentication_methods"
+        private const val REQUIRED_SCOPES = "create:me:authentication_methods openid"
     }
 
     /**
@@ -33,8 +33,8 @@ class VerifyAuthenticatorUseCase(
      */
     suspend operator fun invoke(
         input: VerificationInput
-    ): Result<AuthenticationMethod> = withContext(dispatcherProvider.io) {
-        try {
+    ): Result<AuthenticationMethod, Auth0Error> = withContext(dispatcherProvider.io) {
+        safeCall(REQUIRED_SCOPES) {
             Log.d(TAG, "Starting verification for: ${input::class.simpleName}")
 
             val audience = tokenManager.getMyAccountAudience()
@@ -64,17 +64,7 @@ class VerifyAuthenticatorUseCase(
             }
 
             Log.d(TAG, "Verification successful")
-            Result.Success(authMethod)
-
-        } catch (e: AuthenticationException) {
-            Log.e(TAG, "Authentication error during verification: ${e.getDescription()}", e)
-            Result.Error(e)
-        } catch (e: IOException) {
-            Log.e(TAG, "Network error during verification", e)
-            Result.Error(e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during verification", e)
-            Result.Error(e)
+            authMethod
         }
     }
 }

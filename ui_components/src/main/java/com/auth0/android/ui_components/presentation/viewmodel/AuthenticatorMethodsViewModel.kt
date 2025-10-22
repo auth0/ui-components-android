@@ -5,43 +5,56 @@ import androidx.lifecycle.viewModelScope
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.MFAMethod
 import com.auth0.android.ui_components.domain.usecase.GetMFAMethodsUseCase
-import com.auth0.android.ui_components.domain.util.Result
+import com.auth0.android.ui_components.domain.network.onError
+import com.auth0.android.ui_components.domain.network.onSuccess
+import com.auth0.android.ui_components.presentation.ui.UiError
 import com.auth0.android.ui_components.presentation.ui.UiState
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 
 data class MFAUiModel(
     val title: String,
-    val type: AuthenticatorType, val confirmed: Boolean
+    val type: AuthenticatorType,
+    val confirmed: Boolean
 )
 
-class MFAMethodViewModel(
+class AuthenticatorMethodsViewModel(
     private val getMFAMethodsUseCase: GetMFAMethodsUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState<List<MFAUiModel>>>(UiState.Loading)
-    val uiState: StateFlow<UiState<List<MFAUiModel>>> = _uiState.asStateFlow()
+
+    val uiState: StateFlow<UiState<List<MFAUiModel>>> = _uiState
+        .onStart {
+            fetchMFAMethods()
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+            initialValue = UiState.Loading
+        )
 
 
     fun fetchMFAMethods() {
         viewModelScope.launch {
             _uiState.value = UiState.Loading
-            when (val result = getMFAMethodsUseCase()) {
-                is Result.Success -> {
-                    _uiState.value = UiState.Success(result.data.map {
+
+            getMFAMethodsUseCase()
+                .onSuccess {
+                    _uiState.value = UiState.Success(it.map {
                         it.toMFAUiModel()
                     })
                 }
-
-                is Result.Error -> {
+                .onError {
                     _uiState.value = UiState.Error(
-                        result.exception
+                        UiError(it, { fetchMFAMethods() })
                     )
                 }
-            }
         }
     }
 
@@ -51,7 +64,7 @@ class MFAMethodViewModel(
                 "Authenticator App", type, confirmed
             )
 
-            AuthenticatorType.SMS -> MFAUiModel(
+            AuthenticatorType.PHONE -> MFAUiModel(
                 "SMS OTP", type, confirmed
             )
 

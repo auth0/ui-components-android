@@ -8,9 +8,11 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.domain.model.VerificationInput
+import com.auth0.android.ui_components.domain.network.onError
+import com.auth0.android.ui_components.domain.network.onSuccess
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
-import com.auth0.android.ui_components.domain.util.Result
+import com.auth0.android.ui_components.presentation.ui.UiError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,17 +48,18 @@ class EnrollmentViewModel(
             _uiState.value = EnrollmentUiState.Loading
             Log.d(TAG, "Starting enrollment: $authenticatorType")
 
-            when (val result = enrollAuthenticatorUseCase(authenticatorType, input)) {
-                is Result.Success -> {
+            enrollAuthenticatorUseCase(authenticatorType, input)
+                .onSuccess { data ->
                     Log.d(TAG, "Enrollment initiated successfully")
-                    _uiState.value = EnrollmentUiState.EnrollmentInitiated(result.data)
+                    _uiState.value = EnrollmentUiState.EnrollmentInitiated(data)
                 }
-
-                is Result.Error -> {
-                    Log.e(TAG, "Enrollment failed", result.exception)
-                    _uiState.value = EnrollmentUiState.Error(result.exception)
+                .onError { error ->
+                    Log.e(TAG, "Enrollment failed", error.cause)
+                    _uiState.value = EnrollmentUiState.Error(
+                        UiError(
+                            error, { startEnrollment(authenticatorType, input) }
+                        ))
                 }
-            }
         }
     }
 
@@ -81,17 +84,18 @@ class EnrollmentViewModel(
                 authSession = authSession
             )
 
-            when (val result = verifyAuthenticatorUseCase(input)) {
-                is Result.Success -> {
+            verifyAuthenticatorUseCase(input)
+                .onSuccess { data ->
                     Log.d(TAG, "Verification successful")
-                    _uiState.value = EnrollmentUiState.Success(result.data)
+                    _uiState.value = EnrollmentUiState.Success(data)
                 }
-
-                is Result.Error -> {
-                    Log.e(TAG, "Verification failed", result.exception)
-                    _uiState.value = EnrollmentUiState.Error(result.exception)
+                .onError { error ->
+                    Log.e(TAG, "Verification failed", error.cause)
+                    _uiState.value = EnrollmentUiState.Error(
+                        UiError(
+                            error, { verifyWithOtp(authenticationMethodId, otpCode, authSession) }
+                        ))
                 }
-            }
         }
     }
 
@@ -113,17 +117,18 @@ class EnrollmentViewModel(
                 authSession = authSession
             )
 
-            when (val result = verifyAuthenticatorUseCase(input)) {
-                is Result.Success -> {
+            verifyAuthenticatorUseCase(input)
+                .onSuccess { data ->
                     Log.d(TAG, "Verification successful")
-                    _uiState.value = EnrollmentUiState.Success(result.data)
+                    _uiState.value = EnrollmentUiState.Success(data)
                 }
-
-                is Result.Error -> {
-                    Log.e(TAG, "Verification failed", result.exception)
-                    _uiState.value = EnrollmentUiState.Error(result.exception)
+                .onError { error ->
+                    Log.e(TAG, "Verification failed", error.cause)
+                    _uiState.value = EnrollmentUiState.Error(
+                        UiError(
+                            error, { verifyWithoutOtp(authenticationMethodId, authSession) }
+                        ))
                 }
-            }
         }
     }
 
@@ -155,5 +160,5 @@ sealed interface EnrollmentUiState {
     data class Success(val authenticationMethod: AuthenticationMethod) : EnrollmentUiState
 
     /** Error occurred during enrollment or verification */
-    data class Error(val exception: Throwable) : EnrollmentUiState
+    data class Error(val uiError: UiError) : EnrollmentUiState
 }

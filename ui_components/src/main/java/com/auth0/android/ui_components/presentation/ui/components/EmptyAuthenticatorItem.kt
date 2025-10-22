@@ -48,7 +48,7 @@ fun EmptyAuthenticatorItem(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 48.dp, horizontal = 24.dp),
+                    .padding(vertical = 24.dp, horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(

@@ -1,16 +1,16 @@
 package com.auth0.android.ui_components.domain.usecase
 
 import android.util.Log
-import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
+import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
-import com.auth0.android.ui_components.domain.util.Result
+import com.auth0.android.ui_components.domain.network.Result
+import com.auth0.android.ui_components.domain.network.safeCall
 import kotlinx.coroutines.withContext
-import java.io.IOException
 
 /**
  * Generic UseCase for enrolling authenticators
@@ -24,7 +24,7 @@ class EnrollAuthenticatorUseCase(
 ) {
     private companion object {
         private const val TAG = "EnrollAuthenticatorUseCase"
-        private const val REQUIRED_SCOPES = "create:me:authentication_methods"
+        private const val REQUIRED_SCOPES = "create:me:authentication_methods openid"
     }
 
     /**
@@ -36,8 +36,8 @@ class EnrollAuthenticatorUseCase(
     suspend operator fun invoke(
         authenticatorType: AuthenticatorType,
         input: EnrollmentInput = EnrollmentInput.None
-    ): Result<EnrollmentResult> = withContext(dispatcherProvider.io) {
-        try {
+    ): Result<EnrollmentResult, Auth0Error> = withContext(dispatcherProvider.io) {
+        safeCall(REQUIRED_SCOPES) {
             Log.d(TAG, "Starting enrollment for type: $authenticatorType")
 
             // Fetch access token with required scopes
@@ -88,7 +88,7 @@ class EnrollAuthenticatorUseCase(
                     )
                 }
 
-                AuthenticatorType.SMS -> {
+                AuthenticatorType.PHONE -> {
                     require(input is EnrollmentInput.Phone) {
                         "Phone enrollment requires EnrollmentInput.Phone"
                     }
@@ -106,20 +106,7 @@ class EnrollAuthenticatorUseCase(
             }
 
             Log.d(TAG, "Enrollment successful for type: $authenticatorType")
-            Result.Success(result)
-
-        } catch (e: AuthenticationException) {
-            Log.e(TAG, "Authentication error during enrollment: ${e.getDescription()}", e)
-            Result.Error(e)
-        } catch (e: IOException) {
-            Log.e(TAG, "Network error during enrollment", e)
-            Result.Error(e)
-        } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "Invalid input for enrollment", e)
-            Result.Error(e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Unexpected error during enrollment", e)
-            Result.Error(e)
+            result
         }
     }
 }

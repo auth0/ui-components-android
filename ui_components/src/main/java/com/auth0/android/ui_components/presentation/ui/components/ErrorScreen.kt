@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ErrorScreen(
     mainErrorMessage: String,
-    description: String,
+    description: String = "We are unable to process your request. Please try again in a few minutes. If this problem persists, please",
     modifier: Modifier = Modifier,
-    clickableString: String? = null,
+    clickableString: String = "contact us.",
     onRetryClick: () -> Unit = {}
 ) {
 

@@ -91,7 +91,7 @@ fun OTPVerificationScreen(
             is EnrollmentUiState.Error -> {
                 // Handle error from API
                 isError = true
-                errorMessage = getErrorMessage(state.exception)
+                errorMessage = getErrorMessage(state.uiError.error.cause)
             }
 
             else -> {
@@ -403,7 +403,7 @@ private fun getScreenConfigText(
     phoneNumber: String?
 ): ConfigurationText {
     return when (authenticatorType) {
-        AuthenticatorType.SMS -> ConfigurationText(
+        AuthenticatorType.PHONE -> ConfigurationText(
             title = "Verify it's you",
             headline = "Enter the 6-digit code we sent to ${phoneNumber ?: "your phone"}",
             description = ""

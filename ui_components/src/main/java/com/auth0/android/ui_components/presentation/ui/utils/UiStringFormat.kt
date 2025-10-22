@@ -1,6 +1,6 @@
-package com.auth0.android.ui_components.presentation.ui
+package com.auth0.android.ui_components.presentation.ui.utils
 
-object UiUtils {
+object UiStringFormat {
 
     /**
      * Formats the top bar title for the given authenticator type
@@ -8,7 +8,7 @@ object UiUtils {
     fun formatTopBarTitleForAuthenticator(authenticatorType: String): String {
         return when (authenticatorType) {
             "totp" -> "Authenticator"
-            "sms" -> "SMS OTP"
+            "phone" -> "SMS OTP"
             "email" -> "Email OTP"
             "push-notification" -> "Push Notification"
             else -> "Recovery Code"
@@ -21,7 +21,7 @@ object UiUtils {
     fun formatDescriptionForAuthenticator(authenticatorType: String): String {
         return when (authenticatorType) {
             "totp" -> "Saved Authenticators"
-            "sms" -> "Saved Phones for SMS OTP"
+            "phone" -> "Saved Phones for SMS OTP"
             "email" -> "Saved Emails for OTP"
             "push-notification" -> "Saved Apps for Push"
             else -> "Generated Recovery Code"
@@ -34,10 +34,10 @@ object UiUtils {
     fun formatDefaultNameForAuthenticatorItems(authenticatorType: String): String {
         return when (authenticatorType) {
             "totp" -> "Authenticator"
-            "sms" -> "Phone"
+            "phone" -> "Phone"
             "email" -> "Email"
             "push-notification" -> "Push"
-            else -> "Recovery code generated"
+            else -> "Recovery code"
         }
     }
 }

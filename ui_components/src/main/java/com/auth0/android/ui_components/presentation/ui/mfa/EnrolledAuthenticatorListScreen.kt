@@ -28,16 +28,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod
-import com.auth0.android.ui_components.presentation.ui.UiState
-import com.auth0.android.ui_components.presentation.ui.UiUtils
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
-import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
+import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.InfoCard
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
-import com.auth0.android.ui_components.presentation.viewmodel.MFAEnrolledItemViewModel
+import com.auth0.android.ui_components.presentation.ui.utils.UiStringFormat
+import com.auth0.android.ui_components.presentation.viewmodel.EnrolledAuthenticatorViewModel
 import com.auth0.android.ui_components.utils.DateUtil
 
 /**
@@ -51,7 +50,7 @@ fun EnrolledAuthenticatorListScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
-    viewModel: MFAEnrolledItemViewModel = viewModel(
+    viewModel: EnrolledAuthenticatorViewModel = viewModel(
         factory = MyAccountModule.provideMFAEnrolledItemViewModelFactory()
     )
 ) {
@@ -61,10 +60,11 @@ fun EnrolledAuthenticatorListScreen(
         viewModel.fetchEnrolledAuthenticators(authenticatorType)
     }
 
+
     Scaffold(
         topBar = {
             TopBar(
-                title = UiUtils.formatTopBarTitleForAuthenticator(authenticatorType.type),
+                title = UiStringFormat.formatTopBarTitleForAuthenticator(authenticatorType.type),
                 topBarColor = Color.White,
                 showSeparator = false,
                 trailingIcon = rememberVectorPainter(Icons.Default.Add),
@@ -75,43 +75,30 @@ fun EnrolledAuthenticatorListScreen(
         containerColor = Color.White,
         modifier = modifier
     ) { paddingValues ->
-        when (val state = uiState) {
-            is UiState.Loading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularLoader()
-                }
-            }
 
-            is UiState.Success -> {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+
+            if (uiState.loading) {
+                CircularLoader()
+            } else {
                 AuthenticatorListContent(
                     authenticatorType.type,
-                    authenticators = state.data,
+                    authenticators = uiState.authenticators,
                     onDeleteAuthenticator = { authenticator ->
                         viewModel.deleteAuthenticationMethod(authenticator.id)
                     },
-                    modifier = Modifier.padding(paddingValues)
                 )
             }
 
-            is UiState.Error -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    contentAlignment = Alignment.Center
-                ) {
-                    ErrorScreen(
-                        mainErrorMessage = state.exception.message ?: "An error occurred",
-                        description = "We are unable to process your request. Please try again in a few minutes. If this problem persists, please",
-                        modifier = modifier,
-                        clickableString = "contact us.",
-                    )
-                }
+            if (uiState.uiError != null) {
+                ErrorHandler(
+                    uiState.uiError!!
+                )
             }
         }
     }
@@ -122,7 +109,7 @@ fun EnrolledAuthenticatorListScreen(
  * Supports both single item and list views
  */
 @Composable
-private fun AuthenticatorListContent(
+fun AuthenticatorListContent(
     authenticatorType: String,
     authenticators: List<EnrolledAuthenticationMethod>,
     onDeleteAuthenticator: (EnrolledAuthenticationMethod) -> Unit,
@@ -136,7 +123,7 @@ private fun AuthenticatorListContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = UiUtils.formatDescriptionForAuthenticator(authenticatorType),
+            text = UiStringFormat.formatDescriptionForAuthenticator(authenticatorType),
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 12.dp)
@@ -154,10 +141,10 @@ private fun AuthenticatorListContent(
                     )
 
                     InfoCard(
-                        title = UiUtils.formatDefaultNameForAuthenticatorItems(authenticator.type),
+                        title = authenticator.name
+                            ?: UiStringFormat.formatDefaultNameForAuthenticatorItems(authenticator.type),
                         subtitles = listOf(
                             "Created on ${DateUtil.formatIsoDate(authenticator.createdAt)}",
-                            "Last used on ${DateUtil.formatIsoDate(authenticator.createdAt)}"
                         ),
                         menuActions = menuActions,
                         onMenuActionClick = { action ->

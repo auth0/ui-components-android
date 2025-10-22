@@ -20,7 +20,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -41,7 +40,7 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
-import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
+import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
@@ -68,7 +67,7 @@ fun EmailEnrollmentScreen(
     viewModel: EnrollmentViewModel = viewModel(
         factory = MyAccountModule.provideEnrollmentViewModelFactory()
     ),
-    onBackClick: () -> Unit = {},
+    onBackClick: () -> Unit,
     onContinueToOTP: (authenticationId: String, authSession: String, email: String) -> Unit = { _, _, _ -> }
 ) {
     var email by remember { mutableStateOf("") }
@@ -122,14 +121,7 @@ fun EmailEnrollmentScreen(
 
                 is EnrollmentUiState.Error -> {
                     validationError = true
-                    ErrorScreen(
-                        state.exception.message ?: "Failed to send verification code",
-                        "Please try again",
-                        Modifier,
-                        onRetryClick = {
-
-                        }
-                    )
+                    ErrorHandler(state.uiError)
                 }
 
                 is EnrollmentUiState.Loading -> {

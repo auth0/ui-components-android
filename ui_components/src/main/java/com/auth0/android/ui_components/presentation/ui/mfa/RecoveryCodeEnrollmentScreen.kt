@@ -43,6 +43,7 @@ import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
+import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
@@ -69,7 +70,7 @@ fun RecoveryCodeEnrollmentScreen(
     viewModel: EnrollmentViewModel = viewModel(
         factory = MyAccountModule.provideEnrollmentViewModelFactory()
     ),
-    onBackClick: () -> Unit = {},
+    onBackClick: () -> Unit,
     onContinue: (
         String, String
     ) -> Unit
@@ -170,16 +171,7 @@ fun RecoveryCodeEnrollmentScreen(
                 }
 
                 is EnrollmentUiState.Error -> {
-                    ErrorScreen(
-                        mainErrorMessage = state.exception.message
-                            ?: "Failed to enroll recovery code",
-                        "Please try again",
-                        Modifier,
-                        onRetryClick = {
-                            viewModel.resetState()
-                            viewModel.startEnrollment(AuthenticatorType.RECOVERY_CODE)
-                        }
-                    )
+                    ErrorHandler(state.uiError)
                 }
             }
         }

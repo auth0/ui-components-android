@@ -56,8 +56,10 @@ class MainActivity : ComponentActivity() {
         Auth0UI.initialize(
             account,
             DefaultTokenProvider(
-                credentialsManager
-            )
+                credentialsManager,
+            ),
+            WebAuthProvider.login(account)
+                .withScheme(getString(R.string.com_auth0_scheme))
         )
         setContent {
             Ui_components_androidTheme {

@@ -14,7 +14,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -31,27 +30,24 @@ import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.UiState
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
-import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
+import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
-import com.auth0.android.ui_components.presentation.viewmodel.MFAMethodViewModel
+import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorMethodsViewModel
 import com.auth0.android.ui_components.presentation.viewmodel.MFAUiModel
 import com.auth0.android.ui_components.theme.Gray
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MFAMethodsScreen(
+fun AuthenticatorMethodsScreen(
     modifier: Modifier,
-    viewModel: MFAMethodViewModel = viewModel(
+    viewModel: AuthenticatorMethodsViewModel = viewModel(
         factory = MyAccountModule.provideMFAMethodViewModelFactory()
     ),
     onAuthenticatorClick: (MFAUiModel) -> Unit,
     onBackPress: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    LaunchedEffect(Unit) {
-        viewModel.fetchMFAMethods()
-    }
 
     Scaffold(
         topBar = {
@@ -76,10 +72,8 @@ fun MFAMethodsScreen(
                         Modifier
                             .fillMaxSize()
                     ) {
-                        ErrorScreen(
-                            mainErrorMessage = state.exception?.message ?: "An error occurred",
-                            "We are unable to process your request. Please try again in a few minutes. If this problem persists, please ",
-                            clickableString = "contact us."
+                        ErrorHandler(
+                            uiError = state.error
                         )
                     }
                 }
@@ -150,7 +144,7 @@ private fun getMFAMethodIcon(authenticatorType: AuthenticatorType): Painter {
     return painterResource(
         when (authenticatorType) {
             AuthenticatorType.TOTP -> R.drawable.ic_authenticator
-            AuthenticatorType.SMS -> R.drawable.ic_sms_otp
+            AuthenticatorType.PHONE -> R.drawable.ic_sms_otp
             AuthenticatorType.EMAIL -> R.drawable.ic_sms_otp
             AuthenticatorType.PUSH -> R.drawable.ic_authenticator
             AuthenticatorType.RECOVERY_CODE -> R.drawable.ic_recovery_code

@@ -7,17 +7,21 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 fun AuthenticatorEnrollmentScreen(
     authenticatorType: AuthenticatorType,
     onContinue: (String, String, String?) -> Unit,
+    onBackClick: () -> Unit,
 ) {
     when (authenticatorType) {
         AuthenticatorType.PUSH,
         AuthenticatorType.TOTP -> QREnrollmentScreen(
             authenticatorType,
+            onBackClick = onBackClick,
             onContinueClick = { authenticationId, authSession ->
                 onContinue(authenticationId, authSession, null)
-            })
+            }
+        )
 
-        AuthenticatorType.SMS -> PhoneEnrollmentScreen(
+        AuthenticatorType.PHONE -> PhoneEnrollmentScreen(
             authenticatorType = authenticatorType,
+            onBackClick = onBackClick,
             onContinueToOTP = { authenticationId, authSession, phoneNumber ->
                 onContinue(authenticationId, authSession, phoneNumber)
             }
@@ -25,6 +29,7 @@ fun AuthenticatorEnrollmentScreen(
 
         AuthenticatorType.EMAIL -> EmailEnrollmentScreen(
             authenticatorType = authenticatorType,
+            onBackClick = onBackClick,
             onContinueToOTP = { authenticationId, authSession, email ->
                 onContinue(authenticationId, authSession, email)
             }
@@ -32,6 +37,7 @@ fun AuthenticatorEnrollmentScreen(
 
         AuthenticatorType.RECOVERY_CODE -> RecoveryCodeEnrollmentScreen(
             authenticatorType = authenticatorType,
+            onBackClick = onBackClick,
             onContinue = { id, type ->
                 onContinue(
                     id, type, null

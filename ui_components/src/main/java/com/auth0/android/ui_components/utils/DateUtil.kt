@@ -4,8 +4,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 object DateUtil {
-
-
+    
     /**
      * Formats ISO8601 date string to M/dd/yy format
      */

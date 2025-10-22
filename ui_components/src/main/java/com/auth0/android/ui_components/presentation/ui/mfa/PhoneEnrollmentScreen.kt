@@ -30,7 +30,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -55,7 +53,7 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
-import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
+import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
@@ -113,7 +111,7 @@ fun PhoneEnrollmentScreen(
         factory = MyAccountModule.provideEnrollmentViewModelFactory()
     ),
     onContinueToOTP: (authenticationId: String, authSession: String, phoneNumber: String) -> Unit,
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit
 ) {
     var phoneNumber by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(countries[0]) }
@@ -160,12 +158,7 @@ fun PhoneEnrollmentScreen(
 
                 is EnrollmentUiState.Error -> {
                     validationError = true
-                    ErrorScreen(
-                        state.exception.message ?: "Failed to send verification code",
-                        "Please try again",
-                        Modifier,
-                        onRetryClick = {}
-                    )
+                    ErrorHandler(state.uiError)
                 }
 
                 is EnrollmentUiState.Loading -> {
@@ -218,7 +211,7 @@ fun PhoneEnrollmentScreen(
                         validationError = false
                         errorMessage = ""
                         viewModel.startEnrollment(
-                            authenticatorType = AuthenticatorType.SMS,
+                            authenticatorType = AuthenticatorType.PHONE,
                             input = EnrollmentInput.Phone(
                                 phoneNumber = fullPhoneNumber,
                                 preferredMethod = PhoneAuthenticationMethodType.SMS

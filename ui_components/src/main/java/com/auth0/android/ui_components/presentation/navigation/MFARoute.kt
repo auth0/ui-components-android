@@ -3,21 +3,25 @@ package com.auth0.android.ui_components.presentation.navigation
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import kotlinx.serialization.Serializable
 
-
 @Serializable
-object MFAMethodList
+sealed interface AuthenticatorRoute {
 
-@Serializable
-data class EnrolledAuthenticator(val authenticatorType: AuthenticatorType)
+    @Serializable
+    object AuthenticatorMethodList
 
-@Serializable
-data class EnrollAuthenticator(val authenticatorType: AuthenticatorType)
+    @Serializable
+    data class EnrolledAuthenticatorMethod(val authenticatorType: AuthenticatorType)
 
-@Serializable
-data class OTPVerification(
-    val authenticatorType: AuthenticatorType,
-    val authenticationId: String,
-    val authSession: String,
-    val phoneNumberOrEmail: String? = null
-)
+    @Serializable
+    data class EnrollAuthenticatorMethod(val authenticatorType: AuthenticatorType)
+
+    @Serializable
+    data class OTPVerification(
+        val authenticatorType: AuthenticatorType,
+        val authenticationId: String,
+        val authSession: String,
+        val phoneNumberOrEmail: String? = null
+    )
+}
+
 

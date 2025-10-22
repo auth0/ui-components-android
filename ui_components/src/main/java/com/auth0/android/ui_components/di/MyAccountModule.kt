@@ -94,7 +94,7 @@ object MyAccountModule {
     }
 
     private fun provideTokenManager(): TokenManager {
-        return TokenManager()
+        return TokenManager.getInstance()
     }
 
     private fun provideDispatcherProvider(): DispatcherProvider {

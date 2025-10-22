@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.presentation.navigation
 
-import android.util.Log
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -10,7 +9,7 @@ import androidx.navigation.toRoute
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorEnrollmentScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.EnrolledAuthenticatorListScreen
-import com.auth0.android.ui_components.presentation.ui.mfa.MFAMethodsScreen
+import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorMethodsScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.OTPVerificationScreen
 
 
@@ -21,43 +20,53 @@ internal fun MFANavigationHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = MFAMethodList
+        startDestination = AuthenticatorRoute.AuthenticatorMethodList
     ) {
-        composable<MFAMethodList> {
-            MFAMethodsScreen(
+        composable<AuthenticatorRoute.AuthenticatorMethodList> {
+            AuthenticatorMethodsScreen(
                 modifier = modifier,
                 onAuthenticatorClick = { mfaUiModel ->
                     if (mfaUiModel.confirmed) {
-                        navController.navigate(EnrolledAuthenticator(mfaUiModel.type))
+                        navController.navigate(AuthenticatorRoute.EnrolledAuthenticatorMethod(mfaUiModel.type))
                     } else {
-                        navController.navigate(EnrollAuthenticator(mfaUiModel.type))
+                        navController.navigate(AuthenticatorRoute.EnrollAuthenticatorMethod(mfaUiModel.type))
                     }
                 },
                 onBackPress = {
-                    Log.d("TAG", "onBackPress")
+                    navController.navigateUp()
                 })
         }
 
-        composable<EnrolledAuthenticator> {
-            val args = it.toRoute<EnrolledAuthenticator>()
+        composable<AuthenticatorRoute.EnrolledAuthenticatorMethod> {
+            val args = it.toRoute<AuthenticatorRoute.EnrolledAuthenticatorMethod>()
             EnrolledAuthenticatorListScreen(
                 args.authenticatorType,
+                onBackClick = { navController.navigateUp() },
+                onAddClick = {
+                    navController.navigate(AuthenticatorRoute.EnrollAuthenticatorMethod(args.authenticatorType))
+                }
             )
         }
 
-        composable<EnrollAuthenticator> {
-            val args = it.toRoute<EnrollAuthenticator>()
+        composable<AuthenticatorRoute.EnrollAuthenticatorMethod> {
+            val args = it.toRoute<AuthenticatorRoute.EnrollAuthenticatorMethod>()
             AuthenticatorEnrollmentScreen(
                 authenticatorType = args.authenticatorType,
+                onBackClick = {
+                    navController.navigateUp()
+                },
                 onContinue = { authenticationId, authSession, phoneNumberOrEmail ->
                     when (args.authenticatorType) {
                         AuthenticatorType.RECOVERY_CODE, AuthenticatorType.PUSH -> {
-                            navController.navigate(EnrolledAuthenticator(args.authenticatorType))
+                            navController.navigate(AuthenticatorRoute.EnrolledAuthenticatorMethod(args.authenticatorType)) {
+                                popUpTo<AuthenticatorRoute.AuthenticatorMethodList>()
+                                launchSingleTop = true
+                            }
                         }
 
                         else -> {
                             navController.navigate(
-                                OTPVerification(
+                                AuthenticatorRoute.OTPVerification(
                                     authenticatorType = args.authenticatorType,
                                     authenticationId = authenticationId,
                                     authSession = authSession,
@@ -71,8 +80,8 @@ internal fun MFANavigationHost(
             )
         }
 
-        composable<OTPVerification> {
-            val args = it.toRoute<OTPVerification>()
+        composable<AuthenticatorRoute.OTPVerification> {
+            val args = it.toRoute<AuthenticatorRoute.OTPVerification>()
             OTPVerificationScreen(
                 authenticatorType = args.authenticatorType,
                 authenticationId = args.authenticationId,
@@ -82,7 +91,10 @@ internal fun MFANavigationHost(
                     navController.navigateUp()
                 },
                 onVerificationSuccess = {
-                    navController.navigate(EnrolledAuthenticator(args.authenticatorType))
+                    navController.navigate(AuthenticatorRoute.EnrolledAuthenticatorMethod(args.authenticatorType)) {
+                        popUpTo<AuthenticatorRoute.AuthenticatorMethodList>()
+                        launchSingleTop = true
+                    }
                 })
         }
     }

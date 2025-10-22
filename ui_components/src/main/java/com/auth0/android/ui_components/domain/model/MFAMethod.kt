@@ -6,12 +6,13 @@ package com.auth0.android.ui_components.domain.model
 data class MFAMethod(
     val type: AuthenticatorType,
     val confirmed: Boolean,
-    val usage: List<String>
+    val usage: List<String>,
+    val name: String? = null,
 )
 
 enum class AuthenticatorType(val type: String) {
     TOTP("totp"),
-    SMS("sms"),
+    PHONE("phone"),
     EMAIL("email"),
     PUSH("push-notification"),
     RECOVERY_CODE("recovery-code")

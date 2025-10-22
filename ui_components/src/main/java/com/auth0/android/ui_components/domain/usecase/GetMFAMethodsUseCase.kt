@@ -1,24 +1,24 @@
 package com.auth0.android.ui_components.domain.usecase
 
-import android.util.Log
-import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.Factor
 import com.auth0.android.result.MfaAuthenticationMethod
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
+import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.MFAMethod
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
-import com.auth0.android.ui_components.domain.util.Result
+import com.auth0.android.ui_components.domain.network.Result
+import com.auth0.android.ui_components.domain.network.safeCall
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
-import java.io.IOException
 
 /**
  * UseCase that orchestrates MFA method fetching
  * Handles token fetching ONCE before making parallel API calls
+ *
  */
 class GetMFAMethodsUseCase(
     private val repository: MyAccountRepository,
@@ -27,47 +27,35 @@ class GetMFAMethodsUseCase(
 ) {
     private companion object {
         private const val TAG = "GetMFAMethodsUseCase"
-        private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods"
+        private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods openid"
     }
 
-    suspend operator fun invoke(): Result<List<MFAMethod>> = withContext(dispatcherProvider.io) {
-        try {
-            val audience = tokenManager.getMyAccountAudience()
-            val accessToken = tokenManager.fetchToken(
-                audience = audience,
-                scope = REQUIRED_SCOPES
-            )
-
-            val (factors, authMethods) = coroutineScope {
-                val factorsDeferred = async {
-                    repository.getFactors(accessToken)
-                }
-                val authMethodsDeferred = async {
-                    repository.getAuthenticatorMethods(accessToken)
-                }
-
-                Pair(
-                    factorsDeferred.await(),
-                    authMethodsDeferred.await()
+    suspend operator fun invoke(): Result<List<MFAMethod>, Auth0Error> =
+        withContext(dispatcherProvider.io) {
+            safeCall(REQUIRED_SCOPES) {
+                val audience = tokenManager.getMyAccountAudience()
+                val accessToken = tokenManager.fetchToken(
+                    audience = audience,
+                    scope = REQUIRED_SCOPES
                 )
+
+                val (factors, authMethods) = coroutineScope {
+                    val factorsDeferred = async {
+                        repository.getFactors(accessToken)
+                    }
+                    val authMethodsDeferred = async {
+                        repository.getAuthenticatorMethods(accessToken)
+                    }
+
+                    Pair(
+                        factorsDeferred.await(),
+                        authMethodsDeferred.await()
+                    )
+                }
+
+                mapToMFAMethods(factors, authMethods)
             }
-
-            val mfaMethods = mapToMFAMethods(factors, authMethods)
-            Result.Success(mfaMethods)
-
-        } catch (e: AuthenticationException) {
-            // Token fetch or API authentication failed
-            Log.e(TAG, "Authentication error: ${e.getDescription()}", e)
-            Result.Error(e)
-        } catch (e: IOException) {
-            // Network error
-            Log.e(TAG, "Network error", e)
-            Result.Error(e)
-        } catch (e: Exception) {
-            Log.e(TAG, "Unknown error", e)
-            Result.Error(e)
         }
-    }
 
     /**
      * Maps factors to MFA methods
@@ -85,7 +73,6 @@ class GetMFAMethodsUseCase(
         val authMethodsByType = mfaAuthMethods.groupBy { it.type }
 
         return factors.map { factor ->
-
             val hasConfirmedAuthMethod = authMethodsByType[factor.type]
                 ?.any { it.confirmed == true } ?: false
 
@@ -103,7 +90,7 @@ class GetMFAMethodsUseCase(
     private fun mapTypeToAuthenticatorType(type: String): AuthenticatorType {
         return when (type.lowercase()) {
             "totp" -> AuthenticatorType.TOTP
-            "phone" -> AuthenticatorType.SMS
+            "phone" -> AuthenticatorType.PHONE
             "email" -> AuthenticatorType.EMAIL
             "push-notification" -> AuthenticatorType.PUSH
             "recovery-code" -> AuthenticatorType.RECOVERY_CODE

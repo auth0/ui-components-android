@@ -9,4 +9,5 @@ data class EnrolledAuthenticationMethod(
     val type: String,
     val confirmed: Boolean,
     val createdAt: String,
+    val name: String? = null,
 )

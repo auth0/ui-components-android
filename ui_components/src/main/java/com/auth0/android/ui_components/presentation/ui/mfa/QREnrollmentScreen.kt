@@ -67,6 +67,7 @@ import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
+import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
@@ -172,11 +173,7 @@ fun QREnrollmentScreen(
                 }
 
                 is EnrollmentUiState.Error -> {
-                    ErrorScreen(
-                        mainErrorMessage = state.exception.message ?: "An error occurred",
-                        "We are unable to process your request. Please try again in a few minutes. If this problem persists, please ",
-                        clickableString = "contact us."
-                    )
+                    ErrorHandler(state.uiError)
                 }
             }
         }
