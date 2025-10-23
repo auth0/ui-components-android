@@ -27,7 +27,7 @@ class GetMFAMethodsUseCase(
 ) {
     private companion object {
         private const val TAG = "GetMFAMethodsUseCase"
-        private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods openid"
+        private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods"
     }
 
     suspend operator fun invoke(): Result<List<MFAMethod>, Auth0Error> =

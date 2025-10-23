@@ -22,7 +22,7 @@ class DeleteAuthenticationMethodUseCase(
 ) {
     private companion object {
         private const val TAG = "DeleteAuthenticationMethodUseCase"
-        private const val REQUIRED_SCOPES = "delete:me:authentication_methods openid"
+        private const val REQUIRED_SCOPES = "delete:me:authentication_methods"
     }
 
     /**

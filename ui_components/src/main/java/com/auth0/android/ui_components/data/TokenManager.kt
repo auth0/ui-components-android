@@ -1,14 +1,11 @@
 package com.auth0.android.ui_components.data
 
 import android.util.Log
-import com.auth0.android.authentication.AuthenticationAPIClient
 import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.result.APICredentials
 import com.auth0.android.ui_components.Auth0UI
-import com.auth0.android.ui_components.domain.error.Auth0Error
-import com.auth0.android.ui_components.domain.error.ErrorMapper
-import com.auth0.android.ui_components.domain.network.Result
 import java.io.IOException
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Manages token fetching operations as a thread-safe singleton
@@ -34,6 +31,9 @@ class TokenManager private constructor() {
     private val tokenProvider = Auth0UI.tokenProvider
     private val account = Auth0UI.account
 
+    private val tokenMap: ConcurrentHashMap<String, ConcurrentHashMap<String, APICredentials>> =
+        ConcurrentHashMap()
+
     /**
      * Gets the audience for MyAccount API
      */
@@ -43,16 +43,45 @@ class TokenManager private constructor() {
 
     /**
      * Fetches token for given audience and scope
+     * First checks the cache for a valid (non-expired) token
+     * If not found or expired, fetches a new token and caches it
      * @throws AuthenticationException if auth fails
      * @throws IOException if network fails
      */
     suspend fun fetchToken(audience: String, scope: String): String {
-        Log.d(TAG, "Fetching token for audience: $audience with scopes: $scope")
+
+        val scopeMap = tokenMap.getOrPut(audience) { ConcurrentHashMap() }
+
+        val cachedCredentials = scopeMap[scope]
+        if (cachedCredentials != null) {
+            if (!willTokenExpire(cachedCredentials.expiresAt.time)) {
+                Log.d(TAG, "Returning cached token for audience: $audience, scope: $scope")
+                return cachedCredentials.accessToken
+            }
+        }
+
+        Log.d(TAG, "Fetching new token from provider for audience: $audience, scope: $scope")
         val credentials = tokenProvider.fetchApiCredentials(audience, scope)
+
+        // Saving the same token for scenario where we request multiple scopes together
+        scopeMap[scope] = credentials
+        val splitScope = scope.split(" ")
+        if (splitScope.size > 1) {
+            splitScope.forEach {
+                Log.d(TAG, "token:$it ")
+                scopeMap[it] = credentials
+            }
+        }
+
         return credentials.accessToken
     }
 
     suspend fun saveToken(audience: String, credentials: APICredentials) {
         tokenProvider.saveApiCredentials(audience, credentials)
+    }
+
+    private fun willTokenExpire(expiresAt: Long): Boolean {
+        val currentTimeInMillis = System.currentTimeMillis()
+        return expiresAt <= currentTimeInMillis
     }
 }
