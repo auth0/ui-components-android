@@ -68,7 +68,7 @@ import kotlinx.coroutines.launch
 fun RecoveryCodeEnrollmentScreen(
     authenticatorType: AuthenticatorType = AuthenticatorType.RECOVERY_CODE,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory()
+        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit,
     onContinue: (
@@ -80,12 +80,6 @@ fun RecoveryCodeEnrollmentScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var recoveryCode by remember { mutableStateOf("") }
 
-    // Start enrollment on screen load
-    LaunchedEffect(authenticatorType) {
-        if (uiState is EnrollmentUiState.Idle) {
-            viewModel.startEnrollment(AuthenticatorType.RECOVERY_CODE)
-        }
-    }
 
     Scaffold(
         topBar = {

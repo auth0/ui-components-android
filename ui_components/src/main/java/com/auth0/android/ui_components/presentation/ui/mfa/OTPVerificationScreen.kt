@@ -63,7 +63,7 @@ fun OTPVerificationScreen(
     phoneNumberOrEmail: String? = null,
     showResendOption: Boolean = true,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory()
+        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit = {},
     onVerificationSuccess: () -> Unit = {},

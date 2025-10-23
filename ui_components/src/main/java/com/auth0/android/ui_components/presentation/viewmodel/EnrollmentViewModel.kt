@@ -14,8 +14,10 @@ import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.android.ui_components.presentation.ui.UiError
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -25,7 +27,8 @@ import kotlinx.coroutines.launch
  */
 class EnrollmentViewModel(
     private val enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase,
-    private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase
+    private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase,
+    authenticatorType: AuthenticatorType
 ) : ViewModel() {
 
     private companion object {
@@ -33,7 +36,22 @@ class EnrollmentViewModel(
     }
 
     private val _uiState = MutableStateFlow<EnrollmentUiState>(EnrollmentUiState.Idle)
-    val uiState: StateFlow<EnrollmentUiState> = _uiState.asStateFlow()
+
+    val uiState: StateFlow<EnrollmentUiState> = _uiState.onStart {
+        when (authenticatorType) {
+            AuthenticatorType.RECOVERY_CODE,
+            AuthenticatorType.PUSH,
+            AuthenticatorType.TOTP -> startEnrollment(authenticatorType)
+
+            else -> {
+                Log.d(TAG, "No need to fetch the data during initialization")
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+        initialValue = EnrollmentUiState.Loading
+    )
 
     /**
      * Initiates enrollment for specified authenticator type

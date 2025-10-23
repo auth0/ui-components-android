@@ -2,6 +2,7 @@ package com.auth0.android.ui_components.di.viewmodelfactory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
@@ -11,7 +12,8 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewMode
  */
 class EnrollmentViewModelFactory(
     private val enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase,
-    private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase
+    private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase,
+    private val authenticatorType: AuthenticatorType
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -20,7 +22,8 @@ class EnrollmentViewModelFactory(
             modelClass.isAssignableFrom(EnrollmentViewModel::class.java) -> {
                 EnrollmentViewModel(
                     enrollAuthenticatorUseCase,
-                    verifyAuthenticatorUseCase
+                    verifyAuthenticatorUseCase,
+                    authenticatorType
                 ) as T
             }
 

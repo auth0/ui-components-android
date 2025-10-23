@@ -88,7 +88,7 @@ fun QREnrollmentScreen(
     authenticatorType: AuthenticatorType,
     modifier: Modifier = Modifier,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory()
+        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit = {},
     onContinueClick: (
@@ -98,11 +98,6 @@ fun QREnrollmentScreen(
     onEnrollmentSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // Start enrollment on screen load
-    LaunchedEffect(authenticatorType) {
-        viewModel.startEnrollment(authenticatorType)
-    }
 
     // Get display title based on authenticator type
     val title = when (authenticatorType) {

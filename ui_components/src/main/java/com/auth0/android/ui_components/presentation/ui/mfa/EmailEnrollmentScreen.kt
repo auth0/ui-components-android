@@ -65,7 +65,7 @@ import com.auth0.android.ui_components.utils.ValidationUtil
 fun EmailEnrollmentScreen(
     authenticatorType: AuthenticatorType,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory()
+        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit,
     onContinueToOTP: (authenticationId: String, authSession: String, email: String) -> Unit = { _, _, _ -> }
@@ -75,11 +75,6 @@ fun EmailEnrollmentScreen(
     var errorMessage by remember { mutableStateOf("") }
 
     val uiState by viewModel.uiState.collectAsState()
-
-//    LaunchedEffect(uiState) {
-
-//    }
-//    }
 
     Scaffold(
         topBar = {

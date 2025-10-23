@@ -108,7 +108,7 @@ private val countries = listOf(
 fun PhoneEnrollmentScreen(
     authenticatorType: AuthenticatorType,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory()
+        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onContinueToOTP: (authenticationId: String, authSession: String, phoneNumber: String) -> Unit,
     onBackClick: () -> Unit

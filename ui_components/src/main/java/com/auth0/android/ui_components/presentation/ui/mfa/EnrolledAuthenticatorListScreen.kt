@@ -51,14 +51,10 @@ fun EnrolledAuthenticatorListScreen(
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
     viewModel: EnrolledAuthenticatorViewModel = viewModel(
-        factory = MyAccountModule.provideMFAEnrolledItemViewModelFactory()
+        factory = MyAccountModule.provideMFAEnrolledItemViewModelFactory(authenticatorType)
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.fetchEnrolledAuthenticators(authenticatorType)
-    }
 
 
     Scaffold(
