@@ -9,7 +9,6 @@ import com.auth0.android.ui_components.domain.network.EmptyResult
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.network.safeCall
 import kotlinx.coroutines.withContext
-import java.lang.Exception
 
 /**
  * UseCase that handles deletion of an authentication method

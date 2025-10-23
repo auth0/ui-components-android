@@ -1,4 +1,4 @@
-package com.auth0.android.ui_components.presentation.ui.mfa
+package com.auth0.android.ui_components.presentation.ui.mfa.phone
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -60,36 +60,28 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.TextGray
 import com.auth0.android.ui_components.utils.ValidationUtil
-
-/**
- * Country data class
- */
-data class Country(
-    val name: String,
-    val code: String,
-    val flagEmoji: String
-)
+import kotlin.String
 
 /**
  * List of common countries
  */
-private val countries = listOf(
-    Country("United States", "+1", "🇺🇸"),
-    Country("Canada", "+1", "🇨🇦"),
-    Country("United Kingdom", "+44", "🇬🇧"),
-    Country("Australia", "+61", "🇦🇺"),
-    Country("India", "+91", "🇮🇳"),
-    Country("Germany", "+49", "🇩🇪"),
-    Country("France", "+33", "🇫🇷"),
-    Country("Japan", "+81", "🇯🇵"),
-    Country("China", "+86", "🇨🇳"),
-    Country("Brazil", "+55", "🇧🇷"),
-    Country("Mexico", "+52", "🇲🇽"),
-    Country("Spain", "+34", "🇪🇸"),
-    Country("Italy", "+39", "🇮🇹"),
-    Country("Netherlands", "+31", "🇳🇱"),
-    Country("South Korea", "+82", "🇰🇷")
-)
+//private val countries = listOf(
+//    Country("United States", "+1", "🇺🇸"),
+//    Country("Canada", "+1", "🇨🇦"),
+//    Country("United Kingdom", "+44", "🇬🇧"),
+//    Country("Australia", "+61", "🇦🇺"),
+//    Country("India", "+91", "🇮🇳"),
+//    Country("Germany", "+49", "🇩🇪"),
+//    Country("France", "+33", "🇫🇷"),
+//    Country("Japan", "+81", "🇯🇵"),
+//    Country("China", "+86", "🇨🇳"),
+//    Country("Brazil", "+55", "🇧🇷"),
+//    Country("Mexico", "+52", "🇲🇽"),
+//    Country("Spain", "+34", "🇪🇸"),
+//    Country("Italy", "+39", "🇮🇹"),
+//    Country("Netherlands", "+31", "🇳🇱"),
+//    Country("South Korea", "+82", "🇰🇷")
+//)
 
 /**
  * Phone Enrollment Screen
@@ -110,11 +102,11 @@ fun PhoneEnrollmentScreen(
     viewModel: EnrollmentViewModel = viewModel(
         factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
-    onContinueToOTP: (authenticationId: String, authSession: String, phoneNumber: String) -> Unit,
+    onContinueToOTP: (authenticationId: kotlin.String, authSession: kotlin.String, phoneNumber: kotlin.String) -> Unit,
     onBackClick: () -> Unit
 ) {
     var phoneNumber by remember { mutableStateOf("") }
-    var selectedCountry by remember { mutableStateOf(countries[0]) }
+    var selectedCountry by remember { mutableStateOf(Country.countries[0]) }
     var validationError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
     var showCountrySelector by remember { mutableStateOf(false) }
@@ -144,7 +136,7 @@ fun PhoneEnrollmentScreen(
                             onContinueToOTP(
                                 result.authenticationMethodId,
                                 result.authSession,
-                                selectedCountry.code + phoneNumber
+                                selectedCountry.phoneCode + phoneNumber
                             )
                             viewModel.resetState()
                         }
@@ -203,7 +195,7 @@ fun PhoneEnrollmentScreen(
 
             ContinueButton(
                 onClick = {
-                    val fullPhoneNumber = selectedCountry.code + phoneNumber
+                    val fullPhoneNumber = selectedCountry.phoneCode + phoneNumber
                     if (!ValidationUtil.isValidPhoneNumber(phoneNumber)) {
                         validationError = true
                         errorMessage = "Invalid phone number."
@@ -226,7 +218,7 @@ fun PhoneEnrollmentScreen(
     // Country Selector Bottom Sheet
     if (showCountrySelector) {
         CountrySelectorSheet(
-            countries = countries,
+            countries = Country.countries,
             onCountrySelected = { country ->
                 selectedCountry = country
                 showCountrySelector = false
@@ -270,12 +262,12 @@ private fun PhoneEnrollmentHeader() {
  */
 @Composable
 private fun PhoneFormField(
-    phoneNumber: String,
+    phoneNumber: kotlin.String,
     selectedCountry: Country,
-    onPhoneNumberChange: (String) -> Unit,
+    onPhoneNumberChange: (kotlin.String) -> Unit,
     onCountryCodeClick: () -> Unit,
     isValidationError: Boolean,
-    errorMessage: String
+    errorMessage: kotlin.String
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -305,9 +297,9 @@ private fun PhoneFormField(
  */
 @Composable
 private fun PhoneTextField(
-    phoneNumber: String,
+    phoneNumber: kotlin.String,
     selectedCountry: Country,
-    onPhoneNumberChange: (String) -> Unit,
+    onPhoneNumberChange: (kotlin.String) -> Unit,
     onCountryCodeClick: () -> Unit,
     isError: Boolean,
     errorMessage: String
@@ -372,7 +364,7 @@ private fun PhoneTextField(
                     )
 
                     Text(
-                        text = selectedCountry.code,
+                        text = selectedCountry.phoneCode,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Normal,
                         lineHeight = 20.sp,
@@ -451,7 +443,7 @@ private fun CountrySelectorSheet(
         } else {
             countries.filter {
                 it.name.contains(searchQuery, ignoreCase = true) ||
-                        it.code.contains(searchQuery)
+                        it.phoneCode.contains(searchQuery)
             }
         }
     }
@@ -552,7 +544,7 @@ private fun CountryItem(
             )
 
             Text(
-                text = "${country.name} (${country.code})",
+                text = "${country.name} (${country.phoneCode})",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Normal,
                 lineHeight = 28.sp,
