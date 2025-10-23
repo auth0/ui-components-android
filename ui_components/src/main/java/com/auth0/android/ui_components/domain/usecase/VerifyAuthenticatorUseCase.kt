@@ -23,7 +23,7 @@ class VerifyAuthenticatorUseCase(
 ) {
     private companion object {
         private const val TAG = "VerifyAuthenticatorUseCase"
-        private const val REQUIRED_SCOPES = "create:me:authentication_methods openid"
+        private const val REQUIRED_SCOPES = "create:me:authentication_methods"
     }
 
     /**

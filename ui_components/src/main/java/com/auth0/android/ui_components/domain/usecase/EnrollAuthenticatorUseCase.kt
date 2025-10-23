@@ -24,7 +24,7 @@ class EnrollAuthenticatorUseCase(
 ) {
     private companion object {
         private const val TAG = "EnrollAuthenticatorUseCase"
-        private const val REQUIRED_SCOPES = "create:me:authentication_methods openid"
+        private const val REQUIRED_SCOPES = "create:me:authentication_methods"
     }
 
     /**
