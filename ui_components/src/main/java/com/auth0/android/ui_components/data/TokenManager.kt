@@ -64,6 +64,21 @@ class TokenManager private constructor() {
         val credentials = tokenProvider.fetchApiCredentials(audience, scope)
 
         // Saving the same token for scenario where we request multiple scopes together
+        saveToScopeCache(scopeMap, scope, credentials)
+        return credentials.accessToken
+    }
+
+    fun saveToken(audience: String, scope: String, credentials: APICredentials) {
+        val scopeMap = tokenMap.getOrPut(audience) { ConcurrentHashMap() }
+        saveToScopeCache(scopeMap, scope, credentials)
+    }
+
+
+    private fun saveToScopeCache(
+        scopeMap: ConcurrentHashMap<String, APICredentials>,
+        scope: String,
+        credentials: APICredentials
+    ) {
         scopeMap[scope] = credentials
         val splitScope = scope.split(" ")
         if (splitScope.size > 1) {
@@ -72,12 +87,6 @@ class TokenManager private constructor() {
                 scopeMap[it] = credentials
             }
         }
-
-        return credentials.accessToken
-    }
-
-    suspend fun saveToken(audience: String, credentials: APICredentials) {
-        tokenProvider.saveApiCredentials(audience, credentials)
     }
 
     private fun willTokenExpire(expiresAt: Long): Boolean {

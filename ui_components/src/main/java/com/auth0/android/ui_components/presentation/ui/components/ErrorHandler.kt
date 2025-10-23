@@ -25,7 +25,7 @@ fun ErrorHandler(
                     error.mfaScope
                 ).onSuccess {
                     TokenManager.getInstance().apply {
-                        saveToken(getMyAccountAudience(), it)
+                        saveToken(getMyAccountAudience(), error.mfaScope, it)
                     }
                     uiError.onRetry.invoke()
                 }
