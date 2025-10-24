@@ -19,9 +19,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -68,12 +65,10 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
-import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.ButtonBlack
 import com.auth0.android.ui_components.theme.TextGray
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -88,7 +83,7 @@ fun QREnrollmentScreen(
     authenticatorType: AuthenticatorType,
     modifier: Modifier = Modifier,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory()
+        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit = {},
     onContinueClick: (
@@ -98,11 +93,6 @@ fun QREnrollmentScreen(
     onEnrollmentSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
-    // Start enrollment on screen load
-    LaunchedEffect(authenticatorType) {
-        viewModel.startEnrollment(authenticatorType)
-    }
 
     // Get display title based on authenticator type
     val title = when (authenticatorType) {

@@ -7,6 +7,7 @@ import com.auth0.android.ui_components.di.viewmodelfactory.EnrollmentViewModelFa
 import com.auth0.android.ui_components.di.viewmodelfactory.MFAEnrolledItemViewModelFactory
 import com.auth0.android.ui_components.di.viewmodelfactory.MFAMethodViewModelFactory
 import com.auth0.android.ui_components.domain.DispatcherProvider
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
@@ -25,20 +26,22 @@ object MyAccountModule {
         )
     }
 
-    fun provideMFAEnrolledItemViewModelFactory(): MFAEnrolledItemViewModelFactory {
+    fun provideMFAEnrolledItemViewModelFactory(authenticatorType: AuthenticatorType): MFAEnrolledItemViewModelFactory {
         return MFAEnrolledItemViewModelFactory(
             getAuthenticationMethodsUseCase = provideGetAuthenticationMethodsUseCase(),
-            deleteAuthenticationMethodUseCase = provideDeleteAuthenticationMethodUseCase()
+            deleteAuthenticationMethodUseCase = provideDeleteAuthenticationMethodUseCase(),
+            authenticatorType = authenticatorType
         )
     }
 
     /**
      * Provides EnrollmentViewModelFactory for creating EnrollmentViewModel
      */
-    fun provideEnrollmentViewModelFactory(): EnrollmentViewModelFactory {
+    fun provideEnrollmentViewModelFactory(authenticatorType: AuthenticatorType): EnrollmentViewModelFactory {
         return EnrollmentViewModelFactory(
             enrollAuthenticatorUseCase = provideEnrollAuthenticatorUseCase(),
-            verifyAuthenticatorUseCase = provideVerifyAuthenticatorUseCase()
+            verifyAuthenticatorUseCase = provideVerifyAuthenticatorUseCase(),
+            authenticatorType
         )
     }
 

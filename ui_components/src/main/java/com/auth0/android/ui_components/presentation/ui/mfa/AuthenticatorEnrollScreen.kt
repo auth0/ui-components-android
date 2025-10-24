@@ -2,6 +2,7 @@ package com.auth0.android.ui_components.presentation.ui.mfa
 
 import androidx.compose.runtime.Composable
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
+import com.auth0.android.ui_components.presentation.ui.mfa.phone.PhoneEnrollmentScreen
 
 @Composable
 fun AuthenticatorEnrollmentScreen(

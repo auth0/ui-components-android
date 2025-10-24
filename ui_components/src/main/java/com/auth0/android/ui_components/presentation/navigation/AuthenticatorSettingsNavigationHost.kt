@@ -1,7 +1,11 @@
 package com.auth0.android.ui_components.presentation.navigation
 
+import android.content.pm.ApplicationInfo
+import android.util.Log
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -14,10 +18,24 @@ import com.auth0.android.ui_components.presentation.ui.mfa.OTPVerificationScreen
 
 
 @Composable
-internal fun MFANavigationHost(
+internal fun AuthenticatorSettingsNavigationHost(
     modifier: Modifier,
     navController: NavHostController,
 ) {
+
+    if (0 != (LocalContext.current.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)) {
+        LaunchedEffect(Unit) {
+            navController.currentBackStack
+                .collect { entries ->
+                    entries.map { it.destination.route }
+                        .joinToString("\n")
+                        .let {
+                            Log.d("Navigation", "NavigationBackStack: \n$it")
+                        }
+                }
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = AuthenticatorRoute.AuthenticatorMethodList
@@ -25,11 +43,19 @@ internal fun MFANavigationHost(
         composable<AuthenticatorRoute.AuthenticatorMethodList> {
             AuthenticatorMethodsScreen(
                 modifier = modifier,
-                onAuthenticatorClick = { mfaUiModel ->
+                onAuthenticatorItemClick = { mfaUiModel ->
                     if (mfaUiModel.confirmed) {
-                        navController.navigate(AuthenticatorRoute.EnrolledAuthenticatorMethod(mfaUiModel.type))
+                        navController.navigate(
+                            AuthenticatorRoute.EnrolledAuthenticatorMethod(
+                                mfaUiModel.type
+                            )
+                        )
                     } else {
-                        navController.navigate(AuthenticatorRoute.EnrollAuthenticatorMethod(mfaUiModel.type))
+                        navController.navigate(
+                            AuthenticatorRoute.EnrollAuthenticatorMethod(
+                                mfaUiModel.type
+                            )
+                        )
                     }
                 },
                 onBackPress = {
@@ -58,9 +84,14 @@ internal fun MFANavigationHost(
                 onContinue = { authenticationId, authSession, phoneNumberOrEmail ->
                     when (args.authenticatorType) {
                         AuthenticatorType.RECOVERY_CODE, AuthenticatorType.PUSH -> {
-                            navController.navigate(AuthenticatorRoute.EnrolledAuthenticatorMethod(args.authenticatorType)) {
-                                popUpTo<AuthenticatorRoute.AuthenticatorMethodList>()
-                                launchSingleTop = true
+                            navController.navigate(
+                                AuthenticatorRoute.EnrolledAuthenticatorMethod(
+                                    args.authenticatorType
+                                )
+                            ) {
+                                popUpTo<AuthenticatorRoute.AuthenticatorMethodList> {
+                                    inclusive = false
+                                }
                             }
                         }
 
@@ -92,8 +123,7 @@ internal fun MFANavigationHost(
                 },
                 onVerificationSuccess = {
                     navController.navigate(AuthenticatorRoute.EnrolledAuthenticatorMethod(args.authenticatorType)) {
-                        popUpTo<AuthenticatorRoute.AuthenticatorMethodList>()
-                        launchSingleTop = true
+                        popUpTo<AuthenticatorRoute.AuthenticatorMethodList> { inclusive = false }
                     }
                 })
         }

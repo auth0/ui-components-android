@@ -44,7 +44,7 @@ fun AuthenticatorMethodsScreen(
     viewModel: AuthenticatorMethodsViewModel = viewModel(
         factory = MyAccountModule.provideMFAMethodViewModelFactory()
     ),
-    onAuthenticatorClick: (MFAUiModel) -> Unit,
+    onAuthenticatorItemClick: (MFAUiModel) -> Unit,
     onBackPress: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -88,7 +88,7 @@ fun AuthenticatorMethodsScreen(
                 }
 
                 is UiState.Success -> {
-                    MfaListScreen(state.data, onAuthenticatorClick)
+                    MfaListScreen(state.data, onAuthenticatorItemClick)
                 }
             }
         }

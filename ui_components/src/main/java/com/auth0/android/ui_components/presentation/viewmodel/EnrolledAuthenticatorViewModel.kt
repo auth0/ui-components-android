@@ -13,6 +13,7 @@ import com.auth0.android.ui_components.presentation.ui.UiError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -22,7 +23,6 @@ data class EnrolledUiState(
     val loading: Boolean = false,
     val authenticators: List<EnrolledAuthenticationMethod> = emptyList(),
     val uiError: UiError? = null
-
 )
 
 /**
@@ -32,6 +32,7 @@ data class EnrolledUiState(
 class EnrolledAuthenticatorViewModel(
     private val getAuthenticationMethodsUseCase: GetAuthenticationMethodsUseCase,
     private val deleteAuthenticationMethodUseCase: DeleteAuthenticationMethodUseCase,
+    private val authenticatorType: AuthenticatorType
 ) : ViewModel() {
 
     private companion object {
@@ -42,6 +43,9 @@ class EnrolledAuthenticatorViewModel(
         MutableStateFlow(EnrolledUiState())
 
     val uiState: StateFlow<EnrolledUiState> = _uiState
+        .onStart {
+            fetchEnrolledAuthenticators(authenticatorType)
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
@@ -50,14 +54,11 @@ class EnrolledAuthenticatorViewModel(
 
     private var cachedAuthenticators: List<EnrolledAuthenticationMethod> = emptyList()
 
-    private var lastOperation: (suspend () -> Unit)? = null
-
     /**
      * Fetches authentication methods for the specified authenticator type
      * Only returns confirmed methods
      */
     fun fetchEnrolledAuthenticators(authenticatorType: AuthenticatorType) {
-        lastOperation = { fetchEnrolledAuthenticators(authenticatorType) }
 
         _uiState.update {
             it.copy(loading = true, uiError = null)
@@ -96,7 +97,6 @@ class EnrolledAuthenticatorViewModel(
      * @param authenticationMethodId The ID of the authentication method to delete
      */
     fun deleteAuthenticationMethod(authenticationMethodId: String) {
-        lastOperation = { deleteAuthenticationMethod(authenticationMethodId) }
 
         _uiState.update {
             it.copy(loading = true, uiError = null)
@@ -136,13 +136,5 @@ class EnrolledAuthenticatorViewModel(
                     }
                 }
         }
-    }
-
-    /**
-     * Retries the last failed operation
-     * Called by ErrorHandler after token refresh
-     */
-    suspend fun retryLastOperation() {
-        lastOperation?.invoke()
     }
 }
