@@ -16,12 +16,14 @@ import androidx.compose.ui.unit.dp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
-import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorItem
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
 import com.auth0.android.ui_components.theme.sectionSubtitle
 import com.auth0.android.ui_components.theme.sectionTitle
 
 
+/**
+ * Screen displaying the list of enabled authenticators
+ */
 @Composable
 fun AuthenticatorListScreen(
     authenticatorMethodList: List<AuthenticatorUiData>,

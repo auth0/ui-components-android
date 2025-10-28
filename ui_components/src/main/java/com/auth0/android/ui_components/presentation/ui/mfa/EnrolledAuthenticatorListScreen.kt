@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,8 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
@@ -31,18 +30,18 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
+import com.auth0.android.ui_components.presentation.ui.components.EnrolledAuthenticatorItem
 import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
-import com.auth0.android.ui_components.presentation.ui.components.InfoCard
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
 import com.auth0.android.ui_components.presentation.ui.utils.UiStringFormat
 import com.auth0.android.ui_components.presentation.viewmodel.EnrolledAuthenticatorViewModel
+import com.auth0.android.ui_components.theme.enrollmentSubTitle
 import com.auth0.android.ui_components.utils.DateUtil
 
 /**
- * Main screen displaying the list of saved/enrolled authenticators
- * Uses the reusable InfoCard component for displaying authenticator details
+ *Screen displaying the list of enrolled authenticators
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +55,6 @@ fun EnrolledAuthenticatorListScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
-
 
     Scaffold(
         topBar = {
@@ -117,42 +115,51 @@ fun AuthenticatorListContent(
             .fillMaxSize()
             .padding(horizontal = 16.dp)
     ) {
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         Text(
             text = UiStringFormat.formatDescriptionForAuthenticator(authenticatorType),
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 12.dp)
+            style = enrollmentSubTitle,
+            modifier = Modifier.height(16.dp)
         )
 
         if (authenticators.isEmpty()) {
-            EmptyAuthenticatorItem()
-        } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(authenticators) { authenticator ->
-                    val menuActions = listOf(
-                        MenuItem(stringResource(R.string.remove), MenuAction.Remove)
-                    )
+            EmptyAuthenticatorItem(
+                modifier = Modifier.padding(vertical = 8.dp),
+                emptyMessage = UiStringFormat.formatEmptyStateMessageForAuthenticatorItems(
+                    authenticatorType
+                )
+            )
+            return
+        }
 
-                    InfoCard(
-                        title = authenticator.name
-                            ?: UiStringFormat.formatDefaultNameForAuthenticatorItems(authenticator.type),
-                        subtitles = listOf(
-                            stringResource(R.string.created_on, DateUtil.formatIsoDate(authenticator.createdAt)),
-                        ),
-                        menuActions = menuActions,
-                        onMenuActionClick = { action ->
-                            when (action) {
-                                MenuAction.Remove -> onDeleteAuthenticator(authenticator)
-                            }
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(vertical = 8.dp)
+        ) {
+            items(key = { it.id }, items = authenticators) { authenticator ->
+                val menuActions = listOf(
+                    MenuItem(stringResource(R.string.remove), MenuAction.Remove)
+                )
+
+                EnrolledAuthenticatorItem(
+                    title = authenticator.name
+                        ?: UiStringFormat.formatDefaultNameForAuthenticatorItems(authenticator.type),
+                    subtitle = stringResource(
+                        R.string.created_on,
+                        DateUtil.formatIsoDate(authenticator.createdAt)
+                    ),
+
+                    menuActions = menuActions,
+                    onMenuActionClick = { action ->
+                        when (action) {
+                            MenuAction.Remove -> onDeleteAuthenticator(authenticator)
                         }
-                    )
-                }
+                    }
+                )
             }
         }
+
     }
 }
 

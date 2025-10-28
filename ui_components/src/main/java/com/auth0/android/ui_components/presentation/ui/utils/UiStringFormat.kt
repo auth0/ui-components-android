@@ -8,7 +8,7 @@ object UiStringFormat {
     fun formatTopBarTitleForAuthenticator(authenticatorType: String): String {
         return when (authenticatorType) {
             "totp" -> "Authenticator"
-            "phone" -> "SMS OTP"
+            "phone" -> "Phone for SMS OTP"
             "email" -> "Email OTP"
             "push-notification" -> "Push Notification"
             else -> "Recovery Code"
@@ -24,7 +24,7 @@ object UiStringFormat {
             "phone" -> "Saved Phones for SMS OTP"
             "email" -> "Saved Emails for OTP"
             "push-notification" -> "Saved Apps for Push"
-            else -> "Generated Recovery Code"
+            else -> "Generated Recovery code"
         }
     }
 
@@ -38,6 +38,20 @@ object UiStringFormat {
             "email" -> "Email"
             "push-notification" -> "Push"
             else -> "Recovery code"
+        }
+    }
+
+
+    /**
+     * Formats the default name for the given authenticator type
+     */
+    fun formatEmptyStateMessageForAuthenticatorItems(authenticatorType: String): String {
+        return when (authenticatorType) {
+            "totp" -> "No Authenticator was saved."
+            "phone" -> "No Phone was saved."
+            "email" -> "No Email was saved."
+            "push-notification" -> "No Push was saved."
+            else -> "No Recovery code was saved."
         }
     }
 }
