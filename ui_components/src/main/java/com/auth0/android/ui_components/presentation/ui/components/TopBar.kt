@@ -16,9 +16,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.theme.Gray
+import com.auth0.android.ui_components.theme.TopBarTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,9 +40,11 @@ fun TopBar(
             title = {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    fontFamily = FontFamily.SansSerif,
+                    color = TopBarTitle,
+                    letterSpacing = (-0.25).sp,
                 )
             },
             navigationIcon = {

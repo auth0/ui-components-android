@@ -3,12 +3,11 @@ package com.auth0.android.ui_components.presentation.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
-import com.auth0.android.ui_components.domain.model.MFAMethod
-import com.auth0.android.ui_components.domain.usecase.GetMFAMethodsUseCase
 import com.auth0.android.ui_components.domain.network.onError
 import com.auth0.android.ui_components.domain.network.onSuccess
+import com.auth0.android.ui_components.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
 import com.auth0.android.ui_components.presentation.ui.UiError
-import com.auth0.android.ui_components.presentation.ui.UiState
+import com.auth0.android.ui_components.presentation.ui.utils.toAuthenticatorUiModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,69 +16,60 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 
-data class MFAUiModel(
+/**
+ * Data class representing the UI data for different authenticator methods
+ * @property title Display title for the authenticator method
+ * @property type [AuthenticatorType] for the authenticator
+ * @property confirmed Whether the authenticator has been enrolled or not
+ */
+data class AuthenticatorUiData(
     val title: String,
     val type: AuthenticatorType,
     val confirmed: Boolean
 )
 
+/**
+ * Sealed interface representing the different UI states for authenticator methods
+ */
+sealed interface AuthenticatorUiState {
+    object Loading : AuthenticatorUiState
+    data class Success(val data: List<AuthenticatorUiData>) : AuthenticatorUiState
+    data class Error(val error: UiError) : AuthenticatorUiState
+}
+
 class AuthenticatorMethodsViewModel(
-    private val getMFAMethodsUseCase: GetMFAMethodsUseCase,
+    private val getEnabledAuthenticatorMethodsUseCase: GetEnabledAuthenticatorMethodsUseCase,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<UiState<List<MFAUiModel>>>(UiState.Loading)
+    private val _uiState: MutableStateFlow<AuthenticatorUiState> =
+        MutableStateFlow(AuthenticatorUiState.Loading)
 
-    val uiState: StateFlow<UiState<List<MFAUiModel>>> = _uiState
+    val uiState: StateFlow<AuthenticatorUiState> = _uiState
         .onStart {
-            fetchMFAMethods()
+            fetchAuthenticatorMethods()
         }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
-            initialValue = UiState.Loading
+            initialValue = AuthenticatorUiState.Loading
         )
 
 
-    fun fetchMFAMethods() {
+    fun fetchAuthenticatorMethods() {
         viewModelScope.launch {
-            _uiState.value = UiState.Loading
+            _uiState.value = AuthenticatorUiState.Loading
 
-            getMFAMethodsUseCase()
+            getEnabledAuthenticatorMethodsUseCase()
                 .onSuccess {
-                    _uiState.value = UiState.Success(it.map {
-                        it.toMFAUiModel()
+                    _uiState.value = AuthenticatorUiState.Success(it.map { data ->
+                        data.toAuthenticatorUiModel()
                     })
                 }
                 .onError {
-                    _uiState.value = UiState.Error(
-                        UiError(it, { fetchMFAMethods() })
+                    _uiState.value = AuthenticatorUiState.Error(
+                        UiError(it, { fetchAuthenticatorMethods() })
                     )
                 }
         }
-    }
-
-    private fun MFAMethod.toMFAUiModel(): MFAUiModel {
-        return when (type) {
-            AuthenticatorType.TOTP -> MFAUiModel(
-                "Authenticator App", type, confirmed
-            )
-
-            AuthenticatorType.PHONE -> MFAUiModel(
-                "SMS OTP", type, confirmed
-            )
-
-            AuthenticatorType.EMAIL -> MFAUiModel(
-                "Email OTP", type, confirmed
-            )
-
-            AuthenticatorType.PUSH -> MFAUiModel(
-                "Push Notification", type, confirmed
-            )
-
-            AuthenticatorType.RECOVERY_CODE -> MFAUiModel(
-                "Recovery Code", type, confirmed
-            )
-        }
-
     }
 }

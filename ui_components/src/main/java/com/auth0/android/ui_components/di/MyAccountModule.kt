@@ -5,14 +5,14 @@ import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.data.repository.MyAccountRepositoryImpl
 import com.auth0.android.ui_components.di.viewmodelfactory.EnrollmentViewModelFactory
 import com.auth0.android.ui_components.di.viewmodelfactory.MFAEnrolledItemViewModelFactory
-import com.auth0.android.ui_components.di.viewmodelfactory.MFAMethodViewModelFactory
+import com.auth0.android.ui_components.di.viewmodelfactory.AuthenticatorMethodViewModelFactory
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
 import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUseCase
-import com.auth0.android.ui_components.domain.usecase.GetMFAMethodsUseCase
+import com.auth0.android.ui_components.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.android.ui_components.helper.DispatcherProviderImpl
 
@@ -20,9 +20,9 @@ object MyAccountModule {
 
 
     //Viewmodel factories
-    fun provideMFAMethodViewModelFactory(): MFAMethodViewModelFactory {
-        return MFAMethodViewModelFactory(
-            getMFAMethodsUseCase = provideGetMFAMethodsUseCase()
+    fun provideAuthenticatorMethodViewModelFactory(): AuthenticatorMethodViewModelFactory {
+        return AuthenticatorMethodViewModelFactory(
+            getEnabledAuthenticatorMethodsUseCase = provideEnabledAuthenticatorMethodsUseCase()
         )
     }
 
@@ -46,8 +46,8 @@ object MyAccountModule {
     }
 
     // Usecases
-    private fun provideGetMFAMethodsUseCase(): GetMFAMethodsUseCase {
-        return GetMFAMethodsUseCase(
+    private fun provideEnabledAuthenticatorMethodsUseCase(): GetEnabledAuthenticatorMethodsUseCase {
+        return GetEnabledAuthenticatorMethodsUseCase(
             repository = provideMyAccountRepository(),
             tokenManager = provideTokenManager(),
             dispatcherProvider = provideDispatcherProvider()

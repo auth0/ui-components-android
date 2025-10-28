@@ -69,7 +69,7 @@ import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.TextGray
+import com.auth0.android.ui_components.theme.SectionSubtitle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
@@ -390,7 +390,7 @@ private fun InstructionsText(authenticatorType: AuthenticatorType) {
         fontStyle = FontStyle.Normal,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        color = TextGray,
+        color = SectionSubtitle,
         letterSpacing = 1.2.sp,
         textAlign = TextAlign.Center,
         modifier = Modifier.padding(horizontal = 8.dp)
@@ -469,7 +469,7 @@ private fun DownloadLinkText(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                color = TextGray,
+                color = SectionSubtitle,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Normal
             )

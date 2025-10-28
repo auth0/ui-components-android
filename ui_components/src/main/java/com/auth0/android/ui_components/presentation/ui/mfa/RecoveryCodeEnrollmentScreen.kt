@@ -38,7 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
@@ -84,7 +86,7 @@ fun RecoveryCodeEnrollmentScreen(
     Scaffold(
         topBar = {
             TopBar(
-                title = "Recovery code",
+                title = stringResource(R.string.recovery_code),
                 onBackClick = onBackClick,
                 showSeparator = false
             )
@@ -138,8 +140,8 @@ fun RecoveryCodeEnrollmentScreen(
 
                         else -> {
                             ErrorScreen(
-                                mainErrorMessage = "Unexpected enrollment result",
-                                "Please try again",
+                                mainErrorMessage = stringResource(R.string.unexpected_enrollment_result),
+                                stringResource(R.string.try_again),
                                 Modifier
                             )
                         }
@@ -223,7 +225,7 @@ private fun RecoveryCodeHeader() {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Save your recovery code",
+            text = stringResource(R.string.save_recovery_code),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Medium,
             fontSize = 24.sp,
@@ -235,7 +237,7 @@ private fun RecoveryCodeHeader() {
         )
 
         Text(
-            text = "Save these codes in a secure location. They are your backup sign-in method if your multifactor device is unavailable. Each code may only be used once",
+            text = stringResource(R.string.recovery_code_description),
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
@@ -259,7 +261,7 @@ private fun RecoveryCodeBody(recoveryCode: String) {
     ) {
         // Label
         Text(
-            text = "Recovery code",
+            text = stringResource(R.string.recovery_code_label),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             lineHeight = 14.sp,
@@ -373,7 +375,7 @@ private fun CopyCodeButton(onClick: () -> Unit) {
         )
     ) {
         Text(
-            text = "Copy Code",
+            text = stringResource(R.string.copy_code),
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
             lineHeight = 24.sp,
@@ -388,7 +390,7 @@ private fun CopyCodeButton(onClick: () -> Unit) {
 @Composable
 private fun ContinueButton(onClick: () -> Unit) {
     GradientButton(
-        text = "Continue",
+        text = stringResource(R.string.continue_button),
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),

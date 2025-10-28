@@ -26,13 +26,15 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.auth0.android.ui_components.R
 
 @Composable
 fun ErrorScreen(
     mainErrorMessage: String,
-    description: String = "We are unable to process your request. Please try again in a few minutes. If this problem persists, please",
+    description: String = stringResource(R.string.unable_to_process_contact),
     modifier: Modifier = Modifier,
-    clickableString: String = "contact us.",
+    clickableString: String = stringResource(R.string.contact_us),
     onRetryClick: () -> Unit = {}
 ) {
 
@@ -79,7 +81,7 @@ fun ErrorScreen(
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text(
-                    text = "Try again",
+                    text = stringResource(R.string.try_again),
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontWeight = FontWeight.Medium,
                         fontSize = 16.sp

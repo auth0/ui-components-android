@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.auth0.android.ui_components.R
 
 
 /**
@@ -30,7 +32,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun EmptyAuthenticatorItem(
     modifier: Modifier = Modifier,
-    emptyMessage: String = "No Authenticator was added."
+    emptyMessage: String = stringResource(R.string.no_authenticator_added)
 ) {
     Column(
         modifier = modifier

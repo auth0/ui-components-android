@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.myaccount.PhoneAuthenticationMethodType
 import com.auth0.android.ui_components.R
@@ -58,30 +59,9 @@ import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.TextGray
+import com.auth0.android.ui_components.theme.SectionSubtitle
 import com.auth0.android.ui_components.utils.ValidationUtil
 import kotlin.String
-
-/**
- * List of common countries
- */
-//private val countries = listOf(
-//    Country("United States", "+1", "🇺🇸"),
-//    Country("Canada", "+1", "🇨🇦"),
-//    Country("United Kingdom", "+44", "🇬🇧"),
-//    Country("Australia", "+61", "🇦🇺"),
-//    Country("India", "+91", "🇮🇳"),
-//    Country("Germany", "+49", "🇩🇪"),
-//    Country("France", "+33", "🇫🇷"),
-//    Country("Japan", "+81", "🇯🇵"),
-//    Country("China", "+86", "🇨🇳"),
-//    Country("Brazil", "+55", "🇧🇷"),
-//    Country("Mexico", "+52", "🇲🇽"),
-//    Country("Spain", "+34", "🇪🇸"),
-//    Country("Italy", "+39", "🇮🇹"),
-//    Country("Netherlands", "+31", "🇳🇱"),
-//    Country("South Korea", "+82", "🇰🇷")
-//)
 
 /**
  * Phone Enrollment Screen
@@ -116,7 +96,7 @@ fun PhoneEnrollmentScreen(
     Scaffold(
         topBar = {
             TopBar(
-                title = "Add Phone for SMS OTP",
+                title = stringResource(R.string.add_phone_sms_otp),
                 onBackClick = onBackClick,
                 showSeparator = false
             )
@@ -143,7 +123,7 @@ fun PhoneEnrollmentScreen(
 
                         else -> {
                             validationError = true
-                            errorMessage = "Unexpected enrollment result"
+                            errorMessage = stringResource(R.string.unexpected_enrollment_result)
                         }
                     }
                 }
@@ -238,7 +218,7 @@ private fun PhoneEnrollmentHeader() {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Enter your phone number",
+            text = stringResource(R.string.enter_phone_number),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             fontSize = 20.sp,
@@ -247,11 +227,11 @@ private fun PhoneEnrollmentHeader() {
         )
 
         Text(
-            text = "We will text you a verification code.",
+            text = stringResource(R.string.verification_code_text),
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 16.sp,
             lineHeight = 24.sp,
-            color = TextGray,
+            color = SectionSubtitle,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -274,7 +254,7 @@ private fun PhoneFormField(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Phone number",
+            text = stringResource(R.string.phone_number_label),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = Color(0xFF1F1F1F),
@@ -373,7 +353,7 @@ private fun PhoneTextField(
 
                     Icon(
                         painter = painterResource(R.drawable.ic_chevron_down),
-                        contentDescription = "Select country",
+                        contentDescription = stringResource(R.string.select_country),
                         modifier = Modifier.size(16.dp),
                         tint = textColor
                     )
@@ -397,7 +377,7 @@ private fun PhoneTextField(
                     decorationBox = { innerTextField ->
                         if (phoneNumber.isEmpty()) {
                             Text(
-                                text = "(000)000-0000",
+                                text = stringResource(R.string.phone_number_placeholder),
                                 style = TextStyle(
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Normal,
@@ -459,7 +439,7 @@ private fun CountrySelectorSheet(
                 .padding(horizontal = 16.dp)
         ) {
             Text(
-                text = "Select country code",
+                text = stringResource(R.string.select_country_code),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(bottom = 16.dp)
@@ -476,14 +456,14 @@ private fun CountrySelectorSheet(
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_search),
-                        contentDescription = "Search",
+                        contentDescription = stringResource(R.string.search),
                         modifier = Modifier.size(24.dp),
                         tint = Color(0xFF000000).copy(alpha = 0.5f)
                     )
                 },
                 placeholder = {
                     Text(
-                        text = "Search country ...",
+                        text = stringResource(R.string.search_country),
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF1F1F1F).copy(alpha = 0.54f)
@@ -568,7 +548,7 @@ private fun ContinueButton(
     onClick: () -> Unit
 ) {
     GradientButton(
-        text = "Continue",
+        text = stringResource(R.string.continue_button),
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),

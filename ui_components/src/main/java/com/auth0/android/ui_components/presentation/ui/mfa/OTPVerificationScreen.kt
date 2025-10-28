@@ -35,7 +35,7 @@ import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.ButtonBlack
-import com.auth0.android.ui_components.theme.TextGray
+import com.auth0.android.ui_components.theme.SectionSubtitle
 
 /**
  * OTP Verification Screen
@@ -135,7 +135,7 @@ fun OTPVerificationScreen(
                     text = screenConfig.description,
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 14.sp,
-                    color = TextGray,
+                    color = SectionSubtitle,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -148,7 +148,7 @@ fun OTPVerificationScreen(
                 text = "One-Time Passcode",
                 style = MaterialTheme.typography.labelMedium,
                 fontSize = 12.sp,
-                color = TextGray,
+                color = SectionSubtitle,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -353,7 +353,7 @@ private fun ResendLink(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                color = TextGray,
+                color = SectionSubtitle,
                 fontSize = 14.sp
             )
         ) {

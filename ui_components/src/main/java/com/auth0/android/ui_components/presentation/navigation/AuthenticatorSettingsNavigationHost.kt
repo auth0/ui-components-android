@@ -1,40 +1,22 @@
 package com.auth0.android.ui_components.presentation.navigation
 
-import android.content.pm.ApplicationInfo
-import android.util.Log
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.toRoute
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorEnrollmentScreen
-import com.auth0.android.ui_components.presentation.ui.mfa.EnrolledAuthenticatorListScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorMethodsScreen
+import com.auth0.android.ui_components.presentation.ui.mfa.EnrolledAuthenticatorListScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.OTPVerificationScreen
 
 
 @Composable
 internal fun AuthenticatorSettingsNavigationHost(
-    modifier: Modifier,
     navController: NavHostController,
 ) {
-
-    if (0 != (LocalContext.current.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE)) {
-        LaunchedEffect(Unit) {
-            navController.currentBackStack
-                .collect { entries ->
-                    entries.map { it.destination.route }
-                        .joinToString("\n")
-                        .let {
-                            Log.d("Navigation", "NavigationBackStack: \n$it")
-                        }
-                }
-        }
-    }
 
     NavHost(
         navController = navController,
@@ -42,7 +24,6 @@ internal fun AuthenticatorSettingsNavigationHost(
     ) {
         composable<AuthenticatorRoute.AuthenticatorMethodList> {
             AuthenticatorMethodsScreen(
-                modifier = modifier,
                 onAuthenticatorItemClick = { mfaUiModel ->
                     if (mfaUiModel.confirmed) {
                         navController.navigate(

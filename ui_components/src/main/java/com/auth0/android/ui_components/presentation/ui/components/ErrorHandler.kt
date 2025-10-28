@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.network.onError
@@ -38,8 +40,8 @@ fun ErrorHandler(
 
         is Auth0Error.NetworkError -> {
             ErrorScreen(
-                mainErrorMessage = "Connection problem",
-                description = "Please check your internet connection and try again.",
+                mainErrorMessage = stringResource(R.string.connection_problem),
+                description = stringResource(R.string.check_internet_connection),
                 modifier = modifier,
                 onRetryClick = uiError.onRetry
             )
@@ -47,8 +49,8 @@ fun ErrorHandler(
 
         is Auth0Error.InvalidMfaCode -> {
             ErrorScreen(
-                mainErrorMessage = "Invalid verification code",
-                description = "The code you entered is incorrect or has expired. Please try again.",
+                mainErrorMessage = stringResource(R.string.invalid_verification_code),
+                description = stringResource(R.string.code_incorrect_expired),
                 modifier = modifier,
                 onRetryClick = uiError.onRetry
             )
@@ -56,8 +58,8 @@ fun ErrorHandler(
 
         is Auth0Error.SessionExpired -> {
             ErrorScreen(
-                mainErrorMessage = "Session expired",
-                description = "Your session has expired. Please login again to continue.",
+                mainErrorMessage = stringResource(R.string.session_expired),
+                description = stringResource(R.string.session_expired_login),
                 modifier = modifier,
                 onRetryClick = uiError.onRetry
 
@@ -66,8 +68,8 @@ fun ErrorHandler(
 
         is Auth0Error.TooManyAttempts -> {
             ErrorScreen(
-                mainErrorMessage = "Too many attempts",
-                description = "Your account has been temporarily blocked due to too many failed attempts. Please try again later.",
+                mainErrorMessage = stringResource(R.string.too_many_attempts_error),
+                description = stringResource(R.string.account_temporarily_blocked),
                 modifier = modifier,
                 onRetryClick = uiError.onRetry
             )
@@ -76,9 +78,9 @@ fun ErrorHandler(
         else -> {
             ErrorScreen(
                 mainErrorMessage = error.message,
-                description = "We are unable to process your request. Please try again in a few minutes.",
+                description = stringResource(R.string.unable_to_process),
                 modifier = modifier,
-                clickableString = "contact us.",
+                clickableString = stringResource(R.string.contact_us),
                 onRetryClick = uiError.onRetry
             )
         }

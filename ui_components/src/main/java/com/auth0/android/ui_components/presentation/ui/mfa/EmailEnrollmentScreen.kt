@@ -34,7 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
@@ -45,7 +47,7 @@ import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.TextGray
+import com.auth0.android.ui_components.theme.SectionSubtitle
 import com.auth0.android.ui_components.utils.ValidationUtil
 
 /**
@@ -79,7 +81,7 @@ fun EmailEnrollmentScreen(
     Scaffold(
         topBar = {
             TopBar(
-                title = "Add Email OTP",
+                title = stringResource(R.string.add_email_otp),
                 onBackClick = onBackClick,
                 showSeparator = false
             )
@@ -109,7 +111,7 @@ fun EmailEnrollmentScreen(
 
                         else -> {
                             validationError = true
-                            errorMessage = "Unexpected enrollment result"
+                            errorMessage = stringResource(R.string.unexpected_enrollment_result)
                         }
                     }
                 }
@@ -194,7 +196,7 @@ private fun EmailEnrollmentHeader() {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Enter your Email address",
+            text = stringResource(R.string.enter_email_address),
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             fontSize = 20.sp,
@@ -203,11 +205,11 @@ private fun EmailEnrollmentHeader() {
         )
 
         Text(
-            text = "We will send you a verification code.",
+            text = stringResource(R.string.email_verification_code_text),
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 16.sp,
             lineHeight = 24.sp,
-            color = TextGray,
+            color = SectionSubtitle,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -226,7 +228,7 @@ private fun EmailFormField(
     ) {
         // Label
         Text(
-            text = "Email",
+            text = stringResource(R.string.email_label),
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             color = Color(0xFF1F1F1F),
@@ -346,7 +348,7 @@ private fun ContinueButton(
     onClick: () -> Unit,
 ) {
     GradientButton(
-        text = "Continue",
+        text = stringResource(R.string.continue_button),
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),

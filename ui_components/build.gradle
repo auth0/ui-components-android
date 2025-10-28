@@ -10,7 +10,7 @@ android {
     compileSdk 36
 
     defaultConfig {
-        minSdk 26
+        minSdk 30
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
