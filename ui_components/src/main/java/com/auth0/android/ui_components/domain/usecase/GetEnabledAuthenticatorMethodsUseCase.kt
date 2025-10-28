@@ -7,7 +7,7 @@ import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
-import com.auth0.android.ui_components.domain.model.MFAMethod
+import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.network.safeCall
@@ -20,7 +20,7 @@ import kotlinx.coroutines.withContext
  * Handles token fetching ONCE before making parallel API calls
  *
  */
-class GetMFAMethodsUseCase(
+class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
     private val tokenManager: TokenManager,
     private val dispatcherProvider: DispatcherProvider
@@ -30,7 +30,7 @@ class GetMFAMethodsUseCase(
         private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods"
     }
 
-    suspend operator fun invoke(): Result<List<MFAMethod>, Auth0Error> =
+    suspend operator fun invoke(): Result<List<AuthenticatorMethod>, Auth0Error> =
         withContext(dispatcherProvider.io) {
             safeCall(REQUIRED_SCOPES) {
                 val audience = tokenManager.getMyAccountAudience()
@@ -65,7 +65,7 @@ class GetMFAMethodsUseCase(
     private fun mapToMFAMethods(
         factors: List<Factor>,
         authMethods: List<AuthenticationMethod>
-    ): List<MFAMethod> {
+    ): List<AuthenticatorMethod> {
         val mfaAuthMethods = authMethods
             .filterIsInstance<MfaAuthenticationMethod>()
             .filter { it.type != "password" }
@@ -76,7 +76,7 @@ class GetMFAMethodsUseCase(
             val hasConfirmedAuthMethod = authMethodsByType[factor.type]
                 ?.any { it.confirmed == true } ?: false
 
-            MFAMethod(
+            AuthenticatorMethod(
                 type = mapTypeToAuthenticatorType(factor.type),
                 confirmed = hasConfirmedAuthMethod,
                 usage = factor.usage ?: emptyList()

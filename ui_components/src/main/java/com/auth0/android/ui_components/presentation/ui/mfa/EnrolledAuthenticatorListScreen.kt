@@ -23,7 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod
@@ -132,14 +134,14 @@ fun AuthenticatorListContent(
             ) {
                 items(authenticators) { authenticator ->
                     val menuActions = listOf(
-                        MenuItem("Remove", MenuAction.Remove)
+                        MenuItem(stringResource(R.string.remove), MenuAction.Remove)
                     )
 
                     InfoCard(
                         title = authenticator.name
                             ?: UiStringFormat.formatDefaultNameForAuthenticatorItems(authenticator.type),
                         subtitles = listOf(
-                            "Created on ${DateUtil.formatIsoDate(authenticator.createdAt)}",
+                            stringResource(R.string.created_on, DateUtil.formatIsoDate(authenticator.createdAt)),
                         ),
                         menuActions = menuActions,
                         onMenuActionClick = { action ->

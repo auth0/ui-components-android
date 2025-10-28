@@ -1,0 +1,93 @@
+<resources>
+    <!-- Common strings -->
+    <string name="continue_button">Continue</string>
+    <string name="try_again">Try again</string>
+    <string name="copy_code">Copy Code</string>
+    <string name="copy_as_code">Copy as Code</string>
+    <string name="active_label">Active</string>
+    <string name="remove">Remove</string>
+
+    <!-- Phone Enrollment -->
+    <string name="add_phone_sms_otp">Add Phone for SMS OTP</string>
+    <string name="enter_phone_number">Enter your phone number</string>
+    <string name="phone_number_label">Phone number</string>
+    <string name="phone_number_placeholder">(000)000-0000</string>
+    <string name="verification_code_text">We will text you a verification code.</string>
+    <string name="invalid_phone_number">Invalid phone number.</string>
+    <string name="select_country">Select country</string>
+    <string name="select_country_code">Select country code</string>
+    <string name="search_country">Search country …</string>
+    <string name="unexpected_enrollment_result">Unexpected enrollment result</string>
+
+    <!-- Email Enrollment -->
+    <string name="add_email_otp">Add Email OTP</string>
+    <string name="enter_email_address">Enter your Email address</string>
+    <string name="email_label">Email</string>
+    <string name="email_verification_code_text">We will send you a verification code.</string>
+
+    <!-- OTP Verification -->
+    <string name="verify_its_you">Verify it\'s you</string>
+    <string name="enter_6_digit_code_phone">Enter the 6-digit code we sent to %s</string>
+    <string name="enter_6_digit_code_phone_generic">Enter the 6-digit code we sent to your phone</string>
+    <string name="enter_6_digit_code_email">Enter the 6-digit code we sent to your email</string>
+    <string name="enter_6_digit_code">Enter the 6-digit code</string>
+    <string name="from_authenticator_app">From your Authenticator App</string>
+    <string name="one_time_passcode">One-Time Passcode</string>
+    <string name="didnt_get_code">Didn\'t get a code? </string>
+    <string name="resend_it">Resend it.</string>
+    <string name="complete_6_digit_code">Please enter the complete 6-digit code</string>
+    <string name="invalid_passcode">Invalid passcode. Please try again.</string>
+    <string name="passcode_expired">Passcode expired. Please request a new one.</string>
+    <string name="too_many_attempts">Too many attempts. Please try again later.</string>
+    <string name="verification_failed">Verification failed. Please try again.</string>
+    <string name="error_occurred">An error occurred. Please try again.</string>
+
+    <!-- QR Enrollment -->
+    <string name="authenticator">Authenticator</string>
+    <string name="push_notification">Push Notification</string>
+    <string name="add_authenticator">Add and Authenticator</string>
+    <string name="qr_instructions_totp">Use your Authenticator App (like Google Authenticator or Auth0 Guardian) to scan this QR code, or simply copy the code and paste it manually to register your device.</string>
+    <string name="qr_instructions_push">Use the Auth0 Guardian App to scan this QR code, or simply copy the code and paste it manually to register your device for push notifications.</string>
+    <string name="qr_instructions_generic">Scan this QR code with your authenticator app or copy the code manually.</string>
+    <string name="dont_have_auth0_app">Don\'t have the Auth0 Guardian App?\n</string>
+    <string name="download_it_here">Download it here</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="copy_secret_code">Copy secret code</string>
+    <string name="qr_code_enrollment">QR Code for enrollment</string>
+    <string name="unexpected_enrollment_type">Unexpected enrollment type</string>
+
+    <!-- Recovery Code -->
+    <string name="recovery_code">Recovery code</string>
+    <string name="save_recovery_code">Save your recovery code</string>
+    <string name="recovery_code_description">Save these codes in a secure location. They are your backup sign-in method if your multifactor device is unavailable. Each code may only be used once</string>
+    <string name="recovery_code_label">Recovery code</string>
+
+    <!-- Authenticator Methods -->
+    <string name="login_security">Login &amp; Security</string>
+    <string name="verification_methods">Verification methods</string>
+    <string name="manage_2fa_methods">Manage your 2FA methods</string>
+
+    <!-- Enrolled Authenticators -->
+    <string name="created_on">Created on %s</string>
+
+    <!-- Empty State -->
+    <string name="no_authenticator_added">No Authenticator was added.</string>
+    <string name="no_authenticators_enabled">No MFA methods enabled.</string>
+
+    <!-- Error Messages -->
+    <string name="connection_problem">Connection problem</string>
+    <string name="check_internet_connection">Please check your internet connection and try again.</string>
+    <string name="invalid_verification_code">Invalid verification code</string>
+    <string name="code_incorrect_expired">The code you entered is incorrect or has expired. Please try again.</string>
+    <string name="session_expired">Session expired</string>
+    <string name="session_expired_login">Your session has expired. Please login again to continue.</string>
+    <string name="too_many_attempts_error">Too many attempts</string>
+    <string name="account_temporarily_blocked">Your account has been temporarily blocked due to too many failed attempts. Please try again later.</string>
+    <string name="unable_to_process">We are unable to process your request. Please try again in a few minutes.</string>
+    <string name="unable_to_process_contact">We are unable to process your request. Please try again in a few minutes. If this problem persists, please</string>
+    <string name="contact_us">contact us.</string>
+    <string name="more_options">More options</string>
+    <string name="navigate">Navigate</string>
+    <string name="copy">Copy</string>
+    <string name="search">Search</string>
+</resources>

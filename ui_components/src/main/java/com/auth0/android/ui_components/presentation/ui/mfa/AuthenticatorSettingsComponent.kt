@@ -9,7 +9,6 @@ import com.auth0.android.ui_components.presentation.navigation.AuthenticatorSett
 public fun AuthenticatorSettingsComponent(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
     AuthenticatorSettingsNavigationHost(
-        modifier,
         navController
     )
 }
