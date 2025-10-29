@@ -38,7 +38,7 @@ jobs:
       - name: Run unit tests
         run: ./gradlew clean :ui_components:test --continue --console=plain --no-daemon
 
-      - name: Generate test coverage report
-        if: always()
-        run: ./gradlew :ui_components:jacocoTestReport --continue --console=plain --max-workers=1 --no-daemon
+#      - name: Generate test coverage report
+#        if: always()
+#        run: ./gradlew :ui_components:jacocoTestReport --continue --console=plain --max-workers=1 --no-daemon
 
