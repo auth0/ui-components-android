@@ -68,10 +68,9 @@
     <string name="manage_2fa_methods">Manage your 2FA methods</string>
 
     <!-- Enrolled Authenticators -->
-    <string name="created_on">Created on %s</string>
+    <string name="created_on">Generated on %s</string>
 
     <!-- Empty State -->
-    <string name="no_authenticator_added">No Authenticator was added.</string>
     <string name="no_authenticators_enabled">No MFA methods enabled.</string>
 
     <!-- Error Messages -->

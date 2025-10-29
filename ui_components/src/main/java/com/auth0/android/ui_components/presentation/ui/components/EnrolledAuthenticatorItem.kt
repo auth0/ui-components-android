@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,31 +28,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
-import com.auth0.android.ui_components.R
+import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
+import com.auth0.android.ui_components.theme.AuthenticatorItemSubTitle
+import com.auth0.android.ui_components.theme.AuthenticatorItemTitle
 
 
-/**
- * A reusable card component that displays a title with multiple subtitle lines
- * and an optional action menu button with dropdown menu. Follows Material Design 3 principles.
- *
- * This component is designed to display information in a consistent card format
- * with a title, subtitles, and optional menu actions.
- *
- * @param title The main title text to display
- * @param subtitles List of subtitle lines to display below the title
- * @param modifier Modifier to be applied to the card
- * @param menuActions List of menu actions to display in dropdown (null to hide menu)
- * @param onMenuActionClick Callback when a menu item is clicked with the action identifier
- */
 @Composable
-fun InfoCard(
+fun EnrolledAuthenticatorItem(
     title: String,
-    subtitles: List<String>,
+    subtitle: String,
     modifier: Modifier = Modifier,
     menuActions: List<MenuItem>? = null,
     onMenuActionClick: ((MenuAction) -> Unit)? = null
@@ -59,17 +49,19 @@ fun InfoCard(
     var expanded by remember { mutableStateOf(false) }
 
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .height(84.dp),
+        shape = RoundedCornerShape(16.dp),
         color = Color.White,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+        border = BorderStroke(1.dp, AuthenticatorItemBorder)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Top
         ) {
@@ -79,18 +71,12 @@ fun InfoCard(
             ) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    style = AuthenticatorItemTitle
                 )
-
-                subtitles.forEach { subtitle ->
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    text = subtitle,
+                    style = AuthenticatorItemSubTitle
+                )
             }
 
             if (!menuActions.isNullOrEmpty() && onMenuActionClick != null) {
@@ -102,7 +88,7 @@ fun InfoCard(
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = stringResource(R.string.more_options),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = Color.Black
                         )
                     }
 

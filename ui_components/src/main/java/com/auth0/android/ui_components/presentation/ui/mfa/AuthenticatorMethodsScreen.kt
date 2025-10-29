@@ -24,12 +24,12 @@ import com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorMethodsViewModel
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiState
+import com.auth0.android.ui_components.theme.defaultTopbarTitle
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthenticatorMethodsScreen(
-    modifier: Modifier = Modifier,
     viewModel: AuthenticatorMethodsViewModel = viewModel(
         factory = MyAccountModule.provideAuthenticatorMethodViewModelFactory()
     ),
@@ -42,7 +42,7 @@ fun AuthenticatorMethodsScreen(
         topBar = {
             TopBar(
                 title = stringResource(R.string.login_security),
-                modifier = modifier,
+                titleTextStyle = defaultTopbarTitle,
                 showSeparator = false,
                 onBackClick = onBackPress
             )

@@ -26,5 +26,4 @@ internal fun AuthenticatorMethod.toAuthenticatorUiModel(): AuthenticatorUiData {
             "Recovery Code", type, confirmed
         )
     }
-
 }

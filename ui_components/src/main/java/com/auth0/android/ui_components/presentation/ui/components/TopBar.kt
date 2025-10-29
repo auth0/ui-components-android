@@ -16,13 +16,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
-import com.auth0.android.ui_components.theme.Gray
-import com.auth0.android.ui_components.theme.TopBarTitle
+import com.auth0.android.ui_components.theme.SeparatorLineGray
+import com.auth0.android.ui_components.theme.enrollmentTopbarTitle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,21 +27,18 @@ fun TopBar(
     title: String,
     modifier: Modifier = Modifier,
     topBarColor: Color = Color.White,
-    showSeparator: Boolean = true,
+    showSeparator: Boolean = false,
     trailingIcon: Painter? = null,
-    trailingIconClick: () -> Unit = {},
-    onBackClick: () -> Unit
+    titleTextStyle: TextStyle = enrollmentTopbarTitle,
+    onBackClick: () -> Unit,
+    trailingIconClick: () -> Unit = {}
 ) {
     Column {
         CenterAlignedTopAppBar(
             title = {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = FontFamily.SansSerif,
-                    color = TopBarTitle,
-                    letterSpacing = (-0.25).sp,
+                    style = titleTextStyle,
                 )
             },
             navigationIcon = {
@@ -77,7 +71,7 @@ fun TopBar(
             HorizontalDivider(
                 modifier = Modifier.fillMaxWidth(),
                 thickness = 0.3.dp,
-                color = Gray
+                color = SeparatorLineGray
             )
         }
     }

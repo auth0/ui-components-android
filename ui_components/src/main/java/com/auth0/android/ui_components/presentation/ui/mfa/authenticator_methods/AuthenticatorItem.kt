@@ -1,4 +1,4 @@
-package com.auth0.android.ui_components.presentation.ui.mfa
+package com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods
 
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import com.auth0.android.ui_components.theme.ActiveLabelText
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.theme.ActiveLabelBackground
-import com.auth0.android.ui_components.theme.AuthenticatorItem
+import com.auth0.android.ui_components.theme.AuthenticatorItemTitle
 import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
 
 @Composable
@@ -43,7 +43,7 @@ fun AuthenticatorItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(68.dp)
+            .height(70.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
         color = Color.White,
@@ -69,7 +69,7 @@ fun AuthenticatorItem(
             ) {
                 Text(
                     text = title,
-                    style = AuthenticatorItem
+                    style = AuthenticatorItemTitle
                 )
 
                 Spacer(Modifier.weight(1f))
