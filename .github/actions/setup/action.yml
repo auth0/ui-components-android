@@ -12,7 +12,7 @@ runs:
         cache: 'gradle'
 
     - name: Set up Android
-      uses: android-actions/setup-android@v3
+      uses: android-actions/setup-android@07976c6290703d34c16d382cb36445f98bb43b1f # v3.2.1
 
     - name: Make gradlew executable
       shell: bash
