@@ -1,0 +1,44 @@
+name: Build and Test
+
+on:
+  merge_group:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup
+
+      - name: Build library
+        run: ./gradlew :ui_components:assembleRelease --continue --console=plain --no-daemon
+
+      - name: Run lint
+        run: ./gradlew :ui_components:lint --continue --console=plain --no-daemon
+
+      - name: Run unit tests
+        run: ./gradlew clean :ui_components:test --continue --console=plain --no-daemon
+
+      - name: Generate test coverage report
+        if: always()
+        run: ./gradlew :ui_components:jacocoTestReport --continue --console=plain --max-workers=1 --no-daemon
+
