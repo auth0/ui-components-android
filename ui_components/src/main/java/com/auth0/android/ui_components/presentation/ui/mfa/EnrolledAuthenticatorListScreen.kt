@@ -62,7 +62,11 @@ fun EnrolledAuthenticatorListScreen(
                 title = UiStringFormat.formatTopBarTitleForAuthenticator(authenticatorType.type),
                 topBarColor = Color.White,
                 showSeparator = false,
-                trailingIcon = rememberVectorPainter(Icons.Default.Add),
+                trailingIcon = if (!uiState.loading && uiState.uiError == null) {
+                    rememberVectorPainter(Icons.Default.Add)
+                } else {
+                    null
+                },
                 trailingIconClick = onAddClick,
                 onBackClick = onBackClick
             )
