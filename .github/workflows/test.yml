@@ -20,7 +20,7 @@ concurrency:
 jobs:
   build-and-test:
     name: Build and Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04-2cpu-8ram-75ssd  # replace with ubuntu-latest once migrated to public
 
     steps:
       - name: Checkout code
