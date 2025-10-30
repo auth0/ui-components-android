@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Publish Release
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
+    runs-on: ubuntu-22.04-2cpu-8ram-75ssd   # replace with ubuntu-latest once migrated to public
+    environment: release
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup
+
+      ## Add other in between steps here
+      # Publish the release to Maven
+      - uses: ./.github/actions/maven-publish
+        with:
+          ossr-username: ${{ secrets.ossr-username }}
+          ossr-token: ${{ secrets.ossr-token }}
+          signing-key: ${{ secrets.signing-key}}
+          signing-password: ${{ secrets.signing-password}}
+
+      # Create a release for the tag
+#      - uses: ./.github/actions/release-create
+#        with:
+#          token: ${{ secrets.github-token }}
+#          name: ${{ steps.get_version.outputs.version }}
+#          body: ${{ steps.get_release_notes.outputs.release-notes }}
+#          tag: ${{ steps.get_version.outputs.version }}
+#          commit: ${{ github.sha }}
+#          prerelease: ${{ steps.get_prerelease.outputs.prerelease }}
+
+      - name: Announce release
+        run: |
+          echo "🎉 Successfully released v${{ steps.get_version.outputs.version }}"
+          echo "📦 Published to Maven Central"
+          echo "🏷️  Tagged as v${{ steps.get_version.outputs.version }}"
+          echo "📝 GitHub Release created"
