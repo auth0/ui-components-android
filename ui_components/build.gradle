@@ -10,11 +10,11 @@ apply from: rootProject.file('gradle/versioning.gradle')
 version = getVersionFromFile()
 
 android {
-    namespace 'com.auth0.android.ui_components'
-    compileSdk 36
+    namespace = 'com.auth0.android.ui_components'
+    compileSdk = 36
 
     defaultConfig {
-        minSdk 30
+        minSdk = 30
         versionName project.version
 
         buildConfigField "String", "LIBRARY_NAME", "\"$project.rootProject.name\""
@@ -22,6 +22,9 @@ android {
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
+
+        manifestPlaceholders += [auth0Domain: "YOUR_DOMAIN",
+                                 auth0Scheme: "YOUR_SCHEME"]
     }
 
     buildFeatures {
@@ -36,8 +39,8 @@ android {
     }
 
     lintOptions {
-        htmlReport true
-        abortOnError true
+        htmlReport = true
+        abortOnError = true
     }
     testOptions {
         unitTests {
