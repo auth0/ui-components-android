@@ -348,7 +348,7 @@ private fun ContinueButton(
     onClick: () -> Unit,
 ) {
     GradientButton(
-        text = stringResource(R.string.continue_button),
+        content = { Text(text = stringResource(R.string.continue_button)) },
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),

@@ -40,12 +40,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.myaccount.PhoneAuthenticationMethodType
 import com.auth0.android.ui_components.R
@@ -61,7 +61,6 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.SectionSubtitle
 import com.auth0.android.ui_components.utils.ValidationUtil
-import kotlin.String
 
 /**
  * Phone Enrollment Screen
@@ -548,7 +547,7 @@ private fun ContinueButton(
     onClick: () -> Unit
 ) {
     GradientButton(
-        text = stringResource(R.string.continue_button),
+        content = { Text(stringResource(R.string.continue_button)) },
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),

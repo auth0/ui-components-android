@@ -23,3 +23,5 @@ val AuthenticatorItemSubtitle = Color(0xFF828282)
 val EmptyAuthenticatorBackground = Color(0xFFF9F9F9)
 
 val EmptyAuthenticatorTextColor = Color(0x3D000000)
+
+val SectionDescriptionTextColor = Color(0xFF737373)

@@ -1,14 +1,17 @@
 package com.auth0.android.ui_components.presentation.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonElevation
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +22,7 @@ import com.auth0.android.ui_components.theme.ButtonBlack
 
 @Composable
 fun GradientButton(
-    text: String,
+    content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     gradient: Brush = Brush.verticalGradient(
         colors = listOf(
@@ -30,14 +33,16 @@ fun GradientButton(
     buttonDefaultColor: ButtonColors = ButtonDefaults.buttonColors(
         containerColor = ButtonBlack,
         contentColor = Color.White,
-        disabledContainerColor = ButtonBlack.copy(alpha = 0.6f),
-        disabledContentColor = Color.White.copy(alpha = 0.6f)
+        disabledContainerColor = ButtonBlack,
+        disabledContentColor = Color.White
     ),
     shape: RoundedCornerShape = RoundedCornerShape(16.dp),
     elevation: ButtonElevation = ButtonDefaults.buttonElevation(
         defaultElevation = 0.dp,
         pressedElevation = 2.dp
     ),
+    isLoading: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
 
@@ -47,6 +52,7 @@ fun GradientButton(
         shape = shape,
         contentPadding = PaddingValues(),
         elevation = elevation,
+        enabled = enabled && !isLoading,
         onClick = { onClick() },
     ) {
         Box(
@@ -55,7 +61,21 @@ fun GradientButton(
                 .then(modifier),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = text)
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isLoading) {
+                    CircularLoader(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White.copy(alpha = 0.75f),
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.size(8.dp))
+                } else {
+                    content()
+                }
+            }
         }
     }
 

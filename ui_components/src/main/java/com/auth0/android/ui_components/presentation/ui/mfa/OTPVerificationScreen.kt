@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.authentication.AuthenticationException
+import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
@@ -194,9 +196,9 @@ fun OTPVerificationScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Continue/Try Again Button
+            val text = if (isError) "Try again" else "Continue"
             GradientButton(
-                text = if (isError) "Try again" else "Continue",
+                content = { Text(text) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),

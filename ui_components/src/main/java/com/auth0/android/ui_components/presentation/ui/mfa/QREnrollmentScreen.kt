@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
@@ -149,15 +150,16 @@ fun QREnrollmentScreen(
                 }
 
                 is EnrollmentUiState.Success -> {
-                    when (authenticatorType){
-                        AuthenticatorType.PUSH ->{
-                             onContinueClick(
-                                 state.authenticationMethod.id,
-                                 state.authenticationMethod.type
-                             )
+                    when (authenticatorType) {
+                        AuthenticatorType.PUSH -> {
+                            onContinueClick(
+                                state.authenticationMethod.id,
+                                state.authenticationMethod.type
+                            )
                         }
-                        else ->{
-                                // No need to handle the else state
+
+                        else -> {
+                            // No need to handle the else state
                         }
                     }
                 }
@@ -358,7 +360,7 @@ private fun ContinueButtonSection(
     onContinueClick: () -> Unit
 ) {
     GradientButton(
-        text = "Continue",
+        content = { Text(stringResource(R.string.continue_button)) },
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),

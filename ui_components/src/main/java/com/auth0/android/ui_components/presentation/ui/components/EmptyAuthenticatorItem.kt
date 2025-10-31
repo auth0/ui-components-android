@@ -13,7 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.auth0.android.ui_components.theme.EmptyAuthenticatorBackground
-import com.auth0.android.ui_components.theme.EmptyAuthenticatorText
+import com.auth0.android.ui_components.theme.emptyAuthenticatorText
 
 
 @Composable
@@ -42,7 +42,7 @@ fun EmptyAuthenticatorItem(
             ) {
                 Text(
                     text = emptyMessage,
-                    style = EmptyAuthenticatorText
+                    style = emptyAuthenticatorText
                 )
             }
         }
