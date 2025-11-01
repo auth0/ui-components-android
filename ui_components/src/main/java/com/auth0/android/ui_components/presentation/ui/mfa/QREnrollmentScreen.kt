@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,11 +18,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -38,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
@@ -49,13 +47,13 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
@@ -70,15 +68,13 @@ import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.SectionSubtitle
+import com.auth0.android.ui_components.theme.ButtonBlack
+import com.auth0.android.ui_components.theme.secondaryText
+import com.auth0.android.ui_components.theme.secondaryTextColor
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import interFamily
 
-/**
- * QR-based Authenticator Enrollment Screen
- * Supports TOTP and Push Notification enrollment
- * Displays QR code and secret for authenticator app enrollment
- */
 @Composable
 fun QREnrollmentScreen(
     authenticatorType: AuthenticatorType,
@@ -91,13 +87,10 @@ fun QREnrollmentScreen(
         authenticationId: String,
         authSession: String,
     ) -> Unit,
-    onEnrollmentSuccess: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    // Get display title based on authenticator type
     val title = when (authenticatorType) {
-        AuthenticatorType.TOTP -> "Authenticator"
         AuthenticatorType.PUSH -> "Push Notification"
         else -> "Authenticator"
     }
@@ -137,10 +130,7 @@ fun QREnrollmentScreen(
                         }
 
                         else -> {
-                            ErrorContent(
-                                message = "Unexpected enrollment type",
-                                onRetry = { viewModel.resetState() }
-                            )
+                           //
                         }
                     }
                 }
@@ -207,25 +197,21 @@ private fun QREnrollmentContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = if (!hasManualCode) Arrangement.Center else Arrangement.Top
         ) {
-            // Top spacer only for TOTP (has manual code)
             if (hasManualCode) {
-                Spacer(modifier = Modifier.height(40.dp))
+                Spacer(modifier = Modifier.height(90.dp))
             }
 
-            // QR Code Section
             QRCodeSection(
                 barcodeUri = barcodeUri,
-                modifier = Modifier.size(200.dp)
+                modifier = Modifier.size(170.dp)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Instructions Text (moved below QR code)
-            InstructionsText(authenticatorType = authenticatorType)
+            InstructionsText()
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            // Manual Code Section (only for TOTP)
             if (hasManualCode) {
                 ManualCodeSection(
                     manualCode = manualCode,
@@ -235,10 +221,9 @@ private fun QREnrollmentContent(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
             }
 
-            // Continue Button
             ContinueButtonSection(
                 onContinueClick = {
                     if (isPushNotification) {
@@ -257,12 +242,9 @@ private fun QREnrollmentContent(
                 }
             )
 
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.height(64.dp))
 
-            // Download Link (shown for both TOTP and Push)
             DownloadLinkText()
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
 
         SnackbarHost(
@@ -297,58 +279,75 @@ private fun ManualCodeSection(
     manualCode: String,
     onCopyClick: () -> Unit
 ) {
-    // Manual Code Card
     ManualCodeCard(
         manualCode = manualCode,
         onCopyClick = onCopyClick
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(16.dp))
 
-    // Copy as Code Button
     CopyCodeButton(
-        manualCode = manualCode,
         onCopyClick = onCopyClick
     )
 }
 
-/**
- * Copy as Code button
- */
+
 @Composable
 private fun CopyCodeButton(
-    manualCode: String,
     onCopyClick: () -> Unit
 ) {
-    Button(
-        onClick = onCopyClick,
+    GradientButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp),
-        shape = MaterialTheme.shapes.medium,
-        border = BorderStroke(1.dp, Color.Gray),
-        colors = ButtonDefaults.buttonColors(
+        gradient = Brush.verticalGradient(
+            colors = listOf(
+                ButtonBlack.copy(alpha = 0f),
+                ButtonBlack.copy(alpha = 0.05f)
+            )
+        ),
+        buttonDefaultColor = ButtonDefaults.buttonColors(
             containerColor = Color.White,
-            contentColor = Color.Black
+            contentColor = ButtonBlack,
+            disabledContainerColor = Color.White.copy(alpha = 0.6f),
+            disabledContentColor = ButtonBlack.copy(alpha = 0.4f)
         ),
         elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 4.dp,
-            pressedElevation = 8.dp,
-            hoveredElevation = 6.dp,
-            focusedElevation = 6.dp
+            defaultElevation = 2.dp,
+            pressedElevation = 2.dp,
+            disabledElevation = 2.dp
         ),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
+        borderStroke = BorderStroke(
+            width = 1.dp,
+            color = ButtonBlack.copy(alpha = 0.35f)
+        ),
+        shape = RoundedCornerShape(16.dp),
+        onClick = onCopyClick
     ) {
-        Icon(
-            imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
-            contentDescription = "Copy",
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = "Copy as Code",
-            style = MaterialTheme.typography.labelLarge
-        )
+
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
+                contentDescription = "Copy",
+                modifier = Modifier.size(16.dp),
+                tint = Color.Black
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = stringResource(R.string.copy_as_code),
+                style = secondaryText,
+                fontSize = 16.sp,
+                lineHeight = 24.sp,
+                letterSpacing = 0.em,
+                color = Color.Black
+            )
+        }
     }
 }
 
@@ -360,42 +359,35 @@ private fun ContinueButtonSection(
     onContinueClick: () -> Unit
 ) {
     GradientButton(
-        content = { Text(stringResource(R.string.continue_button)) },
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp),
-        gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
+            .height(52.dp),
+        gradient = Brush.verticalGradient(
             colors = listOf(
                 Color.White.copy(alpha = 0.15f),
                 Color.Transparent
             )
         ),
+        onClick = onContinueClick
     ) {
-        onContinueClick()
+        Text(stringResource(R.string.continue_button))
     }
 }
 
-/**
- * Instructions text based on authenticator type
- */
+
 @Composable
-private fun InstructionsText(authenticatorType: AuthenticatorType) {
-    val instructionText = when (authenticatorType) {
-        AuthenticatorType.TOTP -> "Use your Authenticator App (like Google Authenticator or Auth0 Guardian) to scan this QR code, or simply copy the code and paste it manually to register your device."
-        AuthenticatorType.PUSH -> "Use the Auth0 Guardian App to scan this QR code, or simply copy the code and paste it manually to register your device for push notifications."
-        else -> "Scan this QR code with your authenticator app or copy the code manually."
-    }
+private fun InstructionsText() {
+    val instructionText =
+        "Use your Authenticator App (like Google Authenticator or Auth0 Guardian) to scan this QR code."
+
 
     Text(
+        modifier = Modifier.width(300.dp),
         text = instructionText,
-        style = MaterialTheme.typography.bodyMedium,
-        fontStyle = FontStyle.Normal,
+        style = secondaryText,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        color = SectionSubtitle,
-        letterSpacing = 1.2.sp,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.padding(horizontal = 8.dp)
+        lineHeight = 20.sp,
+        color = secondaryTextColor
     )
 }
 
@@ -428,36 +420,39 @@ private fun ManualCodeCard(
     onCopyClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(52.dp),
+        shape = RoundedCornerShape(14.dp),
         color = Color.White,
-        shadowElevation = 3.dp
+        shadowElevation = 6.dp,
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = manualCode,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal,
-                    letterSpacing = 1.sp
-                ),
-                color = Color.Gray
+                style = secondaryText,
+                fontWeight = FontWeight.Normal,
+                lineHeight = 20.sp,
+                letterSpacing = 0.sp,
+                color = Color.Black
             )
 
             IconButton(
                 onClick = onCopyClick,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier
+                    .size(24.dp)
+                    .padding(2.dp)
             ) {
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
                     contentDescription = "Copy secret code",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(20.dp)
+                    tint = Color.Black,
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }
@@ -471,9 +466,11 @@ private fun DownloadLinkText(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                color = SectionSubtitle,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Normal
+                fontFamily = interFamily,
+                color = secondaryTextColor,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Normal,
+                letterSpacing = (0.011).em
             )
         ) {
             append("Don't have the Auth0 Guardian App?\n")
@@ -486,9 +483,11 @@ private fun DownloadLinkText(
         withStyle(
             style = SpanStyle(
                 color = Color.Black,
+                fontFamily = interFamily,
                 textDecoration = TextDecoration.Underline,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 13.sp,
+                fontSize = 16.sp,
+                letterSpacing = 0.em
             )
         ) {
             withLink(LinkAnnotation.Url(url = downloadLink)) {
@@ -518,23 +517,6 @@ private fun LoadingContent() {
     }
 }
 
-/**
- * Success State
- */
-@Composable
-private fun SuccessContent() {
-
-}
-
-/**
- * Error State
- */
-@Composable
-private fun ErrorContent(
-    message: String,
-    onRetry: () -> Unit
-) {
-}
 
 /**
  * Generating QR code using ZXing

@@ -2,14 +2,12 @@ package com.auth0.android.ui_components.theme
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import com.auth0.android.ui_components.R
 import interFamily
 
 
@@ -50,7 +48,7 @@ val sectionHeading2 = TextStyle(
     fontSize = 14.sp,
     fontWeight = FontWeight.Normal,
     fontFamily = FontFamily.Default,
-    color = SectionSubtitle,
+    color = secondaryTextColor,
     letterSpacing = 1.sp
 )
 
@@ -91,7 +89,7 @@ val sectionTitle = TextStyle(
     textAlign = TextAlign.Center,
 )
 
-val sectionDescription = TextStyle(
+val secondaryText = TextStyle(
     fontFamily = interFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 14.sp,

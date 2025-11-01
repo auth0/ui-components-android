@@ -59,7 +59,7 @@ import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.SectionSubtitle
+import com.auth0.android.ui_components.theme.secondaryTextColor
 import com.auth0.android.ui_components.utils.ValidationUtil
 
 /**
@@ -230,7 +230,7 @@ private fun PhoneEnrollmentHeader() {
             style = MaterialTheme.typography.bodyMedium,
             fontSize = 16.sp,
             lineHeight = 24.sp,
-            color = SectionSubtitle,
+            color = secondaryTextColor,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -547,7 +547,6 @@ private fun ContinueButton(
     onClick: () -> Unit
 ) {
     GradientButton(
-        content = { Text(stringResource(R.string.continue_button)) },
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),
@@ -557,7 +556,8 @@ private fun ContinueButton(
                 Color.Transparent
             )
         ),
+        onClick = onClick
     ) {
-        onClick()
+        Text(stringResource(R.string.continue_button))
     }
 }

@@ -6,7 +6,7 @@ val TopBarTitle = Color(0xFF1D1B20)
 
 val SeparatorLineGray = Color(0xFF757575)
 
-val SectionSubtitle = Color(0xFF606060)
+val secondaryTextColor = Color(0xFF606060)
 
 val AuthenticatorItemBorder = Color(0xFFD9D9D9)
 

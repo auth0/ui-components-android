@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,7 +23,6 @@ import com.auth0.android.ui_components.theme.ButtonBlack
 
 @Composable
 fun GradientButton(
-    content: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     gradient: Brush = Brush.verticalGradient(
         colors = listOf(
@@ -43,7 +43,9 @@ fun GradientButton(
     ),
     isLoading: Boolean = false,
     enabled: Boolean = true,
+    borderStroke: BorderStroke?=null,
     onClick: () -> Unit,
+    content: @Composable () -> Unit,
 ) {
 
     Button(
@@ -53,6 +55,7 @@ fun GradientButton(
         contentPadding = PaddingValues(),
         elevation = elevation,
         enabled = enabled && !isLoading,
+        border = borderStroke,
         onClick = { onClick() },
     ) {
         Box(

@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -38,7 +37,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,7 +53,7 @@ import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
-import com.auth0.android.ui_components.theme.sectionDescription
+import com.auth0.android.ui_components.theme.secondaryText
 import com.auth0.android.ui_components.theme.sectionTitle
 import kotlinx.coroutines.launch
 
@@ -231,7 +229,7 @@ private fun RecoveryCodeHeader() {
 
         Text(
             text = stringResource(R.string.recovery_code_description),
-            style = sectionDescription,
+            style = secondaryText,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -261,7 +259,7 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                style = sectionDescription,
+                style = secondaryText,
                 text = code,
                 lineHeight = 20.sp,
                 letterSpacing = 0.2.sp,
@@ -294,7 +292,6 @@ private fun ContinueButton(
     onClick: () -> Unit
 ) {
     GradientButton(
-        content = { Text(stringResource(R.string.continue_button)) },
         modifier = Modifier
             .fillMaxWidth()
             .height(48.dp),
@@ -305,8 +302,9 @@ private fun ContinueButton(
             )
         ),
         isLoading = isLoading,
-        enabled = !isLoading
+        enabled = !isLoading,
+        onClick = onClick
     ) {
-        onClick()
+        Text(stringResource(R.string.continue_button))
     }
 }

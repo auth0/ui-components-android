@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -28,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.authentication.AuthenticationException
-import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
@@ -37,7 +35,7 @@ import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.ButtonBlack
-import com.auth0.android.ui_components.theme.SectionSubtitle
+import com.auth0.android.ui_components.theme.secondaryTextColor
 
 /**
  * OTP Verification Screen
@@ -137,7 +135,7 @@ fun OTPVerificationScreen(
                     text = screenConfig.description,
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 14.sp,
-                    color = SectionSubtitle,
+                    color = secondaryTextColor,
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(modifier = Modifier.height(24.dp))
@@ -150,7 +148,7 @@ fun OTPVerificationScreen(
                 text = "One-Time Passcode",
                 style = MaterialTheme.typography.labelMedium,
                 fontSize = 12.sp,
-                color = SectionSubtitle,
+                color = secondaryTextColor,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -197,24 +195,7 @@ fun OTPVerificationScreen(
             Spacer(modifier = Modifier.weight(1f))
 
             val text = if (isError) "Try again" else "Continue"
-            GradientButton(
-                content = { Text(text) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
-                    colors = listOf(
-                        Color.White.copy(alpha = 0.15f),
-                        Color.Transparent
-                    )
-                ),
-                buttonDefaultColor = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBlack,
-                    contentColor = Color.White,
-                    disabledContainerColor = ButtonBlack.copy(alpha = 0.6f),
-                    disabledContentColor = Color.White.copy(alpha = 0.6f)
-                )
-            ) {
+            val click = {
                 if (otpValue.length == 6) {
                     // Clear any existing errors
                     isError = false
@@ -232,25 +213,44 @@ fun OTPVerificationScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            GradientButton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                gradient = androidx.compose.ui.graphics.Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.15f),
+                        Color.Transparent
+                    )
+                ),
+                buttonDefaultColor = ButtonDefaults.buttonColors(
+                    containerColor = ButtonBlack,
+                    contentColor = Color.White,
+                    disabledContainerColor = ButtonBlack.copy(alpha = 0.6f),
+                    disabledContentColor = Color.White.copy(alpha = 0.6f)
+                ),
+                onClick = click
+            ) {
+                Text(text)
+            }
         }
-    }
 
-    // Show loading overlay when verifying
-    if (uiState is EnrollmentUiState.Verifying) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.3f)),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularLoader()
+        // Show loading overlay when verifying
+        if (uiState is EnrollmentUiState.Verifying) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularLoader()
+            }
         }
-    }
 
-    // Auto-focus on OTP input when screen loads
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        // Auto-focus on OTP input when screen loads
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
     }
 }
 
@@ -355,7 +355,7 @@ private fun ResendLink(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                color = SectionSubtitle,
+                color = secondaryTextColor,
                 fontSize = 14.sp
             )
         ) {
