@@ -99,5 +99,13 @@ val secondaryText = TextStyle(
     textAlign = TextAlign.Center
 )
 
+val textInputStyle = TextStyle(
+    fontFamily = interFamily,
+    fontSize = 20.sp,
+    fontWeight = FontWeight.SemiBold,
+    lineHeight = 24.sp,
+    letterSpacing = 0.em,
+)
+
 
 

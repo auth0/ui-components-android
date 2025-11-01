@@ -25,3 +25,9 @@ val EmptyAuthenticatorBackground = Color(0xFFF9F9F9)
 val EmptyAuthenticatorTextColor = Color(0x3D000000)
 
 val SectionDescriptionTextColor = Color(0xFF737373)
+
+val ErrorRed = Color(0xFFB82819)
+
+val ErrorTextRed = Color(0xFFCA3B2B)
+
+val TextInputBlack = Color(0xFF1F1F1F)

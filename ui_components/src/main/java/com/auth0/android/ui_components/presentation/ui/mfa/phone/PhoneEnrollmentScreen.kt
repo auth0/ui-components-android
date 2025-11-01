@@ -21,7 +21,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -41,10 +40,11 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.myaccount.PhoneAuthenticationMethodType
@@ -59,21 +59,17 @@ import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
+import com.auth0.android.ui_components.theme.ErrorRed
+import com.auth0.android.ui_components.theme.ErrorTextRed
+import com.auth0.android.ui_components.theme.TextInputBlack
+import com.auth0.android.ui_components.theme.enrollmentTopbarTitle
+import com.auth0.android.ui_components.theme.secondaryText
 import com.auth0.android.ui_components.theme.secondaryTextColor
+import com.auth0.android.ui_components.theme.textInputStyle
 import com.auth0.android.ui_components.utils.ValidationUtil
+import interFamily
 
-/**
- * Phone Enrollment Screen
- *
- * Allows users to enter their phone number for SMS OTP MFA enrollment.
- * Validates phone format and initiates enrollment via EnrollmentViewModel.
- * On success, navigates to OTP verification screen.
- *
- * @param authenticatorType Type of authenticator (should be SMS)
- * @param viewModel EnrollmentViewModel instance for handling enrollment
- * @param onBackClick Callback for back navigation
- * @param onContinueToOTP Callback when enrollment succeeds, passes authenticationId, authSession, and phoneNumber
- */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhoneEnrollmentScreen(
@@ -106,7 +102,7 @@ fun PhoneEnrollmentScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 24.dp)
+                .padding(horizontal = 16.dp, vertical = 32.dp)
         ) {
             when (val state = uiState) {
                 is EnrollmentUiState.EnrollmentInitiated -> {
@@ -150,9 +146,10 @@ fun PhoneEnrollmentScreen(
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 PhoneEnrollmentHeader()
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 PhoneFormField(
                     phoneNumber = phoneNumber,
@@ -191,10 +188,11 @@ fun PhoneEnrollmentScreen(
                     }
                 }
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 
-    // Country Selector Bottom Sheet
     if (showCountrySelector) {
         CountrySelectorSheet(
             countries = Country.countries,
@@ -207,205 +205,184 @@ fun PhoneEnrollmentScreen(
     }
 }
 
-/**
- * Phone Enrollment Header Component
- */
+
 @Composable
 private fun PhoneEnrollmentHeader() {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.enter_phone_number),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 20.sp,
-            color = Color.Black,
-            modifier = Modifier.fillMaxWidth()
-        )
+    Text(
+        text = stringResource(R.string.enter_phone_number),
+        style = secondaryText,
+        textAlign = TextAlign.Start,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        color = Color.Black,
+        lineHeight = 1.em,
+        letterSpacing = 0.em
+    )
 
-        Text(
-            text = stringResource(R.string.verification_code_text),
-            style = MaterialTheme.typography.bodyMedium,
-            fontSize = 16.sp,
-            lineHeight = 24.sp,
-            color = secondaryTextColor,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
+    Spacer(Modifier.height(8.dp))
+
+    Text(
+        text = stringResource(R.string.verification_code_text),
+        style = secondaryText,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 0.15.em,
+        color = secondaryTextColor,
+        letterSpacing = 0.01.em
+    )
 }
 
-/**
- * Phone Form Field Component
- */
+
 @Composable
 private fun PhoneFormField(
-    phoneNumber: kotlin.String,
+    phoneNumber: String,
     selectedCountry: Country,
-    onPhoneNumberChange: (kotlin.String) -> Unit,
+    onPhoneNumberChange: (String) -> Unit,
     onCountryCodeClick: () -> Unit,
     isValidationError: Boolean,
-    errorMessage: kotlin.String
+    errorMessage: String
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.phone_number_label),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF1F1F1F),
-            lineHeight = 14.sp
-        )
+    Text(
+        text = stringResource(R.string.phone_number_label),
+        fontWeight = FontWeight.SemiBold,
+        style = secondaryText,
+        fontSize = 14.sp,
+        color = Color.Black,
+        lineHeight = 16.sp,
+        letterSpacing = 0.em
+    )
+    Spacer(modifier = Modifier.height(8.dp))
 
-        PhoneTextField(
-            phoneNumber = phoneNumber,
-            selectedCountry = selectedCountry,
-            onPhoneNumberChange = onPhoneNumberChange,
-            onCountryCodeClick = onCountryCodeClick,
-            isError = isValidationError,
-            errorMessage = errorMessage
-        )
-    }
+    PhoneTextField(
+        phoneNumber = phoneNumber,
+        selectedCountry = selectedCountry,
+        onPhoneNumberChange = onPhoneNumberChange,
+        onCountryCodeClick = onCountryCodeClick,
+        isError = isValidationError,
+        errorMessage = errorMessage
+    )
 }
 
-/**
- * Phone Text Field Component - Similar to EmailTextField
- */
+
 @Composable
 private fun PhoneTextField(
-    phoneNumber: kotlin.String,
+    phoneNumber: String,
     selectedCountry: Country,
-    onPhoneNumberChange: (kotlin.String) -> Unit,
+    onPhoneNumberChange: (String) -> Unit,
     onCountryCodeClick: () -> Unit,
     isError: Boolean,
     errorMessage: String
 ) {
     val backgroundColor = if (isError) {
-        Color(0xFFB82819).copy(alpha = 0.05f)
+        ErrorRed.copy(alpha = 0.05f)
     } else {
         Color.White
     }
 
     val borderColor = if (isError) {
-        Color(0xFFB82819).copy(alpha = 0.25f)
+        ErrorRed.copy(alpha = 0.25f)
     } else {
         Color(0xFFE0E0E0)
     }
 
     val textColor = if (isError) {
-        Color(0xFFCA3B2B)
+        ErrorTextRed
     } else {
-        Color(0xFF1F1F1F)
+        TextInputBlack
     }
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    val shape = RoundedCornerShape(14.dp)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .background(
+                color = backgroundColor,
+                shape = shape
+            )
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = shape
+            ),
+        shadowElevation = 10.dp,
+        shape = shape,
     ) {
-        val shape = RoundedCornerShape(14.dp)
-        Surface(
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(61.dp)
-                .background(
-                    color = backgroundColor,
-                    shape = shape
-                )
-                .border(
-                    width = if (isError) 1.dp else 1.dp,
-                    color = borderColor,
-                    shape = shape
-                ),
-            shadowElevation = 8.dp,
-            shape = shape,
+                .fillMaxSize()
+                .background(backgroundColor)
+                .padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(backgroundColor)
-                    .padding(horizontal = 12.dp),
+                modifier = Modifier.clickable(onClick = onCountryCodeClick),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Country Code Selector
-                Row(
-                    modifier = Modifier.clickable(onClick = onCountryCodeClick),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = selectedCountry.flagEmoji,
-                        fontSize = 20.sp,
-                        modifier = Modifier.size(24.dp)
-                    )
+                Text(
+                    text = selectedCountry.flagEmoji,
+                    fontSize = 20.sp,
+                    modifier = Modifier.size(24.dp)
+                )
 
-                    Text(
-                        text = selectedCountry.phoneCode,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal,
-                        lineHeight = 20.sp,
-                        color = textColor
-                    )
+                Text(
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                    text = selectedCountry.phoneCode,
+                    style = secondaryText,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 20.sp,
+                    lineHeight = 24.sp,
+                    letterSpacing = 0.em,
+                    color = textColor
+                )
 
-                    Icon(
-                        painter = painterResource(R.drawable.ic_chevron_down),
-                        contentDescription = stringResource(R.string.select_country),
-                        modifier = Modifier.size(16.dp),
-                        tint = textColor
-                    )
-                }
-
-                // Phone Number Input
-                BasicTextField(
-                    value = phoneNumber,
-                    onValueChange = onPhoneNumberChange,
-                    textStyle = TextStyle(
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Normal,
-                        lineHeight = 20.sp,
-                        color = textColor
-                    ),
-                    keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Phone
-                    ),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f),
-                    decorationBox = { innerTextField ->
-                        if (phoneNumber.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.phone_number_placeholder),
-                                style = TextStyle(
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Normal,
-                                    lineHeight = 20.sp,
-                                    color = Color(0xFF1F1F1F).copy(alpha = 0.54f)
-                                )
-                            )
-                        }
-                        innerTextField()
-                    }
+                Icon(
+                    painter = painterResource(R.drawable.ic_chevron_down),
+                    contentDescription = stringResource(R.string.select_country),
+                    modifier = Modifier.size(16.dp),
+                    tint = textColor
                 )
             }
-        }
 
-        if (isError && errorMessage.isNotEmpty()) {
-            Text(
-                text = errorMessage,
-                color = Color(0xFFCA3B2B),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(start = 4.dp)
+            BasicTextField(
+                value = phoneNumber,
+                onValueChange = onPhoneNumberChange,
+                textStyle = textInputStyle.copy(color = textColor),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Phone
+                ),
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                decorationBox = { innerTextField ->
+                    if (phoneNumber.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.phone_number_placeholder),
+                            style = textInputStyle.copy(color = TextInputBlack.copy(alpha = 0.54f))
+                        )
+                    }
+                    innerTextField()
+                }
             )
         }
     }
+
+    if (isError && errorMessage.isNotEmpty()) {
+        Text(
+            text = errorMessage,
+            color = ErrorTextRed,
+            style = secondaryText,
+            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            lineHeight = 0.15.em,
+            letterSpacing = 0.01.em,
+            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+        )
+    }
 }
 
-/**
- * Country Selector Bottom Sheet
- */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CountrySelectorSheet(
@@ -421,8 +398,8 @@ private fun CountrySelectorSheet(
             countries
         } else {
             countries.filter {
-                it.name.contains(searchQuery, ignoreCase = true) ||
-                        it.phoneCode.contains(searchQuery)
+                it.name.startsWith(searchQuery, ignoreCase = true) ||
+                        it.phoneCode.startsWith(searchQuery)
             }
         }
     }
@@ -439,19 +416,17 @@ private fun CountrySelectorSheet(
         ) {
             Text(
                 text = stringResource(R.string.select_country_code),
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
+                style = enrollmentTopbarTitle,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Search Field
             val searchShape = RoundedCornerShape(14.dp)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp),
+                    .padding(vertical = 16.dp, horizontal = 12.dp),
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_search),
@@ -468,9 +443,10 @@ private fun CountrySelectorSheet(
                         color = Color(0xFF1F1F1F).copy(alpha = 0.54f)
                     )
                 },
-                textStyle = TextStyle(
+                textStyle = secondaryText.copy(
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Medium,
+                    lineHeight = 18.sp,
+                    letterSpacing = 0.em,
                     color = Color(0xFF1F1F1F)
                 ),
                 singleLine = true,
@@ -482,7 +458,6 @@ private fun CountrySelectorSheet(
                 )
             )
 
-            // Country List
             LazyColumn(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -497,9 +472,7 @@ private fun CountrySelectorSheet(
     }
 }
 
-/**
- * Country Item in the list
- */
+
 @Composable
 private fun CountryItem(
     country: Country,
@@ -508,8 +481,9 @@ private fun CountryItem(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .height(72.dp)
             .clickable(onClick = onClick)
-            .padding(vertical = 20.dp)
+            .padding(vertical = 20.dp, horizontal = 16.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -524,10 +498,12 @@ private fun CountryItem(
 
             Text(
                 text = "${country.name} (${country.phoneCode})",
+                fontFamily = interFamily,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Normal,
                 lineHeight = 28.sp,
-                color = Color(0xFF333C4D)
+                color = Color(0xFF333C4D),
+                letterSpacing = 0.em
             )
         }
 
@@ -539,9 +515,7 @@ private fun CountryItem(
     }
 }
 
-/**
- * Continue Button Component
- */
+
 @Composable
 private fun ContinueButton(
     onClick: () -> Unit
@@ -549,7 +523,7 @@ private fun ContinueButton(
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp),
+            .height(52.dp),
         gradient = Brush.verticalGradient(
             colors = listOf(
                 Color.White.copy(alpha = 0.15f),
