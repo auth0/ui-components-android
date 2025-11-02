@@ -53,7 +53,7 @@ import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
-import com.auth0.android.ui_components.theme.secondaryText
+import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.sectionTitle
 import kotlinx.coroutines.launch
 
@@ -229,7 +229,7 @@ private fun RecoveryCodeHeader() {
 
         Text(
             text = stringResource(R.string.recovery_code_description),
-            style = secondaryText,
+            style = contentTextStyle,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -259,7 +259,7 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                style = secondaryText,
+                style = contentTextStyle,
                 text = code,
                 lineHeight = 20.sp,
                 letterSpacing = 0.2.sp,

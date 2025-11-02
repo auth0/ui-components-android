@@ -69,7 +69,7 @@ import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.ButtonBlack
-import com.auth0.android.ui_components.theme.secondaryText
+import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.secondaryTextColor
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -341,7 +341,7 @@ private fun CopyCodeButton(
 
             Text(
                 text = stringResource(R.string.copy_as_code),
-                style = secondaryText,
+                style = contentTextStyle,
                 fontSize = 16.sp,
                 lineHeight = 24.sp,
                 letterSpacing = 0.em,
@@ -384,7 +384,7 @@ private fun InstructionsText() {
     Text(
         modifier = Modifier.width(300.dp),
         text = instructionText,
-        style = secondaryText,
+        style = contentTextStyle,
         fontWeight = FontWeight.Normal,
         lineHeight = 20.sp,
         color = secondaryTextColor
@@ -435,7 +435,7 @@ private fun ManualCodeCard(
         ) {
             Text(
                 text = manualCode,
-                style = secondaryText,
+                style = contentTextStyle,
                 fontWeight = FontWeight.Normal,
                 lineHeight = 20.sp,
                 letterSpacing = 0.sp,

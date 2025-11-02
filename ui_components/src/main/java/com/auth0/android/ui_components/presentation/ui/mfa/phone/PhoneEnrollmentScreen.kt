@@ -63,7 +63,7 @@ import com.auth0.android.ui_components.theme.ErrorRed
 import com.auth0.android.ui_components.theme.ErrorTextRed
 import com.auth0.android.ui_components.theme.TextInputBlack
 import com.auth0.android.ui_components.theme.enrollmentTopbarTitle
-import com.auth0.android.ui_components.theme.secondaryText
+import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.secondaryTextColor
 import com.auth0.android.ui_components.theme.textInputStyle
 import com.auth0.android.ui_components.utils.ValidationUtil
@@ -210,7 +210,7 @@ fun PhoneEnrollmentScreen(
 private fun PhoneEnrollmentHeader() {
     Text(
         text = stringResource(R.string.enter_phone_number),
-        style = secondaryText,
+        style = contentTextStyle,
         textAlign = TextAlign.Start,
         fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
@@ -223,7 +223,7 @@ private fun PhoneEnrollmentHeader() {
 
     Text(
         text = stringResource(R.string.verification_code_text),
-        style = secondaryText,
+        style = contentTextStyle,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 0.15.em,
@@ -245,7 +245,7 @@ private fun PhoneFormField(
     Text(
         text = stringResource(R.string.phone_number_label),
         fontWeight = FontWeight.SemiBold,
-        style = secondaryText,
+        style = contentTextStyle,
         fontSize = 14.sp,
         color = Color.Black,
         lineHeight = 16.sp,
@@ -330,7 +330,7 @@ private fun PhoneTextField(
                 Text(
                     modifier = Modifier.padding(horizontal = 4.dp),
                     text = selectedCountry.phoneCode,
-                    style = secondaryText,
+                    style = contentTextStyle,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 20.sp,
                     lineHeight = 24.sp,
@@ -372,7 +372,7 @@ private fun PhoneTextField(
         Text(
             text = errorMessage,
             color = ErrorTextRed,
-            style = secondaryText,
+            style = contentTextStyle,
             fontWeight = FontWeight.Normal,
             fontSize = 16.sp,
             lineHeight = 0.15.em,
@@ -443,7 +443,7 @@ private fun CountrySelectorSheet(
                         color = Color(0xFF1F1F1F).copy(alpha = 0.54f)
                     )
                 },
-                textStyle = secondaryText.copy(
+                textStyle = contentTextStyle.copy(
                     fontSize = 18.sp,
                     lineHeight = 18.sp,
                     letterSpacing = 0.em,

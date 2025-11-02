@@ -89,7 +89,7 @@ val sectionTitle = TextStyle(
     textAlign = TextAlign.Center,
 )
 
-val secondaryText = TextStyle(
+val contentTextStyle = TextStyle(
     fontFamily = interFamily,
     fontWeight = FontWeight.Medium,
     fontSize = 14.sp,

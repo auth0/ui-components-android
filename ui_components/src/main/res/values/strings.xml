@@ -23,6 +23,7 @@
     <string name="add_email_otp">Add Email OTP</string>
     <string name="enter_email_address">Enter your Email address</string>
     <string name="email_label">Email</string>
+    <string name="email_placeholder">youremail@example.com</string>
     <string name="email_verification_code_text">We will send you a verification code.</string>
 
     <!-- OTP Verification -->
