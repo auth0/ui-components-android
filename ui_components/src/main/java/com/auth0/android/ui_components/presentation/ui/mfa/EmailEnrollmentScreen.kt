@@ -24,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -171,11 +170,6 @@ fun EmailEnrollmentScreen(
     }
 }
 
-/**
- * Email Enrollment Header Component
- *
- * Displays title and description for email enrollment
- */
 @Composable
 private fun EmailEnrollmentHeader() {
 
@@ -299,23 +293,7 @@ private fun EmailTextField(
                     )
                 }
                 innerTextField()
-            },
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .background(
-//                    color = backgroundColor,
-//                    shape = shape
-//                )
-//                .border(
-//                    width = 0.dp,
-//                    color = borderColor,
-//                    shape = shape
-//                ),
-//            colors = OutlinedTextFieldDefaults.colors(
-//                focusedBorderColor = Color.Transparent,
-//                unfocusedBorderColor = borderColor,
-//                cursorColor = Color.Gray,
-//            ),
+            }
         )
     }
 

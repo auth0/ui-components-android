@@ -524,12 +524,6 @@ private fun ContinueButton(
         modifier = Modifier
             .fillMaxWidth()
             .height(52.dp),
-        gradient = Brush.verticalGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.15f),
-                Color.Transparent
-            )
-        ),
         onClick = onClick
     ) {
         Text(stringResource(R.string.continue_button))

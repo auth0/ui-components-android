@@ -97,6 +97,8 @@ internal fun AuthenticatorSettingsNavigationHost(
                 authenticatorType = args.authenticatorType,
                 authenticationId = args.authenticationId,
                 authSession = args.authSession,
+                showResendOption = false,
+//                showResendOption = args.authenticatorType != AuthenticatorType.TOTP,
                 phoneNumberOrEmail = args.phoneNumberOrEmail,
                 onBackClick = {
                     navController.navigateUp()
