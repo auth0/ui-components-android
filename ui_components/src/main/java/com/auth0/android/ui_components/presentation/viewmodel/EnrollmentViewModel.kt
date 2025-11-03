@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.AuthenticationMethod
+import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
@@ -109,10 +110,37 @@ class EnrollmentViewModel(
                 }
                 .onError { error ->
                     Log.e(TAG, "Verification failed", error.cause)
-                    _uiState.value = EnrollmentUiState.Error(
-                        UiError(
-                            error, { verifyWithOtp(authenticationMethodId, otpCode, authSession) }
-                        ))
+                    _uiState.value =
+                        when (error) {
+                            is Auth0Error.InvalidOTP -> {
+                                EnrollmentUiState.InvalidOtp(
+                                    "Invalid passcode. Please try again.",
+                                    UiError(
+                                        error,
+                                        {
+                                            verifyWithOtp(
+                                                authenticationMethodId,
+                                                otpCode,
+                                                authSession
+                                            )
+                                        })
+                                )
+                            }
+
+                            else -> {
+                                EnrollmentUiState.Error(
+                                    UiError(
+                                        error,
+                                        {
+                                            verifyWithOtp(
+                                                authenticationMethodId,
+                                                otpCode,
+                                                authSession
+                                            )
+                                        }
+                                    ))
+                            }
+                        }
                 }
         }
     }
@@ -142,10 +170,11 @@ class EnrollmentViewModel(
                 }
                 .onError { error ->
                     Log.e(TAG, "Verification failed", error.cause)
-                    _uiState.value = EnrollmentUiState.Error(
-                        UiError(
-                            error, { verifyWithoutOtp(authenticationMethodId, authSession) }
-                        ))
+                    _uiState.value =
+                        EnrollmentUiState.Error(
+                            UiError(
+                                error, { verifyWithoutOtp(authenticationMethodId, authSession) }
+                            ))
                 }
         }
     }
@@ -179,4 +208,6 @@ sealed interface EnrollmentUiState {
 
     /** Error occurred during enrollment or verification */
     data class Error(val uiError: UiError) : EnrollmentUiState
+
+    data class InvalidOtp(val message: String, val uiError: UiError) : EnrollmentUiState
 }

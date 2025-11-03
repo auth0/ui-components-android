@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.domain.network
 
+import android.util.Log
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.error.ErrorMapper
 

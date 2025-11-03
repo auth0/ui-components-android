@@ -157,6 +157,8 @@ fun QREnrollmentScreen(
                 is EnrollmentUiState.Error -> {
                     ErrorHandler(state.uiError)
                 }
+
+                is EnrollmentUiState.InvalidOtp -> TODO()
             }
         }
     }

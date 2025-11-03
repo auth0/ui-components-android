@@ -35,7 +35,7 @@ import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
-import com.auth0.android.ui_components.presentation.ui.utils.UiStringFormat
+import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
 import com.auth0.android.ui_components.presentation.viewmodel.EnrolledAuthenticatorViewModel
 import com.auth0.android.ui_components.theme.enrollmentSubTitle
 import com.auth0.android.ui_components.utils.DateUtil
@@ -59,7 +59,7 @@ fun EnrolledAuthenticatorListScreen(
     Scaffold(
         topBar = {
             TopBar(
-                title = UiStringFormat.formatTopBarTitleForAuthenticator(authenticatorType.type),
+                title = UiUtils.formatTopBarTitleForAuthenticator(authenticatorType.type),
                 topBarColor = Color.White,
                 showSeparator = false,
                 trailingIcon = if (!uiState.loading && uiState.uiError == null) {
@@ -122,7 +122,7 @@ fun AuthenticatorListContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = UiStringFormat.formatDescriptionForAuthenticator(authenticatorType),
+            text = UiUtils.formatDescriptionForAuthenticator(authenticatorType),
             style = enrollmentSubTitle,
             modifier = Modifier.height(16.dp)
         )
@@ -130,7 +130,7 @@ fun AuthenticatorListContent(
         if (authenticators.isEmpty()) {
             EmptyAuthenticatorItem(
                 modifier = Modifier.padding(vertical = 8.dp),
-                emptyMessage = UiStringFormat.formatEmptyStateMessageForAuthenticatorItems(
+                emptyMessage = UiUtils.formatEmptyStateMessageForAuthenticatorItems(
                     authenticatorType
                 )
             )
@@ -148,7 +148,7 @@ fun AuthenticatorListContent(
 
                 EnrolledAuthenticatorItem(
                     title = authenticator.name
-                        ?: UiStringFormat.formatDefaultNameForAuthenticatorItems(authenticator.type),
+                        ?: UiUtils.formatDefaultNameForAuthenticatorItems(authenticator.type),
                     subtitle = stringResource(
                         R.string.created_on,
                         DateUtil.formatIsoDate(authenticator.createdAt)

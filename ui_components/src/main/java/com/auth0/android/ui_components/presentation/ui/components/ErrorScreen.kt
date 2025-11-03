@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,13 +28,20 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.unit.em
 import com.auth0.android.ui_components.R
+import com.auth0.android.ui_components.theme.SectionDescriptionTextColor
+import com.auth0.android.ui_components.theme.contentTextStyle
+import interFamily
 
 @Composable
 fun ErrorScreen(
+    modifier: Modifier = Modifier,
     mainErrorMessage: String,
     description: String = stringResource(R.string.unable_to_process_contact),
-    modifier: Modifier = Modifier,
     clickableString: String = stringResource(R.string.contact_us),
     onRetryClick: () -> Unit = {}
 ) {
@@ -41,6 +49,7 @@ fun ErrorScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
+            .background(Color.White)
             .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -51,12 +60,16 @@ fun ErrorScreen(
         ) {
             Text(
                 text = mainErrorMessage,
-                style = MaterialTheme.typography.bodyMedium.copy(
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontStyle = FontStyle.Normal,
                     fontWeight = FontWeight.Medium,
-                    fontSize = 20.sp
+                    fontSize = 24.sp,
+                    lineHeight = 1.1499.em,
+                    letterSpacing = 0.0125.em,
+                    color = Color.Black,
+                    textAlign = TextAlign.Center,
                 ),
-                color = Color.Black,
-                textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -92,14 +105,10 @@ fun ErrorScreen(
     }
 }
 
-/**
- * Composable that displays the error message with an embedded clickable link.
- * The "contact us" text is underlined and clickable.
- */
+
 @Composable
 fun MessageWithLink(
     message: String,
-    modifier: Modifier = Modifier,
     clickableLinkText: String? = null,
     clickableLink: String = "https://auth0.com/contact-us"
 ) {
@@ -107,8 +116,11 @@ fun MessageWithLink(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                color = Color(0xFF666666),
-                fontSize = 16.sp
+                fontFamily = interFamily,
+                fontWeight = FontWeight.Normal,
+                color = SectionDescriptionTextColor,
+                fontSize = 14.sp,
+                letterSpacing = 0.em,
             )
         ) {
             append(message)
@@ -120,8 +132,11 @@ fun MessageWithLink(
             )
             withStyle(
                 style = SpanStyle(
-                    color = Color(0xFF666666),
-                    fontSize = 16.sp,
+                    fontFamily = interFamily,
+                    fontWeight = FontWeight.Normal,
+                    color = SectionDescriptionTextColor,
+                    fontSize = 14.sp,
+                    letterSpacing = 0.em,
                     textDecoration = TextDecoration.Underline
                 )
             ) {

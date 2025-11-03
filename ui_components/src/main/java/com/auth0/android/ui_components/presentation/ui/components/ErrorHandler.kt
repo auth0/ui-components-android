@@ -78,7 +78,7 @@ fun ErrorHandler(
         else -> {
             ErrorScreen(
                 mainErrorMessage = error.message,
-                description = stringResource(R.string.unable_to_process),
+                description = stringResource(R.string.unable_to_process_contact),
                 modifier = modifier,
                 clickableString = stringResource(R.string.contact_us),
                 onRetryClick = uiError.onRetry

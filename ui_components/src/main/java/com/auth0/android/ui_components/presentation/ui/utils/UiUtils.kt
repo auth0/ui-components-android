@@ -1,6 +1,8 @@
 package com.auth0.android.ui_components.presentation.ui.utils
 
-object UiStringFormat {
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
+
+object UiUtils {
 
     /**
      * Formats the top bar title for the given authenticator type
@@ -54,4 +56,37 @@ object UiStringFormat {
             else -> "No Recovery code was saved."
         }
     }
+
+
+    /**
+     * Returns appropriate text content based on authenticator type
+     */
+    internal fun getOTPVerificationScreenText(
+        authenticatorType: AuthenticatorType,
+        phoneNumberOrEmail: String?
+    ): ScreenTextContent {
+        return when (authenticatorType) {
+            AuthenticatorType.PHONE -> ScreenTextContent(
+                topBarTitle = "Verify it's you",
+                primaryText = "Enter the 6-digit code we sent to ${phoneNumberOrEmail ?: "your phone"}",
+            )
+
+            AuthenticatorType.EMAIL -> ScreenTextContent(
+                topBarTitle = "Verify it's you",
+                primaryText = "Enter the 6-digit code we sent to $phoneNumberOrEmail",
+            )
+
+            else -> ScreenTextContent(
+                topBarTitle = "Add and Authenticator",
+                primaryText = "Enter the 6-digit code",
+                description = "From your Authenticator App"
+            )
+        }
+    }
+
+    internal data class ScreenTextContent(
+        val topBarTitle: String,
+        val primaryText: String,
+        val description: String? = null
+    )
 }

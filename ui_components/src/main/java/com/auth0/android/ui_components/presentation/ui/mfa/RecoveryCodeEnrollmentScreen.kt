@@ -55,6 +55,7 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewMode
 import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
 import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.sectionTitle
+import kotlinx.coroutines.*
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -120,7 +121,7 @@ fun RecoveryCodeEnrollmentScreen(
                                 isVerifying = false,
                                 onCopyClick = {
                                     clipboardManager.setText(AnnotatedString(recoveryCode))
-                                    kotlinx.coroutines.MainScope().launch {
+                                    MainScope().launch {
                                         snackbarHostState.showSnackbar("Copied to clipboard")
                                     }
                                 },
@@ -138,8 +139,7 @@ fun RecoveryCodeEnrollmentScreen(
                         else -> {
                             ErrorScreen(
                                 mainErrorMessage = stringResource(R.string.unexpected_enrollment_result),
-                                stringResource(R.string.try_again),
-                                Modifier
+                                description = stringResource(R.string.try_again),
                             )
                         }
                     }
@@ -151,7 +151,7 @@ fun RecoveryCodeEnrollmentScreen(
                         isVerifying = true,
                         onCopyClick = {
                             clipboardManager.setText(AnnotatedString(recoveryCode))
-                            kotlinx.coroutines.MainScope().launch {
+                            MainScope().launch {
                                 snackbarHostState.showSnackbar("Copied to clipboard")
                             }
                         },
@@ -169,6 +169,8 @@ fun RecoveryCodeEnrollmentScreen(
                 is EnrollmentUiState.Error -> {
                     ErrorHandler(state.uiError)
                 }
+
+                is EnrollmentUiState.InvalidOtp -> TODO()
             }
         }
     }

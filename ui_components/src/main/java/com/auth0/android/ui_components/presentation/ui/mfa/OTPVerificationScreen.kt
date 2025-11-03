@@ -50,8 +50,10 @@ import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
+import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
+import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.ButtonBlack
@@ -82,36 +84,38 @@ fun OTPVerificationScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
-    val screenConfig = remember(authenticatorType, phoneNumberOrEmail) {
-        getScreenConfigText(authenticatorType, phoneNumberOrEmail)
+    val screenText = remember(authenticatorType, phoneNumberOrEmail) {
+        UiUtils.getOTPVerificationScreenText(authenticatorType, phoneNumberOrEmail)
     }
 
-    LaunchedEffect(uiState) {
-        when (val state = uiState) {
-            is EnrollmentUiState.Success -> {
-                onVerificationSuccess()
-            }
-
-            is EnrollmentUiState.Error -> {
-                isError = true
-                errorMessage = getErrorMessage(state.uiError.error.cause)
-            }
-
-            else -> {
-            }
-        }
-    }
 
     Scaffold(
         topBar = {
             TopBar(
-                title = screenConfig.topBarTitle,
+                title = screenText.topBarTitle,
                 onBackClick = onBackClick,
                 showSeparator = false
             )
         },
         containerColor = Color.White
     ) { paddingValues ->
+
+        when (val state = uiState) {
+            is EnrollmentUiState.Success -> {
+                onVerificationSuccess()
+            }
+
+            is EnrollmentUiState.InvalidOtp -> {
+                isError = true
+                errorMessage = state.message
+            }
+
+            else -> {
+            }
+        }
+
+
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -120,7 +124,7 @@ fun OTPVerificationScreen(
             horizontalAlignment = Alignment.Start
         ) {
             Text(
-                text = screenConfig.primaryText,
+                text = screenText.primaryText,
                 style = contentTextStyle,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 20.sp,
@@ -133,9 +137,9 @@ fun OTPVerificationScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (!screenConfig.description.isNullOrEmpty()) {
+            if (!screenText.description.isNullOrEmpty()) {
                 Text(
-                    text = screenConfig.description,
+                    text = screenText.description,
                     style = MaterialTheme.typography.bodyMedium,
                     fontSize = 14.sp,
                     color = secondaryTextColor,
@@ -184,7 +188,8 @@ fun OTPVerificationScreen(
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Normal,
                     color = ErrorRed,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Start
                 )
                 Spacer(modifier = Modifier.height(16.dp))
             }
@@ -227,16 +232,19 @@ fun OTPVerificationScreen(
             }
         }
 
-        // Show loading overlay when verifying
         if (uiState is EnrollmentUiState.Verifying) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.3f)),
+                    .background(Color.White),
                 contentAlignment = Alignment.Center
             ) {
                 CircularLoader()
             }
+        }
+
+        if (uiState is EnrollmentUiState.Error) {
+            ErrorHandler((uiState as EnrollmentUiState.Error).uiError)
         }
 
         LaunchedEffect(Unit) {
@@ -373,42 +381,6 @@ private fun ResendLink(
     )
 }
 
-/**
- * Holds screen text  based on authenticator type
- */
-private data class ConfigurationText(
-    val topBarTitle: String,
-    val primaryText: String,
-    val description: String? = null
-)
-
-/**
- * Get Screen Configuration
- *
- * Returns appropriate text content based on authenticator type
- */
-private fun getScreenConfigText(
-    authenticatorType: AuthenticatorType,
-    phoneNumberOrEmail: String?
-): ConfigurationText {
-    return when (authenticatorType) {
-        AuthenticatorType.PHONE -> ConfigurationText(
-            topBarTitle = "Verify it's you",
-            primaryText = "Enter the 6-digit code we sent to ${phoneNumberOrEmail ?: "your phone"}",
-        )
-
-        AuthenticatorType.EMAIL -> ConfigurationText(
-            topBarTitle = "Verify it's you",
-            primaryText = "Enter the 6-digit code we sent to $phoneNumberOrEmail",
-        )
-
-        else -> ConfigurationText(
-            topBarTitle = "Add and Authenticator",
-            primaryText = "Enter the 6-digit code",
-            description = "From your Authenticator App"
-        )
-    }
-}
 
 /**
  * Extract user-friendly error message from exception
