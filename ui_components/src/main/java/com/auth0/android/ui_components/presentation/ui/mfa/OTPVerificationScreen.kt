@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -46,14 +48,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.auth0.android.authentication.AuthenticationException
+import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
+import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
+import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.ButtonBlack
@@ -71,7 +75,10 @@ fun OTPVerificationScreen(
     phoneNumberOrEmail: String? = null,
     showResendOption: Boolean = true,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
+        factory = MyAccountModule.provideEnrollmentViewModelFactory(
+            authenticatorType,
+            startDefaultEnrollment = false
+        )
     ),
     onBackClick: () -> Unit = {},
     onVerificationSuccess: () -> Unit = {},
@@ -88,6 +95,18 @@ fun OTPVerificationScreen(
         UiUtils.getOTPVerificationScreenText(authenticatorType, phoneNumberOrEmail)
     }
 
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is EnrollmentEvent.EnrollmentChallengeSuccess -> {
+                Log.d("OTPVerificationScreen", "$event not handled ")
+            }
+
+            is EnrollmentEvent.VerificationSuccess -> {
+                onVerificationSuccess()
+            }
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -99,22 +118,6 @@ fun OTPVerificationScreen(
         },
         containerColor = Color.White
     ) { paddingValues ->
-
-        when (val state = uiState) {
-            is EnrollmentUiState.Success -> {
-                onVerificationSuccess()
-            }
-
-            is EnrollmentUiState.InvalidOtp -> {
-                isError = true
-                errorMessage = state.message
-            }
-
-            else -> {
-            }
-        }
-
-
 
         Column(
             modifier = Modifier
@@ -181,18 +184,7 @@ fun OTPVerificationScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (isError && errorMessage.isNotEmpty()) {
-                Text(
-                    text = errorMessage,
-                    style = contentTextStyle,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = ErrorRed,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Start
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+            OTPFieldError(uiState, isError, errorMessage)
 
             if (showResendOption && !isError) {
                 ResendLink(onResend = onResend)
@@ -232,24 +224,56 @@ fun OTPVerificationScreen(
             }
         }
 
-        if (uiState is EnrollmentUiState.Verifying) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.White),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularLoader()
-            }
-        }
-
-        if (uiState is EnrollmentUiState.Error) {
-            ErrorHandler((uiState as EnrollmentUiState.Error).uiError)
-        }
+        LoadingScreen(uiState)
+        ErrorScreen(uiState)
 
         LaunchedEffect(Unit) {
             focusRequester.requestFocus()
         }
+    }
+}
+
+@Composable
+private fun OTPFieldError(
+    state: EnrollmentUiState,
+    isError: Boolean,
+    errorMessage: String
+) {
+
+    val error = state.otpError || isError
+    val errorString =
+        if (state.otpError) stringResource(R.string.invalid_passcode) else errorMessage
+    if (error && errorString.isNotEmpty()) {
+        Text(
+            text = errorString,
+            style = contentTextStyle,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Normal,
+            color = ErrorRed,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Start
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun LoadingScreen(state: EnrollmentUiState) {
+    if (state.enrollingAuthenticator)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularLoader()
+        }
+}
+
+@Composable
+private fun ErrorScreen(state: EnrollmentUiState) {
+    state.uiError?.let {
+        ErrorHandler(it)
     }
 }
 
@@ -379,39 +403,4 @@ private fun ResendLink(
         text = annotatedString,
         modifier = Modifier.fillMaxWidth()
     )
-}
-
-
-/**
- * Extract user-friendly error message from exception
- */
-private fun getErrorMessage(exception: Throwable): String {
-    return when (exception) {
-        is AuthenticationException -> {
-            when {
-                exception.getCode() == "invalid_grant" ||
-                        exception.getDescription().contains("invalid", ignoreCase = true) ||
-                        exception.getDescription().contains("incorrect", ignoreCase = true) -> {
-                    "Invalid passcode. Please try again."
-                }
-
-                exception.getDescription().contains("expired", ignoreCase = true) -> {
-                    "Passcode expired. Please request a new one."
-                }
-
-                exception.getDescription().contains("rate", ignoreCase = true) ||
-                        exception.getDescription().contains("too many", ignoreCase = true) -> {
-                    "Too many attempts. Please try again later."
-                }
-
-                else -> {
-                    exception.getDescription() ?: "Verification failed. Please try again."
-                }
-            }
-        }
-
-        else -> {
-            exception.message ?: "An error occurred. Please try again."
-        }
-    }
 }

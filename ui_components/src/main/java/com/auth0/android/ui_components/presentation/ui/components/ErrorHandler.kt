@@ -30,12 +30,10 @@ fun ErrorHandler(
                         saveToken(getMyAccountAudience(), error.mfaScope, it)
                     }
                     uiError.onRetry.invoke()
-                }
-                    .onError {
+                }.onError {
 
                     }
             }
-
         }
 
         is Auth0Error.NetworkError -> {

@@ -1,6 +1,7 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -28,7 +29,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -57,6 +57,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
@@ -66,6 +67,8 @@ import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
+import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
+import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.ButtonBlack
@@ -88,11 +91,27 @@ fun QREnrollmentScreen(
         authSession: String,
     ) -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val title = when (authenticatorType) {
         AuthenticatorType.PUSH -> "Push Notification"
         else -> "Authenticator"
+    }
+
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is EnrollmentEvent.EnrollmentChallengeSuccess -> {
+                Log.d("TAG", "QREnrollmentScreen:  $event")
+            }
+
+            is EnrollmentEvent.VerificationSuccess -> {
+                onContinueClick(
+                    event.authenticationMethod.id,
+                    event.authenticationMethod.type
+                )
+            }
+        }
     }
 
     Scaffold(
@@ -110,56 +129,16 @@ fun QREnrollmentScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when (val state = uiState) {
-                is EnrollmentUiState.Idle -> {
-                }
-
-                is EnrollmentUiState.Loading -> {
-                    LoadingContent()
-                }
-
-                is EnrollmentUiState.EnrollmentInitiated -> {
-                    when (val result = state.enrollmentResult) {
-                        is EnrollmentResult.TotpEnrollment -> {
-                            QREnrollmentContent(
-                                authenticatorType = authenticatorType,
-                                totpEnrollment = result,
-                                viewModel = viewModel,
-                                onContinueClick = onContinueClick
-                            )
-                        }
-
-                        else -> {
-                           //
-                        }
-                    }
-                }
-
-                is EnrollmentUiState.Verifying -> {
-                    LoadingContent()
-                }
-
-                is EnrollmentUiState.Success -> {
-                    when (authenticatorType) {
-                        AuthenticatorType.PUSH -> {
-                            onContinueClick(
-                                state.authenticationMethod.id,
-                                state.authenticationMethod.type
-                            )
-                        }
-
-                        else -> {
-                            // No need to handle the else state
-                        }
-                    }
-                }
-
-                is EnrollmentUiState.Error -> {
-                    ErrorHandler(state.uiError)
-                }
-
-                is EnrollmentUiState.InvalidOtp -> TODO()
+            viewModel.enrollmentChallengeResult?.let {
+                QREnrollmentContent(
+                    authenticatorType = authenticatorType,
+                    enrollmentResult = it,
+                    viewModel = viewModel,
+                    onContinueClick = onContinueClick
+                )
             }
+            LoadingScreen(uiState)
+            ErrorScreen(uiState)
         }
     }
 }
@@ -170,10 +149,11 @@ fun QREnrollmentScreen(
 @Composable
 private fun QREnrollmentContent(
     authenticatorType: AuthenticatorType,
-    totpEnrollment: EnrollmentResult.TotpEnrollment,
+    enrollmentResult: EnrollmentResult,
     viewModel: EnrollmentViewModel,
     onContinueClick: (String, String) -> Unit
 ) {
+    val totpEnrollment = enrollmentResult as EnrollmentResult.TotpEnrollment
     val manualCode = totpEnrollment.challenge.manualInputCode
     val barcodeUri = totpEnrollment.challenge.barcodeUri
     val hasManualCode = !manualCode.isNullOrEmpty()
@@ -229,16 +209,14 @@ private fun QREnrollmentContent(
             ContinueButtonSection(
                 onContinueClick = {
                     if (isPushNotification) {
-                        // For Push: Verify without OTP immediately
                         viewModel.verifyWithoutOtp(
-                            authenticationMethodId = totpEnrollment.authenticationMethodId,
-                            authSession = totpEnrollment.authSession
+                            authenticationMethodId = enrollmentResult.authenticationMethodId,
+                            authSession = enrollmentResult.authSession
                         )
                     } else {
-                        // For TOTP: Navigate to OTP verification screen
                         onContinueClick(
-                            totpEnrollment.authenticationMethodId,
-                            totpEnrollment.authSession
+                            enrollmentResult.authenticationMethodId,
+                            enrollmentResult.authSession
                         )
                     }
                 }
@@ -502,20 +480,24 @@ private fun DownloadLinkText(
     Text(annotatedString, textAlign = TextAlign.Center)
 }
 
-/**
- * Loading State
- */
+
 @Composable
-private fun LoadingContent() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+private fun LoadingScreen(state: EnrollmentUiState) {
+    if (state.enrollingAuthenticator || state.verifyingAuthenticator)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White),
+            contentAlignment = Alignment.Center
         ) {
             CircularLoader()
         }
+}
+
+@Composable
+private fun ErrorScreen(state: EnrollmentUiState) {
+    state.uiError?.let {
+        ErrorHandler(it)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -37,11 +38,12 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
-import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
+import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
+import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.ErrorRed
@@ -68,6 +70,22 @@ fun EmailEnrollmentScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is EnrollmentEvent.EnrollmentChallengeSuccess -> {
+                onContinueToOTP(
+                    event.authenticationMethodId,
+                    event.authSession,
+                    email
+                )
+            }
+
+            is EnrollmentEvent.VerificationSuccess -> {
+                Log.d("EmailEnrollmentScreen", "$event not handled ")
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopBar(
@@ -85,49 +103,6 @@ fun EmailEnrollmentScreen(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp, vertical = 38.dp)
         ) {
-
-
-            when (val state = uiState) {
-                is EnrollmentUiState.EnrollmentInitiated -> {
-                    when (val result = state.enrollmentResult) {
-                        is EnrollmentResult.DefaultEnrollment -> {
-                            onContinueToOTP(
-                                result.authenticationMethodId,
-                                result.authSession,
-                                email
-                            )
-                            viewModel.resetState()
-                        }
-
-                        else -> {
-                            validationError = true
-                            errorMessage = stringResource(R.string.unexpected_enrollment_result)
-                        }
-                    }
-                }
-
-                is EnrollmentUiState.Error -> {
-                    validationError = true
-                    ErrorHandler(state.uiError)
-                }
-
-                is EnrollmentUiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularLoader()
-                    }
-                }
-
-                else -> {
-                    // Other states handled in UI
-                }
-            }
-
-
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -167,6 +142,28 @@ fun EmailEnrollmentScreen(
                 }
             )
         }
+        LoadingScreen(state = uiState)
+        ErrorScreen(uiState)
+    }
+}
+
+@Composable
+private fun LoadingScreen(state: EnrollmentUiState) {
+    if (state.enrollingAuthenticator)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularLoader()
+        }
+}
+
+@Composable
+private fun ErrorScreen(state: EnrollmentUiState) {
+    state.uiError?.let {
+        ErrorHandler(it)
     }
 }
 

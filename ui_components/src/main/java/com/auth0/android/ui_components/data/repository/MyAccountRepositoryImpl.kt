@@ -1,33 +1,28 @@
 package com.auth0.android.ui_components.data.repository
 
-import android.util.Log
 import com.auth0.android.myaccount.PhoneAuthenticationMethodType
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.Factor
-import com.auth0.android.result.MfaEnrollmentChallenge
-import com.auth0.android.result.RecoveryCodeEnrollmentChallenge
-import com.auth0.android.result.TotpEnrollmentChallenge
 import com.auth0.android.ui_components.data.MyAccountProvider
+import com.auth0.android.ui_components.domain.mapper.toDomainModel
+import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.TotpEnrollmentChallenge
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
+import com.auth0.android.result.MfaEnrollmentChallenge as SdkMfaEnrollmentChallenge
 
 /**
  * Repository that handles MyAccount API calls
- * Receives access token from caller - does NOT fetch tokens
  */
 class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) :
     MyAccountRepository {
 
-    companion object {
-        private const val TAG = "MyAccountRepository"
-    }
-
     /**
      * Fetches factors using provided access token
      * @param accessToken Pre-fetched access token with required scopes
-     * @throws Exception if API call fails
+     * @return list of [Factor]
      */
     override suspend fun getFactors(accessToken: String): List<Factor> {
-        Log.d(TAG, "Fetching factors")
         val client = myAccountProvider.getMyAccount(accessToken)
         return client.getFactors().await()
     }
@@ -35,23 +30,20 @@ class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) 
     /**
      * Fetches authentication methods using provided access token
      * @param accessToken Pre-fetched access token with required scopes
-     * @throws Exception if API call fails
+     * @return list of [AuthenticationMethod]
      */
     override suspend fun getAuthenticatorMethods(accessToken: String): List<AuthenticationMethod> {
-        Log.d(TAG, "Fetching authentication methods")
         val client = myAccountProvider.getMyAccount(accessToken)
         return client.getAuthenticationMethods().await()
     }
 
     /**
      * Deletes an authentication method
-     *
      */
     override suspend fun deleteAuthenticationMethod(
         authenticationMethodId: String,
         accessToken: String
     ): Void? {
-        Log.d(TAG, "Deleting authentication method $authenticationMethodId")
         val client = myAccountProvider.getMyAccount(accessToken)
         return client.deleteAuthenticationMethod(authenticationMethodId).await()
     }
@@ -59,53 +51,49 @@ class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) 
     /**
      * Enrolls TOTP authenticator
      * @param accessToken Pre-fetched access token with required scopes
-     * @return TotpEnrollmentChallenge containing QR code and secret
-     * @throws Exception if API call fails
+     * @return [TotpEnrollmentChallenge]  containing QR code and secret
      */
     override suspend fun enrollTotp(accessToken: String): TotpEnrollmentChallenge {
-        Log.d(TAG, "Enrolling TOTP authenticator")
         val client = myAccountProvider.getMyAccount(accessToken)
-        return client.enrollTotp().await()
+        val sdkChallenge = client.enrollTotp().await()
+        return sdkChallenge.toDomainModel()
     }
 
     /**
      * Enrolls Push Notification authenticator
      * @param accessToken Pre-fetched access token with required scopes
-     * @return TotpEnrollmentChallenge containing enrollment data
-     * @throws Exception if API call fails
+     * @return [TotpEnrollmentChallenge] domain model containing enrollment data
      */
     override suspend fun enrollPushNotification(accessToken: String): TotpEnrollmentChallenge {
-        Log.d(TAG, "Enrolling Push Notification authenticator")
         val client = myAccountProvider.getMyAccount(accessToken)
-        return client.enrollPushNotification().await()
+        val sdkChallenge = client.enrollPushNotification().await()
+        return sdkChallenge.toDomainModel()
     }
 
     /**
      * Enrolls Recovery Code authenticator
      * @param accessToken Pre-fetched access token with required scopes
-     * @return RecoveryCodeEnrollmentChallenge containing recovery codes
-     * @throws Exception if API call fails
+     * @return [RecoveryCodeEnrollmentChallenge] containing recovery codes
      */
     override suspend fun enrollRecoveryCode(accessToken: String): RecoveryCodeEnrollmentChallenge {
-        Log.d(TAG, "Enrolling Recovery Code authenticator")
         val client = myAccountProvider.getMyAccount(accessToken)
-        return client.enrollRecoveryCode().await()
+        val sdkChallenge = client.enrollRecoveryCode().await()
+        return sdkChallenge.toDomainModel()
     }
 
     /**
      * Enrolls Email authenticator
      * @param email Email address for authentication
      * @param accessToken Pre-fetched access token with required scopes
-     * @return EnrollmentChallenge containing enrollment session data
-     * @throws Exception if API call fails
+     * @return [MfaEnrollmentChallenge] containing enrollment session data
      */
     override suspend fun enrollEmail(
         email: String,
         accessToken: String
     ): MfaEnrollmentChallenge {
-        Log.d(TAG, "Enrolling Email authenticator: $email")
         val client = myAccountProvider.getMyAccount(accessToken)
-        return client.enrollEmail(email).await() as MfaEnrollmentChallenge
+        val sdkChallenge = client.enrollEmail(email).await() as SdkMfaEnrollmentChallenge
+        return sdkChallenge.toDomainModel()
     }
 
     /**
@@ -113,17 +101,17 @@ class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) 
      * @param phoneNumber Phone number for authentication
      * @param preferredMethod SMS or Voice call method
      * @param accessToken Pre-fetched access token with required scopes
-     * @return EnrollmentChallenge containing enrollment session data
-     * @throws Exception if API call fails
+     * @return [MfaEnrollmentChallenge] containing enrollment session data
      */
     override suspend fun enrollPhone(
         phoneNumber: String,
         preferredMethod: PhoneAuthenticationMethodType,
         accessToken: String
     ): MfaEnrollmentChallenge {
-        Log.d(TAG, "Enrolling Phone authenticator: $phoneNumber with method: $preferredMethod")
         val client = myAccountProvider.getMyAccount(accessToken)
-        return client.enrollPhone(phoneNumber, preferredMethod).await() as MfaEnrollmentChallenge
+        val sdkChallenge =
+            client.enrollPhone(phoneNumber, preferredMethod).await() as SdkMfaEnrollmentChallenge
+        return sdkChallenge.toDomainModel()
     }
 
     /**
@@ -132,7 +120,7 @@ class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) 
      * @param otpCode The OTP code entered by user
      * @param authSession Session token from enrollment
      * @param accessToken Pre-fetched access token with required scopes
-     * @return Verified AuthenticationMethod
+     * @return Verified [AuthenticationMethod]
      * @throws Exception if API call fails or OTP is invalid
      */
     override suspend fun verifyOtp(
@@ -141,7 +129,6 @@ class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) 
         authSession: String,
         accessToken: String
     ): AuthenticationMethod {
-        Log.d(TAG, "Verifying OTP for authentication method: $authenticationMethodId")
         val client = myAccountProvider.getMyAccount(accessToken)
         return client.verifyOtp(authenticationMethodId, otpCode, authSession).await()
     }
@@ -151,15 +138,13 @@ class MyAccountRepositoryImpl(private val myAccountProvider: MyAccountProvider) 
      * @param authenticationMethodId ID of the authentication method to verify
      * @param authSession Session token from enrollment
      * @param accessToken Pre-fetched access token with required scopes
-     * @return Verified AuthenticationMethod
-     * @throws Exception if API call fails
+     * @return Verified [AuthenticationMethod]
      */
     override suspend fun verifyWithoutOtp(
         authenticationMethodId: String,
         authSession: String,
         accessToken: String
     ): AuthenticationMethod {
-        Log.d(TAG, "Verifying authentication method: $authenticationMethodId")
         val client = myAccountProvider.getMyAccount(accessToken)
         return client.verify(authenticationMethodId, authSession).await()
     }

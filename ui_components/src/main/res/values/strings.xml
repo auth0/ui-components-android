@@ -83,7 +83,7 @@
     <string name="session_expired_login">Your session has expired. Please login again to continue.</string>
     <string name="too_many_attempts_error">Too many attempts</string>
     <string name="account_temporarily_blocked">Your account has been temporarily blocked due to too many failed attempts. Please try again later.</string>
-    <string name="unable_to_process_contact">We are unable to process your request. Please try again in a few minutes. If this problem persists, please </string>
+    <string name="unable_to_process_contact">We are unable to process your request. Please try again in a few minutes. If this problem persists, please :\u0020</string>
     <string name="contact_us">contact us.</string>
     <string name="more_options">More options</string>
     <string name="navigate">Navigate</string>

@@ -13,7 +13,8 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewMode
 class EnrollmentViewModelFactory(
     private val enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase,
     private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase,
-    private val authenticatorType: AuthenticatorType
+    private val authenticatorType: AuthenticatorType,
+    private val startDefaultEnrollment: Boolean = true
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -23,7 +24,8 @@ class EnrollmentViewModelFactory(
                 EnrollmentViewModel(
                     enrollAuthenticatorUseCase,
                     verifyAuthenticatorUseCase,
-                    authenticatorType
+                    authenticatorType,
+                    startDefaultEnrollment
                 ) as T
             }
 

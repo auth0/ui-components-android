@@ -5,7 +5,6 @@ import com.auth0.android.ui_components.Auth0UI
 
 /**
  * Provider class that creates and provides instances of MyAccount from the Auth0 Android SDK.
- * This class handles fetching the access token via TokenManager and initializing MyAccount.
  */
 class MyAccountProvider(
 ) {

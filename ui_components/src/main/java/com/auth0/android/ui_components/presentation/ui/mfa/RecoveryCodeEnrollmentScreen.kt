@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +24,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,15 +47,16 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
-import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
+import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
+import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
 import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.sectionTitle
-import kotlinx.coroutines.*
+import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -73,8 +74,26 @@ fun RecoveryCodeEnrollmentScreen(
     val uiState by viewModel.uiState.collectAsState()
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
-    var recoveryCode by remember { mutableStateOf("") }
-    var enrollmentData by remember { mutableStateOf<Pair<String, String>?>(null) }
+
+    var enrollmentResult by remember {
+        mutableStateOf<EnrollmentResult?>(null)
+    }
+
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is EnrollmentEvent.EnrollmentChallengeSuccess -> {
+                enrollmentResult = event.enrollmentResult
+            }
+
+            is EnrollmentEvent.VerificationSuccess -> {
+                onContinue(
+                    event.authenticationMethod.id,
+                    event.authenticationMethod.type
+                )
+                Log.d("EmailEnrollmentScreen", "$event not handled ")
+            }
+        }
+    }
 
 
     Scaffold(
@@ -87,92 +106,30 @@ fun RecoveryCodeEnrollmentScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.White
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            when (val state = uiState) {
-                is EnrollmentUiState.Idle -> {
-                    // Initial state
-                }
-
-                is EnrollmentUiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularLoader()
+    ) { _ ->
+        enrollmentResult?.let {
+            val result = it as EnrollmentResult.RecoveryCodeEnrollment
+            RecoveryCodeContent(
+                recoveryCode = result.challenge.recoveryCode,
+                uiState,
+                onCopyClick = {
+                    clipboardManager.setText(AnnotatedString(result.challenge.recoveryCode))
+                    MainScope().launch {
+                        snackbarHostState.showSnackbar("Copied to clipboard")
                     }
-                }
-
-                is EnrollmentUiState.EnrollmentInitiated -> {
-                    when (val result = state.enrollmentResult) {
-                        is EnrollmentResult.RecoveryCodeEnrollment -> {
-                            // Extract recovery code from challenge
-                            recoveryCode = result.challenge.recoveryCode
-                            enrollmentData = Pair(result.authenticationMethodId, result.authSession)
-
-                            RecoveryCodeContent(
-                                recoveryCode = recoveryCode,
-                                isVerifying = false,
-                                onCopyClick = {
-                                    clipboardManager.setText(AnnotatedString(recoveryCode))
-                                    MainScope().launch {
-                                        snackbarHostState.showSnackbar("Copied to clipboard")
-                                    }
-                                },
-                                onContinueClick = {
-                                    enrollmentData?.let { (authMethodId, authSession) ->
-                                        viewModel.verifyWithoutOtp(
-                                            authenticationMethodId = authMethodId,
-                                            authSession = authSession
-                                        )
-                                    }
-                                }
-                            )
-                        }
-
-                        else -> {
-                            ErrorScreen(
-                                mainErrorMessage = stringResource(R.string.unexpected_enrollment_result),
-                                description = stringResource(R.string.try_again),
-                            )
-                        }
-                    }
-                }
-
-                is EnrollmentUiState.Verifying -> {
-                    RecoveryCodeContent(
-                        recoveryCode = recoveryCode,
-                        isVerifying = true,
-                        onCopyClick = {
-                            clipboardManager.setText(AnnotatedString(recoveryCode))
-                            MainScope().launch {
-                                snackbarHostState.showSnackbar("Copied to clipboard")
-                            }
-                        },
-                        onContinueClick = {} // Disabled during verification
+                },
+                onContinueClick = {
+                    viewModel.verifyWithoutOtp(
+                        authenticationMethodId = result.authenticationMethodId,
+                        authSession = result.authSession
                     )
                 }
-
-                is EnrollmentUiState.Success -> {
-                    LaunchedEffect(Unit) {
-                        onContinue(state.authenticationMethod.id, state.authenticationMethod.type)
-
-                    }
-                }
-
-                is EnrollmentUiState.Error -> {
-                    ErrorHandler(state.uiError)
-                }
-
-                is EnrollmentUiState.InvalidOtp -> TODO()
-            }
+            )
         }
+
+        LoadingScreen(uiState)
+
+        ErrorScreen(uiState)
     }
 }
 
@@ -182,17 +139,16 @@ fun RecoveryCodeEnrollmentScreen(
 @Composable
 private fun RecoveryCodeContent(
     recoveryCode: String,
-    isVerifying: Boolean,
+    state: EnrollmentUiState,
     onCopyClick: () -> Unit,
     onContinueClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(178.dp))
-
         Column(
             modifier = Modifier.width(300.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -206,7 +162,7 @@ private fun RecoveryCodeContent(
             Spacer(modifier = Modifier.height(24.dp))
 
             ContinueButton(
-                isLoading = isVerifying,
+                isLoading = state.verifyingAuthenticator,
                 onClick = onContinueClick
             )
         }
@@ -308,5 +264,25 @@ private fun ContinueButton(
         onClick = onClick
     ) {
         Text(stringResource(R.string.continue_button))
+    }
+}
+
+@Composable
+private fun LoadingScreen(state: EnrollmentUiState) {
+    if (state.enrollingAuthenticator)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularLoader()
+        }
+}
+
+@Composable
+private fun ErrorScreen(state: EnrollmentUiState) {
+    state.uiError?.let {
+        ErrorHandler(it)
     }
 }
