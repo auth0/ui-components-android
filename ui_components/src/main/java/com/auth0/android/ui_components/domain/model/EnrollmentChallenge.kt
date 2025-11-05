@@ -1,9 +1,13 @@
 package com.auth0.android.ui_components.domain.model
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
 /**
  * Local sealed class hierarchy for enrollment challenges.
  */
-sealed class EnrollmentChallenge {
+@Parcelize
+sealed class EnrollmentChallenge : Parcelable {
     abstract val id: String
     abstract val authSession: String
 }

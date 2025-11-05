@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -94,6 +95,10 @@ fun QREnrollmentScreen(
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    var enrollmentChallengeResult by rememberSaveable {
+        mutableStateOf<EnrollmentResult?>(null)
+    }
+
     val title = when (authenticatorType) {
         AuthenticatorType.PUSH -> "Push Notification"
         else -> "Authenticator"
@@ -102,7 +107,7 @@ fun QREnrollmentScreen(
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is EnrollmentEvent.EnrollmentChallengeSuccess -> {
-                Log.d("TAG", "QREnrollmentScreen:  $event")
+                enrollmentChallengeResult = event.enrollmentResult
             }
 
             is EnrollmentEvent.VerificationSuccess -> {
@@ -129,7 +134,7 @@ fun QREnrollmentScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            viewModel.enrollmentChallengeResult?.let {
+            enrollmentChallengeResult?.let {
                 QREnrollmentContent(
                     authenticatorType = authenticatorType,
                     enrollmentResult = it,

@@ -61,9 +61,6 @@ class EnrollmentViewModel(
 
     private val _uiState = MutableStateFlow(EnrollmentUiState())
 
-    var enrollmentChallengeResult: EnrollmentResult? = null
-        private set
-
     val uiState: StateFlow<EnrollmentUiState> = _uiState
         .onStart {
             when (authenticatorType) {
@@ -118,7 +115,6 @@ class EnrollmentViewModel(
                             enrollmentResult.authenticationMethodId to enrollmentResult.authSession
                     }
 
-                    enrollmentChallengeResult = enrollmentResult
                     eventChannel.send(
                         EnrollmentEvent.EnrollmentChallengeSuccess(
                             enrollmentResult = enrollmentResult,

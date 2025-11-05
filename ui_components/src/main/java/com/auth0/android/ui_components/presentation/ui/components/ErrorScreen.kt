@@ -147,5 +147,5 @@ fun MessageWithLink(
         }
     }
 
-    Text(annotatedString)
+    Text(annotatedString, textAlign = TextAlign.Center)
 }

@@ -1,9 +1,14 @@
 package com.auth0.android.ui_components.domain.model
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
+
 /**
  * Wrapper for different enrollment challenge types
  */
-sealed class EnrollmentResult {
+@Parcelize
+sealed class EnrollmentResult : Parcelable {
     /**
      * TOTP or Push Notification enrollment result
      */
