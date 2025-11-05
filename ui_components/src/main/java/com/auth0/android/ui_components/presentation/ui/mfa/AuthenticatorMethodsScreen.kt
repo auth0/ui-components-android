@@ -42,6 +42,7 @@ fun AuthenticatorMethodsScreen(
         topBar = {
             TopBar(
                 title = stringResource(R.string.login_security),
+                showBackNavigation = false,
                 titleTextStyle = defaultTopbarTitle,
                 showSeparator = false,
                 onBackClick = onBackPress

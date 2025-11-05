@@ -15,6 +15,8 @@ import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUs
 import com.auth0.android.ui_components.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.android.ui_components.helper.DispatcherProviderImpl
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 
 object MyAccountModule {
 
@@ -50,7 +52,8 @@ object MyAccountModule {
         return GetEnabledAuthenticatorMethodsUseCase(
             repository = provideMyAccountRepository(),
             tokenManager = provideTokenManager(),
-            dispatcherProvider = provideDispatcherProvider()
+            dispatcherProvider = provideDispatcherProvider(),
+            backgroundScope = CoroutineScope(Job())
         )
     }
 
