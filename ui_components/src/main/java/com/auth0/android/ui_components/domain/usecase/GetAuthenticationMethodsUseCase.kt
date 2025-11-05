@@ -27,7 +27,6 @@ class GetAuthenticationMethodsUseCase(
     private val dispatcherProvider: DispatcherProvider
 ) {
     private companion object {
-        private const val TAG = "GetAuthenticationMethodsUseCase"
         private const val REQUIRED_SCOPES = "read:me:authentication_methods"
     }
 
@@ -52,8 +51,6 @@ class GetAuthenticationMethodsUseCase(
 
     /**
      * Filters authentication methods based on type and confirmed status
-     * For PUSH type: returns all confirmed methods
-     * For other types: returns only confirmed methods matching the specified type
      */
     private fun filterEnrolledAuthenticationMethods(
         authMethods: List<AuthenticationMethod>,

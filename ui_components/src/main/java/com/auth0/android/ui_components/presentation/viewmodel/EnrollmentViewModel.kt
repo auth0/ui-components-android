@@ -24,6 +24,10 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+
+/**
+ * Represent different UI state while enrolling an authenticator
+ */
 data class EnrollmentUiState(
     val enrollingAuthenticator: Boolean = false,
     val verifyingAuthenticator: Boolean = false,
@@ -31,6 +35,9 @@ data class EnrollmentUiState(
     val uiError: UiError? = null
 )
 
+/**
+ * Represent  events while enrolling an authenticator
+ */
 sealed interface EnrollmentEvent {
 
     data class EnrollmentChallengeSuccess(

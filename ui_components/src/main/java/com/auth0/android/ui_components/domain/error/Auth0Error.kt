@@ -1,7 +1,5 @@
 package com.auth0.android.ui_components.domain.error
 
-import com.auth0.android.ui_components.domain.error.Auth0Error.ValidationError.FieldError
-
 /**
  * Domain-level error types that represent business-meaningful errors
  * These are mapped from infrastructure exceptions (AuthenticationException, MyAccountException, etc.)
@@ -65,10 +63,6 @@ sealed interface Auth0Error {
         override val cause: Throwable
     ) : Auth0Error
 
-    data class Timeout(
-        override val message: String = "Request timed out",
-        override val cause: Throwable
-    ) : Auth0Error
 
     // Validation Errors
     data class ValidationError(
@@ -83,11 +77,6 @@ sealed interface Auth0Error {
             val source: String?
         )
     }
-
-    data class Forbidden(
-        override val message: String = "Forbidden",
-        override val cause: Throwable,
-    ) : Auth0Error
 
     data class InvalidOTP(
         override val message: String = "Invalid passcode",

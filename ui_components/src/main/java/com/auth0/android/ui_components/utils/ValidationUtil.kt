@@ -27,18 +27,7 @@ object ValidationUtil {
      */
     fun isValidPhoneNumber(phoneNumber: String): Boolean {
         val digitsOnly = phoneNumber.replace(Regex("[^0-9]"), "")
-        return digitsOnly.length >= 10
-    }
-
-    /**
-     * Validates if an OTP code is valid
-     * Checks if the code is exactly 6 digits
-     *
-     * @param otp The OTP code to validate
-     * @return true if OTP is valid, false otherwise
-     */
-    fun isValidOTP(otp: String): Boolean {
-        return otp.length == 6 && otp.all { it.isDigit() }
+        return digitsOnly.length >= 6
     }
 
     /**

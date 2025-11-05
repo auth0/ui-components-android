@@ -16,7 +16,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
 
 /**
- * UseCase that orchestrates MFA method fetching
+ * UseCase that fetches enables authentication factors
  */
 class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
