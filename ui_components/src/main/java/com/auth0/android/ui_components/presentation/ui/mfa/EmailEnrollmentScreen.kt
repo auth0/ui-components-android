@@ -65,8 +65,7 @@ fun EmailEnrollmentScreen(
     onContinueToOTP: (authenticationId: String, authSession: String, email: String) -> Unit = { _, _, _ -> }
 ) {
     var email by remember { mutableStateOf("") }
-    var validationError by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
+    var validationErrorMessage by remember { mutableStateOf("") }
 
     val uiState by viewModel.uiState.collectAsState()
 
@@ -114,13 +113,11 @@ fun EmailEnrollmentScreen(
                     email = email,
                     onEmailChange = { newEmail ->
                         email = newEmail
-                        if (validationError) {
-                            validationError = false
-                            errorMessage = ""
+                        if (validationErrorMessage.isNotEmpty()) {
+                            validationErrorMessage = ""
                         }
                     },
-                    isValidationError = validationError,
-                    errorMessage = errorMessage
+                    errorMessage = validationErrorMessage
                 )
             }
 
@@ -129,11 +126,9 @@ fun EmailEnrollmentScreen(
             ContinueButton(
                 onClick = {
                     if (!ValidationUtil.isValidEmail(email)) {
-                        validationError = true
-                        errorMessage = ValidationUtil.getEmailErrorMessage(email)
+                        validationErrorMessage = ValidationUtil.getEmailErrorMessage(email)
                     } else {
-                        validationError = false
-                        errorMessage = ""
+                        validationErrorMessage = ""
                         viewModel.startEnrollment(
                             authenticatorType = AuthenticatorType.EMAIL,
                             input = EnrollmentInput.Email(email)
@@ -201,7 +196,6 @@ private fun EmailEnrollmentHeader() {
 private fun EmailFormField(
     email: String,
     onEmailChange: (String) -> Unit,
-    isValidationError: Boolean,
     errorMessage: String
 ) {
     Text(
@@ -219,7 +213,7 @@ private fun EmailFormField(
     EmailTextField(
         email = email,
         onEmailChange = onEmailChange,
-        isError = isValidationError,
+        isError = errorMessage.isNotEmpty(),
         errorMessage = errorMessage
     )
 }
@@ -294,7 +288,7 @@ private fun EmailTextField(
         )
     }
 
-    if (isError && errorMessage.isNotEmpty()) {
+    if (isError) {
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = errorMessage,

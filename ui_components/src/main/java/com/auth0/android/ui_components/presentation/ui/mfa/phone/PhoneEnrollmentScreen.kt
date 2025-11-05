@@ -84,7 +84,6 @@ fun PhoneEnrollmentScreen(
     var phoneNumber by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(Country.countries[0]) }
     var validationError by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
     var showCountrySelector by remember { mutableStateOf(false) }
 
     val uiState by viewModel.uiState.collectAsState()
@@ -136,12 +135,10 @@ fun PhoneEnrollmentScreen(
                         phoneNumber = newPhone
                         if (validationError) {
                             validationError = false
-                            errorMessage = ""
                         }
                     },
                     onCountryCodeClick = { showCountrySelector = true },
                     isValidationError = validationError,
-                    errorMessage = errorMessage
                 )
             }
 
@@ -152,10 +149,8 @@ fun PhoneEnrollmentScreen(
                     val fullPhoneNumber = selectedCountry.phoneCode + phoneNumber
                     if (!ValidationUtil.isValidPhoneNumber(phoneNumber)) {
                         validationError = true
-                        errorMessage = "Invalid phone number."
                     } else {
                         validationError = false
-                        errorMessage = ""
                         viewModel.startEnrollment(
                             authenticatorType = AuthenticatorType.PHONE,
                             input = EnrollmentInput.Phone(
@@ -244,7 +239,6 @@ private fun PhoneFormField(
     onPhoneNumberChange: (String) -> Unit,
     onCountryCodeClick: () -> Unit,
     isValidationError: Boolean,
-    errorMessage: String
 ) {
     Text(
         text = stringResource(R.string.phone_number_label),
@@ -263,7 +257,6 @@ private fun PhoneFormField(
         onPhoneNumberChange = onPhoneNumberChange,
         onCountryCodeClick = onCountryCodeClick,
         isError = isValidationError,
-        errorMessage = errorMessage
     )
 }
 
@@ -275,7 +268,6 @@ private fun PhoneTextField(
     onPhoneNumberChange: (String) -> Unit,
     onCountryCodeClick: () -> Unit,
     isError: Boolean,
-    errorMessage: String
 ) {
     val backgroundColor = if (isError) {
         ErrorRed.copy(alpha = 0.05f)
@@ -372,9 +364,9 @@ private fun PhoneTextField(
         }
     }
 
-    if (isError && errorMessage.isNotEmpty()) {
+    if (isError) {
         Text(
-            text = errorMessage,
+            text = stringResource(R.string.invalid_phone_number),
             color = ErrorTextRed,
             style = contentTextStyle,
             fontWeight = FontWeight.Normal,
