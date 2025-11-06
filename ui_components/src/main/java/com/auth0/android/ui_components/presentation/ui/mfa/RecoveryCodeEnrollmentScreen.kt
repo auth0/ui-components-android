@@ -24,7 +24,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,6 +40,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
@@ -72,7 +72,7 @@ fun RecoveryCodeEnrollmentScreen(
         String, String
     ) -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -107,30 +107,35 @@ fun RecoveryCodeEnrollmentScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = Color.White
-    ) { _ ->
-        enrollmentResult?.let {
-            val result = it as EnrollmentResult.RecoveryCodeEnrollment
-            RecoveryCodeContent(
-                recoveryCode = result.challenge.recoveryCode,
-                uiState,
-                onCopyClick = {
-                    clipboardManager.setText(AnnotatedString(result.challenge.recoveryCode))
-                    MainScope().launch {
-                        snackbarHostState.showSnackbar("Copied to clipboard")
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .padding(padding)
+        ) {
+            enrollmentResult?.let {
+                val result = it as EnrollmentResult.RecoveryCodeEnrollment
+                RecoveryCodeContent(
+                    recoveryCode = result.challenge.recoveryCode,
+                    uiState,
+                    onCopyClick = {
+                        clipboardManager.setText(AnnotatedString(result.challenge.recoveryCode))
+                        MainScope().launch {
+                            snackbarHostState.showSnackbar("Copied to clipboard")
+                        }
+                    },
+                    onContinueClick = {
+                        viewModel.verifyWithoutOtp(
+                            authenticationMethodId = result.authenticationMethodId,
+                            authSession = result.authSession
+                        )
                     }
-                },
-                onContinueClick = {
-                    viewModel.verifyWithoutOtp(
-                        authenticationMethodId = result.authenticationMethodId,
-                        authSession = result.authSession
-                    )
-                }
-            )
+                )
+            }
+
+            LoadingScreen(uiState)
+
+            ErrorScreen(uiState)
         }
-
-        LoadingScreen(uiState)
-
-        ErrorScreen(uiState)
     }
 }
 
