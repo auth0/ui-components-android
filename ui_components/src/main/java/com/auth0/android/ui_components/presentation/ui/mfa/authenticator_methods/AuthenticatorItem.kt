@@ -30,7 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import com.auth0.android.ui_components.theme.ActiveLabelText
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.theme.ActiveLabelBackground
-import com.auth0.android.ui_components.theme.AuthenticatorItemTitle
+import com.auth0.android.ui_components.theme.authenticatorItemTitle
 import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
 
 @Composable
@@ -69,7 +69,7 @@ fun AuthenticatorItem(
             ) {
                 Text(
                     text = title,
-                    style = AuthenticatorItemTitle
+                    style = authenticatorItemTitle
                 )
 
                 Spacer(Modifier.weight(1f))

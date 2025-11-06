@@ -21,25 +21,13 @@ object ValidationUtil {
 
     /**
      * Validates if a phone number is in a valid format
-     * Basic validation - checks for minimum length and numeric characters
      *
      * @param phoneNumber The phone number to validate
      * @return true if phone number is valid, false otherwise
      */
     fun isValidPhoneNumber(phoneNumber: String): Boolean {
         val digitsOnly = phoneNumber.replace(Regex("[^0-9]"), "")
-        return digitsOnly.length >= 10
-    }
-
-    /**
-     * Validates if an OTP code is valid
-     * Checks if the code is exactly 6 digits
-     *
-     * @param otp The OTP code to validate
-     * @return true if OTP is valid, false otherwise
-     */
-    fun isValidOTP(otp: String): Boolean {
-        return otp.length == 6 && otp.all { it.isDigit() }
+        return digitsOnly.length >= 6
     }
 
     /**
@@ -53,21 +41,6 @@ object ValidationUtil {
             email.isBlank() -> "Email address is required"
             !email.contains("@") -> "Email must contain @"
             else -> "Invalid email format"
-        }
-    }
-
-    /**
-     * Gets a user-friendly error message for invalid phone number
-     *
-     * @param phoneNumber The phone number that failed validation
-     * @return Error message string
-     */
-    fun getPhoneErrorMessage(phoneNumber: String): String {
-        return when {
-            phoneNumber.isBlank() -> "Phone number is required"
-            phoneNumber.replace(Regex("[^0-9]"), "").length < 10 -> 
-                "Phone number must be at least 10 digits"
-            else -> "Invalid phone number format"
         }
     }
 }

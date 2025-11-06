@@ -1,17 +1,16 @@
 package com.auth0.android.ui_components.domain.model
 
-import com.auth0.android.result.EnrollmentChallenge
-import com.auth0.android.result.RecoveryCodeEnrollmentChallenge
-import com.auth0.android.result.TotpEnrollmentChallenge
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
+
 
 /**
  * Wrapper for different enrollment challenge types
- * Provides a unified interface for various enrollment responses
  */
-sealed class EnrollmentResult {
+@Parcelize
+sealed class EnrollmentResult : Parcelable {
     /**
      * TOTP or Push Notification enrollment result
-     * Contains QR code data, secret, barcode URI
      */
     data class TotpEnrollment(
         val challenge: TotpEnrollmentChallenge,
@@ -21,7 +20,6 @@ sealed class EnrollmentResult {
 
     /**
      * Recovery code enrollment result
-     * Contains recovery codes that user must save
      */
     data class RecoveryCodeEnrollment(
         val challenge: RecoveryCodeEnrollmentChallenge,
@@ -34,7 +32,7 @@ sealed class EnrollmentResult {
      * Generic enrollment challenge for OTP-based methods
      */
     data class DefaultEnrollment(
-        val challenge: EnrollmentChallenge,
+        val challenge: MfaEnrollmentChallenge,
         val authenticationMethodId: String,
         val authSession: String
     ) : EnrollmentResult()

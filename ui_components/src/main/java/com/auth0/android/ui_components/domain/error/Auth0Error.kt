@@ -63,10 +63,6 @@ sealed interface Auth0Error {
         override val cause: Throwable
     ) : Auth0Error
 
-    data class Timeout(
-        override val message: String = "Request timed out",
-        override val cause: Throwable
-    ) : Auth0Error
 
     // Validation Errors
     data class ValidationError(
@@ -81,6 +77,11 @@ sealed interface Auth0Error {
             val source: String?
         )
     }
+
+    data class InvalidOTP(
+        override val message: String = "Invalid passcode",
+        override val cause: Throwable,
+    ) : Auth0Error
 
     // Server Errors
     data class ServerError(

@@ -28,6 +28,7 @@ fun TopBar(
     modifier: Modifier = Modifier,
     topBarColor: Color = Color.White,
     showSeparator: Boolean = false,
+    showBackNavigation: Boolean = true,
     trailingIcon: Painter? = null,
     titleTextStyle: TextStyle = enrollmentTopbarTitle,
     onBackClick: () -> Unit,
@@ -42,12 +43,14 @@ fun TopBar(
                 )
             },
             navigationIcon = {
-                IconButton(onClick = onBackClick) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Navigate back",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
+                if (showBackNavigation) {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Navigate back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             },
             actions = {

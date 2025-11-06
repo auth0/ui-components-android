@@ -34,8 +34,8 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
 import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
-import com.auth0.android.ui_components.theme.AuthenticatorItemSubTitle
-import com.auth0.android.ui_components.theme.AuthenticatorItemTitle
+import com.auth0.android.ui_components.theme.authenticatorItemSubTitle
+import com.auth0.android.ui_components.theme.authenticatorItemTitle
 
 
 @Composable
@@ -71,11 +71,11 @@ fun EnrolledAuthenticatorItem(
             ) {
                 Text(
                     text = title,
-                    style = AuthenticatorItemTitle
+                    style = authenticatorItemTitle
                 )
                 Text(
                     text = subtitle,
-                    style = AuthenticatorItemSubTitle
+                    style = authenticatorItemSubTitle
                 )
             }
 

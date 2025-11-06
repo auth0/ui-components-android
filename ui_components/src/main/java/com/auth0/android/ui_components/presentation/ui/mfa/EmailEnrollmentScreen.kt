@@ -1,8 +1,8 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,57 +11,49 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
-import com.auth0.android.ui_components.domain.model.EnrollmentResult
 import com.auth0.android.ui_components.presentation.ui.components.CircularLoader
 import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
+import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
+import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.SectionSubtitle
+import com.auth0.android.ui_components.theme.ErrorRed
+import com.auth0.android.ui_components.theme.ErrorTextRed
+import com.auth0.android.ui_components.theme.TextInputBlack
+import com.auth0.android.ui_components.theme.contentTextStyle
+import com.auth0.android.ui_components.theme.secondaryTextColor
+import com.auth0.android.ui_components.theme.textInputStyle
 import com.auth0.android.ui_components.utils.ValidationUtil
 
-/**
- * Email Enrollment Screen
- *
- * Allows users to enter their email address for MFA enrollment.
- * Validates email format and initiates enrollment via EnrollmentViewModel.
- * On success, navigates to OTP verification screen.
- *
- * @param authenticatorType Type of authenticator (should be EMAIL)
- * @param viewModel EnrollmentViewModel instance for handling enrollment
- * @param onBackClick Callback for back navigation
- * @param onContinueToOTP Callback when enrollment succeeds, passes authenticationId and authSession
- */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EmailEnrollmentScreen(
@@ -73,10 +65,25 @@ fun EmailEnrollmentScreen(
     onContinueToOTP: (authenticationId: String, authSession: String, email: String) -> Unit = { _, _, _ -> }
 ) {
     var email by remember { mutableStateOf("") }
-    var validationError by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf("") }
+    var validationErrorMessage by remember { mutableStateOf("") }
 
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is EnrollmentEvent.EnrollmentChallengeSuccess -> {
+                onContinueToOTP(
+                    event.authenticationMethodId,
+                    event.authSession,
+                    email
+                )
+            }
+
+            is EnrollmentEvent.VerificationSuccess -> {
+                Log.d("EmailEnrollmentScreen", "$event not handled ")
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -93,73 +100,24 @@ fun EmailEnrollmentScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 24.dp)
+                .padding(horizontal = 16.dp, vertical = 38.dp)
         ) {
-
-
-            when (val state = uiState) {
-                is EnrollmentUiState.EnrollmentInitiated -> {
-                    when (val result = state.enrollmentResult) {
-                        is EnrollmentResult.DefaultEnrollment -> {
-                            onContinueToOTP(
-                                result.authenticationMethodId,
-                                result.authSession,
-                                email
-                            )
-                            viewModel.resetState()
-                        }
-
-                        else -> {
-                            validationError = true
-                            errorMessage = stringResource(R.string.unexpected_enrollment_result)
-                        }
-                    }
-                }
-
-                is EnrollmentUiState.Error -> {
-                    validationError = true
-                    ErrorHandler(state.uiError)
-                }
-
-                is EnrollmentUiState.Loading -> {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.White),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularLoader()
-                    }
-                }
-
-                else -> {
-                    // Other states handled in UI
-                }
-            }
-
-
-
-
-
-
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 EmailEnrollmentHeader()
 
+                Spacer(modifier = Modifier.height(24.dp))
                 EmailFormField(
                     email = email,
                     onEmailChange = { newEmail ->
                         email = newEmail
-                        if (validationError) {
-                            validationError = false
-                            errorMessage = ""
+                        if (validationErrorMessage.isNotEmpty()) {
+                            validationErrorMessage = ""
                         }
                     },
-                    isValidationError = validationError,
-                    errorMessage = errorMessage
+                    errorMessage = validationErrorMessage
                 )
             }
 
@@ -168,11 +126,9 @@ fun EmailEnrollmentScreen(
             ContinueButton(
                 onClick = {
                     if (!ValidationUtil.isValidEmail(email)) {
-                        validationError = true
-                        errorMessage = ValidationUtil.getEmailErrorMessage(email)
+                        validationErrorMessage = ValidationUtil.getEmailErrorMessage(email)
                     } else {
-                        validationError = false
-                        errorMessage = ""
+                        validationErrorMessage = ""
                         viewModel.startEnrollment(
                             authenticatorType = AuthenticatorType.EMAIL,
                             input = EnrollmentInput.Email(email)
@@ -181,165 +137,169 @@ fun EmailEnrollmentScreen(
                 }
             )
         }
+        LoadingScreen(state = uiState)
+        ErrorScreen(uiState)
     }
 }
 
-/**
- * Email Enrollment Header Component
- *
- * Displays title and description for email enrollment
- */
+@Composable
+private fun LoadingScreen(state: EnrollmentUiState) {
+    if (state.enrollingAuthenticator)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularLoader()
+        }
+}
+
+@Composable
+private fun ErrorScreen(state: EnrollmentUiState) {
+    state.uiError?.let {
+        ErrorHandler(it)
+    }
+}
+
 @Composable
 private fun EmailEnrollmentHeader() {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.enter_email_address),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 20.sp,
-            color = Color.Black,
-            modifier = Modifier.fillMaxWidth()
-        )
 
-        Text(
-            text = stringResource(R.string.email_verification_code_text),
-            style = MaterialTheme.typography.bodyMedium,
-            fontSize = 16.sp,
-            lineHeight = 24.sp,
-            color = SectionSubtitle,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
+    Text(
+        text = stringResource(R.string.enter_email_address),
+        style = contentTextStyle,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 1.em,
+        letterSpacing = 0.em,
+        color = Color.Black,
+        textAlign = TextAlign.Start,
+        modifier = Modifier.fillMaxWidth()
+    )
+
+    Spacer(modifier = Modifier.height(8.dp))
+
+    Text(
+        text = stringResource(R.string.email_verification_code_text),
+        style = contentTextStyle,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 1.5.em,
+        letterSpacing = 0.01.em,
+        color = secondaryTextColor,
+        textAlign = TextAlign.Start,
+        modifier = Modifier.fillMaxWidth()
+    )
 }
 
 @Composable
 private fun EmailFormField(
     email: String,
     onEmailChange: (String) -> Unit,
-    isValidationError: Boolean,
     errorMessage: String
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        // Label
-        Text(
-            text = stringResource(R.string.email_label),
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            color = Color(0xFF1F1F1F),
-            lineHeight = 14.sp
-        )
+    Text(
+        text = stringResource(R.string.email_label),
+        style = contentTextStyle,
+        fontSize = 14.sp,
+        lineHeight = 14.sp,
+        letterSpacing = 0.em,
+        color = Color.Black,
+        textAlign = TextAlign.Start
+    )
 
-        EmailTextField(
-            value = email,
-            onValueChange = onEmailChange,
-            isError = isValidationError,
-            errorMessage = errorMessage
-        )
-    }
+    Spacer(modifier = Modifier.height(8.dp))
+
+    EmailTextField(
+        email = email,
+        onEmailChange = onEmailChange,
+        isError = errorMessage.isNotEmpty(),
+        errorMessage = errorMessage
+    )
 }
 
-/**
- * Email Text Field Component
- *
- * Custom styled text input field with error state support
- */
 @Composable
 private fun EmailTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
+    email: String,
+    onEmailChange: (String) -> Unit,
     isError: Boolean,
     errorMessage: String
 ) {
     val backgroundColor = if (isError) {
-        Color(0xFFB82819).copy(alpha = 0.05f)
+        ErrorRed.copy(alpha = 0.05f)
     } else {
         Color.White
     }
 
     val borderColor = if (isError) {
-        Color(0xFFB82819).copy(alpha = 0.25f)
+        ErrorRed.copy(alpha = 0.25f)
     } else {
         Color(0xFFE0E0E0)
     }
 
     val textColor = if (isError) {
-        Color(0xFFCA3B2B)
+        ErrorTextRed
     } else {
-        Color(0xFF1F1F1F)
+        TextInputBlack
     }
 
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        val shape = RoundedCornerShape(14.dp)
-        Surface(
+    val shape = RoundedCornerShape(14.dp)
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(60.dp)
+            .background(
+                color = backgroundColor,
+                shape = shape
+            )
+            .border(
+                width = 1.dp,
+                color = borderColor,
+                shape = shape
+            ),
+        shadowElevation = 10.dp,
+        shape = shape,
+    )
+    {
+        BasicTextField(
+            value = email,
+            onValueChange = onEmailChange,
+            textStyle = textInputStyle.copy(color = textColor, textAlign = TextAlign.Start),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email
+            ),
+            singleLine = true,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(61.dp)
-                .background(
-                    color = backgroundColor,
-                    shape = shape
-                )
-                .border(
-                    width = 1.dp,
-                    color = borderColor,
-                    shape = shape
-                ),
-            shadowElevation = 8.dp,
-            shape = shape,
-        )
-        {
-
-            OutlinedTextField(
-
-                value = value,
-                onValueChange = onValueChange,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.CenterHorizontally)
-                    .background(
-                        color = backgroundColor,
-                        shape = shape
+                .background(backgroundColor)
+                .padding(16.dp),
+            decorationBox = { innerTextField ->
+                if (email.isEmpty()) {
+                    Text(
+                        text = stringResource(R.string.email_placeholder),
+                        style = textInputStyle.copy(
+                            color = TextInputBlack.copy(alpha = 0.54f),
+                            textAlign = TextAlign.Start
+                        )
                     )
-                    .border(
-                        width = 0.dp,
-                        color = borderColor,
-                        shape = shape
-                    ),
-                textStyle = TextStyle(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 20.sp,
-                    color = textColor
-                ),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = borderColor,
-                    cursorColor = Color.Gray,
-                ),
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email
-                ),
-                singleLine = true,
-            )
-        }
+                }
+                innerTextField()
+            }
+        )
+    }
 
-        if (isError && errorMessage.isNotEmpty()) {
-            Text(
-                text = errorMessage,
-                color = Color(0xFFCA3B2B),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-        }
+    if (isError) {
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = errorMessage,
+            color = ErrorTextRed,
+            style = contentTextStyle,
+            fontWeight = FontWeight.Normal,
+            fontSize = 16.sp,
+            lineHeight = 0.15.em,
+            letterSpacing = 0.01.em,
+            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+        )
     }
 }
 
@@ -348,17 +308,11 @@ private fun ContinueButton(
     onClick: () -> Unit,
 ) {
     GradientButton(
-        text = stringResource(R.string.continue_button),
         modifier = Modifier
             .fillMaxWidth()
-            .height(48.dp),
-        gradient = Brush.verticalGradient(
-            colors = listOf(
-                Color.White.copy(alpha = 0.15f),
-                Color.Transparent
-            )
-        ),
+            .height(52.dp),
+        onClick = onClick
     ) {
-        onClick()
+        Text(text = stringResource(R.string.continue_button))
     }
 }

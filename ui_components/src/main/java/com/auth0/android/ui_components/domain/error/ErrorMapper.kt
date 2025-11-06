@@ -139,6 +139,13 @@ object ErrorMapper {
                 cause = exception
             )
 
+            exception.getCode() == "Forbidden" && exception.detail == "invalid code" -> {
+                Auth0Error.InvalidOTP(
+                    message = exception.message ?: "Invalid passcode",
+                    cause = exception
+                )
+            }
+
             // Validation errors
             !exception.validationErrors.isNullOrEmpty() -> {
                 Auth0Error.ValidationError(

@@ -6,27 +6,25 @@ import com.auth0.android.result.MfaAuthenticationMethod
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
-import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
-import com.auth0.android.ui_components.domain.repository.MyAccountRepository
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.network.safeCall
+import com.auth0.android.ui_components.domain.repository.MyAccountRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 /**
- * UseCase that orchestrates MFA method fetching
- * Handles token fetching ONCE before making parallel API calls
- *
+ * UseCase that fetches enables authentication factors
  */
 class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
     private val tokenManager: TokenManager,
-    private val dispatcherProvider: DispatcherProvider
+    private val dispatcherProvider: DispatcherProvider,
+    private val backgroundScope: CoroutineScope,
 ) {
     private companion object {
-        private const val TAG = "GetMFAMethodsUseCase"
         private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods"
     }
 
@@ -39,20 +37,17 @@ class GetEnabledAuthenticatorMethodsUseCase(
                     scope = REQUIRED_SCOPES
                 )
 
-                val (factors, authMethods) = coroutineScope {
-                    val factorsDeferred = async {
-                        repository.getFactors(accessToken)
-                    }
-                    val authMethodsDeferred = async {
-                        repository.getAuthenticatorMethods(accessToken)
-                    }
-
-                    Pair(
-                        factorsDeferred.await(),
-                        authMethodsDeferred.await()
-                    )
+                val factorsDeferred = backgroundScope.async {
+                    repository.getFactors(accessToken)
+                }
+                val authMethodsDeferred = backgroundScope.async {
+                    repository.getAuthenticatorMethods(accessToken)
                 }
 
+                val (factors, authMethods) = Pair(
+                    factorsDeferred.await(),
+                    authMethodsDeferred.await()
+                )
                 mapToMFAMethods(factors, authMethods)
             }
         }

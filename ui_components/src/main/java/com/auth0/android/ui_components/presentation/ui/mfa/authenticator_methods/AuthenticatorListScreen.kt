@@ -17,8 +17,8 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
-import com.auth0.android.ui_components.theme.sectionSubtitle
-import com.auth0.android.ui_components.theme.sectionTitle
+import com.auth0.android.ui_components.theme.sectionHeading2
+import com.auth0.android.ui_components.theme.sectionHeading1
 
 
 /**
@@ -33,7 +33,7 @@ fun AuthenticatorListScreen(
     Text(
         text = stringResource(R.string.verification_methods),
         modifier = Modifier.height(24.dp),
-        style = sectionTitle,
+        style = sectionHeading1,
     )
 
     Spacer(modifier = Modifier.height(8.dp))
@@ -41,7 +41,7 @@ fun AuthenticatorListScreen(
     Text(
         text = stringResource(R.string.manage_2fa_methods),
         modifier = Modifier.height(17.dp),
-        style = sectionSubtitle,
+        style = sectionHeading2,
     )
 
     Spacer(modifier = Modifier.height(24.dp))

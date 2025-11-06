@@ -1,16 +1,12 @@
 package com.auth0.android.ui_components.data
 
 import android.util.Log
-import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.result.APICredentials
 import com.auth0.android.ui_components.Auth0UI
-import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Manages token fetching operations as a thread-safe singleton
- * Uses double-checked locking pattern for optimal performance in multi-threaded scenarios
- * Throws exceptions on failure - let caller handle
  */
 class TokenManager private constructor() {
 
@@ -45,8 +41,6 @@ class TokenManager private constructor() {
      * Fetches token for given audience and scope
      * First checks the cache for a valid (non-expired) token
      * If not found or expired, fetches a new token and caches it
-     * @throws AuthenticationException if auth fails
-     * @throws IOException if network fails
      */
     suspend fun fetchToken(audience: String, scope: String): String {
 

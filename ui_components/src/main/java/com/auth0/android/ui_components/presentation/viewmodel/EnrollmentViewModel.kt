@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.AuthenticationMethod
+import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.EnrollmentInput
 import com.auth0.android.ui_components.domain.model.EnrollmentResult
@@ -13,87 +14,147 @@ import com.auth0.android.ui_components.domain.network.onSuccess
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.android.ui_components.presentation.ui.UiError
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+
 /**
- * ViewModel for authenticator enrollment flow
- * Handles enrollment initiation and verification for all authenticator types
- * Designed to be reused across TOTP, Push, Email, SMS, Recovery Code screens
+ * Represent different UI state while enrolling an authenticator
  */
+data class EnrollmentUiState(
+    val enrollingAuthenticator: Boolean = false,
+    val verifyingAuthenticator: Boolean = false,
+    val otpError: Boolean = false,
+    val uiError: UiError? = null
+)
+
+/**
+ * Represent  events while enrolling an authenticator
+ */
+sealed interface EnrollmentEvent {
+
+    data class EnrollmentChallengeSuccess(
+        val enrollmentResult: EnrollmentResult,
+        val authenticationMethodId: String,
+        val authSession: String
+    ) : EnrollmentEvent
+
+    data class VerificationSuccess(
+        val authenticationMethod: AuthenticationMethod
+    ) : EnrollmentEvent
+}
+
+
 class EnrollmentViewModel(
     private val enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase,
     private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase,
-    authenticatorType: AuthenticatorType
+    authenticatorType: AuthenticatorType,
+    startDefaultEnrollment: Boolean = true
 ) : ViewModel() {
 
     private companion object {
         private const val TAG = "EnrollmentViewModel"
     }
 
-    private val _uiState = MutableStateFlow<EnrollmentUiState>(EnrollmentUiState.Idle)
+    private val eventChannel = Channel<EnrollmentEvent>()
+    val events = eventChannel.receiveAsFlow()
 
-    val uiState: StateFlow<EnrollmentUiState> = _uiState.onStart {
-        when (authenticatorType) {
-            AuthenticatorType.RECOVERY_CODE,
-            AuthenticatorType.PUSH,
-            AuthenticatorType.TOTP -> startEnrollment(authenticatorType)
+    private val _uiState = MutableStateFlow(EnrollmentUiState())
 
-            else -> {
-                Log.d(TAG, "No need to fetch the data during initialization")
+    val uiState: StateFlow<EnrollmentUiState> = _uiState
+        .onStart {
+            when (authenticatorType) {
+                AuthenticatorType.RECOVERY_CODE,
+                AuthenticatorType.PUSH,
+                AuthenticatorType.TOTP -> {
+                    if (startDefaultEnrollment)
+                        startEnrollment(authenticatorType)
+                }
+
+                else -> {
+                    Log.d(TAG, "No need to fetch the data during initialization")
+                }
             }
         }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
-        initialValue = EnrollmentUiState.Loading
-    )
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
+            initialValue = when (authenticatorType) {
+                AuthenticatorType.RECOVERY_CODE,
+                AuthenticatorType.PUSH,
+                AuthenticatorType.TOTP -> {
+                    if (startDefaultEnrollment)
+                        EnrollmentUiState(enrollingAuthenticator = true)
+                    else EnrollmentUiState()
+                }
 
-    /**
-     * Initiates enrollment for specified authenticator type
-     * @param authenticatorType Type of authenticator to enroll
-     * @param input Additional input (email/phone) if required
-     */
+                else -> EnrollmentUiState()
+            }
+        )
+
     fun startEnrollment(
         authenticatorType: AuthenticatorType,
         input: EnrollmentInput = EnrollmentInput.None
     ) {
         viewModelScope.launch {
-            _uiState.value = EnrollmentUiState.Loading
-            Log.d(TAG, "Starting enrollment: $authenticatorType")
-
+            _uiState.update {
+                it.copy(enrollingAuthenticator = true)
+            }
             enrollAuthenticatorUseCase(authenticatorType, input)
-                .onSuccess { data ->
+                .onSuccess { enrollmentResult ->
                     Log.d(TAG, "Enrollment initiated successfully")
-                    _uiState.value = EnrollmentUiState.EnrollmentInitiated(data)
+
+                    val (authMethodId, authSession) = when (enrollmentResult) {
+                        is EnrollmentResult.RecoveryCodeEnrollment ->
+                            enrollmentResult.authenticationMethodId to enrollmentResult.authSession
+
+                        is EnrollmentResult.TotpEnrollment ->
+                            enrollmentResult.authenticationMethodId to enrollmentResult.authSession
+
+                        is EnrollmentResult.DefaultEnrollment ->
+                            enrollmentResult.authenticationMethodId to enrollmentResult.authSession
+                    }
+
+                    eventChannel.send(
+                        EnrollmentEvent.EnrollmentChallengeSuccess(
+                            enrollmentResult = enrollmentResult,
+                            authenticationMethodId = authMethodId,
+                            authSession = authSession
+                        )
+                    )
+
+                    _uiState.update {
+                        it.copy(enrollingAuthenticator = false)
+                    }
                 }
                 .onError { error ->
-                    Log.e(TAG, "Enrollment failed", error.cause)
-                    _uiState.value = EnrollmentUiState.Error(
-                        UiError(
-                            error, { startEnrollment(authenticatorType, input) }
-                        ))
+                    _uiState.update {
+                        EnrollmentUiState(
+                            uiError = UiError(
+                                error,
+                                onRetry = { startEnrollment(authenticatorType, input) })
+                        )
+                    }
                 }
         }
     }
 
-    /**
-     * Verifies the enrolled authenticator with OTP
-     * @param authenticationMethodId ID from enrollment challenge
-     * @param otpCode OTP code entered by user
-     * @param authSession Session token from enrollment
-     */
     fun verifyWithOtp(
         authenticationMethodId: String,
         otpCode: String,
         authSession: String
     ) {
         viewModelScope.launch {
-            _uiState.value = EnrollmentUiState.Verifying
+            _uiState.update {
+                it.copy(verifyingAuthenticator = true)
+            }
             Log.d(TAG, "Verifying with OTP")
 
             val input = VerificationInput.WithOtp(
@@ -103,31 +164,56 @@ class EnrollmentViewModel(
             )
 
             verifyAuthenticatorUseCase(input)
-                .onSuccess { data ->
+                .onSuccess { authenticationMethod ->
                     Log.d(TAG, "Verification successful")
-                    _uiState.value = EnrollmentUiState.Success(data)
+
+                    _uiState.update {
+                        EnrollmentUiState()
+                    }
+                    eventChannel.send(EnrollmentEvent.VerificationSuccess(authenticationMethod))
                 }
                 .onError { error ->
                     Log.e(TAG, "Verification failed", error.cause)
-                    _uiState.value = EnrollmentUiState.Error(
-                        UiError(
-                            error, { verifyWithOtp(authenticationMethodId, otpCode, authSession) }
-                        ))
+                    when (error) {
+                        is Auth0Error.InvalidOTP -> {
+                            _uiState.update {
+                                it.copy(
+                                    verifyingAuthenticator = false,
+                                    otpError = true,
+                                    uiError = null
+                                )
+                            }
+                        }
+
+                        else -> {
+                            _uiState.update {
+                                it.copy(
+                                    verifyingAuthenticator = false, uiError = UiError(
+                                        error = error,
+                                        onRetry = {
+                                            verifyWithOtp(
+                                                authenticationMethodId,
+                                                otpCode,
+                                                authSession
+                                            )
+                                        }
+                                    ))
+                            }
+                        }
+                    }
                 }
         }
     }
 
-    /**
-     * Verifies the enrolled authenticator without OTP (push notification)
-     * @param authenticationMethodId ID from enrollment challenge
-     * @param authSession Session token from enrollment
-     */
+
     fun verifyWithoutOtp(
         authenticationMethodId: String,
         authSession: String
     ) {
         viewModelScope.launch {
-            _uiState.value = EnrollmentUiState.Verifying
+            _uiState.update {
+                EnrollmentUiState(verifyingAuthenticator = true)
+            }
             Log.d(TAG, "Verifying without OTP")
 
             val input = VerificationInput.WithoutOtp(
@@ -136,47 +222,24 @@ class EnrollmentViewModel(
             )
 
             verifyAuthenticatorUseCase(input)
-                .onSuccess { data ->
+                .onSuccess { authenticationMethod ->
                     Log.d(TAG, "Verification successful")
-                    _uiState.value = EnrollmentUiState.Success(data)
+                    _uiState.update {
+                        EnrollmentUiState()
+                    }
+                    eventChannel.send(EnrollmentEvent.VerificationSuccess(authenticationMethod))
                 }
                 .onError { error ->
                     Log.e(TAG, "Verification failed", error.cause)
-                    _uiState.value = EnrollmentUiState.Error(
-                        UiError(
-                            error, { verifyWithoutOtp(authenticationMethodId, authSession) }
-                        ))
+                    _uiState.update {
+                        EnrollmentUiState(
+                            uiError = UiError(
+                                error = error,
+                                onRetry = { verifyWithoutOtp(authenticationMethodId, authSession) }
+                            ))
+                    }
                 }
         }
     }
-
-    /**
-     * Resets the state to idle (useful for retry or navigation)
-     */
-    fun resetState() {
-        _uiState.value = EnrollmentUiState.Idle
-    }
 }
 
-/**
- * UI State for enrollment flow
- */
-sealed interface EnrollmentUiState {
-    /** Initial state - no operation started */
-    object Idle : EnrollmentUiState
-
-    /** Loading state during enrollment API call */
-    object Loading : EnrollmentUiState
-
-    /** Enrollment initiated successfully - show challenge data to user */
-    data class EnrollmentInitiated(val enrollmentResult: EnrollmentResult) : EnrollmentUiState
-
-    /** Verifying the OTP or confirmation */
-    object Verifying : EnrollmentUiState
-
-    /** Enrollment and verification completed successfully */
-    data class Success(val authenticationMethod: AuthenticationMethod) : EnrollmentUiState
-
-    /** Error occurred during enrollment or verification */
-    data class Error(val uiError: UiError) : EnrollmentUiState
-}

@@ -14,7 +14,6 @@ import kotlinx.coroutines.withContext
 /**
  * Generic UseCase for verifying enrolled authenticators
  * Handles both OTP-based and non-OTP verifications
- * Fetches token and calls appropriate repository method
  */
 class VerifyAuthenticatorUseCase(
     private val repository: MyAccountRepository,
@@ -34,7 +33,7 @@ class VerifyAuthenticatorUseCase(
     suspend operator fun invoke(
         input: VerificationInput
     ): Result<AuthenticationMethod, Auth0Error> = withContext(dispatcherProvider.io) {
-        safeCall(REQUIRED_SCOPES) {
+       safeCall(REQUIRED_SCOPES) {
             Log.d(TAG, "Starting verification for: ${input::class.simpleName}")
 
             val audience = tokenManager.getMyAccountAudience()
