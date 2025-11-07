@@ -1,4 +1,4 @@
-package com.auth0.android.ui_components.domain.mapper
+package com.auth0.android.ui_components.data.mapper
 
 import com.auth0.android.ui_components.domain.model.EnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge

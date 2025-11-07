@@ -4,7 +4,7 @@ import com.auth0.android.myaccount.PhoneAuthenticationMethodType
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.Factor
 import com.auth0.android.ui_components.data.MyAccountProvider
-import com.auth0.android.ui_components.domain.mapper.toDomainModel
+import com.auth0.android.ui_components.data.mapper.toDomainModel
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.TotpEnrollmentChallenge
