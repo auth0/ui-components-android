@@ -55,7 +55,6 @@ dependencies {
     implementation libs.compose.navigation
     implementation libs.viewmodel
     implementation libs.androidx.runtime.android
-    testImplementation libs.junit
     androidTestImplementation libs.androidx.junit
     androidTestImplementation libs.androidx.espresso.core
     androidTestImplementation platform(libs.androidx.compose.bom)

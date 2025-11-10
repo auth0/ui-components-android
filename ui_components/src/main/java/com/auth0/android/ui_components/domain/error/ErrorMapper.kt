@@ -7,10 +7,6 @@ import com.auth0.android.authentication.storage.CredentialsManagerException
 import com.auth0.android.myaccount.MyAccountException
 import com.auth0.android.myaccount.MyAccountException.ValidationError
 
-/**
- * Maps infrastructure-level exceptions to domain-level error types
- * Centralizes all error mapping logic in one place
- */
 object ErrorMapper {
 
     private const val TAG = "ErrorMapper"
