@@ -6,7 +6,6 @@ import com.auth0.android.result.MfaAuthenticationMethod
 import com.auth0.android.result.PhoneAuthenticationMethod
 import com.auth0.android.result.PushNotificationAuthenticationMethod
 import com.auth0.android.result.TotpAuthenticationMethod
-import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
@@ -23,7 +22,6 @@ import kotlinx.coroutines.withContext
  */
 class GetAuthenticationMethodsUseCase(
     private val repository: MyAccountRepository,
-    private val tokenManager: TokenManager,
     private val dispatcherProvider: DispatcherProvider
 ) {
     private companion object {
@@ -37,14 +35,8 @@ class GetAuthenticationMethodsUseCase(
      */
     suspend operator fun invoke(type: AuthenticatorType): Result<List<EnrolledAuthenticationMethod>, Auth0Error> =
         withContext(dispatcherProvider.io) {
-            safeCall(REQUIRED_SCOPES) {
-                val audience = tokenManager.getMyAccountAudience()
-                val accessToken = tokenManager.fetchToken(
-                    audience = audience,
-                    scope = REQUIRED_SCOPES
-                )
-
-                val authMethods = repository.getAuthenticatorMethods(accessToken)
+            safeCall {
+                val authMethods = repository.getAuthenticatorMethods(REQUIRED_SCOPES)
                 filterEnrolledAuthenticationMethods(authMethods, type)
             }
         }

@@ -3,7 +3,6 @@ package com.auth0.android.ui_components.domain.usecase
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.Factor
 import com.auth0.android.result.MfaAuthenticationMethod
-import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
@@ -20,7 +19,6 @@ import kotlinx.coroutines.withContext
  */
 class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
-    private val tokenManager: TokenManager,
     private val dispatcherProvider: DispatcherProvider,
     private val backgroundScope: CoroutineScope,
 ) {
@@ -30,18 +28,12 @@ class GetEnabledAuthenticatorMethodsUseCase(
 
     suspend operator fun invoke(): Result<List<AuthenticatorMethod>, Auth0Error> =
         withContext(dispatcherProvider.io) {
-            safeCall(REQUIRED_SCOPES) {
-                val audience = tokenManager.getMyAccountAudience()
-                val accessToken = tokenManager.fetchToken(
-                    audience = audience,
-                    scope = REQUIRED_SCOPES
-                )
-
+            safeCall {
                 val factorsDeferred = backgroundScope.async {
-                    repository.getFactors(accessToken)
+                    repository.getFactors(REQUIRED_SCOPES)
                 }
                 val authMethodsDeferred = backgroundScope.async {
-                    repository.getAuthenticatorMethods(accessToken)
+                    repository.getAuthenticatorMethods(REQUIRED_SCOPES)
                 }
 
                 val (factors, authMethods) = Pair(

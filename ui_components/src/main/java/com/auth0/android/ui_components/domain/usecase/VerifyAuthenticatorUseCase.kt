@@ -2,13 +2,12 @@ package com.auth0.android.ui_components.domain.usecase
 
 import android.util.Log
 import com.auth0.android.result.AuthenticationMethod
-import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.VerificationInput
-import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.network.safeCall
+import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import kotlinx.coroutines.withContext
 
 /**
@@ -17,7 +16,6 @@ import kotlinx.coroutines.withContext
  */
 class VerifyAuthenticatorUseCase(
     private val repository: MyAccountRepository,
-    private val tokenManager: TokenManager,
     private val dispatcherProvider: DispatcherProvider
 ) {
     private companion object {
@@ -33,14 +31,7 @@ class VerifyAuthenticatorUseCase(
     suspend operator fun invoke(
         input: VerificationInput
     ): Result<AuthenticationMethod, Auth0Error> = withContext(dispatcherProvider.io) {
-       safeCall(REQUIRED_SCOPES) {
-            Log.d(TAG, "Starting verification for: ${input::class.simpleName}")
-
-            val audience = tokenManager.getMyAccountAudience()
-            val accessToken = tokenManager.fetchToken(
-                audience = audience,
-                scope = REQUIRED_SCOPES
-            )
+        safeCall {
 
             val authMethod = when (input) {
                 is VerificationInput.WithOtp -> {
@@ -49,20 +40,19 @@ class VerifyAuthenticatorUseCase(
                         authenticationMethodId = input.authenticationMethodId,
                         otpCode = input.otpCode,
                         authSession = input.authSession,
-                        accessToken = accessToken
+                        REQUIRED_SCOPES
                     )
                 }
 
                 is VerificationInput.WithoutOtp -> {
+                    Log.d(TAG, "Verifying without OTP ")
                     repository.verifyWithoutOtp(
                         authenticationMethodId = input.authenticationMethodId,
                         authSession = input.authSession,
-                        accessToken = accessToken
+                        REQUIRED_SCOPES
                     )
                 }
             }
-
-            Log.d(TAG, "Verification successful")
             authMethod
         }
     }

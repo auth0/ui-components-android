@@ -154,8 +154,7 @@ fun PhoneEnrollmentScreen(
                         viewModel.startEnrollment(
                             authenticatorType = AuthenticatorType.PHONE,
                             input = EnrollmentInput.Phone(
-                                phoneNumber = fullPhoneNumber,
-                                preferredMethod = PhoneAuthenticationMethodType.SMS
+                                phoneNumber = fullPhoneNumber
                             )
                         )
                     }

@@ -1,13 +1,13 @@
-package com.auth0.android.ui_components.domain.error
+package com.auth0.android.ui_components.data.mapper
 
 import android.util.Log
 import com.auth0.android.NetworkErrorException
 import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.authentication.storage.CredentialsManagerException
 import com.auth0.android.myaccount.MyAccountException
-import com.auth0.android.myaccount.MyAccountException.ValidationError
+import com.auth0.android.ui_components.domain.error.Auth0Error
 
-object ErrorMapper {
+internal object ErrorMapper {
 
     private const val TAG = "ErrorMapper"
 
@@ -146,7 +146,7 @@ object ErrorMapper {
             !exception.validationErrors.isNullOrEmpty() -> {
                 Auth0Error.ValidationError(
                     message = exception.detail ?: "Validation failed",
-                    errors = (exception.validationErrors as List<ValidationError>).map {
+                    errors = (exception.validationErrors as List<MyAccountException.ValidationError>).map {
                         Auth0Error.ValidationError.FieldError(
                             field = it.field,
                             detail = it.detail,
