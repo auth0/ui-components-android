@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.data.mapper
 
-import android.util.Log
 import com.auth0.android.NetworkErrorException
 import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.authentication.storage.CredentialsManagerException
@@ -8,8 +7,6 @@ import com.auth0.android.myaccount.MyAccountException
 import com.auth0.android.ui_components.domain.error.Auth0Error
 
 internal object ErrorMapper {
-
-    private const val TAG = "ErrorMapper"
 
     /**
      * Maps any exception to an Auth0Error
@@ -19,8 +16,6 @@ internal object ErrorMapper {
         exception: Throwable,
         scope: String? = null
     ): Auth0Error {
-        Log.e(TAG, "Mapping error", exception)
-
         return when (exception) {
             is AuthenticationException -> mapAuthenticationException(exception, scope)
             is MyAccountException -> mapMyAccountException(exception)
@@ -111,7 +106,6 @@ internal object ErrorMapper {
         exception: CredentialsManagerException,
         scope: String?
     ): Auth0Error {
-        Log.e(TAG, "mapCredentialsManagerException: ")
         return when {
             exception.cause as? AuthenticationException != null -> {
                 mapAuthenticationException(exception.cause as AuthenticationException, scope)
