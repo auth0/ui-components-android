@@ -5,6 +5,7 @@ import com.auth0.android.result.Factor
 import com.auth0.android.result.MfaEnrollmentChallenge
 import com.auth0.android.result.PhoneAuthenticationMethod
 import com.auth0.android.result.PushNotificationAuthenticationMethod
+import com.auth0.android.result.RecoveryCodeAuthenticationMethod
 import com.auth0.android.result.RecoveryCodeEnrollmentChallenge
 import com.auth0.android.result.TotpAuthenticationMethod
 import com.auth0.android.result.TotpEnrollmentChallenge
@@ -43,6 +44,14 @@ object TestData {
         confirmed = true,
         name = "My Email",
         email = "user@example.com"
+    )
+
+    val recoveryAuthMethod = RecoveryCodeAuthenticationMethod(
+        id = "auth_recovery_789",
+        type = "recovery-code",
+        createdAt = "2025-11-10T10:00:00.000Z",
+        usage = listOf("mfa"),
+        confirmed = true,
     )
 
     val totpAuthMethod = TotpAuthenticationMethod(
@@ -92,10 +101,5 @@ object TestData {
     val phoneEnrollmentChallenge = MfaEnrollmentChallenge(
         id = "phone_123",
         authSession = "phone_session"
-    )
-
-    val phoneVoiceEnrollmentChallenge = MfaEnrollmentChallenge(
-        id = "phone_voice_123",
-        authSession = "phone_voice_session"
     )
 }

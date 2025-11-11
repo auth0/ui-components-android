@@ -11,7 +11,7 @@ import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import kotlinx.coroutines.withContext
 
 /**
- * Generic UseCase for verifying enrolled authenticators
+ * UseCase for verifying enrolled authenticators
  * Handles both OTP-based and non-OTP verifications
  */
 class VerifyAuthenticatorUseCase(

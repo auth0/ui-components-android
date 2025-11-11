@@ -18,7 +18,6 @@ import kotlinx.coroutines.withContext
 /**
  * UseCase that fetches and filters authentication methods by type
  * Returns only confirmed methods for the specified authenticator type
- *
  */
 class GetAuthenticationMethodsUseCase(
     private val repository: MyAccountRepository,

@@ -14,3 +14,6 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+.github/prompts/
+.vscode

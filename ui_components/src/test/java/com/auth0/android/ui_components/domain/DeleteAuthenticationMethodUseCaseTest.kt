@@ -1,10 +1,11 @@
-package com.auth0.android.ui_components.domain.usecase
+package com.auth0.android.ui_components.domain
 
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
+import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
 import com.auth0.android.ui_components.helpers.TestDispatcherProvider
-import com.google.common.truth.Truth.assertThat
+import com.google.common.truth.Truth
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -58,8 +59,8 @@ class DeleteAuthenticationMethodUseCaseTest {
 
         val result = useCase.invoke(authMethodId)
 
-        assertThat(result).isInstanceOf(Result.Success::class.java)
-        assertThat((result as Result.Success).data).isEqualTo(Unit)
+        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+        Truth.assertThat((result as Result.Success).data).isEqualTo(Unit)
 
         coVerify(exactly = 1) {
             repository.deleteAuthenticationMethod(
@@ -79,7 +80,7 @@ class DeleteAuthenticationMethodUseCaseTest {
 
         val result = useCase.invoke(authMethodId)
 
-        assertThat(result).isInstanceOf(Result.Success::class.java)
+        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
         coVerify(exactly = 1) {
             repository.deleteAuthenticationMethod(authMethodId, expectedScope)
         }
@@ -103,10 +104,11 @@ class DeleteAuthenticationMethodUseCaseTest {
 
             val result = useCase.invoke(authMethodId)
 
-            assertThat(result).isInstanceOf(Result.Error::class.java)
+            Truth.assertThat(result).isInstanceOf(Result.Error::class.java)
             val error = (result as Result.Error).error
-            assertThat(error).isInstanceOf(Auth0Error.AccessDenied::class.java)
-            assertThat(error.message).isEqualTo("Access denied to delete authentication method")
+            Truth.assertThat(error).isInstanceOf(Auth0Error.AccessDenied::class.java)
+            Truth.assertThat(error.message)
+                .isEqualTo("Access denied to delete authentication method")
 
             coVerify(exactly = 1) {
                 repository.deleteAuthenticationMethod(
@@ -132,10 +134,10 @@ class DeleteAuthenticationMethodUseCaseTest {
 
         val result = useCase.invoke(authMethodId)
 
-        assertThat(result).isInstanceOf(Result.Error::class.java)
+        Truth.assertThat(result).isInstanceOf(Result.Error::class.java)
         val error = (result as Result.Error).error
-        assertThat(error).isInstanceOf(Auth0Error.NetworkError::class.java)
-        assertThat(error.message).contains("Network connection failed")
+        Truth.assertThat(error).isInstanceOf(Auth0Error.NetworkError::class.java)
+        Truth.assertThat(error.message).contains("Network connection failed")
 
         coVerify(exactly = 1) {
             repository.deleteAuthenticationMethod(
