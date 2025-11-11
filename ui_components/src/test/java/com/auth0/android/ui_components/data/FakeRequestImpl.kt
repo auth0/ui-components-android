@@ -8,6 +8,7 @@ import com.auth0.android.request.Request
  * Fake implementation of the [com.auth0.android.request.Request] interface for testing purpose
  * Can be configured to return a success result or throw an exception.
  */
+@Suppress("UNCHECKED_CAST")
 class FakeRequestImpl<T, U : Auth0Exception>(
     private val response: T? = null,
     private val exception: U? = null
