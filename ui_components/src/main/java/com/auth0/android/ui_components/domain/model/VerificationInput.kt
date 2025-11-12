@@ -5,7 +5,7 @@ package com.auth0.android.ui_components.domain.model
  */
 sealed class VerificationInput {
     /**
-     * OTP-based verification (requires code)
+     * OTP-based verification
      */
     data class WithOtp(
         val authenticationMethodId: String,
@@ -14,7 +14,7 @@ sealed class VerificationInput {
     ) : VerificationInput()
 
     /**
-     * Non-OTP verification (push notification confirmation, etc.)
+     * Non-OTP verification
      */
     data class WithoutOtp(
         val authenticationMethodId: String,

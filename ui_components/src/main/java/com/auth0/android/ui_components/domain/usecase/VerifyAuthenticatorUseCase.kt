@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.domain.usecase
 
-import android.util.Log
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
@@ -19,7 +18,6 @@ class VerifyAuthenticatorUseCase(
     private val dispatcherProvider: DispatcherProvider
 ) {
     private companion object {
-        private const val TAG = "VerifyAuthenticatorUseCase"
         private const val REQUIRED_SCOPES = "create:me:authentication_methods"
     }
 
@@ -35,7 +33,6 @@ class VerifyAuthenticatorUseCase(
 
             val authMethod = when (input) {
                 is VerificationInput.WithOtp -> {
-                    Log.d(TAG, "Verifying with OTP code")
                     repository.verifyOtp(
                         authenticationMethodId = input.authenticationMethodId,
                         otpCode = input.otpCode,
@@ -45,7 +42,6 @@ class VerifyAuthenticatorUseCase(
                 }
 
                 is VerificationInput.WithoutOtp -> {
-                    Log.d(TAG, "Verifying without OTP ")
                     repository.verifyWithoutOtp(
                         authenticationMethodId = input.authenticationMethodId,
                         authSession = input.authSession,
