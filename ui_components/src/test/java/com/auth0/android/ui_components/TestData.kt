@@ -2,13 +2,16 @@ package com.auth0.android.ui_components
 
 import com.auth0.android.result.EmailAuthenticationMethod
 import com.auth0.android.result.Factor
-import com.auth0.android.result.MfaEnrollmentChallenge
 import com.auth0.android.result.PhoneAuthenticationMethod
 import com.auth0.android.result.PushNotificationAuthenticationMethod
 import com.auth0.android.result.RecoveryCodeAuthenticationMethod
-import com.auth0.android.result.RecoveryCodeEnrollmentChallenge
 import com.auth0.android.result.TotpAuthenticationMethod
-import com.auth0.android.result.TotpEnrollmentChallenge
+import com.auth0.android.result.MfaEnrollmentChallenge as SdkMfaEnrollmentChallenge
+import com.auth0.android.result.RecoveryCodeEnrollmentChallenge as SdkRecoveryCodeEnrollmentChallenge
+import com.auth0.android.result.TotpEnrollmentChallenge as SdkTotpEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge as DomainMfaEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge as DomainRecoveryCodeEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.TotpEnrollmentChallenge as DomainTotpEnrollmentChallenge
 
 object TestData {
 
@@ -73,32 +76,63 @@ object TestData {
     )
 
 
-    val totpEnrollmentChallenge = TotpEnrollmentChallenge(
+    val totpEnrollmentChallenge = SdkTotpEnrollmentChallenge(
         id = "totp_id_123",
         authSession = "totp_session_123",
         barcodeUri = "otpauth://totp/...",
         manualInputCode = "MANUAL_CODE_123"
     )
 
-    val pushEnrollmentChallenge = TotpEnrollmentChallenge(
+    val pushEnrollmentChallenge = SdkTotpEnrollmentChallenge(
         id = "push_id_123",
         authSession = "push_session_123",
         barcodeUri = "push://uri",
         manualInputCode = "PUSH_CODE"
     )
 
-    val recoveryCodeEnrollmentChallenge = RecoveryCodeEnrollmentChallenge(
+    val recoveryCodeEnrollmentChallenge = SdkRecoveryCodeEnrollmentChallenge(
         id = "recovery_id_123",
         authSession = "recovery_session_123",
         recoveryCode = "RECOVERY-CODE-123"
     )
 
-    val emailEnrollmentChallenge = MfaEnrollmentChallenge(
+    val emailEnrollmentChallenge = SdkMfaEnrollmentChallenge(
         id = "email_123",
         authSession = "email_session"
     )
 
-    val phoneEnrollmentChallenge = MfaEnrollmentChallenge(
+    val phoneEnrollmentChallenge = SdkMfaEnrollmentChallenge(
+        id = "phone_123",
+        authSession = "phone_session"
+    )
+
+
+    val domainTotpEnrollmentChallenge = DomainTotpEnrollmentChallenge(
+        id = "totp_id_123",
+        authSession = "totp_session_123",
+        barcodeUri = "otpauth://totp/Auth0:user@example.com?secret=ABCDEFGH&issuer=Auth0",
+        manualInputCode = "DOMAIN_MANUAL_CODE_123"
+    )
+
+    val domainPushEnrollmentChallenge = DomainTotpEnrollmentChallenge(
+        id = "push_id_123",
+        authSession = "push_session_123",
+        barcodeUri = "push://notification/uri",
+        manualInputCode = "DOMAIN_PUSH_CODE"
+    )
+
+    val domainRecoveryCodeEnrollmentChallenge = DomainRecoveryCodeEnrollmentChallenge(
+        id = "recovery_id_123",
+        authSession = "recovery_session_123",
+        recoveryCode = "DOMAIN-RECOVERY-CODE-123-456-789"
+    )
+
+    val domainEmailEnrollmentChallenge = DomainMfaEnrollmentChallenge(
+        id = "email_123",
+        authSession = "email_session"
+    )
+
+    val domainPhoneEnrollmentChallenge = DomainMfaEnrollmentChallenge(
         id = "phone_123",
         authSession = "phone_session"
     )

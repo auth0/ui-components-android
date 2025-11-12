@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.domain.usecase
 
-import android.util.Log
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
@@ -12,7 +11,7 @@ import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import kotlinx.coroutines.withContext
 
 /**
- * Generic UseCase for enrolling authenticators
+ * UseCase for enrolling authenticators
  * Handles TOTP, Push Notification, Recovery Code, Email, and Phone enrollments
  */
 class EnrollAuthenticatorUseCase(
@@ -20,7 +19,6 @@ class EnrollAuthenticatorUseCase(
     private val dispatcherProvider: DispatcherProvider
 ) {
     private companion object {
-        private const val TAG = "EnrollAuthenticatorUseCase"
         private const val REQUIRED_SCOPES = "create:me:authentication_methods"
     }
 
@@ -35,8 +33,6 @@ class EnrollAuthenticatorUseCase(
         input: EnrollmentInput = EnrollmentInput.None
     ): Result<EnrollmentResult, Auth0Error> = withContext(dispatcherProvider.io) {
         safeCall {
-            Log.d(TAG, "Starting enrollment for type: $authenticatorType")
-
             val result = when (authenticatorType) {
                 AuthenticatorType.TOTP -> {
                     val challenge = repository.enrollTotp(REQUIRED_SCOPES)
