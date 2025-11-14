@@ -34,7 +34,7 @@ class AuthenticatorMethodsViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
 
-        getEnabledAuthenticatorMethodsUseCase = mockk(relaxed = true)
+        getEnabledAuthenticatorMethodsUseCase = mockk()
 
         viewModel = AuthenticatorMethodsViewModel(
             getEnabledAuthenticatorMethodsUseCase = getEnabledAuthenticatorMethodsUseCase

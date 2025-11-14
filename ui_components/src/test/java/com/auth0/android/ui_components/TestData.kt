@@ -182,4 +182,43 @@ object TestData {
         pushAuthenticatorMethod,
         recoveryCodeAuthenticatorMethod
     )
+
+    // EnrolledAuthenticationMethod test data
+    val enrolledPhoneMethod = com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod(
+        id = "enrolled_phone_001",
+        type = "phone",
+        confirmed = true,
+        createdAt = "2025-11-10T10:00:00.000Z",
+        name = "+15551234567"
+    )
+
+    val enrolledTotpMethod = com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod(
+        id = "enrolled_totp_002",
+        type = "totp",
+        confirmed = true,
+        createdAt = "2025-11-10T11:00:00.000Z",
+        name = "My Authenticator"
+    )
+
+    val enrolledEmailMethod = com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod(
+        id = "enrolled_email_003",
+        type = "email",
+        confirmed = true,
+        createdAt = "2025-11-10T12:00:00.000Z",
+        name = "user@example.com"
+    )
+
+    val enrolledPushMethod = com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod(
+        id = "enrolled_push_004",
+        type = "push-notification",
+        confirmed = true,
+        createdAt = "2025-11-10T13:00:00.000Z",
+        name = "My Device"
+    )
+
+    val allEnrolledMethods = listOf(
+        enrolledPhoneMethod,
+        enrolledTotpMethod,
+        enrolledEmailMethod
+    )
 }

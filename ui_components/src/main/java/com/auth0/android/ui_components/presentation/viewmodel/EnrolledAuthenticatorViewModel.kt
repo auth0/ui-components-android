@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
@@ -34,10 +33,6 @@ class EnrolledAuthenticatorViewModel(
     private val deleteAuthenticationMethodUseCase: DeleteAuthenticationMethodUseCase,
     private val authenticatorType: AuthenticatorType
 ) : ViewModel() {
-
-    private companion object {
-        private const val TAG = "MFAEnrolledItemViewModel"
-    }
 
     private val _uiState =
         MutableStateFlow(EnrolledUiState())
@@ -108,7 +103,6 @@ class EnrolledAuthenticatorViewModel(
 
             deleteAuthenticationMethodUseCase(authenticationMethodId)
                 .onSuccess {
-                    Log.d(TAG, "Successfully deleted authentication method")
                     cachedAuthenticators = updatedList
                     _uiState.update {
                         it.copy(
@@ -119,11 +113,6 @@ class EnrolledAuthenticatorViewModel(
                     }
                 }
                 .onError { err ->
-                    Log.d(
-                        TAG,
-                        "Failed to delete authentication method, rolling back",
-                        err.cause
-                    )
                     _uiState.update {
                         it.copy(
                             loading = false,
