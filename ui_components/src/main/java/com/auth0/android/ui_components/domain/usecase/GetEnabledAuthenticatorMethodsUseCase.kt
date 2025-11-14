@@ -22,7 +22,8 @@ class GetEnabledAuthenticatorMethodsUseCase(
     private val dispatcherProvider: DispatcherProvider,
 ) {
     private companion object {
-        private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods"
+        private const val REQUIRED_SCOPES_FACTORS = "read:me:factors"
+        private const val REQUIRED_SCOPES_AUTHENTICATION = "read:me:authentication_methods"
     }
 
     suspend operator fun invoke(): Result<List<AuthenticatorMethod>, Auth0Error> =
@@ -30,10 +31,10 @@ class GetEnabledAuthenticatorMethodsUseCase(
             safeCall {
                 coroutineScope {
                     val factorsDeferred = async {
-                        repository.getFactors(REQUIRED_SCOPES)
+                        repository.getFactors(REQUIRED_SCOPES_FACTORS)
                     }
                     val authMethodsDeferred = async {
-                        repository.getAuthenticatorMethods(REQUIRED_SCOPES)
+                        repository.getAuthenticatorMethods(REQUIRED_SCOPES_AUTHENTICATION)
                     }
 
                     val (factors, authMethods) = Pair(
@@ -48,7 +49,7 @@ class GetEnabledAuthenticatorMethodsUseCase(
     /**
      * Maps factors to MFA methods
      * Shows only available factors and checks if any authentication method
-     * of the same type has confirmed: true
+     * of the same type has confirmed: true`
      */
     private fun mapToMFAMethods(
         factors: List<Factor>,

@@ -32,7 +32,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
     private val testDispatcher = StandardTestDispatcher()
     private val dispatcherProvider = TestDispatcherProvider(testDispatcher)
 
-    private val requiredScopes = "read:me:factors read:me:authentication_methods"
+    private val requiredScopesFactor = "read:me:factors"
+    private val requiredScopesAuthentication = "read:me:authentication_methods"
 
     @Before
     fun setup() {
@@ -79,8 +80,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(totpMethod?.confirmed).isTrue()
             Truth.assertThat(totpMethod?.usage).containsExactly("secondary")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -110,8 +111,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val totpMethod = authenticatorMethods.find { it.type == AuthenticatorType.TOTP }
             Truth.assertThat(totpMethod?.confirmed).isFalse()
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -136,8 +137,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val totpMethod = authenticatorMethods.find { it.type == AuthenticatorType.TOTP }
             Truth.assertThat(totpMethod?.confirmed).isFalse()
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -155,8 +156,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
 
         Truth.assertThat(authenticatorMethods).isEmpty()
 
-        coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+        coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
     }
 
     @Test
@@ -178,8 +179,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(authenticatorMethods[0].confirmed).isTrue()
             Truth.assertThat(authenticatorMethods[0].usage).containsExactly("secondary")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -188,8 +189,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val factors = listOf(TestData.phoneFactor)
             val authMethods = listOf<AuthenticationMethod>(TestData.phoneAuthMethod)
 
-            coEvery { repository.getFactors(requiredScopes) } returns factors
-            coEvery { repository.getAuthenticatorMethods(requiredScopes) } returns authMethods
+            coEvery { repository.getFactors(any<String>()) } returns factors
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
 
             val result = useCase.invoke()
 
@@ -201,8 +202,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(authenticatorMethods[0].confirmed).isTrue()
             Truth.assertThat(authenticatorMethods[0].usage).containsExactly("primary")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -225,8 +226,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(authenticatorMethods[0].confirmed).isTrue()
             Truth.assertThat(authenticatorMethods[0].usage).containsExactly("primary")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -236,8 +237,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val factors = listOf(pushFactor)
             val authMethods = listOf<AuthenticationMethod>(TestData.pushNotificationAuthMethod)
 
-            coEvery { repository.getFactors(requiredScopes) } returns factors
-            coEvery { repository.getAuthenticatorMethods(requiredScopes) } returns authMethods
+            coEvery { repository.getFactors(any<String>()) } returns factors
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
 
             val result = useCase.invoke()
 
@@ -249,8 +250,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(authenticatorMethods[0].confirmed).isTrue()
             Truth.assertThat(authenticatorMethods[0].usage).containsExactly("secondary")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -260,8 +261,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val factors = listOf(recoveryFactor)
             val authMethods = listOf<AuthenticationMethod>(TestData.recoveryAuthMethod)
 
-            coEvery { repository.getFactors(requiredScopes) } returns factors
-            coEvery { repository.getAuthenticatorMethods(requiredScopes) } returns authMethods
+            coEvery { repository.getFactors(any<String>()) } returns factors
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
 
             val result = useCase.invoke()
 
@@ -275,8 +276,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(authenticatorMethods[0].confirmed).isTrue()
             Truth.assertThat(authenticatorMethods[0].usage).containsExactly("secondary")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
@@ -300,8 +301,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
         Truth.assertThat(authenticatorMethods[0].type).isEqualTo(AuthenticatorType.TOTP)
         Truth.assertThat(authenticatorMethods[0].confirmed).isTrue()
 
-        coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+        coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
     }
 
     @Test
@@ -310,8 +311,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
         val factors = listOf(unknownFactor)
         val authMethods = emptyList<AuthenticationMethod>()
 
-        coEvery { repository.getFactors(requiredScopes) } returns factors
-        coEvery { repository.getAuthenticatorMethods(requiredScopes) } returns authMethods
+        coEvery { repository.getFactors(any<String>()) } returns factors
+        coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
 
         val result = useCase.invoke()
 
@@ -323,8 +324,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
         Truth.assertThat(authenticatorMethods[0].confirmed).isFalse()
         Truth.assertThat(authenticatorMethods[0].usage).containsExactly("secondary")
 
-        coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+        coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
     }
 
     @Test
@@ -346,7 +347,7 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(error).isInstanceOf(Auth0Error.NetworkError::class.java)
             Truth.assertThat(error.message).isEqualTo("Network connection failed")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
         }
 
     @Test
@@ -367,7 +368,7 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(error).isInstanceOf(Auth0Error.NetworkError::class.java)
             Truth.assertThat(error.message).isEqualTo("Failed to fetch authentication methods")
 
-            coVerify(exactly = 1) { repository.getFactors(requiredScopes) }
-            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopes) }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 }
