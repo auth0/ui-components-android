@@ -9,6 +9,8 @@ import com.auth0.android.result.TotpAuthenticationMethod
 import com.auth0.android.result.MfaEnrollmentChallenge as SdkMfaEnrollmentChallenge
 import com.auth0.android.result.RecoveryCodeEnrollmentChallenge as SdkRecoveryCodeEnrollmentChallenge
 import com.auth0.android.result.TotpEnrollmentChallenge as SdkTotpEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge as DomainMfaEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge as DomainRecoveryCodeEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.TotpEnrollmentChallenge as DomainTotpEnrollmentChallenge
@@ -135,5 +137,49 @@ object TestData {
     val domainPhoneEnrollmentChallenge = DomainMfaEnrollmentChallenge(
         id = "phone_123",
         authSession = "phone_session"
+    )
+
+    // AuthenticatorMethod test data
+    val totpAuthenticatorMethod = AuthenticatorMethod(
+        type = AuthenticatorType.TOTP,
+        confirmed = true,
+        usage = listOf("mfa"),
+        name = "Authenticator App"
+    )
+
+    val phoneAuthenticatorMethod = AuthenticatorMethod(
+        type = AuthenticatorType.PHONE,
+        confirmed = false,
+        usage = listOf("mfa"),
+        name = "My Phone"
+    )
+
+    val emailAuthenticatorMethod = AuthenticatorMethod(
+        type = AuthenticatorType.EMAIL,
+        confirmed = true,
+        usage = listOf("mfa"),
+        name = "My Email"
+    )
+
+    val pushAuthenticatorMethod = AuthenticatorMethod(
+        type = AuthenticatorType.PUSH,
+        confirmed = false,
+        usage = listOf("mfa"),
+        name = "Push Device"
+    )
+
+    val recoveryCodeAuthenticatorMethod = AuthenticatorMethod(
+        type = AuthenticatorType.RECOVERY_CODE,
+        confirmed = true,
+        usage = listOf("mfa"),
+        name = null
+    )
+
+    val allAuthenticatorMethods = listOf(
+        totpAuthenticatorMethod,
+        phoneAuthenticatorMethod,
+        emailAuthenticatorMethod,
+        pushAuthenticatorMethod,
+        recoveryCodeAuthenticatorMethod
     )
 }

@@ -11,6 +11,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -55,23 +56,18 @@ class AuthenticatorMethodsViewModelTest {
 
             val initialState = viewModel.uiState.value
 
-            // Then - Initial state should be Loading
             assertThat(initialState).isInstanceOf(AuthenticatorUiState.Loading::class.java)
 
-            // When - Start collecting the flow to trigger onStart
-            val job = backgroundScope.launch {
-                viewModel.uiState.collect { /* Keep collecting */ }
+            val job = launch {
+                viewModel.uiState.collect { }
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Then - Use case should be called automatically via onStart
             coVerify(exactly = 1) { getEnabledAuthenticatorMethodsUseCase() }
 
-            // And - State should transition to Success after fetch completes
             val finalState = viewModel.uiState.value
             assertThat(finalState).isInstanceOf(AuthenticatorUiState.Success::class.java)
 
-            // Cleanup
             job.cancel()
         }
 
@@ -82,8 +78,8 @@ class AuthenticatorMethodsViewModelTest {
                 TestData.allAuthenticatorMethods
             )
 
-            val job = backgroundScope.launch {
-                viewModel.uiState.collect { /* Keep collecting */ }
+            val job = launch {
+                viewModel.uiState.collect { }
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -132,8 +128,8 @@ class AuthenticatorMethodsViewModelTest {
         runTest {
             coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(emptyList())
 
-            val job = backgroundScope.launch {
-                viewModel.uiState.collect { /* Keep collecting */ }
+            val job = launch {
+                viewModel.uiState.collect { }
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -156,8 +152,8 @@ class AuthenticatorMethodsViewModelTest {
             )
             coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Error(networkError)
 
-            val job = backgroundScope.launch {
-                viewModel.uiState.collect { /* Keep collecting */ }
+            val job = launch {
+                viewModel.uiState.collect { }
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -176,21 +172,18 @@ class AuthenticatorMethodsViewModelTest {
     @Test
     fun `fetchAuthenticatorMethods - invalid token error - emits Error state with error and retry callback`() =
         runTest {
-            // Given
             val tokenError = Auth0Error.RefreshTokenInvalid(
                 message = "Invalid or expired refresh token",
                 cause = Exception("Token validation failed")
             )
             coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Error(tokenError)
 
-            // When - Call fetchAuthenticatorMethods directly
 
-            val job = backgroundScope.launch {
-                viewModel.uiState.collect { /* Keep collecting */ }
+            val job = launch {
+                viewModel.uiState.collect { }
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Then - State should be Error
             val state = viewModel.uiState.value
             assertThat(state).isInstanceOf(AuthenticatorUiState.Error::class.java)
 
@@ -199,7 +192,6 @@ class AuthenticatorMethodsViewModelTest {
             assertThat(errorState.error.error.message).contains("Invalid or expired refresh token")
             assertThat(errorState.error.onRetry).isNotNull()
 
-            // Verify use case was called once
             coVerify(exactly = 1) { getEnabledAuthenticatorMethodsUseCase() }
             job.cancel()
         }
@@ -208,7 +200,6 @@ class AuthenticatorMethodsViewModelTest {
     @Test
     fun `error state retry callback - invoked after error - triggers fetchAuthenticatorMethods again and can succeed`() =
         runTest {
-            // Given - First call returns error, second call returns success
             val networkError = Auth0Error.NetworkError(
                 message = "Connection failed",
                 cause = Exception("Network timeout")
@@ -218,9 +209,8 @@ class AuthenticatorMethodsViewModelTest {
                 Result.Success(listOf(TestData.totpAuthenticatorMethod))
             )
 
-            // When - First call triggers error
-            val job = backgroundScope.launch {
-                viewModel.uiState.collect { /* Keep collecting */ }
+            val job = launch {
+                viewModel.uiState.collect { }
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -246,51 +236,47 @@ class AuthenticatorMethodsViewModelTest {
     @Test
     fun `fetchAuthenticatorMethods - called multiple times - always starts with Loading state`() =
         runTest {
-            // Given - First call returns success
-            coEvery { getEnabledAuthenticatorMethodsUseCase() } returnsMany listOf(
-                Result.Success(
-                    listOf(TestData.totpAuthenticatorMethod)
-                ),
-                Result.Success(
-                    listOf(TestData.phoneAuthenticatorMethod)
-                )
-            )
-
-            // When - First call
-            val job = backgroundScope.launch {
-                viewModel.uiState.collect { /* Keep collecting */ }
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } coAnswers {
+                // Adding a delay to mimic a real world delay and ensuring all intermediate states are collected
+                delay(10)
+                Result.Success(listOf(TestData.totpAuthenticatorMethod))
             }
+
+            val states = mutableListOf<AuthenticatorUiState>()
+            val job = launch {
+                viewModel.uiState.collect { state ->
+                    states.add(state)
+                }
+            }
+
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Then - State should be Success
             val firstState = viewModel.uiState.value
             assertThat(firstState).isInstanceOf(AuthenticatorUiState.Success::class.java)
+            val firstSuccess = firstState as AuthenticatorUiState.Success
+            assertThat(firstSuccess.data).hasSize(1)
+            assertThat(firstSuccess.data[0].type).isEqualTo(com.auth0.android.ui_components.domain.model.AuthenticatorType.TOTP)
 
-            // Given - Second call will return different data
-//            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
-//                listOf(TestData.phoneAuthenticatorMethod)
-//            )
+            states.clear()
 
-            // When - Second call is made
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } coAnswers {
+                delay(10)
+                Result.Success(listOf(TestData.phoneAuthenticatorMethod))
+            }
             viewModel.fetchAuthenticatorMethods()
-
-//             Then - State should immediately transition to Loading
-            val loadingState = viewModel.uiState.value
-            assertThat(loadingState).isInstanceOf(AuthenticatorUiState.Loading::class.java)
-
-            // When - Coroutines complete
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Then - State should be Success with new data
-            val finalState = viewModel.uiState.value
-            assertThat(finalState).isInstanceOf(AuthenticatorUiState.Success::class.java)
+            assertThat(states.size).isAtLeast(2)
+            assertThat(states[0]).isInstanceOf(AuthenticatorUiState.Loading::class.java)
 
-            val successState = finalState as AuthenticatorUiState.Success
+            val lastState = states.last()
+            assertThat(lastState).isInstanceOf(AuthenticatorUiState.Success::class.java)
+            val successState = lastState as AuthenticatorUiState.Success
             assertThat(successState.data).hasSize(1)
             assertThat(successState.data[0].type).isEqualTo(com.auth0.android.ui_components.domain.model.AuthenticatorType.PHONE)
 
-            // Verify use case was called twice (first call + second call)
             coVerify(exactly = 2) { getEnabledAuthenticatorMethodsUseCase() }
+
             job.cancel()
         }
 }

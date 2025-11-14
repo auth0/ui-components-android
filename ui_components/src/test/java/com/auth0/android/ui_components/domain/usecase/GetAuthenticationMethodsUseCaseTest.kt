@@ -1,4 +1,4 @@
-package com.auth0.android.ui_components.domain
+package com.auth0.android.ui_components.domain.usecase
 
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.MfaAuthenticationMethod
@@ -8,7 +8,6 @@ import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
-import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUseCase
 import com.auth0.android.ui_components.helpers.TestDispatcherProvider
 import com.google.common.truth.Truth
 import io.mockk.clearAllMocks
