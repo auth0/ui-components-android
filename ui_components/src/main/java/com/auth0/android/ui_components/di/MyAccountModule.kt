@@ -52,7 +52,6 @@ object MyAccountModule {
         return GetEnabledAuthenticatorMethodsUseCase(
             repository = provideMyAccountRepository(),
             dispatcherProvider = provideDispatcherProvider(),
-            backgroundScope = CoroutineScope(Job())
         )
     }
 

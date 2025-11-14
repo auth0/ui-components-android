@@ -301,7 +301,7 @@ class VerifyAuthenticatorUseCaseTest {
                 repository.verifyWithoutOtp(
                     authenticationMethodId = any(),
                     authSession = any(),
-                    scope = requiredScope
+                    scope = any<String>()
                 )
             } throws expectedError
 

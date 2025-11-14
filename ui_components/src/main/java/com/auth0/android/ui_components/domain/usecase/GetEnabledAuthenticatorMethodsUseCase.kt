@@ -10,8 +10,8 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.network.safeCall
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 /**
@@ -20,7 +20,6 @@ import kotlinx.coroutines.withContext
 class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
     private val dispatcherProvider: DispatcherProvider,
-    private val backgroundScope: CoroutineScope,
 ) {
     private companion object {
         private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods"
@@ -29,18 +28,20 @@ class GetEnabledAuthenticatorMethodsUseCase(
     suspend operator fun invoke(): Result<List<AuthenticatorMethod>, Auth0Error> =
         withContext(dispatcherProvider.io) {
             safeCall {
-                val factorsDeferred = backgroundScope.async {
-                    repository.getFactors(REQUIRED_SCOPES)
-                }
-                val authMethodsDeferred = backgroundScope.async {
-                    repository.getAuthenticatorMethods(REQUIRED_SCOPES)
-                }
+                coroutineScope {
+                    val factorsDeferred = async {
+                        repository.getFactors(REQUIRED_SCOPES)
+                    }
+                    val authMethodsDeferred = async {
+                        repository.getAuthenticatorMethods(REQUIRED_SCOPES)
+                    }
 
-                val (factors, authMethods) = Pair(
-                    factorsDeferred.await(),
-                    authMethodsDeferred.await()
-                )
-                mapToMFAMethods(factors, authMethods)
+                    val (factors, authMethods) = Pair(
+                        factorsDeferred.await(),
+                        authMethodsDeferred.await()
+                    )
+                    mapToMFAMethods(factors, authMethods)
+                }
             }
         }
 
