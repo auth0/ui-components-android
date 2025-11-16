@@ -23,7 +23,7 @@ android {
         buildConfigField "String", "LIBRARY_NAME", "\"$project.rootProject.name\""
         buildConfigField "String", "VERSION_NAME", "\"${project.version}\""
 
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
 
         manifestPlaceholders += [auth0Domain: "YOUR_DOMAIN",
