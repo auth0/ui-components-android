@@ -1,6 +1,7 @@
 package com.auth0.android.ui_components.data
 
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import com.auth0.android.result.APICredentials
 import com.auth0.android.ui_components.Auth0UI
 import java.util.concurrent.ConcurrentHashMap
@@ -21,6 +22,11 @@ class TokenManager private constructor() {
             return instance ?: synchronized(this) {
                 instance ?: TokenManager().also { instance = it }
             }
+        }
+
+        @VisibleForTesting(otherwise = VisibleForTesting.PRIVATE)
+        internal fun setInstance(tokenManager: TokenManager?) {
+            instance = tokenManager
         }
     }
 
