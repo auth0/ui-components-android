@@ -51,6 +51,7 @@ android {
                 maxHeapSize = "1024m"
             }
             includeAndroidResources = true
+            returnDefaultValues = true
         }
     }
     compileOptions {

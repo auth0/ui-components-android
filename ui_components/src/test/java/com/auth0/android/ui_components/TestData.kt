@@ -221,4 +221,45 @@ object TestData {
         enrolledTotpMethod,
         enrolledEmailMethod
     )
+
+    // EnrollmentResult test data for EnrollmentViewModel
+    val totpEnrollmentResult = com.auth0.android.ui_components.domain.model.EnrollmentResult.TotpEnrollment(
+        challenge = domainTotpEnrollmentChallenge,
+        authenticationMethodId = "auth_totp_new_001",
+        authSession = "session_totp_001"
+    )
+
+
+    val defaultPhoneEnrollmentResult = com.auth0.android.ui_components.domain.model.EnrollmentResult.DefaultEnrollment(
+        challenge = domainPhoneEnrollmentChallenge,
+        authenticationMethodId = "auth_phone_new_001",
+        authSession = "session_phone_001"
+    )
+
+    val defaultEmailEnrollmentResult = com.auth0.android.ui_components.domain.model.EnrollmentResult.DefaultEnrollment(
+        challenge = domainEmailEnrollmentChallenge,
+        authenticationMethodId = "auth_email_new_001",
+        authSession = "session_email_001"
+    )
+
+    // AuthenticationMethod for verification success
+    val verifiedPhoneAuthMethod = PhoneAuthenticationMethod(
+        id = "verified_phone_001",
+        type = "phone",
+        createdAt = "2025-11-16T10:00:00.000Z",
+        usage = listOf("mfa"),
+        confirmed = true,
+        name = "Verified Phone",
+        phoneNumber = "+15551234567",
+        preferredAuthenticationMethod = "sms"
+    )
+
+    val verifiedTotpAuthMethod = TotpAuthenticationMethod(
+        id = "verified_totp_001",
+        type = "totp",
+        createdAt = "2025-11-16T10:00:00.000Z",
+        usage = listOf("mfa"),
+        confirmed = true,
+        name = "Verified Authenticator"
+    )
 }
