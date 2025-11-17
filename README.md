@@ -168,9 +168,9 @@ val credentialsManager = CredentialsManager(
 
 // Initialize the UI library
 Auth0UI.initialize(
-    account,
-    DefaultTokenProvider(credentialsManager),
-    WebAuthProvider.login(account).withScheme("https")
+    account = account,
+    tokenProvider = DefaultTokenProvider(credentialsManager),
+    scheme = "https"
 )
 ```
 
@@ -205,10 +205,7 @@ class CustomTokenProvider : TokenProvider {
 Auth0UI.initialize(
     account = account,
     tokenProvider = CustomTokenProvider(),
-    webAuthBuilder = WebAuthProvider.login(account)
-        .withScheme("myapp")
-        .withScope("openid profile email offline_access")
-        .withAudience("https://${domain}/api/v2/")
+    scheme = "customscheme"
 )
 ```
 
@@ -226,13 +223,13 @@ If you followed the configuration steps above, the default scheme is `https`. Th
 
 1. Update the `auth0Scheme` Manifest Placeholder in your `app/build.gradle` file
 2. Update the **Allowed Callback URLs** in your [Auth0 Dashboard](https://manage.auth0.com/#/applications)
-3. Call `withScheme()` when initializing:
+3. Pass your custom scheme when initializing:
 
 ```kotlin
 Auth0UI.initialize(
-    account,
-    tokenProvider,
-    WebAuthProvider.login(account).withScheme("myapp")
+    account = account,
+    tokenProvider = tokenProvider,
+    scheme = "customscheme"
 )
 ```
 
