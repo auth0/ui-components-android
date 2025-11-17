@@ -1,6 +1,7 @@
 package com.auth0.android.ui_components.presentation
 
 import android.content.Context
+import com.auth0.android.provider.WebAuthProvider
 import com.auth0.android.result.APICredentials
 import com.auth0.android.ui_components.Auth0UI
 import com.auth0.android.ui_components.data.TokenManager
@@ -14,7 +15,8 @@ suspend fun mfaRecoveryHandler(
     scope: String,
 ): Result<APICredentials, Auth0Error> {
     return safeCall {
-        val credentials = Auth0UI.loginHandler
+        val credentials = WebAuthProvider.login(Auth0UI.account)
+            .withScheme(Auth0UI.scheme)
             .withScope(scope)
             .withAudience(TokenManager.getInstance().getMyAccountAudience())
             .await(context)
