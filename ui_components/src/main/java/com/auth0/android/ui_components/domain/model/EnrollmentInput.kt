@@ -1,7 +1,5 @@
 package com.auth0.android.ui_components.domain.model
 
-import com.auth0.android.myaccount.PhoneAuthenticationMethodType
-
 
 sealed class EnrollmentInput {
 
@@ -11,6 +9,5 @@ sealed class EnrollmentInput {
 
     data class Phone(
         val phoneNumber: String,
-        val preferredMethod: PhoneAuthenticationMethodType
     ) : EnrollmentInput()
 }

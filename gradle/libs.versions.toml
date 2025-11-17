@@ -2,7 +2,6 @@
 agp = "8.11.2"
 kotlin = "2.2.20"
 coreKtx = "1.17.0"
-junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 lifecycleRuntimeKtx = "2.6.1"
@@ -13,10 +12,13 @@ auth0 = "3.10.0"
 runtimeAndroid = "1.9.2"
 kotlinx-serialization = "1.9.0"
 zxing = "3.5.3"
+mockk = "1.14.6"
+kotlinx-coroutines = "1.7.3"
+truth = "1.1.5"
+junit4 = "4.13.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
@@ -36,6 +38,10 @@ viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose"
 androidx-runtime-android = { group = "androidx.compose.runtime", name = "runtime-android", version.ref = "runtimeAndroid" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 zxing-barcode = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "kotlinx-coroutines" }
+truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
+junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -43,5 +49,5 @@ kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize" ,version.ref = "kotlin" }
+kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 

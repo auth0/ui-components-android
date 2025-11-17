@@ -23,7 +23,7 @@ android {
         buildConfigField "String", "LIBRARY_NAME", "\"$project.rootProject.name\""
         buildConfigField "String", "VERSION_NAME", "\"${project.version}\""
 
-        testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
 
         manifestPlaceholders += [auth0Domain: "YOUR_DOMAIN",
@@ -51,6 +51,7 @@ android {
                 maxHeapSize = "1024m"
             }
             includeAndroidResources = true
+            returnDefaultValues = true
         }
     }
     compileOptions {
@@ -84,7 +85,11 @@ dependencies {
     implementation libs.zxing.barcode
 
 
-    testImplementation libs.junit
+    // JUnit 4
+    testImplementation libs.junit4
+    testImplementation libs.mockk
+    testImplementation libs.kotlinx.coroutines.test
+    testImplementation libs.truth
 }
 
 apply from: rootProject.file('gradle/maven-publish.gradle')

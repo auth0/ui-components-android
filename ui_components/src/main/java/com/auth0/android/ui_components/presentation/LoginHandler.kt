@@ -13,7 +13,7 @@ suspend fun mfaRecoveryHandler(
     context: Context,
     scope: String,
 ): Result<APICredentials, Auth0Error> {
-    return safeCall(scope) {
+    return safeCall {
         val credentials = Auth0UI.loginHandler
             .withScope(scope)
             .withAudience(TokenManager.getInstance().getMyAccountAudience())

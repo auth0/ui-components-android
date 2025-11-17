@@ -3,7 +3,6 @@ package com.auth0.android.ui_components.domain.usecase
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.Factor
 import com.auth0.android.result.MfaAuthenticationMethod
-import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
@@ -11,8 +10,8 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.network.safeCall
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 /**
@@ -20,42 +19,37 @@ import kotlinx.coroutines.withContext
  */
 class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
-    private val tokenManager: TokenManager,
     private val dispatcherProvider: DispatcherProvider,
-    private val backgroundScope: CoroutineScope,
 ) {
     private companion object {
-        private const val REQUIRED_SCOPES = "read:me:factors read:me:authentication_methods"
+        private const val REQUIRED_SCOPES_FACTORS = "read:me:factors"
+        private const val REQUIRED_SCOPES_AUTHENTICATION = "read:me:authentication_methods"
     }
 
     suspend operator fun invoke(): Result<List<AuthenticatorMethod>, Auth0Error> =
         withContext(dispatcherProvider.io) {
-            safeCall(REQUIRED_SCOPES) {
-                val audience = tokenManager.getMyAccountAudience()
-                val accessToken = tokenManager.fetchToken(
-                    audience = audience,
-                    scope = REQUIRED_SCOPES
-                )
+            safeCall {
+                coroutineScope {
+                    val factorsDeferred = async {
+                        repository.getFactors(REQUIRED_SCOPES_FACTORS)
+                    }
+                    val authMethodsDeferred = async {
+                        repository.getAuthenticatorMethods(REQUIRED_SCOPES_AUTHENTICATION)
+                    }
 
-                val factorsDeferred = backgroundScope.async {
-                    repository.getFactors(accessToken)
+                    val (factors, authMethods) = Pair(
+                        factorsDeferred.await(),
+                        authMethodsDeferred.await()
+                    )
+                    mapToMFAMethods(factors, authMethods)
                 }
-                val authMethodsDeferred = backgroundScope.async {
-                    repository.getAuthenticatorMethods(accessToken)
-                }
-
-                val (factors, authMethods) = Pair(
-                    factorsDeferred.await(),
-                    authMethodsDeferred.await()
-                )
-                mapToMFAMethods(factors, authMethods)
             }
         }
 
     /**
      * Maps factors to MFA methods
      * Shows only available factors and checks if any authentication method
-     * of the same type has confirmed: true
+     * of the same type has confirmed: true`
      */
     private fun mapToMFAMethods(
         factors: List<Factor>,

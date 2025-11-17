@@ -51,16 +51,13 @@ object MyAccountModule {
     private fun provideEnabledAuthenticatorMethodsUseCase(): GetEnabledAuthenticatorMethodsUseCase {
         return GetEnabledAuthenticatorMethodsUseCase(
             repository = provideMyAccountRepository(),
-            tokenManager = provideTokenManager(),
             dispatcherProvider = provideDispatcherProvider(),
-            backgroundScope = CoroutineScope(Job())
         )
     }
 
     private fun provideGetAuthenticationMethodsUseCase(): GetAuthenticationMethodsUseCase {
         return GetAuthenticationMethodsUseCase(
             repository = provideMyAccountRepository(),
-            tokenManager = provideTokenManager(),
             dispatcherProvider = provideDispatcherProvider()
         )
     }
@@ -68,7 +65,6 @@ object MyAccountModule {
     private fun provideDeleteAuthenticationMethodUseCase(): DeleteAuthenticationMethodUseCase {
         return DeleteAuthenticationMethodUseCase(
             repository = provideMyAccountRepository(),
-            tokenManager = provideTokenManager(),
             dispatcherProvider = provideDispatcherProvider()
         )
     }
@@ -77,7 +73,6 @@ object MyAccountModule {
     private fun provideEnrollAuthenticatorUseCase(): EnrollAuthenticatorUseCase {
         return EnrollAuthenticatorUseCase(
             repository = provideMyAccountRepository(),
-            tokenManager = provideTokenManager(),
             dispatcherProvider = provideDispatcherProvider()
         )
     }
@@ -85,13 +80,12 @@ object MyAccountModule {
     private fun provideVerifyAuthenticatorUseCase(): VerifyAuthenticatorUseCase {
         return VerifyAuthenticatorUseCase(
             repository = provideMyAccountRepository(),
-            tokenManager = provideTokenManager(),
             dispatcherProvider = provideDispatcherProvider()
         )
     }
 
     private fun provideMyAccountRepository(): MyAccountRepository {
-        return MyAccountRepositoryImpl(MyAccountProvider())
+        return MyAccountRepositoryImpl(MyAccountProvider(), provideTokenManager())
     }
 
     private fun provideTokenManager(): TokenManager {

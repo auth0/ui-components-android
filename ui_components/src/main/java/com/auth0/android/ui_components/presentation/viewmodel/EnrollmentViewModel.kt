@@ -105,7 +105,7 @@ class EnrollmentViewModel(
     ) {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(enrollingAuthenticator = true)
+                it.copy(enrollingAuthenticator = true, uiError = null)
             }
             enrollAuthenticatorUseCase(authenticatorType, input)
                 .onSuccess { enrollmentResult ->

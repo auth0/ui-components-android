@@ -1,19 +1,12 @@
-package com.auth0.android.ui_components.domain.error
+package com.auth0.android.ui_components.data.mapper
 
-import android.util.Log
 import com.auth0.android.NetworkErrorException
 import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.authentication.storage.CredentialsManagerException
 import com.auth0.android.myaccount.MyAccountException
-import com.auth0.android.myaccount.MyAccountException.ValidationError
+import com.auth0.android.ui_components.domain.error.Auth0Error
 
-/**
- * Maps infrastructure-level exceptions to domain-level error types
- * Centralizes all error mapping logic in one place
- */
-object ErrorMapper {
-
-    private const val TAG = "ErrorMapper"
+internal object ErrorMapper {
 
     /**
      * Maps any exception to an Auth0Error
@@ -23,8 +16,6 @@ object ErrorMapper {
         exception: Throwable,
         scope: String? = null
     ): Auth0Error {
-        Log.e(TAG, "Mapping error", exception)
-
         return when (exception) {
             is AuthenticationException -> mapAuthenticationException(exception, scope)
             is MyAccountException -> mapMyAccountException(exception)
@@ -115,7 +106,6 @@ object ErrorMapper {
         exception: CredentialsManagerException,
         scope: String?
     ): Auth0Error {
-        Log.e(TAG, "mapCredentialsManagerException: ")
         return when {
             exception.cause as? AuthenticationException != null -> {
                 mapAuthenticationException(exception.cause as AuthenticationException, scope)
@@ -150,7 +140,7 @@ object ErrorMapper {
             !exception.validationErrors.isNullOrEmpty() -> {
                 Auth0Error.ValidationError(
                     message = exception.detail ?: "Validation failed",
-                    errors = (exception.validationErrors as List<ValidationError>).map {
+                    errors = (exception.validationErrors as List<MyAccountException.ValidationError>).map {
                         Auth0Error.ValidationError.FieldError(
                             field = it.field,
                             detail = it.detail,
