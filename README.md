@@ -3,7 +3,7 @@
 
 # Auth0 UI Components
 [![Maven Central](https://img.shields.io/maven-central/v/com.auth0.android/ui-components.svg?style=flat-square)](https://search.maven.org/artifact/com.auth0.android/ui-components)
-[![License](https://img.shields.io/:license-mit-blue.svg?style=flat-square)](https://doge.mit-license.org/)
+[![License](https://img.shields.io/:license-Apache%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
 📚 [Documentation](#documentation) • 🚀 [Getting Started](#getting-started) • 💻 [Sample App](#run-the-sample-app) • 💬 [Feedback](#feedback)
 
@@ -362,6 +362,5 @@ Please do not report security vulnerabilities on the public GitHub issue tracker
     <img alt="Auth0 Logo" src="https://cdn.auth0.com/website/sdks/logos/auth0_light_mode.png" width="150">
   </picture>
 </p>
-<p align="center">Auth0 is an easy to implement, adaptable authentication and authorization platform. To learn more checkout <a href="https://auth0.com/why-auth0">Why Auth0?</a></p>
-<p align="center">
-This project is licensed under the MIT license. See the <a href="./LICENSE"> LICENSE</a> file for more info.</p>
+<p align="center">Auth0 is an easy-to-implement, adaptable authentication and authorization platform. To learn more check out <a href="https://auth0.com/why-auth0">Why Auth0?</a></p>
+<p align="center">This project is licensed under the Apache License 2.0. See the <a href="./LICENSE">LICENSE</a> file for more info.</p>
