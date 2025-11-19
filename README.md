@@ -1,7 +1,6 @@
 
-<!--![Auth0 Android UI Components](https://cdn.auth0.com/website/sdks/banners/auth0-android-banner.png) -->
+![Auth0 Android UI Components](https://cdn.auth0.com/website/sdks/banners/ui-components-android.png) 
 
-# Auth0 UI Components
 [![Maven Central](https://img.shields.io/maven-central/v/com.auth0.android/ui-components.svg?style=flat-square)](https://search.maven.org/artifact/com.auth0.android/ui-components)
 [![License](https://img.shields.io/:license-Apache%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
