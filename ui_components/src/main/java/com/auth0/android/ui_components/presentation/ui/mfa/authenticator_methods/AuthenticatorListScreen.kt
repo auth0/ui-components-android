@@ -17,6 +17,7 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
+import com.auth0.android.ui_components.styles.components.AuthenticatorItemStyle
 import com.auth0.android.ui_components.theme.sectionHeading2
 import com.auth0.android.ui_components.theme.sectionHeading1
 
@@ -27,13 +28,14 @@ import com.auth0.android.ui_components.theme.sectionHeading1
 @Composable
 fun AuthenticatorListScreen(
     authenticatorMethodList: List<AuthenticatorUiData>,
-    onAuthenticatorClick: (AuthenticatorUiData) -> Unit
+    onAuthenticatorClick: (AuthenticatorUiData) -> Unit,
+    authenticatorItemStyle: AuthenticatorItemStyle
 ) {
     Spacer(modifier = Modifier.height(12.dp))
     Text(
         text = stringResource(R.string.verification_methods),
         modifier = Modifier.height(24.dp),
-        style = sectionHeading1,
+        style = authenticatorItemStyle.sectionTitle,
     )
 
     Spacer(modifier = Modifier.height(8.dp))
@@ -41,7 +43,7 @@ fun AuthenticatorListScreen(
     Text(
         text = stringResource(R.string.manage_2fa_methods),
         modifier = Modifier.height(17.dp),
-        style = sectionHeading2,
+        style = authenticatorItemStyle.sectionSubtitle,
     )
 
     Spacer(modifier = Modifier.height(24.dp))
@@ -63,6 +65,7 @@ fun AuthenticatorListScreen(
                 title = authenticatorMethod.title,
                 leadingIcon = getMFAMethodIcon(authenticatorMethod.type),
                 showActiveTag = authenticatorMethod.confirmed,
+                authenticatorItemStyle,
                 onClick = { onAuthenticatorClick(authenticatorMethod) }
             )
             Spacer(modifier = Modifier.height(12.dp))

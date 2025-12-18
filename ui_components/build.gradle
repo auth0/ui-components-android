@@ -83,6 +83,7 @@ dependencies {
 
     //qr-code
     implementation libs.zxing.barcode
+    implementation libs.androidx.compose.ui.unit
 
 
     // JUnit 4

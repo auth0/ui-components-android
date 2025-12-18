@@ -17,29 +17,50 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
+import com.auth0.android.ui_components.styles.components.TopBarStyle
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.theme.SeparatorLineGray
-import com.auth0.android.ui_components.theme.enrollmentTopbarTitle
 
+/**
+ * Top app bar component with theme support.
+ *
+ * @param title The title text to display
+ * @param modifier Modifier for the top bar
+ * @param style Optional TopBarStyle for customization. When provided, overrides individual style parameters.
+ * @param topBarColor Background color (used when style is not provided)
+ * @param showSeparator Whether to show a divider below the top bar (used when style is not provided)
+ * @param showBackNavigation Whether to show the back navigation icon
+ * @param trailingIcon Optional trailing icon
+ * @param titleTextStyle Text style for the title (used when style is not provided)
+ * @param onBackClick Callback when back button is clicked
+ * @param trailingIconClick Callback when trailing icon is clicked
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopBar(
+internal fun TopBar(
     title: String,
     modifier: Modifier = Modifier,
-    topBarColor: Color = Color.White,
-    showSeparator: Boolean = false,
+    style: TopBarStyle = TopBarStyle.Default,
+    topBarColor: Color? = null,
+    showSeparator: Boolean? = null,
     showBackNavigation: Boolean = true,
     trailingIcon: Painter? = null,
-    titleTextStyle: TextStyle = enrollmentTopbarTitle,
+    titleTextStyle: TextStyle? = null,
     onBackClick: () -> Unit,
     trailingIconClick: () -> Unit = {}
 ) {
+    val backgroundColor = style.backgroundColor
+
+    val showDivider = style.showDivider
+
+    val dividerThickness = Auth0Theme.dimensions.dividerThickness
+
     Column {
         CenterAlignedTopAppBar(
             title = {
                 Text(
                     text = title,
-                    style = titleTextStyle,
+                    style = style.titleStyle,
                 )
             },
             navigationIcon = {
@@ -48,7 +69,7 @@ fun TopBar(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint =  MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -66,14 +87,14 @@ fun TopBar(
                 }
             },
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = topBarColor,
+                containerColor = backgroundColor,
             ),
             modifier = modifier
         )
-        if (showSeparator) {
+        if (showDivider) {
             HorizontalDivider(
                 modifier = Modifier.fillMaxWidth(),
-                thickness = 0.3.dp,
+                thickness = dividerThickness,
                 color = SeparatorLineGray
             )
         }

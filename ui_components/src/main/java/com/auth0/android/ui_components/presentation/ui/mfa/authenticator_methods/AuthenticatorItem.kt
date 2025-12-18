@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -27,16 +25,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
-import com.auth0.android.ui_components.theme.ActiveLabelBackground
-import com.auth0.android.ui_components.theme.ActiveLabelText
-import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
-import com.auth0.android.ui_components.theme.authenticatorItemTitle
+import com.auth0.android.ui_components.styles.components.AuthenticatorItemStyle
 
 @Composable
 fun AuthenticatorItem(
     title: String,
     leadingIcon: Painter,
     showActiveTag: Boolean = false,
+    authenticatorItemStyle: AuthenticatorItemStyle,
     onClick: () -> Unit = {}
 ) {
     Surface(
@@ -45,10 +41,10 @@ fun AuthenticatorItem(
             .height(70.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = authenticatorItemStyle.backgroundColor,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, AuthenticatorItemBorder)
+        border = authenticatorItemStyle.borderStroke
     ) {
         Row(
             modifier = Modifier
@@ -59,7 +55,7 @@ fun AuthenticatorItem(
                 painter = leadingIcon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = Color.Black
+                tint = authenticatorItemStyle.iconTint
             )
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -68,7 +64,7 @@ fun AuthenticatorItem(
             ) {
                 Text(
                     text = title,
-                    style = authenticatorItemTitle
+                    style = authenticatorItemStyle.titleStyle
                 )
 
                 Spacer(Modifier.weight(1f))
@@ -76,7 +72,7 @@ fun AuthenticatorItem(
                     Spacer(modifier = Modifier.width(8.dp))
                     Surface(
                         shape = RoundedCornerShape(16.dp),
-                        color = ActiveLabelBackground
+                        color = authenticatorItemStyle.activeTagTextColor
                     ) {
                         Text(
                             modifier = Modifier
@@ -88,7 +84,7 @@ fun AuthenticatorItem(
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
                             ),
-                            color = ActiveLabelText
+                            color = authenticatorItemStyle.activeTagTextColor
                         )
                     }
                 }
@@ -97,7 +93,7 @@ fun AuthenticatorItem(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.navigate),
-                    tint = Color.Black,
+                    tint = authenticatorItemStyle.iconTint,
                     modifier = Modifier.size(16.dp)
                 )
             }
