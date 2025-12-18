@@ -98,7 +98,7 @@ fun OTPVerificationScreen(
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is EnrollmentEvent.EnrollmentChallengeSuccess -> {
-                Log.d("OTPVerificationScreen", "$event not handled ")
+                Log.d("OTPVerificationScreen", "EnrollmentChallengeSuccess not handled ")
             }
 
             is EnrollmentEvent.VerificationSuccess -> {
