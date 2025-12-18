@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
 
@@ -36,19 +36,12 @@ jobs:
           signing-key: ${{ secrets.signing-key}}
           signing-password: ${{ secrets.signing-password}}
 
-      # Create a release for the tag
-#      - uses: ./.github/actions/release-create
-#        with:
-#          token: ${{ secrets.github-token }}
-#          name: ${{ steps.get_version.outputs.version }}
-#          body: ${{ steps.get_release_notes.outputs.release-notes }}
-#          tag: ${{ steps.get_version.outputs.version }}
-#          commit: ${{ github.sha }}
-#          prerelease: ${{ steps.get_prerelease.outputs.prerelease }}
 
       - name: Announce release
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-          echo "🎉 Successfully released v${{ steps.get_version.outputs.version }}"
+          echo "🎉 Successfully released v$VERSION"
           echo "📦 Published to Maven Central"
-          echo "🏷️  Tagged as v${{ steps.get_version.outputs.version }}"
+          echo "🏷️  Tagged as v$VERSION"
           echo "📝 GitHub Release created"
