@@ -18,7 +18,6 @@ import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.result.MfaEnrollmentChallenge as SdkMfaEnrollmentChallenge
 import com.auth0.android.result.PasskeyEnrollmentChallenge as SdkPasskeyEnrollmentChallenge
 
-
 /**
  * Repository that handles MyAccount API calls
  */
@@ -283,7 +282,7 @@ class MyAccountRepositoryImpl(
                 authSession = challenge.authSession,
                 authParamsPublicKey = challenge.authParamsPublicKey.toSdkModel()
             )
-            return client.enroll(publicKeyCredentials.toSdkModel(), sdkChallenge).await()
+            client.enroll(publicKeyCredentials.toSdkModel(), sdkChallenge).await()
         }
     }
 }
