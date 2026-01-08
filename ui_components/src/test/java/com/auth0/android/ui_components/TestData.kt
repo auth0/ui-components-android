@@ -10,11 +10,28 @@ import com.auth0.android.result.TotpAuthenticationMethod
 import com.auth0.android.result.MfaEnrollmentChallenge as SdkMfaEnrollmentChallenge
 import com.auth0.android.result.RecoveryCodeEnrollmentChallenge as SdkRecoveryCodeEnrollmentChallenge
 import com.auth0.android.result.TotpEnrollmentChallenge as SdkTotpEnrollmentChallenge
+import com.auth0.android.result.PasskeyEnrollmentChallenge as SdkPasskeyEnrollmentChallenge
+import com.auth0.android.result.AuthnParamsPublicKey as SdkAuthnParamsPublicKey
+import com.auth0.android.result.AuthenticatorSelection as SdkAuthenticatorSelection
+import com.auth0.android.result.PubKeyCredParam as SdkPubKeyCredParam
+import com.auth0.android.result.RelyingParty as SdkRelyingParty
+import com.auth0.android.result.PasskeyUser as SdkPasskeyUser
+import com.auth0.android.result.PasskeyAuthenticationMethod as SdkPasskeyAuthenticationMethod
 import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge as DomainMfaEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge as DomainRecoveryCodeEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.TotpEnrollmentChallenge as DomainTotpEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.PasskeyEnrollmentChallenge as DomainPasskeyEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.AuthnParamsPublicKey as DomainAuthnParamsPublicKey
+import com.auth0.android.ui_components.domain.model.AuthenticatorSelection as DomainAuthenticatorSelection
+import com.auth0.android.ui_components.domain.model.PubKeyCredParam as DomainPubKeyCredParam
+import com.auth0.android.ui_components.domain.model.RelyingParty as DomainRelyingParty
+import com.auth0.android.ui_components.domain.model.PasskeyUser as DomainPasskeyUser
+import com.auth0.android.ui_components.domain.model.PublicKeyCredentials as DomainPublicKeyCredentials
+import com.auth0.android.ui_components.domain.model.ClientExtensionResults as DomainClientExtensionResults
+import com.auth0.android.ui_components.domain.model.CredProps as DomainCredProps
+import com.auth0.android.ui_components.domain.model.PublicKeyResponse as DomainPublicKeyResponse
 import java.util.Date
 
 object TestData {
@@ -298,5 +315,85 @@ object TestData {
         type = "Bearer",
         expiresAt = Date(System.currentTimeMillis() + 1800000),
         scope = "read:profile write:profile"
+    )
+
+    // Passkey test data
+    val sdkPasskeyEnrollmentChallenge = SdkPasskeyEnrollmentChallenge(
+        authenticationMethodId = "passkey_method_123",
+        authSession = "passkey_session_abc",
+        authParamsPublicKey = SdkAuthnParamsPublicKey(
+            authenticatorSelection = SdkAuthenticatorSelection(
+                residentKey = "required",
+                userVerification = "preferred"
+            ),
+            challenge = "challenge_string_xyz",
+            pubKeyCredParams = listOf(
+                SdkPubKeyCredParam(alg = -7, type = "public-key"),
+                SdkPubKeyCredParam(alg = -257, type = "public-key")
+            ),
+            relyingParty = SdkRelyingParty(id = "example.auth0.com", name = "Example App"),
+            timeout = 60000L,
+            user = SdkPasskeyUser(
+                displayName = "John Doe",
+                id = "user_id_123",
+                name = "johndoe@example.com"
+            )
+        )
+    )
+
+    val sdkPasskeyAuthMethod = SdkPasskeyAuthenticationMethod(
+        id = "passkey_auth_method_456",
+        type = "passkey",
+        createdAt = "2025-11-10T10:00:00.000Z",
+        usage = listOf("mfa"),
+        credentialBackedUp = true,
+        credentialDeviceType = "platform",
+        identityUserId = null,
+        keyId = "key_id_789",
+        publicKey = "public_key_abc",
+        transports = listOf("internal"),
+        userAgent = "Android",
+        userHandle = "user_handle_def",
+    )
+
+    val domainPublicKeyCredentials = DomainPublicKeyCredentials(
+        authenticatorAttachment = "platform",
+        clientExtensionResults = DomainClientExtensionResults(
+            credProps = DomainCredProps(rk = true)
+        ),
+        id = "credential_id_123",
+        rawId = "raw_credential_id_123",
+        response = DomainPublicKeyResponse(
+            attestationObject = "attestation_object_abc",
+            authenticatorData = "authenticator_data_def",
+            clientDataJSON = "client_data_json_ghi",
+            transports = listOf("internal"),
+            signature = "signature_jkl",
+            userHandle = "user_handle_mno"
+        ),
+        type = "public-key"
+    )
+
+    val domainPasskeyEnrollmentChallenge = DomainPasskeyEnrollmentChallenge(
+        authenticationMethodId = "passkey_method_123",
+        authSession = "passkey_session_abc",
+        authParamsPublicKey = DomainAuthnParamsPublicKey(
+            authenticatorSelection = DomainAuthenticatorSelection(
+                residentKey = "required",
+                userVerification = "preferred"
+            ),
+            challenge = "challenge_string_xyz",
+            pubKeyCredParams = listOf(
+                DomainPubKeyCredParam(alg = -7, type = "public-key"),
+                DomainPubKeyCredParam(alg = -257, type = "public-key")
+            ),
+            relyingParty = DomainRelyingParty(id = "example.auth0.com", name = "Example App"),
+            timeout = 60000L,
+            user = DomainPasskeyUser(
+                displayName = "John Doe",
+                id = "user_id_123",
+                name = "johndoe@example.com"
+            )
+        )
     )
 }
