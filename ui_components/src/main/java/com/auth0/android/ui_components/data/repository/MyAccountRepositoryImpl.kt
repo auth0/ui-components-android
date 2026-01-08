@@ -6,19 +6,24 @@ import com.auth0.android.result.Factor
 import com.auth0.android.ui_components.data.MyAccountProvider
 import com.auth0.android.ui_components.data.TokenManager
 import com.auth0.android.ui_components.data.mapper.toDomainModel
+import com.auth0.android.ui_components.data.mapper.toSdkModel
 import com.auth0.android.ui_components.data.network.withErrorMapping
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.PasskeyAuthenticationMethod
+import com.auth0.android.ui_components.domain.model.PasskeyEnrollmentChallenge
+import com.auth0.android.ui_components.domain.model.PublicKeyCredentials
 import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.TotpEnrollmentChallenge
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.result.MfaEnrollmentChallenge as SdkMfaEnrollmentChallenge
+import com.auth0.android.result.PasskeyEnrollmentChallenge as SdkPasskeyEnrollmentChallenge
 
 /**
  * Repository that handles MyAccount API calls
  */
 class MyAccountRepositoryImpl(
     private val myAccountProvider: MyAccountProvider,
-    val tokenManager: TokenManager
+    private val tokenManager: TokenManager
 ) : MyAccountRepository {
 
     /**
@@ -182,6 +187,30 @@ class MyAccountRepositoryImpl(
     }
 
     /**
+     * Requests a challenge for enrolling a new passkey
+     * @param scope Required scope for the passkey enrollment api
+     * @param userIdentity Optional unique identifier of the user's identity.Needed if the user logged in with a [linked account](https://auth0.com/docs/manage-users/user-accounts/user-account-linking)
+     * @param connection Optional name of the database connection where the user is stored
+     * @return [PasskeyEnrollmentChallenge] containing authentication method ID and public key parameters
+     */
+    override suspend fun enrollPasskey(
+        scope: String,
+        userIdentity: String?,
+        connection: String?
+    ): PasskeyEnrollmentChallenge {
+        return withErrorMapping(scope) {
+            val audience = tokenManager.getMyAccountAudience()
+            val accessToken = tokenManager.fetchToken(
+                audience = audience,
+                scope = scope
+            )
+            val client = myAccountProvider.getMyAccount(accessToken)
+            val sdkChallenge = client.passkeyEnrollmentChallenge(userIdentity, connection).await()
+            sdkChallenge.toDomainModel()
+        }
+    }
+
+    /**
      * Verifies enrollment with OTP code
      * @param authenticationMethodId ID of the authentication method to verify
      * @param otpCode The OTP code entered by user
@@ -226,6 +255,34 @@ class MyAccountRepositoryImpl(
             )
             val client = myAccountProvider.getMyAccount(accessToken)
             client.verify(authenticationMethodId, authSession).await()
+        }
+    }
+
+    /**
+     * Verifies and completes passkey enrollment
+     * @param publicKeyCredentials The passkey credentials obtained from the Credential Manager API
+     * @param challenge The enrollment challenge obtained from enrollPasskey
+     * @param scope Required scope for the verify api
+     * @return [PasskeyAuthenticationMethod] containing the enrolled passkey details
+     */
+    override suspend fun verifyPasskey(
+        publicKeyCredentials: PublicKeyCredentials,
+        challenge: PasskeyEnrollmentChallenge,
+        scope: String
+    ): AuthenticationMethod {
+        return withErrorMapping(scope) {
+            val audience = tokenManager.getMyAccountAudience()
+            val accessToken = tokenManager.fetchToken(
+                audience = audience,
+                scope = scope
+            )
+            val client = myAccountProvider.getMyAccount(accessToken)
+            val sdkChallenge = SdkPasskeyEnrollmentChallenge(
+                authenticationMethodId = challenge.authenticationMethodId,
+                authSession = challenge.authSession,
+                authParamsPublicKey = challenge.authParamsPublicKey.toSdkModel()
+            )
+            client.enroll(publicKeyCredentials.toSdkModel(), sdkChallenge).await()
         }
     }
 }

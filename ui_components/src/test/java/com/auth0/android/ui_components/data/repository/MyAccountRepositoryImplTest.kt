@@ -8,6 +8,9 @@ import com.auth0.android.result.EnrollmentChallenge
 import com.auth0.android.result.Factor
 import com.auth0.android.result.RecoveryCodeEnrollmentChallenge
 import com.auth0.android.result.TotpEnrollmentChallenge
+import com.auth0.android.result.PasskeyEnrollmentChallenge as SdkPasskeyEnrollmentChallenge
+import com.auth0.android.result.PasskeyAuthenticationMethod as SdkPasskeyAuthenticationMethod
+import com.auth0.android.request.PublicKeyCredentials as SdkPublicKeyCredentials
 import com.auth0.android.ui_components.TestData
 import com.auth0.android.ui_components.data.FakeRequestImpl
 import com.auth0.android.ui_components.data.MyAccountProvider
@@ -479,6 +482,156 @@ class MyAccountRepositoryImplTest {
         }
 
         assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
+    }
+
+    // ========== enrollPasskey Tests ==========
+
+    @Test
+    fun `enrollPasskey - valid access token - returns PasskeyEnrollmentChallenge`() = runTest {
+        val scope = "scope:authentication_methods"
+
+        val request = FakeRequestImpl<SdkPasskeyEnrollmentChallenge, MyAccountException>(
+            response = TestData.sdkPasskeyEnrollmentChallenge
+        )
+        every { myAccountClient.passkeyEnrollmentChallenge(null, null) } returns request
+
+        val result = repository.enrollPasskey(scope)
+
+        assertThat(result.authenticationMethodId).isEqualTo("passkey_method_123")
+        assertThat(result.authSession).isEqualTo("passkey_session_abc")
+        assertThat(result.authParamsPublicKey.challenge).isEqualTo("challenge_string_xyz")
+        assertThat(result.authParamsPublicKey.relyingParty.id).isEqualTo("example.auth0.com")
+        coVerify(exactly = 1) { tokenManager.fetchToken(any(), eq(scope)) }
+        coVerify(exactly = 1) { myAccountClient.passkeyEnrollmentChallenge(null, null) }
+    }
+
+    @Test
+    fun `enrollPasskey - with userIdentity and connection - returns PasskeyEnrollmentChallenge`() = runTest {
+        val scope = "scope:authentication_methods"
+        val userIdentity = "user_identity_123"
+        val connection = "Username-Password-Authentication"
+
+        val request = FakeRequestImpl<SdkPasskeyEnrollmentChallenge, MyAccountException>(
+            response = TestData.sdkPasskeyEnrollmentChallenge
+        )
+        every { myAccountClient.passkeyEnrollmentChallenge(userIdentity, connection) } returns request
+
+        val result = repository.enrollPasskey(scope, userIdentity, connection)
+
+        assertThat(result.authenticationMethodId).isEqualTo("passkey_method_123")
+        coVerify(exactly = 1) { myAccountClient.passkeyEnrollmentChallenge(userIdentity, connection) }
+    }
+
+    @Test
+    fun `enrollPasskey - API call fails - throws Auth0Error`() {
+        val scope = "scope:authentication_methods"
+        val expectedException = MyAccountException("Passkey enrollment failed")
+
+        val request = FakeRequestImpl<SdkPasskeyEnrollmentChallenge, MyAccountException>(
+            exception = expectedException
+        )
+        every { myAccountClient.passkeyEnrollmentChallenge(null, null) } returns request
+
+        val exception = assertThrows(Auth0Error::class.java) {
+            runTest {
+                repository.enrollPasskey(scope)
+            }
+        }
+        assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
+    }
+
+    @Test
+    fun `enrollPasskey - unauthorized error - throws Auth0Error`() {
+        val scope = "scope:authentication_methods"
+        val errorValues = mapOf(
+            "type" to "unauthorized",
+            "title" to "Unauthorized",
+            "detail" to "The access token is invalid or has expired"
+        )
+        val expectedException = MyAccountException(errorValues, 401)
+
+        val request = FakeRequestImpl<SdkPasskeyEnrollmentChallenge, MyAccountException>(
+            exception = expectedException
+        )
+        every { myAccountClient.passkeyEnrollmentChallenge(null, null) } returns request
+
+        val exception = assertThrows(Auth0Error::class.java) {
+            runTest {
+                repository.enrollPasskey(scope)
+            }
+        }
+        assertThat(exception.message).isEqualTo("The access token is invalid or has expired")
+    }
+
+
+    @Test
+    fun `verifyPasskey - valid credentials and challenge - returns AuthenticationMethod`() = runTest {
+        val scope = "scope:authentication_methods"
+
+        val request = FakeRequestImpl<SdkPasskeyAuthenticationMethod, MyAccountException>(
+            response = TestData.sdkPasskeyAuthMethod
+        )
+        every { myAccountClient.enroll(any<SdkPublicKeyCredentials>(), any()) } returns request
+
+        val result = repository.verifyPasskey(
+            TestData.domainPublicKeyCredentials,
+            TestData.domainPasskeyEnrollmentChallenge,
+            scope
+        )
+
+        assertThat(result.id).isEqualTo("passkey_auth_method_456")
+        assertThat(result.type).isEqualTo("passkey")
+        coVerify(exactly = 1) { tokenManager.fetchToken(any(), eq(scope)) }
+        coVerify(exactly = 1) { myAccountClient.enroll(any<SdkPublicKeyCredentials>(), any()) }
+    }
+
+    @Test
+    fun `verifyPasskey - API call fails - throws Auth0Error`() {
+        val scope = "scope:authentication_methods"
+        val expectedException = MyAccountException("Passkey verification failed")
+
+        val request = FakeRequestImpl<SdkPasskeyAuthenticationMethod, MyAccountException>(
+            exception = expectedException
+        )
+        every { myAccountClient.enroll(any<SdkPublicKeyCredentials>(), any()) } returns request
+
+        val exception = assertThrows(Auth0Error::class.java) {
+            runTest {
+                repository.verifyPasskey(
+                    TestData.domainPublicKeyCredentials,
+                    TestData.domainPasskeyEnrollmentChallenge,
+                    scope
+                )
+            }
+        }
+        assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
+    }
+
+    @Test
+    fun `verifyPasskey - bad request error - throws Auth0Error`() {
+        val scope = "scope:authentication_methods"
+        val errorValues = mapOf(
+            "type" to "bad_request",
+            "title" to "Bad Request",
+            "detail" to "Invalid passkey credentials"
+        )
+        val expectedException = MyAccountException(errorValues, 400)
+
+        val request = FakeRequestImpl<SdkPasskeyAuthenticationMethod, MyAccountException>(
+            exception = expectedException
+        )
+        every { myAccountClient.enroll(any<SdkPublicKeyCredentials>(), any()) } returns request
+
+        val exception = assertThrows(Auth0Error::class.java) {
+            runTest {
+                repository.verifyPasskey(
+                    TestData.domainPublicKeyCredentials,
+                    TestData.domainPasskeyEnrollmentChallenge,
+                    scope
+                )
+            }
+        }
+        assertThat(exception.message).isEqualTo("Invalid passkey credentials")
     }
 
 }
