@@ -1,11 +1,7 @@
 package com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -17,17 +13,17 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
-import com.auth0.android.ui_components.theme.sectionHeading2
 import com.auth0.android.ui_components.theme.sectionHeading1
+import com.auth0.android.ui_components.theme.sectionHeading2
 
 
 /**
  * Screen displaying the list of enabled authenticators
  */
 @Composable
-fun AuthenticatorListScreen(
+fun SecondaryAuthenticatorListScreen(
     authenticatorMethodList: List<AuthenticatorUiData>,
-    onAuthenticatorClick: (AuthenticatorUiData) -> Unit
+    onAuthenticatorItemClick: (AuthenticatorUiData) -> Unit
 ) {
     Spacer(modifier = Modifier.height(12.dp))
     Text(
@@ -51,22 +47,14 @@ fun AuthenticatorListScreen(
         return
     }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items(
-            key = { method -> method.type },
-            items = authenticatorMethodList
-        ) { authenticatorMethod ->
-            AuthenticatorItem(
-                title = authenticatorMethod.title,
-                leadingIcon = getMFAMethodIcon(authenticatorMethod.type),
-                showActiveTag = authenticatorMethod.confirmed,
-                onClick = { onAuthenticatorClick(authenticatorMethod) }
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-        }
+    for (item in authenticatorMethodList) {
+        AuthenticatorItem(
+            title = item.title,
+            leadingIcon = getMFAMethodIcon(item.type),
+            showActiveTag = item.confirmed,
+            onClick = { onAuthenticatorItemClick(item) }
+        )
+        Spacer(modifier = Modifier.height(12.dp))
     }
 }
 

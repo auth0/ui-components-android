@@ -31,3 +31,5 @@ val ErrorRed = Color(0xFFB82819)
 val ErrorTextRed = Color(0xFFCA3B2B)
 
 val TextInputBlack = Color(0xFF1F1F1F)
+
+val PasskeyCardBackground = Color(0xFFF0F0F0)
