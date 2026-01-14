@@ -191,7 +191,7 @@ private fun SignInMethodsSection(
 ) {
     Spacer(modifier = Modifier.height(18.dp))
     Text(
-        text = "Sign-in methods",
+        text = stringResource(R.string.sign_in_methods),
         modifier = Modifier.height(24.dp),
         style = sectionHeading1,
     )

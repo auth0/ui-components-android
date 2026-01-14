@@ -99,4 +99,5 @@
     <string name="navigate">Navigate</string>
     <string name="copy">Copy</string>
     <string name="search">Search</string>
+    <string name="sign_in_methods">Sign-in methods</string>
 </resources>
