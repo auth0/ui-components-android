@@ -22,6 +22,9 @@ sealed interface AuthenticatorRoute {
         val authSession: String,
         val phoneNumberOrEmail: String? = null
     )
+
+    @Serializable
+    object PasskeyEnable
 }
 
 

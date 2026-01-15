@@ -10,6 +10,7 @@ import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorEnrollme
 import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorMethodsScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.EnrolledAuthenticatorListScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.OTPVerificationScreen
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyEnableScreen
 
 
 @Composable
@@ -37,6 +38,9 @@ internal fun AuthenticatorSettingsNavigationHost(
                             )
                         )
                     }
+                },
+                onPasskeyClick = {
+                    navController.navigate(AuthenticatorRoute.PasskeyEnable)
                 },
                 onBackPress = {
                     navController.navigateUp()
@@ -107,6 +111,18 @@ internal fun AuthenticatorSettingsNavigationHost(
                         popUpTo<AuthenticatorRoute.AuthenticatorMethodList> { inclusive = false }
                     }
                 })
+        }
+
+        composable<AuthenticatorRoute.PasskeyEnable> {
+            PasskeyEnableScreen(
+                onBackClick = {
+                    navController.navigateUp()
+                },
+                onEnableClick = {
+                    // TODO: Implement passkey enable logic
+                    navController.navigateUp()
+                }
+            )
         }
     }
 }

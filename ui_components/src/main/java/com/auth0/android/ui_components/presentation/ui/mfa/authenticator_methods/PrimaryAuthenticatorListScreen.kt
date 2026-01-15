@@ -43,7 +43,6 @@ fun PrimaryAuthenticatorListScreen(
     onAddPasskeyClick: () -> Unit = {},
     onRemindLaterClick: () -> Unit = {},
     onPasskeysClick: () -> Unit = {},
-    onChangePasswordClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
