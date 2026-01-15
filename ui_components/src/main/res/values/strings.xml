@@ -82,6 +82,12 @@
     <string name="passkey_info_card_text_2">Passkeys are saved in your credential manager, so you can sign in on other devices.</string>
     <string name="passkey_info_card_text_1">Passkeys are encrypted digital keys created using your fingerprint, face, or screen lock.</string>
     <string name="what_are_passkeys">What are passkeys?</string>
+    <string name="sign_in_methods">Sign-in methods</string>
+    <string name="passkeys_title">Passkeys</string>
+    <string name="enable_passkey">Enable Passkey</string>
+    <string name="passkeys_description">@string/passkey_info_card_text_1</string>
+    <string name="passkeys_saved_description">@string/passkey_info_card_text_1</string>
+    <string name="enable">Enable</string>
 
 
     <!-- Error Messages -->
@@ -99,12 +105,4 @@
     <string name="navigate">Navigate</string>
     <string name="copy">Copy</string>
     <string name="search">Search</string>
-    <!-- Passkey Enable Screen -->
-    <string name="sign_in_methods">Sign-in methods</string>
-    <string name="passkeys_title">Passkeys</string>
-    <string name="enable_passkey">Enable Passkey</string>
-    <string name="passkeys_description">Passkeys are encrypted digital keys you create using your fingerprint, face, or screen lock.</string>
-    <string name="passkeys_saved_description">Passkeys are saved in your credential manager, so you can sign in on other devices.</string>
-    <string name="enable">Enable</string>
-    <string name="skip">Skip</string>
 </resources>
