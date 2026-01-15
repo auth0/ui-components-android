@@ -1,6 +1,5 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +36,7 @@ fun AuthenticatorMethodsScreen(
     viewModel: AuthenticatorMethodsViewModel = viewModel(
         factory = MyAccountModule.provideAuthenticatorMethodViewModelFactory()
     ),
+    onPasskeyClick: () -> Unit,
     onAuthenticatorItemClick: (AuthenticatorUiData) -> Unit,
     onBackPress: () -> Unit
 ) {
@@ -87,7 +87,10 @@ fun AuthenticatorMethodsScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState()),
                     ) {
-//                        PrimaryAuthenticatorListScreen()
+//                        PrimaryAuthenticatorListScreen(
+//                            onAddPasskeyClick = onPasskeyClick,
+//                            onPasskeysClick = onPasskeyClick
+//                        )
                         SecondaryAuthenticatorListScreen(
                             authenticatorMethodList = state.data,
                             onAuthenticatorItemClick = onAuthenticatorItemClick
