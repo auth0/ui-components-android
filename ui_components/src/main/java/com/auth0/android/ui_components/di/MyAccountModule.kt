@@ -6,6 +6,7 @@ import com.auth0.android.ui_components.data.repository.MyAccountRepositoryImpl
 import com.auth0.android.ui_components.di.viewmodelfactory.AuthenticatorMethodViewModelFactory
 import com.auth0.android.ui_components.di.viewmodelfactory.EnrollmentViewModelFactory
 import com.auth0.android.ui_components.di.viewmodelfactory.MFAEnrolledItemViewModelFactory
+import com.auth0.android.ui_components.di.viewmodelfactory.PasskeyViewModelFactory
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
@@ -44,6 +45,13 @@ object MyAccountModule {
             enrollAuthenticatorUseCase = provideEnrollAuthenticatorUseCase(),
             verifyAuthenticatorUseCase = provideVerifyAuthenticatorUseCase(),
             authenticatorType, startDefaultEnrollment
+        )
+    }
+
+    fun providePasskeyViewModelFactory(): PasskeyViewModelFactory {
+        return PasskeyViewModelFactory(
+            repository = provideMyAccountRepository(),
+            dispatcherProvider = provideDispatcherProvider()
         )
     }
 
