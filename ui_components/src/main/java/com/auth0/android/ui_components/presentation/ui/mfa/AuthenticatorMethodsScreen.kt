@@ -24,6 +24,7 @@ import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods.PrimaryAuthenticatorListScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods.SecondaryAuthenticatorListScreen
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyViewModel
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorMethodsViewModel
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiState
@@ -36,11 +37,16 @@ fun AuthenticatorMethodsScreen(
     viewModel: AuthenticatorMethodsViewModel = viewModel(
         factory = MyAccountModule.provideAuthenticatorMethodViewModelFactory()
     ),
+    passkeyViewModel: PasskeyViewModel = viewModel(
+        factory = MyAccountModule.providePasskeyViewModelFactory()
+    ),
     onPasskeyClick: () -> Unit,
     onAuthenticatorItemClick: (AuthenticatorUiData) -> Unit,
     onBackPress: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val passkeyUiState by passkeyViewModel.uiState.collectAsStateWithLifecycle()
+
 
     Scaffold(
         topBar = {
@@ -87,10 +93,10 @@ fun AuthenticatorMethodsScreen(
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState()),
                     ) {
-//                        PrimaryAuthenticatorListScreen(
-//                            onAddPasskeyClick = onPasskeyClick,
-//                            onPasskeysClick = onPasskeyClick
-//                        )
+                        PrimaryAuthenticatorListScreen(
+                            onAddPasskeyClick = onPasskeyClick,
+                            onPasskeysClick = onPasskeyClick
+                        )
                         SecondaryAuthenticatorListScreen(
                             authenticatorMethodList = state.data,
                             onAuthenticatorItemClick = onAuthenticatorItemClick

@@ -9,6 +9,7 @@ import com.auth0.android.ui_components.domain.model.PasskeyEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.PublicKeyCredentials
 import com.auth0.android.ui_components.domain.network.onError
 import com.auth0.android.ui_components.domain.network.onSuccess
+import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.usecase.passkey.EnrollPasskeyUseCase
 import com.auth0.android.ui_components.domain.usecase.passkey.PasskeyChallengeUseCase
 import com.auth0.android.ui_components.presentation.ui.UiError
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -69,8 +69,7 @@ sealed interface PasskeyEvent {
  * - Verifying the passkey credentials after user creates a passkey via Credential Manager
  */
 class PasskeyViewModel(
-    private val passkeyChallengeUseCase: PasskeyChallengeUseCase,
-    private val enrollPasskeyUseCase: EnrollPasskeyUseCase
+    private val myAccountRepository: MyAccountRepository
 ) : ViewModel() {
 
     private companion object {
@@ -85,29 +84,18 @@ class PasskeyViewModel(
 
     /**
      * Initiates passkey enrollment by requesting a challenge from the server
-     *
-     * @param userIdentity Optional unique identifier of the user's identity.
-     *                     Needed if the user logged in with a linked account
-     * @param connection Optional name of the database connection where the user is stored
      */
     fun enrollPasskey(
+        request: () -> Unit
     ) {
         viewModelScope.launch {
-            _uiState.update {
-                PasskeyUiState.EnrollingPasskey
+
+            runCatching {
+                val challenge =
+                    myAccountRepository.enrollPasskey("create:me:authentication_methods")
+
+                val result = myAccountRepository.verifyPasskey()
             }
-
-            passkeyChallengeUseCase()
-                .onSuccess { challenge ->
-                    Log.d(TAG, "Passkey enrollment challenge received successfully")
-
-                    eventChannel.send(PasskeyEvent.EnrollmentChallengeReady(challenge))
-                }
-                .onError { auth0Error ->
-                    Log.e(TAG, "Error during passkey enrollment", auth0Error.cause)
-
-                    eventChannel.send(PasskeyEvent.EnrollmentError(auth0Error))
-                }
         }
     }
 

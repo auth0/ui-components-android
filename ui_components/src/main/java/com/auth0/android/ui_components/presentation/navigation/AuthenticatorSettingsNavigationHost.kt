@@ -40,7 +40,8 @@ internal fun AuthenticatorSettingsNavigationHost(
                     }
                 },
                 onPasskeyClick = {
-                    navController.navigate(AuthenticatorRoute.PasskeyEnable)
+
+//                    navController.navigate(AuthenticatorRoute.PasskeyEnable)
                 },
                 onBackPress = {
                     navController.navigateUp()

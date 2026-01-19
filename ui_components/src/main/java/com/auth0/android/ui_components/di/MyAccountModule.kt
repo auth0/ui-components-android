@@ -51,7 +51,6 @@ object MyAccountModule {
     fun providePasskeyViewModelFactory(): PasskeyViewModelFactory {
         return PasskeyViewModelFactory(
             repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
         )
     }
 
