@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,6 +30,7 @@ import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorMetho
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiState
 import com.auth0.android.ui_components.theme.defaultTopbarTitle
+import com.auth0.android.ui_components.utils.createCredential
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,7 +48,7 @@ fun AuthenticatorMethodsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val passkeyUiState by passkeyViewModel.uiState.collectAsStateWithLifecycle()
-
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -94,7 +96,11 @@ fun AuthenticatorMethodsScreen(
                             .verticalScroll(rememberScrollState()),
                     ) {
                         PrimaryAuthenticatorListScreen(
-                            onAddPasskeyClick = onPasskeyClick,
+                            onAddPasskeyClick = {
+                                passkeyViewModel.enrollPasskey {
+                                    createCredential(context, it)
+                                }
+                            },
                             onPasskeysClick = onPasskeyClick
                         )
                         SecondaryAuthenticatorListScreen(

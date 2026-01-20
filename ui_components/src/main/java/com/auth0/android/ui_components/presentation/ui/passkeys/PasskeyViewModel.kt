@@ -1,17 +1,17 @@
 package com.auth0.android.ui_components.presentation.ui.passkeys
 
 import android.util.Log
+import androidx.credentials.CreateCredentialRequest
+import androidx.credentials.CreateCredentialResponse
+import androidx.credentials.CreatePublicKeyCredentialRequest
+import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.PasskeyEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.PublicKeyCredentials
-import com.auth0.android.ui_components.domain.network.onError
-import com.auth0.android.ui_components.domain.network.onSuccess
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
-import com.auth0.android.ui_components.domain.usecase.passkey.EnrollPasskeyUseCase
-import com.auth0.android.ui_components.domain.usecase.passkey.PasskeyChallengeUseCase
 import com.auth0.android.ui_components.presentation.ui.UiError
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 
 /**
  * Represents the different UI states for passkey enrollment
@@ -26,6 +27,7 @@ import kotlinx.coroutines.launch
 
 sealed interface PasskeyUiState {
     object Idle : PasskeyUiState
+    object UserCancelled : PasskeyUiState
     object RequestingChallenge : PasskeyUiState
     object CreatingPasskey : PasskeyUiState
     object EnrollingPasskey : PasskeyUiState
@@ -74,6 +76,7 @@ class PasskeyViewModel(
 
     private companion object {
         private const val TAG = "PasskeyViewModel"
+        private const val SCOPE = "create:me:authentication_methods"
     }
 
     private val eventChannel = Channel<PasskeyEvent>()
@@ -86,42 +89,29 @@ class PasskeyViewModel(
      * Initiates passkey enrollment by requesting a challenge from the server
      */
     fun enrollPasskey(
-        request: () -> Unit
+        createCredential: suspend (CreateCredentialRequest) -> CreateCredentialResponse,
     ) {
         viewModelScope.launch {
 
             runCatching {
                 val challenge =
-                    myAccountRepository.enrollPasskey("create:me:authentication_methods")
+                    myAccountRepository.enrollPasskey(SCOPE)
 
-                val result = myAccountRepository.verifyPasskey()
+                val request =
+                    CreatePublicKeyCredentialRequest(Json.encodeToString(challenge.authParamsPublicKey))
+
+                val credentialResponse = createCredential(request)
+
+                val publicKeyCredentials =
+                    Json.decodeFromString<PublicKeyCredentials>((credentialResponse as CreatePublicKeyCredentialResponse).registrationResponseJson)
+                val result = myAccountRepository.verifyPasskey(
+                    publicKeyCredentials,
+                    challenge,
+                    SCOPE
+                )
+            }.onFailure {
+                Log.e("TAG", "enrollPasskey:  ${it.stackTraceToString()}")
             }
-        }
-    }
-
-    /**
-     * Verifies and completes passkey enrollment with the credentials from Credential Manager
-     *
-     * @param publicKeyCredentials The passkey credentials obtained from the Credential Manager API
-     * @param challenge The enrollment challenge obtained from [enrollPasskey]
-     */
-    fun verifyPasskey(
-        publicKeyCredentials: PublicKeyCredentials,
-        challenge: PasskeyEnrollmentChallenge
-    ) {
-        viewModelScope.launch {
-
-            enrollPasskeyUseCase(publicKeyCredentials, challenge)
-                .onSuccess { authenticationMethod ->
-                    Log.d(TAG, "Passkey verification successful")
-
-                    eventChannel.send(PasskeyEvent.EnrollmentSuccess(authenticationMethod))
-                }
-                .onError { auth0Error ->
-                    Log.e(TAG, "Error during passkey verification", auth0Error.cause)
-
-                    eventChannel.send(PasskeyEvent.EnrollmentError(auth0Error))
-                }
         }
     }
 }
