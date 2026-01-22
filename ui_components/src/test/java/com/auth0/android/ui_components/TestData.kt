@@ -387,7 +387,7 @@ object TestData {
                 DomainPubKeyCredParam(alg = -7, type = "public-key"),
                 DomainPubKeyCredParam(alg = -257, type = "public-key")
             ),
-            relyingParty = DomainRelyingParty(id = "example.auth0.com", name = "Example App"),
+            rp = DomainRelyingParty(id = "example.auth0.com", name = "Example App"),
             timeout = 60000L,
             user = DomainPasskeyUser(
                 displayName = "John Doe",

@@ -92,13 +92,13 @@ class PasskeyViewModel(
         createCredential: suspend (CreateCredentialRequest) -> CreateCredentialResponse,
     ) {
         viewModelScope.launch {
-
             runCatching {
                 val challenge =
                     myAccountRepository.enrollPasskey(SCOPE)
 
-                val request =
-                    CreatePublicKeyCredentialRequest(Json.encodeToString(challenge.authParamsPublicKey))
+                val request = CreatePublicKeyCredentialRequest(
+                    Json.encodeToString(challenge.authParamsPublicKey)
+                )
 
                 val credentialResponse = createCredential(request)
 

@@ -80,7 +80,7 @@ fun SdkAuthParamsPublicKey.toDomainModel(): AuthnParamsPublicKey {
                 type = param.type
             )
         },
-        relyingParty = RelyingParty(
+        rp = RelyingParty(
             id = this.relyingParty.id,
             name = this.relyingParty.name
         ),
@@ -120,8 +120,8 @@ fun AuthnParamsPublicKey.toSdkModel(): SdkAuthParamsPublicKey {
             )
         },
         relyingParty = com.auth0.android.result.RelyingParty(
-            id = this.relyingParty.id,
-            name = this.relyingParty.name
+            id = this.rp.id,
+            name = this.rp.name
         ),
         timeout = this.timeout,
         user = com.auth0.android.result.PasskeyUser(
@@ -140,7 +140,7 @@ fun PublicKeyCredentials.toSdkModel(): SdkPublicKeyCredentials {
         authenticatorAttachment = this.authenticatorAttachment,
         clientExtensionResults = com.auth0.android.request.ClientExtensionResults(
             credProps = com.auth0.android.request.CredProps(
-                rk = this.clientExtensionResults.credProps.rk
+                rk = this.clientExtensionResults?.credProps?.rk ?: false
             )
         ),
         id = this.id,
@@ -150,8 +150,8 @@ fun PublicKeyCredentials.toSdkModel(): SdkPublicKeyCredentials {
             authenticatorData = this.response.authenticatorData,
             clientDataJSON = this.response.clientDataJSON,
             transports = this.response.transports,
-            signature = this.response.signature,
-            userHandle = this.response.userHandle
+            signature = this.response.signature ?: "",
+            userHandle = this.response.userHandle ?:""
         ),
         type = this.type
     )

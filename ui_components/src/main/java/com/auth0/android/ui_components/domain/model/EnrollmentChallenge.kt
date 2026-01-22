@@ -67,7 +67,7 @@ data class AuthnParamsPublicKey(
     val authenticatorSelection: AuthenticatorSelection,
     val challenge: String,
     val pubKeyCredParams: List<PubKeyCredParam>,
-    val relyingParty: RelyingParty,
+    val rp: RelyingParty,
     val timeout: Long,
     val user: PasskeyUser
 ) : Parcelable
