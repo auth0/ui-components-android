@@ -103,8 +103,12 @@ fun AuthenticatorMethodsScreen(
                                 }
                             },
                             onPasskeysClick = {
-                                passkeyViewModel.enrollPasskey {
-                                    createCredential(context, it)
+                                if (state.primaryData.isEmpty()) {
+                                    passkeyViewModel.enrollPasskey {
+                                        createCredential(context, it)
+                                    }
+                                } else {
+                                    onPasskeyClick()
                                 }
                             }
                         )

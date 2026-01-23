@@ -3,6 +3,7 @@ package com.auth0.android.ui_components.domain.usecase
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.EmailAuthenticationMethod
 import com.auth0.android.result.MfaAuthenticationMethod
+import com.auth0.android.result.PasskeyAuthenticationMethod
 import com.auth0.android.result.PhoneAuthenticationMethod
 import com.auth0.android.result.PushNotificationAuthenticationMethod
 import com.auth0.android.result.TotpAuthenticationMethod
@@ -19,7 +20,7 @@ import kotlinx.coroutines.withContext
  * UseCase that fetches and filters authentication methods by type
  * Returns only confirmed methods for the specified authenticator type
  */
-class GetAuthenticationMethodsUseCase(
+class GetEnrolledAuthenticatorsUseCase(
     private val repository: MyAccountRepository,
     private val dispatcherProvider: DispatcherProvider
 ) {
@@ -47,12 +48,21 @@ class GetAuthenticationMethodsUseCase(
         authMethods: List<AuthenticationMethod>,
         type: AuthenticatorType
     ): List<EnrolledAuthenticationMethod> {
-        return authMethods
-            .filterIsInstance<MfaAuthenticationMethod>()
-            .filter { it.type != "password" }
-            .filter { it.confirmed == true }
-            .filter { it.type == type.type }
-            .map { it.toEnrolledAuthenticationMethod() }
+        return when (type) {
+            AuthenticatorType.PASSKEY -> {
+                authMethods
+                    .filterIsInstance<PasskeyAuthenticationMethod>()
+                    .map { it.toEnrolledAuthenticationMethod() }
+            }
+
+            else -> {
+                authMethods
+                    .filterIsInstance<MfaAuthenticationMethod>()
+                    .filter { it.type == type.type }
+                    .filter { it.confirmed == true }
+                    .map { it.toEnrolledAuthenticationMethod() }
+            }
+        }
     }
 
     /**
@@ -71,6 +81,18 @@ class GetAuthenticationMethodsUseCase(
                 is EmailAuthenticationMethod -> this.name
                 else -> null
             }
+        )
+    }
+
+    /**
+     * Maps PasskeyAuthenticationMethod to EnrolledAuthenticationMethod
+     */
+    private fun PasskeyAuthenticationMethod.toEnrolledAuthenticationMethod(): EnrolledAuthenticationMethod {
+        return EnrolledAuthenticationMethod(
+            id = this.id,
+            type = this.type,
+            confirmed = true,
+            createdAt = this.createdAt
         )
     }
 }

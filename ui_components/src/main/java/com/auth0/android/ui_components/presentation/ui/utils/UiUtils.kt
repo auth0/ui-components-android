@@ -13,6 +13,7 @@ object UiUtils {
             "phone" -> "Phone for SMS OTP"
             "email" -> "Email OTP"
             "push-notification" -> "Push Notification"
+            "passkey" -> "Passkey"
             else -> "Recovery Code"
         }
     }
@@ -26,6 +27,7 @@ object UiUtils {
             "phone" -> "Saved Phones for SMS OTP"
             "email" -> "Saved Emails for OTP"
             "push-notification" -> "Saved Apps for Push"
+            "passkey" -> "Saved Passkeys"
             else -> "Generated Recovery code"
         }
     }
@@ -39,6 +41,7 @@ object UiUtils {
             "phone" -> "Phone"
             "email" -> "Email"
             "push-notification" -> "Push"
+            "passkey" -> "Passkey"
             else -> "Recovery code"
         }
     }

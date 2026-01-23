@@ -12,12 +12,10 @@ import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
-import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUseCase
+import com.auth0.android.ui_components.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.android.ui_components.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.android.ui_components.helper.DispatcherProviderImpl
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 
 object MyAccountModule {
 
@@ -31,7 +29,7 @@ object MyAccountModule {
 
     fun provideMFAEnrolledItemViewModelFactory(authenticatorType: AuthenticatorType): MFAEnrolledItemViewModelFactory {
         return MFAEnrolledItemViewModelFactory(
-            getAuthenticationMethodsUseCase = provideGetAuthenticationMethodsUseCase(),
+            getEnrolledAuthenticatorsUseCase = provideGetAuthenticationMethodsUseCase(),
             deleteAuthenticationMethodUseCase = provideDeleteAuthenticationMethodUseCase(),
             authenticatorType = authenticatorType
         )
@@ -62,8 +60,8 @@ object MyAccountModule {
         )
     }
 
-    private fun provideGetAuthenticationMethodsUseCase(): GetAuthenticationMethodsUseCase {
-        return GetAuthenticationMethodsUseCase(
+    private fun provideGetAuthenticationMethodsUseCase(): GetEnrolledAuthenticatorsUseCase {
+        return GetEnrolledAuthenticatorsUseCase(
             repository = provideMyAccountRepository(),
             dispatcherProvider = provideDispatcherProvider()
         )

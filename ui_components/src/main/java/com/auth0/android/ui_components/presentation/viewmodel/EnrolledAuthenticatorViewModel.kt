@@ -7,7 +7,7 @@ import com.auth0.android.ui_components.domain.model.EnrolledAuthenticationMethod
 import com.auth0.android.ui_components.domain.network.onError
 import com.auth0.android.ui_components.domain.network.onSuccess
 import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
-import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUseCase
+import com.auth0.android.ui_components.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.android.ui_components.presentation.ui.UiError
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,7 +29,7 @@ data class EnrolledUiState(
  * Fetches and manages confirmed authentication methods for a specific type
  */
 class EnrolledAuthenticatorViewModel(
-    private val getAuthenticationMethodsUseCase: GetAuthenticationMethodsUseCase,
+    private val getEnrolledAuthenticatorsUseCase: GetEnrolledAuthenticatorsUseCase,
     private val deleteAuthenticationMethodUseCase: DeleteAuthenticationMethodUseCase,
     private val authenticatorType: AuthenticatorType
 ) : ViewModel() {
@@ -61,7 +61,7 @@ class EnrolledAuthenticatorViewModel(
 
         viewModelScope.launch {
 
-            getAuthenticationMethodsUseCase(authenticatorType)
+            getEnrolledAuthenticatorsUseCase(authenticatorType)
                 .onSuccess { data ->
                     cachedAuthenticators = data // Update cache
                     _uiState.update {

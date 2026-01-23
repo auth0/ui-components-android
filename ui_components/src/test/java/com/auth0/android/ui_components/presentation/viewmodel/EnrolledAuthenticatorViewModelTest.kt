@@ -5,7 +5,7 @@ import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
-import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUseCase
+import com.auth0.android.ui_components.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -26,7 +26,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class EnrolledAuthenticatorViewModelTest {
 
-    private lateinit var getAuthenticationMethodsUseCase: GetAuthenticationMethodsUseCase
+    private lateinit var getEnrolledAuthenticatorsUseCase: GetEnrolledAuthenticatorsUseCase
     private lateinit var deleteAuthenticationMethodUseCase: DeleteAuthenticationMethodUseCase
 
     private lateinit var viewModel: EnrolledAuthenticatorViewModel
@@ -39,11 +39,11 @@ class EnrolledAuthenticatorViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
 
-        getAuthenticationMethodsUseCase = mockk()
+        getEnrolledAuthenticatorsUseCase = mockk()
         deleteAuthenticationMethodUseCase = mockk()
 
         viewModel = EnrolledAuthenticatorViewModel(
-            getAuthenticationMethodsUseCase = getAuthenticationMethodsUseCase,
+            getEnrolledAuthenticatorsUseCase = getEnrolledAuthenticatorsUseCase,
             deleteAuthenticationMethodUseCase = deleteAuthenticationMethodUseCase,
             authenticatorType = testAuthenticatorType
         )
@@ -59,7 +59,7 @@ class EnrolledAuthenticatorViewModelTest {
     @Test
     fun `initialization - uiState collected - starts with default state and automatically fetches enrolled authenticators`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(any()) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(any()) } returns Result.Success(
                 TestData.allEnrolledMethods
             )
 
@@ -68,7 +68,7 @@ class EnrolledAuthenticatorViewModelTest {
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            coVerify(exactly = 1) { getAuthenticationMethodsUseCase(testAuthenticatorType) }
+            coVerify(exactly = 1) { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) }
 
             val finalState = viewModel.uiState.value
             assertThat(finalState.loading).isFalse()
@@ -81,7 +81,7 @@ class EnrolledAuthenticatorViewModelTest {
     @Test
     fun `fetchEnrolledAuthenticators - successful response with multiple authenticators - emits success state`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Success(
                 TestData.allEnrolledMethods
             )
             val job = launch {
@@ -100,14 +100,14 @@ class EnrolledAuthenticatorViewModelTest {
             )
             assertThat(state.uiError).isNull()
 
-            coVerify(exactly = 1) { getAuthenticationMethodsUseCase(testAuthenticatorType) }
+            coVerify(exactly = 1) { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) }
             job.cancel()
         }
 
     @Test
     fun `fetchEnrolledAuthenticators - successful response with empty list - emits success state with empty list`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Success(
                 emptyList()
             )
 
@@ -121,7 +121,7 @@ class EnrolledAuthenticatorViewModelTest {
             assertThat(state.authenticators).isEmpty()
             assertThat(state.uiError).isNull()
 
-            coVerify(exactly = 1) { getAuthenticationMethodsUseCase(testAuthenticatorType) }
+            coVerify(exactly = 1) { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) }
             job.cancel()
         }
 
@@ -132,7 +132,7 @@ class EnrolledAuthenticatorViewModelTest {
                 message = "Invalid or expired refresh token",
                 cause = Exception("Token validation failed")
             )
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Error(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Error(
                 tokenError
             )
 
@@ -148,14 +148,14 @@ class EnrolledAuthenticatorViewModelTest {
             assertThat(state.uiError?.error?.message).contains("Invalid or expired refresh token")
             assertThat(state.uiError?.onRetry).isNotNull()
 
-            coVerify(exactly = 1) { getAuthenticationMethodsUseCase(testAuthenticatorType) }
+            coVerify(exactly = 1) { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) }
             job.cancel()
         }
 
     @Test
     fun `fetchEnrolledAuthenticators - called multiple times - always starts with loading state`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } coAnswers {
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } coAnswers {
                 delay(10)
                 Result.Success(listOf(TestData.enrolledPhoneMethod))
             }
@@ -176,7 +176,7 @@ class EnrolledAuthenticatorViewModelTest {
 
             states.clear()
 
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } coAnswers {
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } coAnswers {
                 delay(10)
                 Result.Success(listOf(TestData.enrolledTotpMethod))
             }
@@ -191,7 +191,7 @@ class EnrolledAuthenticatorViewModelTest {
             assertThat(lastState.authenticators).hasSize(1)
             assertThat(lastState.authenticators[0]).isEqualTo(TestData.enrolledTotpMethod)
 
-            coVerify(exactly = 2) { getAuthenticationMethodsUseCase(testAuthenticatorType) }
+            coVerify(exactly = 2) { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) }
 
             job.cancel()
         }
@@ -199,7 +199,7 @@ class EnrolledAuthenticatorViewModelTest {
     @Test
     fun `deleteAuthenticationMethod - valid ID - successfully deletes and updates authenticators list`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Success(
                 TestData.allEnrolledMethods
             )
             val job = launch {
@@ -234,7 +234,7 @@ class EnrolledAuthenticatorViewModelTest {
     @Test
     fun `deleteAuthenticationMethod - last item in list - results in empty list`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Success(
                 listOf(TestData.enrolledPhoneMethod)
             )
             val job = launch {
@@ -261,7 +261,7 @@ class EnrolledAuthenticatorViewModelTest {
     @Test
     fun `deleteAuthenticationMethod - network error - emits error and does NOT update cache`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Success(
                 TestData.allEnrolledMethods
             )
             val job = launch {
@@ -300,7 +300,7 @@ class EnrolledAuthenticatorViewModelTest {
     @Test
     fun `deleteAuthenticationMethod - API error - emits error state with retry callback`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Success(
                 TestData.allEnrolledMethods
             )
             val job = launch {
@@ -339,7 +339,7 @@ class EnrolledAuthenticatorViewModelTest {
                 message = "Connection failed",
                 cause = Exception("Network timeout")
             )
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returnsMany listOf(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returnsMany listOf(
                 Result.Error(networkError),
                 Result.Success(listOf(TestData.enrolledPhoneMethod))
             )
@@ -362,7 +362,7 @@ class EnrolledAuthenticatorViewModelTest {
             assertThat(finalState.authenticators[0]).isEqualTo(TestData.enrolledPhoneMethod)
             assertThat(finalState.uiError).isNull()
 
-            coVerify(exactly = 2) { getAuthenticationMethodsUseCase(testAuthenticatorType) }
+            coVerify(exactly = 2) { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) }
 
             job.cancel()
         }
@@ -370,7 +370,7 @@ class EnrolledAuthenticatorViewModelTest {
     @Test
     fun `error state retry callback for delete - invoked after delete error - triggers deleteAuthenticationMethod again and can succeed`() =
         runTest {
-            coEvery { getAuthenticationMethodsUseCase(testAuthenticatorType) } returns Result.Success(
+            coEvery { getEnrolledAuthenticatorsUseCase(testAuthenticatorType) } returns Result.Success(
                 TestData.allEnrolledMethods
             )
             val job = launch {
