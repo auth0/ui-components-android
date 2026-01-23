@@ -12,7 +12,7 @@ import androidx.compose.ui.unit.dp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
-import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
+import com.auth0.android.ui_components.presentation.viewmodel.SecondaryAuthenticatorUiData
 import com.auth0.android.ui_components.theme.sectionHeading1
 import com.auth0.android.ui_components.theme.sectionHeading2
 
@@ -22,8 +22,8 @@ import com.auth0.android.ui_components.theme.sectionHeading2
  */
 @Composable
 fun SecondaryAuthenticatorListScreen(
-    authenticatorMethodList: List<AuthenticatorUiData>,
-    onAuthenticatorItemClick: (AuthenticatorUiData) -> Unit
+    secondaryAuthenticatorUiData: List<SecondaryAuthenticatorUiData>,
+    onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit
 ) {
     Spacer(modifier = Modifier.height(12.dp))
     Text(
@@ -42,12 +42,12 @@ fun SecondaryAuthenticatorListScreen(
 
     Spacer(modifier = Modifier.height(24.dp))
 
-    if (authenticatorMethodList.isEmpty()) {
+    if (secondaryAuthenticatorUiData.isEmpty()) {
         EmptyAuthenticatorItem(emptyMessage = stringResource(R.string.no_authenticators_enabled))
         return
     }
 
-    for (item in authenticatorMethodList) {
+    for (item in secondaryAuthenticatorUiData) {
         AuthenticatorItem(
             title = item.title,
             leadingIcon = getMFAMethodIcon(item.type),
@@ -67,6 +67,7 @@ private fun getMFAMethodIcon(authenticatorType: AuthenticatorType): Painter {
             AuthenticatorType.EMAIL -> R.drawable.ic_email
             AuthenticatorType.PUSH -> R.drawable.ic_authenticator
             AuthenticatorType.RECOVERY_CODE -> R.drawable.ic_recovery_code
+            AuthenticatorType.PASSKEY -> R.drawable.ic_passkey
         }
     )
 }

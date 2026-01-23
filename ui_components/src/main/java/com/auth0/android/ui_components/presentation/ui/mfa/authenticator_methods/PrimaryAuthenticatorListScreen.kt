@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
+import com.auth0.android.ui_components.presentation.viewmodel.PrimaryAuthenticatorUiData
 import com.auth0.android.ui_components.theme.ButtonBlack
 import com.auth0.android.ui_components.theme.PasskeyCardBackground
 import com.auth0.android.ui_components.theme.TextInputBlack
@@ -40,6 +41,7 @@ import com.auth0.android.ui_components.theme.textInputStyle
  */
 @Composable
 fun PrimaryAuthenticatorListScreen(
+    primaryAuthenticatorUiData: List<PrimaryAuthenticatorUiData>,
     onAddPasskeyClick: () -> Unit = {},
     onRemindLaterClick: () -> Unit = {},
     onPasskeysClick: () -> Unit = {},
@@ -50,11 +52,14 @@ fun PrimaryAuthenticatorListScreen(
             .fillMaxWidth()
             .background(Color.White)
     ) {
-        PasskeyInfoCard(
-            onAddPasskeyClick = onAddPasskeyClick, onRemindLaterClick = onRemindLaterClick
-        )
+        if (primaryAuthenticatorUiData.isEmpty()) {
+            PasskeyInfoCard(
+                onAddPasskeyClick = onAddPasskeyClick, onRemindLaterClick = onRemindLaterClick
+            )
+        }
 
         SignInMethodsSection(
+            isPasskeyEnrolled = primaryAuthenticatorUiData.isNotEmpty(),
             onPasskeysClick = onPasskeysClick
         )
     }
@@ -186,6 +191,7 @@ private fun PasskeyInfoCard(
  */
 @Composable
 private fun SignInMethodsSection(
+    isPasskeyEnrolled: Boolean,
     onPasskeysClick: () -> Unit,
 ) {
     Spacer(modifier = Modifier.height(18.dp))
@@ -199,7 +205,7 @@ private fun SignInMethodsSection(
     AuthenticatorItem(
         title = "Passkeys",
         leadingIcon = painterResource(id = R.drawable.ic_passkey),
-        showActiveTag = false,
+        showActiveTag = isPasskeyEnrolled,
         onClick = onPasskeysClick
     )
     Spacer(modifier = Modifier.height(24.dp))
