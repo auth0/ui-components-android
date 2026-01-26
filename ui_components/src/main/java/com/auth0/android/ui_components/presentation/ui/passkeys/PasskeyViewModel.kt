@@ -122,7 +122,9 @@ class PasskeyViewModel(
                     else -> {
                         val err = handleCreationFailure(exception)
                         _uiState.update {
-                            PasskeyUiState.Error(UiError(err, {}), false)
+                            PasskeyUiState.Error(UiError(err, {
+                                enrollPasskey(createCredential)
+                            }), err.shouldRetry)
                         }
                     }
                 }
@@ -131,13 +133,14 @@ class PasskeyViewModel(
     }
 
 
-    private fun handleCreationFailure(exception: CreateCredentialException): Auth0Error {
+    private fun handleCreationFailure(exception: CreateCredentialException): Auth0Error.PasskeyError {
         return when (exception) {
 
             is CreateCredentialInterruptedException -> {
                 Auth0Error.PasskeyError(
-                    "Passkey authentication was interrupted.",
-                    exception
+                    "Passkey authentication was interrupted. Please retry again.",
+                    exception,
+                    shouldRetry = true
                 )
             }
 
@@ -151,8 +154,8 @@ class PasskeyViewModel(
             else -> {
                 Log.w(TAG, "Unexpected exception type ${exception::class.java.name}")
                 Auth0Error.PasskeyError(
-                    "An error occurred when trying to authenticate with passkey",
-                    exception
+                    "An error occurred when creating a passkey",
+                    exception,
                 )
             }
         }
