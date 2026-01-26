@@ -77,7 +77,7 @@
     <!-- Passkeys -->
     <string name="passkey_info_card_title">With Passkey, you don’t have to remember complex passwords</string>
     <string name="add_passkey">Add a Passkey</string>
-    <string name="remind_me_later">Remind me later</string>
+    <string name="dismiss">Dismiss</string>
     <string name="where_are_passkeys_saved">Where are passkeys saved?</string>
     <string name="passkey_info_card_text_2">Passkeys are saved in your credential manager, so you can sign in on other devices.</string>
     <string name="passkey_info_card_text_1">Passkeys are encrypted digital keys created using your fingerprint, face, or screen lock.</string>

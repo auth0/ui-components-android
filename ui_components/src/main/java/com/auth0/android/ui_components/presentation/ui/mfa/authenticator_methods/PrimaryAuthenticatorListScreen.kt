@@ -43,7 +43,7 @@ import com.auth0.android.ui_components.theme.textInputStyle
 fun PrimaryAuthenticatorListScreen(
     primaryAuthenticatorUiData: List<PrimaryAuthenticatorUiData>,
     onAddPasskeyClick: () -> Unit = {},
-    onRemindLaterClick: () -> Unit = {},
+    onDismiss: () -> Unit = {},
     onPasskeysClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -54,7 +54,7 @@ fun PrimaryAuthenticatorListScreen(
     ) {
         if (primaryAuthenticatorUiData.isEmpty()) {
             PasskeyInfoCard(
-                onAddPasskeyClick = onAddPasskeyClick, onRemindLaterClick = onRemindLaterClick
+                onAddPasskeyClick = onAddPasskeyClick, onDismissClick = onDismiss
             )
         }
 
@@ -73,7 +73,7 @@ fun PrimaryAuthenticatorListScreen(
 @Composable
 private fun PasskeyInfoCard(
     onAddPasskeyClick: () -> Unit,
-    onRemindLaterClick: () -> Unit,
+    onDismissClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -169,9 +169,9 @@ private fun PasskeyInfoCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onRemindLaterClick()
+                        onDismissClick()
                     },
-                text = stringResource(R.string.remind_me_later),
+                text = stringResource(R.string.dismiss),
                 style = textInputStyle.copy(
                     fontSize = 14.sp,
                     fontWeight = FontWeight(550),
