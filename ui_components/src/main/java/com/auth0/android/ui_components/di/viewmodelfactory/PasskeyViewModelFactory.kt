@@ -2,6 +2,7 @@ package com.auth0.android.ui_components.di.viewmodelfactory
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.auth0.android.ui_components.PasskeyConfiguration
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyViewModel
 
@@ -10,6 +11,7 @@ import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyViewModel
  */
 class PasskeyViewModelFactory(
     private val repository: MyAccountRepository,
+    private val passkeyConfiguration: PasskeyConfiguration,
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -17,7 +19,8 @@ class PasskeyViewModelFactory(
         return when {
             modelClass.isAssignableFrom(PasskeyViewModel::class.java) -> {
                 PasskeyViewModel(
-                    myAccountRepository = repository
+                    myAccountRepository = repository,
+                    passkeyConfiguration = passkeyConfiguration
                 ) as T
             }
 

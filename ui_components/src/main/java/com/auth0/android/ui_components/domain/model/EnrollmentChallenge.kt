@@ -69,7 +69,7 @@ data class AuthnParamsPublicKey(
     val pubKeyCredParams: List<PubKeyCredParam>,
     val rp: RelyingParty,
     val timeout: Long,
-    val user: PasskeyUser
+    val user: User
 ) : Parcelable
 
 /**
@@ -107,7 +107,7 @@ data class RelyingParty(
  */
 @Parcelize
 @Serializable
-data class PasskeyUser(
+data class User(
     val displayName: String,
     val id: String,
     val name: String

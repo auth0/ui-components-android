@@ -3,13 +3,15 @@ package com.auth0.android.ui_components
 import android.util.Log
 import androidx.credentials.CredentialManager
 import com.auth0.android.Auth0
+import com.auth0.android.result.UserIdentity
 import com.auth0.android.ui_components.token.TokenProvider
 import java.util.concurrent.atomic.AtomicBoolean
 
 
 data class PasskeyConfiguration(
     val credentialManager: CredentialManager? = null,
-    val connection: String? = null
+    val connection: String? = null,
+    val userIdentity: String ? = null
 )
 
 public object Auth0UI {

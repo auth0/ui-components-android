@@ -29,7 +29,7 @@ import com.auth0.android.ui_components.domain.model.AuthnParamsPublicKey as Doma
 import com.auth0.android.ui_components.domain.model.AuthenticatorSelection as DomainAuthenticatorSelection
 import com.auth0.android.ui_components.domain.model.PubKeyCredParam as DomainPubKeyCredParam
 import com.auth0.android.ui_components.domain.model.RelyingParty as DomainRelyingParty
-import com.auth0.android.ui_components.domain.model.PasskeyUser as DomainPasskeyUser
+import com.auth0.android.ui_components.domain.model.User as DomainPasskeyUser
 import com.auth0.android.ui_components.domain.model.PublicKeyCredentials as DomainPublicKeyCredentials
 import com.auth0.android.ui_components.domain.model.ClientExtensionResults as DomainClientExtensionResults
 import com.auth0.android.ui_components.domain.model.CredProps as DomainCredProps

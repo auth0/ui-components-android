@@ -11,6 +11,7 @@ import androidx.credentials.exceptions.CreateCredentialInterruptedException
 import androidx.credentials.exceptions.CreateCredentialProviderConfigurationException
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.auth0.android.ui_components.PasskeyConfiguration
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.PublicKeyCredentials
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
@@ -55,7 +56,8 @@ sealed interface PasskeyEvent {
  * - Verifying the passkey credentials after user creates a passkey via Credential Manager
  */
 class PasskeyViewModel(
-    private val myAccountRepository: MyAccountRepository
+    private val myAccountRepository: MyAccountRepository,
+    private val passkeyConfiguration: PasskeyConfiguration
 ) : ViewModel() {
 
     private companion object {
@@ -82,7 +84,11 @@ class PasskeyViewModel(
                     PasskeyUiState.RequestingChallenge
                 }
                 val challenge =
-                    myAccountRepository.enrollPasskey(SCOPE)
+                    myAccountRepository.enrollPasskey(
+                        SCOPE,
+                        userIdentity = passkeyConfiguration.userIdentity,
+                        connection = passkeyConfiguration.connection
+                    )
 
                 _uiState.update {
                     PasskeyUiState.CreatingPasskey

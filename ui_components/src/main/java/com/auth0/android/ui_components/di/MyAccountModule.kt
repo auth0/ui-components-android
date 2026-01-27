@@ -49,6 +49,7 @@ object MyAccountModule {
     fun providePasskeyViewModelFactory(): PasskeyViewModelFactory {
         return PasskeyViewModelFactory(
             repository = provideMyAccountRepository(),
+            passkeyConfiguration = com.auth0.android.ui_components.Auth0UI.passkeyConfiguration,
         )
     }
 

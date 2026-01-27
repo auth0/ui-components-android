@@ -6,7 +6,7 @@ import com.auth0.android.ui_components.domain.model.EnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.PasskeyAuthenticationMethod
 import com.auth0.android.ui_components.domain.model.PasskeyEnrollmentChallenge
-import com.auth0.android.ui_components.domain.model.PasskeyUser
+import com.auth0.android.ui_components.domain.model.User
 import com.auth0.android.ui_components.domain.model.PubKeyCredParam
 import com.auth0.android.ui_components.domain.model.PublicKeyCredentials
 import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge
@@ -85,7 +85,7 @@ fun SdkAuthParamsPublicKey.toDomainModel(): AuthnParamsPublicKey {
             name = this.relyingParty.name
         ),
         timeout = this.timeout,
-        user = PasskeyUser(
+        user = User(
             displayName = this.user.displayName,
             id = this.user.id,
             name = this.user.name
