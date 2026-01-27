@@ -76,7 +76,7 @@ class PasskeyViewModel(
      * Initiates passkey enrollment by requesting a challenge from the server
      */
     fun enrollPasskey(
-        createCredential: suspend (CreateCredentialRequest) -> CreateCredentialResponse,
+        createCredential: suspend (String) -> String,
     ) {
         viewModelScope.launch {
             try {
@@ -93,14 +93,12 @@ class PasskeyViewModel(
                 _uiState.update {
                     PasskeyUiState.CreatingPasskey
                 }
-                val request = CreatePublicKeyCredentialRequest(
-                    Json.encodeToString(challenge.authParamsPublicKey)
-                )
+                val authParamsJson = Json.encodeToString(challenge.authParamsPublicKey)
 
-                val credentialResponse = createCredential(request)
+                val registrationResponseJson = createCredential(authParamsJson)
 
                 val publicKeyCredentials =
-                    Json.decodeFromString<PublicKeyCredentials>((credentialResponse as CreatePublicKeyCredentialResponse).registrationResponseJson)
+                    Json.decodeFromString<PublicKeyCredentials>(registrationResponseJson)
                 _uiState.update {
                     PasskeyUiState.EnrollingPasskey
                 }
