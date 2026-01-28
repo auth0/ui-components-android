@@ -17,6 +17,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -43,18 +47,22 @@ import com.auth0.android.ui_components.theme.textInputStyle
 fun PrimaryAuthenticatorListScreen(
     primaryAuthenticatorUiData: List<PrimaryAuthenticatorUiData>,
     onAddPasskeyClick: () -> Unit = {},
-    onDismiss: () -> Unit = {},
     onPasskeysClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var isCardDismissed by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
     ) {
-        if (primaryAuthenticatorUiData.isEmpty()) {
+        if (primaryAuthenticatorUiData.isEmpty() && !isCardDismissed) {
             PasskeyInfoCard(
-                onAddPasskeyClick = onAddPasskeyClick, onDismissClick = onDismiss
+                onAddPasskeyClick = onAddPasskeyClick,
+                onDismissClick = {
+                    isCardDismissed = true
+                }
             )
         }
 
