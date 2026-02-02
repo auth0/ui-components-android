@@ -500,7 +500,7 @@ class MyAccountRepositoryImplTest {
         assertThat(result.authenticationMethodId).isEqualTo("passkey_method_123")
         assertThat(result.authSession).isEqualTo("passkey_session_abc")
         assertThat(result.authParamsPublicKey.challenge).isEqualTo("challenge_string_xyz")
-        assertThat(result.authParamsPublicKey.relyingParty.id).isEqualTo("example.auth0.com")
+        assertThat(result.authParamsPublicKey.rp.id).isEqualTo("example.auth0.com")
         coVerify(exactly = 1) { tokenManager.fetchToken(any(), eq(scope)) }
         coVerify(exactly = 1) { myAccountClient.passkeyEnrollmentChallenge(null, null) }
     }

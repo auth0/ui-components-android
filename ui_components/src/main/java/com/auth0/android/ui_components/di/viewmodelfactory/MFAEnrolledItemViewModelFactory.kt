@@ -4,14 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
-import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUseCase
+import com.auth0.android.ui_components.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.android.ui_components.presentation.viewmodel.EnrolledAuthenticatorViewModel
 
 /**
  * Factory for creating MFAEnrolledItemViewModel with dependencies
  */
 class MFAEnrolledItemViewModelFactory(
-    private val getAuthenticationMethodsUseCase: GetAuthenticationMethodsUseCase,
+    private val getEnrolledAuthenticatorsUseCase: GetEnrolledAuthenticatorsUseCase,
     private val deleteAuthenticationMethodUseCase: DeleteAuthenticationMethodUseCase,
     private val authenticatorType: AuthenticatorType
 ) : ViewModelProvider.Factory {
@@ -21,7 +21,7 @@ class MFAEnrolledItemViewModelFactory(
         return when {
             modelClass.isAssignableFrom(EnrolledAuthenticatorViewModel::class.java) -> {
                 EnrolledAuthenticatorViewModel(
-                    getAuthenticationMethodsUseCase,
+                    getEnrolledAuthenticatorsUseCase,
                     deleteAuthenticationMethodUseCase,
                     authenticatorType
                 ) as T

@@ -88,6 +88,10 @@ class EnrollAuthenticatorUseCase(
                         authSession = challenge.authSession
                     )
                 }
+
+                else -> {
+                    throw UnsupportedOperationException("Unsupported enrollment type: $authenticatorType")
+                }
             }
             result
         }

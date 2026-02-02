@@ -17,6 +17,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -27,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
+import com.auth0.android.ui_components.presentation.viewmodel.PrimaryAuthenticatorUiData
 import com.auth0.android.ui_components.theme.ButtonBlack
 import com.auth0.android.ui_components.theme.PasskeyCardBackground
 import com.auth0.android.ui_components.theme.TextInputBlack
@@ -40,21 +45,29 @@ import com.auth0.android.ui_components.theme.textInputStyle
  */
 @Composable
 fun PrimaryAuthenticatorListScreen(
+    primaryAuthenticatorUiData: List<PrimaryAuthenticatorUiData>,
     onAddPasskeyClick: () -> Unit = {},
-    onRemindLaterClick: () -> Unit = {},
     onPasskeysClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var isCardDismissed by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
     ) {
-        PasskeyInfoCard(
-            onAddPasskeyClick = onAddPasskeyClick, onRemindLaterClick = onRemindLaterClick
-        )
+        if (primaryAuthenticatorUiData.isEmpty() && !isCardDismissed) {
+            PasskeyInfoCard(
+                onAddPasskeyClick = onAddPasskeyClick,
+                onDismissClick = {
+                    isCardDismissed = true
+                }
+            )
+        }
 
         SignInMethodsSection(
+            isPasskeyEnrolled = primaryAuthenticatorUiData.isNotEmpty(),
             onPasskeysClick = onPasskeysClick
         )
     }
@@ -68,7 +81,7 @@ fun PrimaryAuthenticatorListScreen(
 @Composable
 private fun PasskeyInfoCard(
     onAddPasskeyClick: () -> Unit,
-    onRemindLaterClick: () -> Unit,
+    onDismissClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -164,9 +177,9 @@ private fun PasskeyInfoCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        onRemindLaterClick()
+                        onDismissClick()
                     },
-                text = stringResource(R.string.remind_me_later),
+                text = stringResource(R.string.dismiss),
                 style = textInputStyle.copy(
                     fontSize = 14.sp,
                     fontWeight = FontWeight(550),
@@ -186,6 +199,7 @@ private fun PasskeyInfoCard(
  */
 @Composable
 private fun SignInMethodsSection(
+    isPasskeyEnrolled: Boolean,
     onPasskeysClick: () -> Unit,
 ) {
     Spacer(modifier = Modifier.height(18.dp))
@@ -199,7 +213,7 @@ private fun SignInMethodsSection(
     AuthenticatorItem(
         title = "Passkeys",
         leadingIcon = painterResource(id = R.drawable.ic_passkey),
-        showActiveTag = false,
+        showActiveTag = isPasskeyEnrolled,
         onClick = onPasskeysClick
     )
     Spacer(modifier = Modifier.height(24.dp))

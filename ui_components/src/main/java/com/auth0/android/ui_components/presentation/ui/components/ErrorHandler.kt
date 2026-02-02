@@ -16,7 +16,8 @@ import com.auth0.android.ui_components.presentation.ui.UiError
 @Composable
 fun ErrorHandler(
     uiError: UiError,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    shouldRetry: Boolean = false
 ) {
     when (val error = uiError.error) {
         is Auth0Error.MfaRequired -> {
@@ -32,7 +33,7 @@ fun ErrorHandler(
                     uiError.onRetry.invoke()
                 }.onError {
 
-                    }
+                }
             }
         }
 
@@ -71,6 +72,18 @@ fun ErrorHandler(
                 modifier = modifier,
                 onRetryClick = uiError.onRetry
             )
+        }
+
+        is Auth0Error.PasskeyError -> {
+            ErrorScreen(
+                mainErrorMessage = error.message,
+                description = stringResource(R.string.unable_to_process_contact),
+                modifier = modifier,
+                clickableString = stringResource(R.string.contact_us),
+                shouldRetry = shouldRetry,
+                onRetryClick = uiError.onRetry
+            )
+
         }
 
         else -> {

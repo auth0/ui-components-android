@@ -24,7 +24,7 @@ android {
         buildConfigField "String", "VERSION_NAME", "\"${project.version}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        consumerProguardFiles "consumer-rules.pro"
+        consumerProguardFiles "consumer-rules.pro","../proguard/proguard-jetpack.pro"
 
         manifestPlaceholders += [auth0Domain: "YOUR_DOMAIN",
                                  auth0Scheme: "YOUR_SCHEME"]

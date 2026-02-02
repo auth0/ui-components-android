@@ -2,6 +2,7 @@ package com.auth0.android.ui_components.presentation.viewmodel
 
 import com.auth0.android.ui_components.TestData
 import com.auth0.android.ui_components.domain.error.Auth0Error
+import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
 import com.google.common.truth.Truth.assertThat
@@ -47,11 +48,12 @@ class AuthenticatorMethodsViewModelTest {
         clearAllMocks()
     }
 
+
     @Test
     fun `initialization - uiState collected - starts with Loading state and automatically fetches authenticator methods`() =
         runTest {
             coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
-                TestData.allAuthenticatorMethods
+                TestData.authenticatorMethod
             )
 
             val initialState = viewModel.uiState.value
@@ -71,11 +73,12 @@ class AuthenticatorMethodsViewModelTest {
             job.cancel()
         }
 
+
     @Test
-    fun `fetchAuthenticatorMethods - successful response - emits Success state with correctly mapped AuthenticatorUiData`() =
+    fun `fetchAuthenticatorMethods - successful response - emits Success state with correctly mapped secondary MFA authenticators`() =
         runTest {
             coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
-                TestData.allAuthenticatorMethods
+                TestData.authenticatorMethod
             )
 
             val job = launch {
@@ -87,34 +90,29 @@ class AuthenticatorMethodsViewModelTest {
             assertThat(state).isInstanceOf(AuthenticatorUiState.Success::class.java)
 
             val successState = state as AuthenticatorUiState.Success
-            assertThat(successState.data).hasSize(5)
+            assertThat(successState.secondaryData).hasSize(5)
 
-            val totpData =
-                successState.data.find { it.type == com.auth0.android.ui_components.domain.model.AuthenticatorType.TOTP }
+            val totpData = successState.secondaryData.find { it.type == AuthenticatorType.TOTP }
             assertThat(totpData).isNotNull()
             assertThat(totpData?.title).isEqualTo("Authenticator App")
             assertThat(totpData?.confirmed).isTrue()
 
-            val phoneData =
-                successState.data.find { it.type == com.auth0.android.ui_components.domain.model.AuthenticatorType.PHONE }
+            val phoneData = successState.secondaryData.find { it.type == AuthenticatorType.PHONE }
             assertThat(phoneData).isNotNull()
             assertThat(phoneData?.title).isEqualTo("SMS OTP")
             assertThat(phoneData?.confirmed).isFalse()
 
-            val emailData =
-                successState.data.find { it.type == com.auth0.android.ui_components.domain.model.AuthenticatorType.EMAIL }
+            val emailData = successState.secondaryData.find { it.type == AuthenticatorType.EMAIL }
             assertThat(emailData).isNotNull()
             assertThat(emailData?.title).isEqualTo("Email OTP")
             assertThat(emailData?.confirmed).isTrue()
 
-            val pushData =
-                successState.data.find { it.type == com.auth0.android.ui_components.domain.model.AuthenticatorType.PUSH }
+            val pushData = successState.secondaryData.find { it.type == AuthenticatorType.PUSH }
             assertThat(pushData).isNotNull()
             assertThat(pushData?.title).isEqualTo("Push Notification")
             assertThat(pushData?.confirmed).isFalse()
 
-            val recoveryData =
-                successState.data.find { it.type == com.auth0.android.ui_components.domain.model.AuthenticatorType.RECOVERY_CODE }
+            val recoveryData = successState.secondaryData.find { it.type == AuthenticatorType.RECOVERY_CODE }
             assertThat(recoveryData).isNotNull()
             assertThat(recoveryData?.title).isEqualTo("Recovery Code")
             assertThat(recoveryData?.confirmed).isTrue()
@@ -124,9 +122,11 @@ class AuthenticatorMethodsViewModelTest {
         }
 
     @Test
-    fun `fetchAuthenticatorMethods - successful response with empty list - emits Success state with empty list`() =
+    fun `fetchAuthenticatorMethods - only secondary MFA methods - emits Success with empty primary and populated secondary data`() =
         runTest {
-            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(emptyList())
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
+                TestData.singleSecondaryAuthenticatorMethod
+            )
 
             val job = launch {
                 viewModel.uiState.collect { }
@@ -137,11 +137,152 @@ class AuthenticatorMethodsViewModelTest {
             assertThat(state).isInstanceOf(AuthenticatorUiState.Success::class.java)
 
             val successState = state as AuthenticatorUiState.Success
-            assertThat(successState.data).isEmpty()
+            assertThat(successState.primaryData).isEmpty()
+            assertThat(successState.secondaryData).hasSize(1)
+            assertThat(successState.secondaryData[0].type).isEqualTo(AuthenticatorType.TOTP)
+
+            job.cancel()
+        }
+
+
+    @Test
+    fun `fetchAuthenticatorMethods - successful response - emits Success state with correctly mapped primary authenticators`() =
+        runTest {
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
+                TestData.authenticatorMethod
+            )
+
+            val job = launch {
+                viewModel.uiState.collect { }
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state).isInstanceOf(AuthenticatorUiState.Success::class.java)
+
+            val successState = state as AuthenticatorUiState.Success
+            assertThat(successState.primaryData).hasSize(1)
+
+            val passkeyData = successState.primaryData[0]
+            assertThat(passkeyData.id).isEqualTo("passkey_001")
+            assertThat(passkeyData.title).isEqualTo("Passkey")
+            assertThat(passkeyData.createdAt).isEqualTo("2025-11-10T10:00:00.000Z")
 
             coVerify(exactly = 1) { getEnabledAuthenticatorMethodsUseCase() }
             job.cancel()
         }
+
+    @Test
+    fun `fetchAuthenticatorMethods - only primary passkeys - emits Success with populated primary and empty secondary data`() =
+        runTest {
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
+                TestData.multiplePrimaryAuthenticatorMethod
+            )
+
+            val job = launch {
+                viewModel.uiState.collect { }
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state).isInstanceOf(AuthenticatorUiState.Success::class.java)
+
+            val successState = state as AuthenticatorUiState.Success
+            assertThat(successState.primaryData).hasSize(2)
+            assertThat(successState.secondaryData).isEmpty()
+
+            assertThat(successState.primaryData[0].id).isEqualTo("passkey_001")
+            assertThat(successState.primaryData[1].id).isEqualTo("passkey_002")
+
+            job.cancel()
+        }
+
+    @Test
+    fun `fetchAuthenticatorMethods - multiple primary passkeys - all are correctly mapped to PrimaryAuthenticatorUiData`() =
+        runTest {
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
+                TestData.multiplePrimaryAuthenticatorMethod
+            )
+
+            val job = launch {
+                viewModel.uiState.collect { }
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state).isInstanceOf(AuthenticatorUiState.Success::class.java)
+
+            val successState = state as AuthenticatorUiState.Success
+            assertThat(successState.primaryData).hasSize(2)
+
+            // Verify each passkey is mapped correctly
+            successState.primaryData.forEach { primaryData ->
+                assertThat(primaryData.title).isEqualTo("Passkey")
+                assertThat(primaryData.id).isNotEmpty()
+                assertThat(primaryData.createdAt).isNotEmpty()
+            }
+
+            val ids = successState.primaryData.map { it.id }
+            assertThat(ids).containsExactly("passkey_001", "passkey_002")
+
+            job.cancel()
+        }
+
+
+    @Test
+    fun `fetchAuthenticatorMethods correctly maps both authenticator types`() =
+        runTest {
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
+                TestData.mixedAuthenticatorMethod
+            )
+
+            val job = launch {
+                viewModel.uiState.collect { }
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state).isInstanceOf(AuthenticatorUiState.Success::class.java)
+
+            val successState = state as AuthenticatorUiState.Success
+
+            // Verify primary data (passkeys)
+            assertThat(successState.primaryData).hasSize(1)
+            assertThat(successState.primaryData[0].title).isEqualTo("Passkey")
+
+            // Verify secondary data (MFA)
+            assertThat(successState.secondaryData).hasSize(2)
+            assertThat(successState.secondaryData.map { it.type }).containsExactly(
+                AuthenticatorType.TOTP,
+                AuthenticatorType.PHONE
+            )
+
+            job.cancel()
+        }
+
+    @Test
+    fun `fetchAuthenticatorMethods - successful response with empty lists - emits Success state with empty primary and secondary data`() =
+        runTest {
+            coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Success(
+                TestData.emptyAuthenticatorMethod
+            )
+
+            val job = launch {
+                viewModel.uiState.collect { }
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state).isInstanceOf(AuthenticatorUiState.Success::class.java)
+
+            val successState = state as AuthenticatorUiState.Success
+            assertThat(successState.primaryData).isEmpty()
+            assertThat(successState.secondaryData).isEmpty()
+
+            coVerify(exactly = 1) { getEnabledAuthenticatorMethodsUseCase() }
+            job.cancel()
+        }
+
 
     @Test
     fun `fetchAuthenticatorMethods - network error - emits Error state with error and retry callback`() =
@@ -178,7 +319,6 @@ class AuthenticatorMethodsViewModelTest {
             )
             coEvery { getEnabledAuthenticatorMethodsUseCase() } returns Result.Error(tokenError)
 
-
             val job = launch {
                 viewModel.uiState.collect { }
             }
@@ -196,9 +336,8 @@ class AuthenticatorMethodsViewModelTest {
             job.cancel()
         }
 
-
     @Test
-    fun `error state retry callback - invoked after error - triggers fetchAuthenticatorMethods again and can succeed`() =
+    fun `error state retry callback - invoked after error - triggers fetchAuthenticatorMethods again`() =
         runTest {
             val networkError = Auth0Error.NetworkError(
                 message = "Connection failed",
@@ -206,7 +345,7 @@ class AuthenticatorMethodsViewModelTest {
             )
             coEvery { getEnabledAuthenticatorMethodsUseCase() } returnsMany listOf(
                 Result.Error(networkError),
-                Result.Success(listOf(TestData.totpAuthenticatorMethod))
+                Result.Success(TestData.singleSecondaryAuthenticatorMethod)
             )
 
             val job = launch {
@@ -225,21 +364,19 @@ class AuthenticatorMethodsViewModelTest {
             assertThat(finalState).isInstanceOf(AuthenticatorUiState.Success::class.java)
 
             val successState = finalState as AuthenticatorUiState.Success
-            assertThat(successState.data).hasSize(1)
-            assertThat(successState.data[0].type).isEqualTo(com.auth0.android.ui_components.domain.model.AuthenticatorType.TOTP)
+            assertThat(successState.secondaryData).hasSize(1)
+            assertThat(successState.secondaryData[0].type).isEqualTo(AuthenticatorType.TOTP)
 
             coVerify(exactly = 2) { getEnabledAuthenticatorMethodsUseCase() }
             job.cancel()
         }
 
-
     @Test
     fun `fetchAuthenticatorMethods - called multiple times - always starts with Loading state`() =
         runTest {
             coEvery { getEnabledAuthenticatorMethodsUseCase() } coAnswers {
-                // Adding a delay to mimic a real world delay and ensuring all intermediate states are collected
                 delay(10)
-                Result.Success(listOf(TestData.totpAuthenticatorMethod))
+                Result.Success(TestData.singleSecondaryAuthenticatorMethod)
             }
 
             val states = mutableListOf<AuthenticatorUiState>()
@@ -254,14 +391,14 @@ class AuthenticatorMethodsViewModelTest {
             val firstState = viewModel.uiState.value
             assertThat(firstState).isInstanceOf(AuthenticatorUiState.Success::class.java)
             val firstSuccess = firstState as AuthenticatorUiState.Success
-            assertThat(firstSuccess.data).hasSize(1)
-            assertThat(firstSuccess.data[0].type).isEqualTo(com.auth0.android.ui_components.domain.model.AuthenticatorType.TOTP)
+            assertThat(firstSuccess.secondaryData).hasSize(1)
+            assertThat(firstSuccess.secondaryData[0].type).isEqualTo(AuthenticatorType.TOTP)
 
             states.clear()
 
             coEvery { getEnabledAuthenticatorMethodsUseCase() } coAnswers {
                 delay(10)
-                Result.Success(listOf(TestData.phoneAuthenticatorMethod))
+                Result.Success(TestData.singlePhoneSecondaryAuthenticatorMethod)
             }
             viewModel.fetchAuthenticatorMethods()
             testDispatcher.scheduler.advanceUntilIdle()
@@ -272,8 +409,8 @@ class AuthenticatorMethodsViewModelTest {
             val lastState = states.last()
             assertThat(lastState).isInstanceOf(AuthenticatorUiState.Success::class.java)
             val successState = lastState as AuthenticatorUiState.Success
-            assertThat(successState.data).hasSize(1)
-            assertThat(successState.data[0].type).isEqualTo(com.auth0.android.ui_components.domain.model.AuthenticatorType.PHONE)
+            assertThat(successState.secondaryData).hasSize(1)
+            assertThat(successState.secondaryData[0].type).isEqualTo(AuthenticatorType.PHONE)
 
             coVerify(exactly = 2) { getEnabledAuthenticatorMethodsUseCase() }
 

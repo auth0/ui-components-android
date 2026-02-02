@@ -8,6 +8,7 @@ import com.auth0.android.ui_components.domain.network.onSuccess
 import com.auth0.android.ui_components.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
 import com.auth0.android.ui_components.presentation.ui.UiError
 import com.auth0.android.ui_components.presentation.ui.utils.toAuthenticatorUiModel
+import com.auth0.android.ui_components.presentation.ui.utils.toPrimaryAuthenticatorUiModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,12 +18,24 @@ import kotlinx.coroutines.launch
 
 
 /**
- * Data class representing the UI data for different authenticator methods
+ * Data class representing the UI data for primary authenticator methods
+ * @property id Unique identifier for the authenticator
+ * @property title Display title for the authenticator method
+ * @property createdAt Timestamp when the authenticator was created
+ */
+data class PrimaryAuthenticatorUiData(
+    val id: String,
+    val title: String,
+    val createdAt: String
+)
+
+/**
+ * Data class representing the UI data for secondary authenticator methods (MFA)
  * @property title Display title for the authenticator method
  * @property type [AuthenticatorType] for the authenticator
  * @property confirmed Whether the authenticator has been enrolled or not
  */
-data class AuthenticatorUiData(
+data class SecondaryAuthenticatorUiData(
     val title: String,
     val type: AuthenticatorType,
     val confirmed: Boolean
@@ -33,7 +46,11 @@ data class AuthenticatorUiData(
  */
 sealed interface AuthenticatorUiState {
     object Loading : AuthenticatorUiState
-    data class Success(val data: List<AuthenticatorUiData>) : AuthenticatorUiState
+    data class Success(
+        val primaryData: List<PrimaryAuthenticatorUiData>,
+        val secondaryData: List<SecondaryAuthenticatorUiData>
+    ) : AuthenticatorUiState
+
     data class Error(val error: UiError) : AuthenticatorUiState
 }
 
@@ -60,10 +77,18 @@ class AuthenticatorMethodsViewModel(
             _uiState.value = AuthenticatorUiState.Loading
 
             getEnabledAuthenticatorMethodsUseCase()
-                .onSuccess {
-                    _uiState.value = AuthenticatorUiState.Success(it.map { data ->
-                        data.toAuthenticatorUiModel()
-                    })
+                .onSuccess { authenticatorMethods ->
+                    val primaryUiData = authenticatorMethods.primaryAuthenticators.map {
+                        it.toPrimaryAuthenticatorUiModel()
+                    }
+                    val secondaryUiData = authenticatorMethods.secondaryAuthenticators.map {
+                        it.toAuthenticatorUiModel()
+                    }
+
+                    _uiState.value = AuthenticatorUiState.Success(
+                        primaryData = primaryUiData,
+                        secondaryData = secondaryUiData
+                    )
                 }
                 .onError {
                     _uiState.value = AuthenticatorUiState.Error(

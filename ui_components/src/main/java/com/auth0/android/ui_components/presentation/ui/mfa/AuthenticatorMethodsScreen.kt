@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,23 +26,43 @@ import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods.PrimaryAuthenticatorListScreen
 import com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods.SecondaryAuthenticatorListScreen
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyEvent
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyUiState
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyViewModel
+import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorMethodsViewModel
-import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiData
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiState
+import com.auth0.android.ui_components.presentation.viewmodel.SecondaryAuthenticatorUiData
 import com.auth0.android.ui_components.theme.defaultTopbarTitle
+import com.auth0.android.ui_components.utils.createCredential
 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthenticatorMethodsScreen(
-    viewModel: AuthenticatorMethodsViewModel = viewModel(
+    authenticatorMethodViewModel: AuthenticatorMethodsViewModel = viewModel(
         factory = MyAccountModule.provideAuthenticatorMethodViewModelFactory()
     ),
+    passkeyViewModel: PasskeyViewModel = viewModel(
+        factory = MyAccountModule.providePasskeyViewModelFactory()
+    ),
     onPasskeyClick: () -> Unit,
-    onAuthenticatorItemClick: (AuthenticatorUiData) -> Unit,
+    onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit,
     onBackPress: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by authenticatorMethodViewModel.uiState.collectAsStateWithLifecycle()
+    val passkeyUiState by passkeyViewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+
+    ObserveAsEvents(passkeyViewModel.events) { event ->
+        when (event) {
+            is PasskeyEvent.EnrollmentSuccess -> {
+                onPasskeyClick()
+            }
+        }
+    }
+
 
     Scaffold(
         topBar = {
@@ -54,49 +76,96 @@ fun AuthenticatorMethodsScreen(
         },
         containerColor = Color.White
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
         ) {
-            when (val state = uiState) {
-                is AuthenticatorUiState.Error -> {
-                    Box(
-                        Modifier
-                            .fillMaxSize()
-                    ) {
-                        ErrorHandler(
-                            uiError = state.error
-                        )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                when (val state = uiState) {
+                    is AuthenticatorUiState.Error -> {
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                        ) {
+                            ErrorHandler(
+                                uiError = state.error
+                            )
+                        }
+                    }
+
+                    AuthenticatorUiState.Loading -> {
+                        Box(
+                            Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularLoader()
+                        }
+                    }
+
+                    is AuthenticatorUiState.Success -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState()),
+                        ) {
+                            PrimaryAuthenticatorListScreen(
+                                primaryAuthenticatorUiData = state.primaryData,
+                                onAddPasskeyClick = {
+                                    passkeyViewModel.enrollPasskey {
+                                        createCredential(context, it)
+                                    }
+                                },
+                                onPasskeysClick = {
+                                    if (state.primaryData.isEmpty()) {
+                                        passkeyViewModel.enrollPasskey {
+                                            createCredential(context, it)
+                                        }
+                                    } else {
+                                        onPasskeyClick()
+                                    }
+                                }
+                            )
+                            SecondaryAuthenticatorListScreen(
+                                secondaryAuthenticatorUiData = state.secondaryData,
+                                onAuthenticatorItemClick = onAuthenticatorItemClick
+                            )
+                        }
                     }
                 }
+            }
 
-                AuthenticatorUiState.Loading -> {
+            when (val state = passkeyUiState) {
+                is PasskeyUiState.RequestingChallenge,
+                is PasskeyUiState.EnrollingPasskey -> {
                     Box(
-                        Modifier.fillMaxSize(),
+                        modifier = Modifier
+                            .background(Color.White)
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularLoader()
                     }
                 }
 
-                is AuthenticatorUiState.Success -> {
-                    Column(
+                is PasskeyUiState.Error -> {
+                    Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState()),
+                            .padding(horizontal = 16.dp)
                     ) {
-//                        PrimaryAuthenticatorListScreen(
-//                            onAddPasskeyClick = onPasskeyClick,
-//                            onPasskeysClick = onPasskeyClick
-//                        )
-                        SecondaryAuthenticatorListScreen(
-                            authenticatorMethodList = state.data,
-                            onAuthenticatorItemClick = onAuthenticatorItemClick
+                        ErrorHandler(
+                            uiError = state.error, shouldRetry = state.shouldRetry
                         )
                     }
                 }
+
+                else -> {}
             }
         }
     }

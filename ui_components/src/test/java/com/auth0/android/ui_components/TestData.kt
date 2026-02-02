@@ -19,6 +19,8 @@ import com.auth0.android.result.PasskeyUser as SdkPasskeyUser
 import com.auth0.android.result.PasskeyAuthenticationMethod as SdkPasskeyAuthenticationMethod
 import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
+import com.auth0.android.ui_components.domain.model.PrimaryAuthenticator
+import com.auth0.android.ui_components.domain.model.SecondaryAuthenticator
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge as DomainMfaEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge as DomainRecoveryCodeEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.TotpEnrollmentChallenge as DomainTotpEnrollmentChallenge
@@ -27,7 +29,7 @@ import com.auth0.android.ui_components.domain.model.AuthnParamsPublicKey as Doma
 import com.auth0.android.ui_components.domain.model.AuthenticatorSelection as DomainAuthenticatorSelection
 import com.auth0.android.ui_components.domain.model.PubKeyCredParam as DomainPubKeyCredParam
 import com.auth0.android.ui_components.domain.model.RelyingParty as DomainRelyingParty
-import com.auth0.android.ui_components.domain.model.PasskeyUser as DomainPasskeyUser
+import com.auth0.android.ui_components.domain.model.User as DomainPasskeyUser
 import com.auth0.android.ui_components.domain.model.PublicKeyCredentials as DomainPublicKeyCredentials
 import com.auth0.android.ui_components.domain.model.ClientExtensionResults as DomainClientExtensionResults
 import com.auth0.android.ui_components.domain.model.CredProps as DomainCredProps
@@ -159,35 +161,35 @@ object TestData {
     )
 
     // AuthenticatorMethod test data
-    val totpAuthenticatorMethod = AuthenticatorMethod(
+    val totpSecondaryAuthenticator = SecondaryAuthenticator(
         type = AuthenticatorType.TOTP,
         confirmed = true,
         usage = listOf("mfa"),
         name = "Authenticator App"
     )
 
-    val phoneAuthenticatorMethod = AuthenticatorMethod(
+    val phoneSecondaryAuthenticator = SecondaryAuthenticator(
         type = AuthenticatorType.PHONE,
         confirmed = false,
         usage = listOf("mfa"),
         name = "My Phone"
     )
 
-    val emailAuthenticatorMethod = AuthenticatorMethod(
+    val emailSecondaryAuthenticator = SecondaryAuthenticator(
         type = AuthenticatorType.EMAIL,
         confirmed = true,
         usage = listOf("mfa"),
         name = "My Email"
     )
 
-    val pushAuthenticatorMethod = AuthenticatorMethod(
+    val pushSecondaryAuthenticator = SecondaryAuthenticator(
         type = AuthenticatorType.PUSH,
         confirmed = false,
         usage = listOf("mfa"),
         name = "Push Device"
     )
 
-    val recoveryCodeAuthenticatorMethod = AuthenticatorMethod(
+    val recoveryCodeSecondaryAuthenticator = SecondaryAuthenticator(
         type = AuthenticatorType.RECOVERY_CODE,
         confirmed = true,
         usage = listOf("mfa"),
@@ -195,11 +197,88 @@ object TestData {
     )
 
     val allAuthenticatorMethods = listOf(
-        totpAuthenticatorMethod,
-        phoneAuthenticatorMethod,
-        emailAuthenticatorMethod,
-        pushAuthenticatorMethod,
-        recoveryCodeAuthenticatorMethod
+        totpSecondaryAuthenticator,
+        phoneSecondaryAuthenticator,
+        emailSecondaryAuthenticator,
+        pushSecondaryAuthenticator,
+        recoveryCodeSecondaryAuthenticator
+    )
+
+    // Passkey (Primary Authenticator) SDK test data
+    val passkeyAuthMethod = SdkPasskeyAuthenticationMethod(
+        id = "passkey_001",
+        type = "passkey",
+        createdAt = "2025-11-10T10:00:00.000Z",
+        usage = listOf("first"),
+        credentialBackedUp = true,
+        credentialDeviceType = "platform",
+        identityUserId = "user_123",
+        keyId = "key_abc",
+        publicKey = "public_key_xyz",
+        transports = listOf("internal"),
+        userAgent = "Android",
+        userHandle = "handle_123"
+    )
+
+    val passkeyAuthMethod2 = SdkPasskeyAuthenticationMethod(
+        id = "passkey_002",
+        type = "passkey",
+        createdAt = "2025-11-15T14:30:00.000Z",
+        usage = listOf("first"),
+        credentialBackedUp = false,
+        credentialDeviceType = "cross-platform",
+        identityUserId = "user_123",
+        keyId = "key_def",
+        publicKey = "public_key_abc",
+        transports = listOf("usb", "nfc"),
+        userAgent = "Chrome",
+        userHandle = "handle_456"
+    )
+
+    // Primary Authenticator domain model test data
+    val passkeyPrimaryAuthenticator = PrimaryAuthenticator(
+        id = "passkey_001",
+        type = "passkey",
+        createdAt = "2025-11-10T10:00:00.000Z",
+        identityUserId = "user_123"
+    )
+
+    val passkeyPrimaryAuthenticator2 = PrimaryAuthenticator(
+        id = "passkey_002",
+        type = "passkey",
+        createdAt = "2025-11-15T14:30:00.000Z",
+        identityUserId = "user_123"
+    )
+
+    // AuthenticatorMethod test data (combines primary and secondary)
+    val authenticatorMethod = AuthenticatorMethod(
+        primaryAuthenticators = listOf(passkeyPrimaryAuthenticator),
+        secondaryAuthenticators = allAuthenticatorMethods
+    )
+
+    val emptyAuthenticatorMethod = AuthenticatorMethod(
+        primaryAuthenticators = emptyList(),
+        secondaryAuthenticators = emptyList()
+    )
+
+    val singleSecondaryAuthenticatorMethod = AuthenticatorMethod(
+        primaryAuthenticators = emptyList(),
+        secondaryAuthenticators = listOf(totpSecondaryAuthenticator)
+    )
+
+    val singlePhoneSecondaryAuthenticatorMethod = AuthenticatorMethod(
+        primaryAuthenticators = emptyList(),
+        secondaryAuthenticators = listOf(phoneSecondaryAuthenticator)
+    )
+
+    val multiplePrimaryAuthenticatorMethod = AuthenticatorMethod(
+        primaryAuthenticators = listOf(passkeyPrimaryAuthenticator, passkeyPrimaryAuthenticator2),
+        secondaryAuthenticators = emptyList()
+    )
+
+    val mixedAuthenticatorMethod = AuthenticatorMethod(
+        primaryAuthenticators = listOf(passkeyPrimaryAuthenticator),
+        secondaryAuthenticators = listOf(totpSecondaryAuthenticator, phoneSecondaryAuthenticator)
     )
 
     // EnrolledAuthenticationMethod test data
@@ -387,7 +466,7 @@ object TestData {
                 DomainPubKeyCredParam(alg = -7, type = "public-key"),
                 DomainPubKeyCredParam(alg = -257, type = "public-key")
             ),
-            relyingParty = DomainRelyingParty(id = "example.auth0.com", name = "Example App"),
+            rp = DomainRelyingParty(id = "example.auth0.com", name = "Example App"),
             timeout = 60000L,
             user = DomainPasskeyUser(
                 displayName = "John Doe",

@@ -6,7 +6,7 @@ import com.auth0.android.ui_components.domain.model.EnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.MfaEnrollmentChallenge
 import com.auth0.android.ui_components.domain.model.PasskeyAuthenticationMethod
 import com.auth0.android.ui_components.domain.model.PasskeyEnrollmentChallenge
-import com.auth0.android.ui_components.domain.model.PasskeyUser
+import com.auth0.android.ui_components.domain.model.User
 import com.auth0.android.ui_components.domain.model.PubKeyCredParam
 import com.auth0.android.ui_components.domain.model.PublicKeyCredentials
 import com.auth0.android.ui_components.domain.model.RecoveryCodeEnrollmentChallenge
@@ -80,12 +80,12 @@ fun SdkAuthParamsPublicKey.toDomainModel(): AuthnParamsPublicKey {
                 type = param.type
             )
         },
-        relyingParty = RelyingParty(
+        rp = RelyingParty(
             id = this.relyingParty.id,
             name = this.relyingParty.name
         ),
         timeout = this.timeout,
-        user = PasskeyUser(
+        user = User(
             displayName = this.user.displayName,
             id = this.user.id,
             name = this.user.name
@@ -120,8 +120,8 @@ fun AuthnParamsPublicKey.toSdkModel(): SdkAuthParamsPublicKey {
             )
         },
         relyingParty = com.auth0.android.result.RelyingParty(
-            id = this.relyingParty.id,
-            name = this.relyingParty.name
+            id = this.rp.id,
+            name = this.rp.name
         ),
         timeout = this.timeout,
         user = com.auth0.android.result.PasskeyUser(
@@ -140,7 +140,7 @@ fun PublicKeyCredentials.toSdkModel(): SdkPublicKeyCredentials {
         authenticatorAttachment = this.authenticatorAttachment,
         clientExtensionResults = com.auth0.android.request.ClientExtensionResults(
             credProps = com.auth0.android.request.CredProps(
-                rk = this.clientExtensionResults.credProps.rk
+                rk = this.clientExtensionResults?.credProps?.rk ?: false
             )
         ),
         id = this.id,
@@ -150,8 +150,8 @@ fun PublicKeyCredentials.toSdkModel(): SdkPublicKeyCredentials {
             authenticatorData = this.response.authenticatorData,
             clientDataJSON = this.response.clientDataJSON,
             transports = this.response.transports,
-            signature = this.response.signature,
-            userHandle = this.response.userHandle
+            signature = this.response.signature ?: "",
+            userHandle = this.response.userHandle ?:""
         ),
         type = this.type
     )

@@ -25,10 +25,10 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class GetAuthenticationMethodsUseCaseTest {
+class GetEnrolledAuthenticatorsUseCaseTest {
 
     private lateinit var repository: MyAccountRepository
-    private lateinit var useCase: GetAuthenticationMethodsUseCase
+    private lateinit var useCase: GetEnrolledAuthenticatorsUseCase
 
     private val testDispatcher = StandardTestDispatcher()
     private val dispatcherProvider = TestDispatcherProvider(testDispatcher)
@@ -38,7 +38,7 @@ class GetAuthenticationMethodsUseCaseTest {
         Dispatchers.setMain(testDispatcher)
 
         repository = mockk()
-        useCase = GetAuthenticationMethodsUseCase(
+        useCase = GetEnrolledAuthenticatorsUseCase(
             repository = repository,
             dispatcherProvider = dispatcherProvider
         )
@@ -210,7 +210,6 @@ class GetAuthenticationMethodsUseCaseTest {
             }
         }
 
-    // ========== Mixed Authentication Methods Tests ==========
 
     @Test
     fun `invoke - mixed types with TOTP filter - returns only confirmed TOTP methods`() = runTest {
@@ -337,6 +336,142 @@ class GetAuthenticationMethodsUseCaseTest {
 
         coVerify(exactly = 1) {
             repository.getAuthenticatorMethods(expectedScope)
+        }
+    }
+
+
+    @Test
+    fun `invoke - PASSKEY type with single passkey - returns filtered PASSKEY list`() = runTest {
+        val passkeyMethod = TestData.passkeyAuthMethod
+
+        val authMethods = listOf<AuthenticationMethod>(passkeyMethod)
+        coEvery {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        } returns authMethods
+
+        val result = useCase.invoke(AuthenticatorType.PASSKEY)
+
+        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+        val enrolledMethods = (result as Result.Success).data
+        Truth.assertThat(enrolledMethods).hasSize(1)
+        Truth.assertThat(enrolledMethods[0].id).isEqualTo("passkey_001")
+        Truth.assertThat(enrolledMethods[0].type).isEqualTo("passkey")
+        Truth.assertThat(enrolledMethods[0].confirmed).isTrue()
+        Truth.assertThat(enrolledMethods[0].createdAt).isEqualTo("2025-11-10T10:00:00.000Z")
+
+        coVerify(exactly = 1) {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        }
+    }
+
+    @Test
+    fun `invoke - PASSKEY type with multiple passkeys - returns all passkeys`() = runTest {
+        val passkeyMethod1 = TestData.passkeyAuthMethod
+        val passkeyMethod2 = TestData.passkeyAuthMethod2
+
+        val authMethods = listOf<AuthenticationMethod>(passkeyMethod1, passkeyMethod2)
+        coEvery {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        } returns authMethods
+
+        val result = useCase.invoke(AuthenticatorType.PASSKEY)
+
+        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+        val enrolledMethods = (result as Result.Success).data
+        Truth.assertThat(enrolledMethods).hasSize(2)
+        Truth.assertThat(enrolledMethods.map { it.id })
+            .containsExactly("passkey_001", "passkey_002")
+        Truth.assertThat(enrolledMethods.all { it.type == "passkey" }).isTrue()
+        Truth.assertThat(enrolledMethods.all { it.confirmed }).isTrue()
+
+        coVerify(exactly = 1) {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        }
+    }
+
+    @Test
+    fun `invoke - PASSKEY type with no passkeys - returns empty list`() = runTest {
+        val authMethods = listOf<AuthenticationMethod>()
+        coEvery {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        } returns authMethods
+
+        val result = useCase.invoke(AuthenticatorType.PASSKEY)
+
+        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+        val enrolledMethods = (result as Result.Success).data
+        Truth.assertThat(enrolledMethods).isEmpty()
+
+        coVerify(exactly = 1) {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        }
+    }
+
+    @Test
+    fun `invoke - PASSKEY type with mixed auth methods - returns only passkeys`() = runTest {
+        val passkeyMethod = TestData.passkeyAuthMethod
+        val totpMethod = TestData.totpAuthMethod
+        val phoneMethod = TestData.phoneAuthMethod
+
+        val authMethods = listOf<AuthenticationMethod>(passkeyMethod, totpMethod, phoneMethod)
+        coEvery {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        } returns authMethods
+
+        val result = useCase.invoke(AuthenticatorType.PASSKEY)
+
+        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+        val enrolledMethods = (result as Result.Success).data
+        Truth.assertThat(enrolledMethods).hasSize(1)
+        Truth.assertThat(enrolledMethods[0].id).isEqualTo("passkey_001")
+        Truth.assertThat(enrolledMethods[0].type).isEqualTo("passkey")
+
+        coVerify(exactly = 1) {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        }
+    }
+
+    @Test
+    fun `invoke - PASSKEY type - passkeys are always confirmed`() = runTest {
+        val passkeyMethod = TestData.passkeyAuthMethod
+
+        val authMethods = listOf<AuthenticationMethod>(passkeyMethod)
+        coEvery {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        } returns authMethods
+
+        val result = useCase.invoke(AuthenticatorType.PASSKEY)
+
+        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+        val enrolledMethods = (result as Result.Success).data
+        Truth.assertThat(enrolledMethods).hasSize(1)
+        // Passkeys should always be confirmed (they don't have a confirmed field in SDK)
+        Truth.assertThat(enrolledMethods[0].confirmed).isTrue()
+
+        coVerify(exactly = 1) {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        }
+    }
+
+    @Test
+    fun `invoke - PASSKEY type with repository error - returns Error result`() = runTest {
+        val expectedError = Auth0Error.NetworkError(
+            message = "Network error",
+            cause = RuntimeException("Connection failed")
+        )
+        coEvery {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
+        } throws expectedError
+
+        val result = useCase.invoke(AuthenticatorType.PASSKEY)
+
+        Truth.assertThat(result).isInstanceOf(Result.Error::class.java)
+        val error = (result as Result.Error).error
+        Truth.assertThat(error).isInstanceOf(Auth0Error.NetworkError::class.java)
+        Truth.assertThat(error.message).contains("Network error")
+
+        coVerify(exactly = 1) {
+            repository.getAuthenticatorMethods("read:me:authentication_methods")
         }
     }
 }

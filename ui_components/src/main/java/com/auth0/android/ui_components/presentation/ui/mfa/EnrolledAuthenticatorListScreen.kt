@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,14 +16,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
@@ -35,10 +37,15 @@ import com.auth0.android.ui_components.presentation.ui.components.ErrorHandler
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyEvent
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyUiState
+import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyViewModel
+import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
 import com.auth0.android.ui_components.presentation.viewmodel.EnrolledAuthenticatorViewModel
 import com.auth0.android.ui_components.theme.enrollmentSubTitle
 import com.auth0.android.ui_components.utils.DateUtil
+import com.auth0.android.ui_components.utils.createCredential
 
 /**
  *Screen displaying the list of enrolled authenticators
@@ -52,9 +59,26 @@ fun EnrolledAuthenticatorListScreen(
     onAddClick: () -> Unit = {},
     viewModel: EnrolledAuthenticatorViewModel = viewModel(
         factory = MyAccountModule.provideMFAEnrolledItemViewModelFactory(authenticatorType)
+    ),
+    passkeyViewModel: PasskeyViewModel = viewModel(
+        factory = MyAccountModule.providePasskeyViewModelFactory()
     )
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val isPasskeyType = authenticatorType == AuthenticatorType.PASSKEY
+
+    val passkeyUiState by passkeyViewModel.uiState.collectAsStateWithLifecycle()
+
+    if (isPasskeyType) {
+        ObserveAsEvents(flow = passkeyViewModel.events) { event ->
+            when (event) {
+                is PasskeyEvent.EnrollmentSuccess -> {
+                    viewModel.fetchEnrolledAuthenticators(authenticatorType)
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -67,7 +91,15 @@ fun EnrolledAuthenticatorListScreen(
                 } else {
                     null
                 },
-                trailingIconClick = onAddClick,
+                trailingIconClick = {
+                    if (isPasskeyType) {
+                        passkeyViewModel.enrollPasskey { authParamsJson ->
+                            createCredential(context, authParamsJson)
+                        }
+                    } else {
+                        onAddClick()
+                    }
+                },
                 onBackClick = onBackClick
             )
         },
@@ -98,6 +130,37 @@ fun EnrolledAuthenticatorListScreen(
                 ErrorHandler(
                     uiState.uiError!!
                 )
+            }
+
+            if (isPasskeyType) {
+                when (passkeyUiState) {
+                    is PasskeyUiState.EnrollingPasskey,
+                    is PasskeyUiState.RequestingChallenge -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularLoader()
+                        }
+                    }
+
+                    is PasskeyUiState.Error -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            ErrorHandler(
+                                uiError = (passkeyUiState as PasskeyUiState.Error).error,
+                                shouldRetry = (passkeyUiState as PasskeyUiState.Error).shouldRetry
+                            )
+                        }
+                    }
+                    else -> {}
+                }
             }
         }
     }

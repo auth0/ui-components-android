@@ -7,6 +7,8 @@ import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.error.Auth0Error
 import com.auth0.android.ui_components.domain.model.AuthenticatorMethod
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
+import com.auth0.android.ui_components.domain.model.PrimaryAuthenticator
+import com.auth0.android.ui_components.domain.model.SecondaryAuthenticator
 import com.auth0.android.ui_components.domain.network.Result
 import com.auth0.android.ui_components.domain.network.safeCall
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
@@ -15,7 +17,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 /**
- * UseCase that fetches enables authentication factors
+ * UseCase that fetches enabled primary and secondary authenticator methods
  */
 class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
@@ -26,7 +28,7 @@ class GetEnabledAuthenticatorMethodsUseCase(
         private const val REQUIRED_SCOPES_AUTHENTICATION = "read:me:authentication_methods"
     }
 
-    suspend operator fun invoke(): Result<List<AuthenticatorMethod>, Auth0Error> =
+    suspend operator fun invoke(): Result<AuthenticatorMethod, Auth0Error> =
         withContext(dispatcherProvider.io) {
             safeCall {
                 coroutineScope {
@@ -41,36 +43,50 @@ class GetEnabledAuthenticatorMethodsUseCase(
                         factorsDeferred.await(),
                         authMethodsDeferred.await()
                     )
-                    mapToMFAMethods(factors, authMethods)
+                    mapAuthenticatorMethods(factors, authMethods)
                 }
             }
         }
 
     /**
-     * Maps factors to MFA methods
-     * Shows only available factors and checks if any authentication method
-     * of the same type has confirmed: true`
+     * Separates [PrimaryAuthenticator] and [SecondaryAuthenticator] and maps factors to
+     * [SecondaryAuthenticator] methods
      */
-    private fun mapToMFAMethods(
+    private fun mapAuthenticatorMethods(
         factors: List<Factor>,
         authMethods: List<AuthenticationMethod>
-    ): List<AuthenticatorMethod> {
-        val mfaAuthMethods = authMethods
-            .filterIsInstance<MfaAuthenticationMethod>()
-            .filter { it.type != "password" }
+    ): AuthenticatorMethod {
+        val (secondaryAuthenticator, primaryAuthenticator) = authMethods
+            .partition {
+                it is MfaAuthenticationMethod
+            }
 
-        val authMethodsByType = mfaAuthMethods.groupBy { it.type }
+        val primaryAuthMethods =
+            primaryAuthenticator.filterIsInstance<com.auth0.android.result.PasskeyAuthenticationMethod>()
+                .map {
+                    PrimaryAuthenticator(
+                        it.id,
+                        it.type,
+                        it.createdAt,
+                        it.identityUserId
+                    )
+                }
 
-        return factors.map { factor ->
+        val authMethodsByType = secondaryAuthenticator.groupBy { it.type }
+        val secondaryAuthMethods = factors.map { factor ->
             val hasConfirmedAuthMethod = authMethodsByType[factor.type]
-                ?.any { it.confirmed == true } ?: false
+                ?.any {
+                    it is MfaAuthenticationMethod && it.confirmed == true
+                } ?: false
 
-            AuthenticatorMethod(
+            SecondaryAuthenticator(
                 type = mapTypeToAuthenticatorType(factor.type),
                 confirmed = hasConfirmedAuthMethod,
                 usage = factor.usage ?: emptyList()
             )
         }
+
+        return AuthenticatorMethod(primaryAuthMethods, secondaryAuthMethods)
     }
 
     /**
@@ -83,6 +99,7 @@ class GetEnabledAuthenticatorMethodsUseCase(
             "email" -> AuthenticatorType.EMAIL
             "push-notification" -> AuthenticatorType.PUSH
             "recovery-code" -> AuthenticatorType.RECOVERY_CODE
+            "passkey" -> AuthenticatorType.PASSKEY
             else -> AuthenticatorType.TOTP
         }
     }

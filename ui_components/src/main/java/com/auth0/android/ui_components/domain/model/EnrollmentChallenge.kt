@@ -2,11 +2,13 @@ package com.auth0.android.ui_components.domain.model
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.Serializable
 
 /**
  * Local sealed class hierarchy for enrollment challenges.
  */
 @Parcelize
+@Serializable
 sealed class EnrollmentChallenge : Parcelable {
     abstract val id: String
     abstract val authSession: String
@@ -46,6 +48,7 @@ data class RecoveryCodeEnrollmentChallenge(
  * Passkey enrollment challenge
  * Contains the authentication method ID and public key parameters for passkey enrollment
  */
+@Serializable
 data class PasskeyEnrollmentChallenge(
     val authenticationMethodId: String,
     override val authSession: String,
@@ -59,19 +62,21 @@ data class PasskeyEnrollmentChallenge(
  * Public key parameters for passkey authentication
  */
 @Parcelize
+@Serializable
 data class AuthnParamsPublicKey(
     val authenticatorSelection: AuthenticatorSelection,
     val challenge: String,
     val pubKeyCredParams: List<PubKeyCredParam>,
-    val relyingParty: RelyingParty,
+    val rp: RelyingParty,
     val timeout: Long,
-    val user: PasskeyUser
+    val user: User
 ) : Parcelable
 
 /**
  * Authenticator selection criteria for passkey
  */
 @Parcelize
+@Serializable
 data class AuthenticatorSelection(
     val residentKey: String,
     val userVerification: String
@@ -81,6 +86,7 @@ data class AuthenticatorSelection(
  * Public key credential parameters
  */
 @Parcelize
+@Serializable
 data class PubKeyCredParam(
     val alg: Int,
     val type: String
@@ -90,6 +96,7 @@ data class PubKeyCredParam(
  * Relying party information for passkey
  */
 @Parcelize
+@Serializable
 data class RelyingParty(
     val id: String,
     val name: String
@@ -99,7 +106,8 @@ data class RelyingParty(
  * User information for passkey
  */
 @Parcelize
-data class PasskeyUser(
+@Serializable
+data class User(
     val displayName: String,
     val id: String,
     val name: String

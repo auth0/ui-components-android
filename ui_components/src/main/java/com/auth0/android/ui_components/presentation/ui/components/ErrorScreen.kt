@@ -42,6 +42,7 @@ fun ErrorScreen(
     mainErrorMessage: String,
     description: String = stringResource(R.string.unable_to_process_contact),
     clickableString: String? = null,
+    shouldRetry: Boolean = true,
     onRetryClick: () -> Unit = {}
 ) {
 
@@ -81,24 +82,26 @@ fun ErrorScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = onRetryClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF2D2D2D),
-                    contentColor = Color.White
-                ),
-                shape = MaterialTheme.shapes.medium
-            ) {
-                Text(
-                    text = stringResource(R.string.try_again),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 16.sp
+            if (shouldRetry) {
+                Button(
+                    onClick = onRetryClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2D2D2D),
+                        contentColor = Color.White
+                    ),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text(
+                        text = stringResource(R.string.try_again),
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 16.sp
+                        )
                     )
-                )
+                }
             }
         }
     }

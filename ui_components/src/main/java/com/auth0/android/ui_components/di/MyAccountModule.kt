@@ -6,17 +6,16 @@ import com.auth0.android.ui_components.data.repository.MyAccountRepositoryImpl
 import com.auth0.android.ui_components.di.viewmodelfactory.AuthenticatorMethodViewModelFactory
 import com.auth0.android.ui_components.di.viewmodelfactory.EnrollmentViewModelFactory
 import com.auth0.android.ui_components.di.viewmodelfactory.MFAEnrolledItemViewModelFactory
+import com.auth0.android.ui_components.di.viewmodelfactory.PasskeyViewModelFactory
 import com.auth0.android.ui_components.domain.DispatcherProvider
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.domain.repository.MyAccountRepository
 import com.auth0.android.ui_components.domain.usecase.DeleteAuthenticationMethodUseCase
 import com.auth0.android.ui_components.domain.usecase.EnrollAuthenticatorUseCase
-import com.auth0.android.ui_components.domain.usecase.GetAuthenticationMethodsUseCase
+import com.auth0.android.ui_components.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.android.ui_components.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
 import com.auth0.android.ui_components.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.android.ui_components.helper.DispatcherProviderImpl
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 
 object MyAccountModule {
 
@@ -30,7 +29,7 @@ object MyAccountModule {
 
     fun provideMFAEnrolledItemViewModelFactory(authenticatorType: AuthenticatorType): MFAEnrolledItemViewModelFactory {
         return MFAEnrolledItemViewModelFactory(
-            getAuthenticationMethodsUseCase = provideGetAuthenticationMethodsUseCase(),
+            getEnrolledAuthenticatorsUseCase = provideGetEnrolledAuthenticatorsUseCase(),
             deleteAuthenticationMethodUseCase = provideDeleteAuthenticationMethodUseCase(),
             authenticatorType = authenticatorType
         )
@@ -47,6 +46,13 @@ object MyAccountModule {
         )
     }
 
+    fun providePasskeyViewModelFactory(): PasskeyViewModelFactory {
+        return PasskeyViewModelFactory(
+            repository = provideMyAccountRepository(),
+            passkeyConfiguration = com.auth0.android.ui_components.Auth0UI.passkeyConfiguration,
+        )
+    }
+
     //Use cases
     private fun provideEnabledAuthenticatorMethodsUseCase(): GetEnabledAuthenticatorMethodsUseCase {
         return GetEnabledAuthenticatorMethodsUseCase(
@@ -55,8 +61,8 @@ object MyAccountModule {
         )
     }
 
-    private fun provideGetAuthenticationMethodsUseCase(): GetAuthenticationMethodsUseCase {
-        return GetAuthenticationMethodsUseCase(
+    private fun provideGetEnrolledAuthenticatorsUseCase(): GetEnrolledAuthenticatorsUseCase {
+        return GetEnrolledAuthenticatorsUseCase(
             repository = provideMyAccountRepository(),
             dispatcherProvider = provideDispatcherProvider()
         )

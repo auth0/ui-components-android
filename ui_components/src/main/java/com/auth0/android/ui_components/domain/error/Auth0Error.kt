@@ -90,6 +90,13 @@ sealed class Auth0Error(
         override val cause: Throwable
     ) : Auth0Error(message, cause)
 
+    // Passkey Related Errors
+    data class PasskeyError(
+        override val message: String = "Passkey error occurred",
+        override val cause: Throwable,
+        val shouldRetry: Boolean = false
+    ) : Auth0Error(message, cause)
+
 
     // Generic/Unknown Errors
     data class Unknown(
