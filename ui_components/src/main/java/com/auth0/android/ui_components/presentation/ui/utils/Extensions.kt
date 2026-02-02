@@ -29,9 +29,7 @@ internal fun SecondaryAuthenticator.toAuthenticatorUiModel(): SecondaryAuthentic
         )
 
         else -> {
-            SecondaryAuthenticatorUiData(
-                "Authenticator App", type, confirmed
-            )
+            throw IllegalArgumentException("Unknown authenticator type: $type")
         }
     }
 }

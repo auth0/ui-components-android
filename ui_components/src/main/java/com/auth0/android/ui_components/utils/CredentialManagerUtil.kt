@@ -15,6 +15,8 @@ suspend fun createCredential(
         Auth0UI.passkeyConfiguration.credentialManager ?: CredentialManager.create(context)
     val request = CreatePublicKeyCredentialRequest(authParamsJson)
     val response = credentialsManager.createCredential(context, request)
-    return (response as CreatePublicKeyCredentialResponse).registrationResponseJson
+    val publicKeyResponse = response as? CreatePublicKeyCredentialResponse
+        ?: throw IllegalStateException("Unexpected credential response type: ${response::class.java.name}")
+    return publicKeyResponse.registrationResponseJson
 }
 

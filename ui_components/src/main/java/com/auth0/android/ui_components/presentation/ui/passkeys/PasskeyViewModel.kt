@@ -1,10 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.passkeys
 
 import android.util.Log
-import androidx.credentials.CreateCredentialRequest
-import androidx.credentials.CreateCredentialResponse
-import androidx.credentials.CreatePublicKeyCredentialRequest
-import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.exceptions.CreateCredentialCancellationException
 import androidx.credentials.exceptions.CreateCredentialException
 import androidx.credentials.exceptions.CreateCredentialInterruptedException
@@ -29,11 +25,11 @@ import kotlinx.serialization.json.Json
  * Represents the different UI states for passkey enrollment
  */
 sealed interface PasskeyUiState {
-    object Idle : PasskeyUiState
-    object UserCancelled : PasskeyUiState
-    object RequestingChallenge : PasskeyUiState
-    object CreatingPasskey : PasskeyUiState
-    object EnrollingPasskey : PasskeyUiState
+    data object Idle : PasskeyUiState
+    data object UserCancelled : PasskeyUiState
+    data object RequestingChallenge : PasskeyUiState
+    data object CreatingPasskey : PasskeyUiState
+    data object EnrollingPasskey : PasskeyUiState
     data class Error(val error: UiError, val shouldRetry: Boolean = true) : PasskeyUiState
 }
 
@@ -45,7 +41,7 @@ sealed interface PasskeyEvent {
     /**
      * Emitted when passkey enrollment is successfully completed
      */
-    object EnrollmentSuccess : PasskeyEvent
+    data object EnrollmentSuccess : PasskeyEvent
 }
 
 /**
@@ -158,7 +154,7 @@ class PasskeyViewModel(
             else -> {
                 Log.w(TAG, "Unexpected exception type ${exception::class.java.name}")
                 Auth0Error.PasskeyError(
-                    "An error occurred when creating a passkey",
+                    "An error occurred when creating a passkey: ${exception.message ?: "Unknown error"}",
                     exception,
                 )
             }

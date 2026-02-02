@@ -56,7 +56,7 @@ object UiUtils {
             "phone" -> "No Phone was saved."
             "email" -> "No Email was saved."
             "push-notification" -> "No Push was saved."
-            "passkey" -> "No Passkey was saved"
+            "passkey" -> "No Passkey was saved."
             else -> "No Recovery code was saved."
         }
     }

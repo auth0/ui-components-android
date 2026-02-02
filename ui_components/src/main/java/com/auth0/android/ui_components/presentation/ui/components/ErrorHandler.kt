@@ -80,7 +80,8 @@ fun ErrorHandler(
                 description = stringResource(R.string.unable_to_process_contact),
                 modifier = modifier,
                 clickableString = stringResource(R.string.contact_us),
-                shouldRetry = shouldRetry
+                shouldRetry = shouldRetry,
+                onRetryClick = uiError.onRetry
             )
 
         }

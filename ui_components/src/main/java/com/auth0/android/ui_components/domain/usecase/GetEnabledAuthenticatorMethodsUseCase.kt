@@ -61,16 +61,16 @@ class GetEnabledAuthenticatorMethodsUseCase(
                 it is MfaAuthenticationMethod
             }
 
-        val primaryAuthMethods = primaryAuthenticator.filter {
-            it.type == "passkey" && it is com.auth0.android.result.PasskeyAuthenticationMethod
-        }.map {
-            PrimaryAuthenticator(
-                it.id,
-                it.type,
-                it.createdAt,
-                (it as com.auth0.android.result.PasskeyAuthenticationMethod).identityUserId
-            )
-        }
+        val primaryAuthMethods =
+            primaryAuthenticator.filterIsInstance<com.auth0.android.result.PasskeyAuthenticationMethod>()
+                .map {
+                    PrimaryAuthenticator(
+                        it.id,
+                        it.type,
+                        it.createdAt,
+                        it.identityUserId
+                    )
+                }
 
         val authMethodsByType = secondaryAuthenticator.groupBy { it.type }
         val secondaryAuthMethods = factors.map { factor ->

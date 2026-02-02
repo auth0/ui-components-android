@@ -29,7 +29,7 @@ object MyAccountModule {
 
     fun provideMFAEnrolledItemViewModelFactory(authenticatorType: AuthenticatorType): MFAEnrolledItemViewModelFactory {
         return MFAEnrolledItemViewModelFactory(
-            getEnrolledAuthenticatorsUseCase = provideGetAuthenticationMethodsUseCase(),
+            getEnrolledAuthenticatorsUseCase = provideGetEnrolledAuthenticatorsUseCase(),
             deleteAuthenticationMethodUseCase = provideDeleteAuthenticationMethodUseCase(),
             authenticatorType = authenticatorType
         )
@@ -61,7 +61,7 @@ object MyAccountModule {
         )
     }
 
-    private fun provideGetAuthenticationMethodsUseCase(): GetEnrolledAuthenticatorsUseCase {
+    private fun provideGetEnrolledAuthenticatorsUseCase(): GetEnrolledAuthenticatorsUseCase {
         return GetEnrolledAuthenticatorsUseCase(
             repository = provideMyAccountRepository(),
             dispatcherProvider = provideDispatcherProvider()
