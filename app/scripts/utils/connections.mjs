@@ -5,7 +5,7 @@ import { auth0ApiCall } from "./auth0-api.mjs"
 import { ChangeAction, createChangeItem } from "./change-plan.mjs"
 
 // Constants
-export const DEFAULT_CONNECTION_NAME = "Universal-Components-Demo"
+export const DEFAULT_CONNECTION_NAME = "Username-Password-Authentication"
 
 // ============================================================================
 // CHECK FUNCTIONS
@@ -19,25 +19,31 @@ export function checkDatabaseConnectionChanges(
     (c) => c.name === DEFAULT_CONNECTION_NAME
   )
 
+  const desiredEnabledClients = [dashboardClientId]
+
   if (!existing) {
     return createChangeItem(ChangeAction.CREATE, {
       resource: "Database Connection",
       name: DEFAULT_CONNECTION_NAME,
-      dashboardClientId,
+      enabledClients: desiredEnabledClients,
     })
   }
 
-  // Check if the dashboard client is already enabled
-  const enabledClients = existing.enabled_clients || []
-  if (dashboardClientId && !enabledClients.includes(dashboardClientId)) {
+  // Check if we need to add any missing enabled clients
+  const existingEnabledClients = existing.enabled_clients || []
+  const missingClients = desiredEnabledClients.filter(
+    (clientId) => !existingEnabledClients.includes(clientId)
+  )
+
+  if (missingClients.length > 0) {
     return createChangeItem(ChangeAction.UPDATE, {
       resource: "Database Connection",
       name: DEFAULT_CONNECTION_NAME,
       existing,
-      dashboardClientId,
       updates: {
-        enabled_clients: [...enabledClients, dashboardClientId],
+        missingClients,
       },
+      summary: `Add ${missingClients.length} enabled client(s)`,
     })
   }
 
@@ -74,7 +80,7 @@ export async function applyDatabaseConnectionChanges(
         strategy: "auth0",
         name: DEFAULT_CONNECTION_NAME,
         display_name: "Universal-Components",
-        enabled_clients: dashboardClientId ? [dashboardClientId] : [],
+        enabled_clients: [dashboardClientId],
       }
 
       const createArgs = [
@@ -98,35 +104,40 @@ export async function applyDatabaseConnectionChanges(
 
   if (changePlan.action === ChangeAction.UPDATE) {
     const spinner = ora({
-      text: `Updating Database Connection: ${DEFAULT_CONNECTION_NAME}`,
+      text: `Adding missing enabled clients to ${DEFAULT_CONNECTION_NAME} connection`,
     }).start()
 
     try {
-      const updateArgs = [
-        "api",
-        "patch",
-        `connections/${changePlan.existing.id}`,
-        "--data",
-        JSON.stringify(changePlan.updates),
-      ]
+      const { existing } = changePlan
+      const existingEnabledClients = existing.enabled_clients || []
 
-      await $`auth0 ${updateArgs}`
+      // Use the actual client IDs instead of the ones from the change plan
+      const clientsToAdd = []
+      if (!existingEnabledClients.includes(dashboardClientId)) {
+        clientsToAdd.push(dashboardClientId)
+      }
+
+      if (clientsToAdd.length === 0) {
+        spinner.succeed(
+          `${DEFAULT_CONNECTION_NAME} connection already has all clients enabled`
+        )
+        return existing
+      }
+
+      const updatedClients = [...existingEnabledClients, ...clientsToAdd]
+
+      await auth0ApiCall("patch", `connections/${existing.id}`, {
+        enabled_clients: updatedClients,
+      })
+      spinner.succeed(
+        `Updated ${DEFAULT_CONNECTION_NAME} connection with ${clientsToAdd.length} new enabled client(s)`
+      )
 
       // Fetch updated connection
-      const getArgs = [
-        "api",
-        "get",
-        `connections/${changePlan.existing.id}`,
-      ]
-      const { stdout } = await $`auth0 ${getArgs}`
-      const connection = JSON.parse(stdout)
-
-      spinner.succeed(
-        `Updated Database Connection: ${DEFAULT_CONNECTION_NAME}`
-      )
-      return connection
+      const updated = await auth0ApiCall("get", `connections/${existing.id}`)
+      return updated || existing
     } catch (e) {
-      spinner.fail(`Failed to update Database Connection`)
+      spinner.fail(`Failed to update ${DEFAULT_CONNECTION_NAME} connection`)
       throw e
     }
   }

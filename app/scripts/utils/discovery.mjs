@@ -148,9 +148,9 @@ export async function buildChangePlan(resources, domain, androidConfig) {
     domain
   )
 
-  // Client Grants (use existing client_id if available)
+  // Get client IDs (either existing or will be created)
   const dashboardClientId =
-    plan.clients.dashboard.existing?.client_id || null
+    plan.clients.dashboard.existing?.client_id || "TO_BE_CREATED"
   plan.clientGrants.myAccount = checkMyAccountClientGrantChanges(
     dashboardClientId,
     resources.clientGrants,
