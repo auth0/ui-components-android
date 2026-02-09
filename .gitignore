@@ -17,3 +17,5 @@ local.properties
 
 .github/prompts/
 .vscode
+
+app/scripts/node_modules/
