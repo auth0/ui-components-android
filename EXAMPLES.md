@@ -6,10 +6,9 @@ SDK in your application.
 ## Table of Contents
 
 - [Initialization](#initialization)
-- [Using MFA Components](#using-mfa-components)
-- [Passkey Configuration](#passkey-configuration)
+- [Using UI Components](#using-ui-components)
+- [Support](#support)
 
----
 
 ## Initialization
 
@@ -39,7 +38,7 @@ Auth0UI.initialize(
 )
 ```
 
-### CustomTokeProvider
+### CustomTokenProvider
 
 User can provide their own instance of `TokenProvider` to handle token management.
 
