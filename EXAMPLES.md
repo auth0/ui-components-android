@@ -46,15 +46,15 @@ User can provide their own instance of `TokenProvider` to handle token managemen
 
 class CustomTokenProvider : TokenProvider {
 
-    suspend fun fetchCredentials(): Credentials {
+    override suspend fun fetchCredentials(): Credentials {
         //  Implementation
     }
 
-    suspend fun fetchApiCredentials(audience: String, scope: String? = null): APICredentials {
+    override suspend fun fetchApiCredentials(audience: String, scope: String? = null): APICredentials {
         // Implementation
     }
 
-    suspend fun saveApiCredentials(audience: String, credentials: APICredentials) {
+    override suspend fun saveApiCredentials(audience: String, credentials: APICredentials) {
         // Implementation
     }
 }
@@ -77,7 +77,7 @@ the passkey management within the SDK
 ```Kotlin
 
 val passkeyConfiguration = PasskeyConfiguration(
-    credentialManager = credentialManager, // User's instance of credentials manager
+    credentialManager = credentialManager, // User's instance of AndroidX Credentials manager
     connection = connection, // Your custom Auth0 DB connection
     userIdentity = userIdentity // userIdentity if the user is logged in with a linked account
 )
@@ -94,7 +94,7 @@ Auth0UI.initialize(
 
 ## Using UI Components
 
-The simplest way to add UI components to your app is to call the `AuthenticatorSettingsComponent` method from your application. The SDK will handle all the internal navigation.
+The simplest way to add UI components to your app is to call the `AuthenticatorSettingsComponent` composable function from your application. The SDK will handle all the internal navigation.
 
 ```kotlin
 @Composable
