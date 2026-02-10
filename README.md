@@ -25,6 +25,10 @@ This library provides ready-to-use UI components for multi-factor authentication
 
 All components are built on top of the [Auth0 Android SDK](https://github.com/auth0/Auth0.Android) and integrate with Auth0's My Account APIs.
 
+> ⚠️ **My Account APIs Required** - This SDK requires [My Account APIs](https://auth0.com/docs/manage-users/my-account-api) which are currently in early access. Please reach out to Auth0 support to enable My Account APIs for your tenant.
+
+> ⚠️ **BETA RELEASE** - This SDK is currently in beta. APIs may change before the stable release.
+
 ## Getting Started
 
 ### Requirements
