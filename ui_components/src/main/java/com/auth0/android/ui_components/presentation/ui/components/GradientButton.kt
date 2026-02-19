@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.theme.ButtonBlack
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 
 @Composable
 fun GradientButton(
@@ -30,27 +30,30 @@ fun GradientButton(
             Color.Transparent
         )
     ),
-    buttonDefaultColor: ButtonColors = ButtonDefaults.buttonColors(
-        containerColor = ButtonBlack,
-        contentColor = Color.White,
-        disabledContainerColor = ButtonBlack,
-        disabledContentColor = Color.White
-    ),
-    shape: RoundedCornerShape = RoundedCornerShape(16.dp),
+    buttonDefaultColor: ButtonColors? = null,
+    shape: RoundedCornerShape = Auth0TokenDefaults.shapes().large,
     elevation: ButtonElevation = ButtonDefaults.buttonElevation(
         defaultElevation = 0.dp,
         pressedElevation = 2.dp
     ),
     isLoading: Boolean = false,
     enabled: Boolean = true,
-    borderStroke: BorderStroke?=null,
+    borderStroke: BorderStroke? = null,
     onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    val colors = Auth0TokenDefaults.color()
+
+    val buttonColors = buttonDefaultColor ?: ButtonDefaults.buttonColors(
+        containerColor = colors.primary,
+        contentColor = colors.onPrimary,
+        disabledContainerColor = colors.primary.copy(alpha = 0.38f),
+        disabledContentColor = colors.onPrimary.copy(alpha = 0.38f)
+    )
 
     Button(
         modifier = modifier,
-        colors = buttonDefaultColor,
+        colors = buttonColors,
         shape = shape,
         contentPadding = PaddingValues(),
         elevation = elevation,

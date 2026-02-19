@@ -18,8 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.theme.SeparatorLineGray
-import com.auth0.android.ui_components.theme.enrollmentTopbarTitle
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -30,16 +29,22 @@ fun TopBar(
     showSeparator: Boolean = false,
     showBackNavigation: Boolean = true,
     trailingIcon: Painter? = null,
-    titleTextStyle: TextStyle = enrollmentTopbarTitle,
+    titleTextStyle: TextStyle? = null,
     onBackClick: () -> Unit,
     trailingIconClick: () -> Unit = {}
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+
+    val titleStyle = titleTextStyle ?: typography.title
+
     Column {
         CenterAlignedTopAppBar(
             title = {
                 Text(
                     text = title,
-                    style = titleTextStyle,
+                    style = titleStyle,
+                    color = colors.textPrimary
                 )
             },
             navigationIcon = {
@@ -74,7 +79,7 @@ fun TopBar(
             HorizontalDivider(
                 modifier = Modifier.fillMaxWidth(),
                 thickness = 0.3.dp,
-                color = SeparatorLineGray
+                color = colors.border
             )
         }
     }
