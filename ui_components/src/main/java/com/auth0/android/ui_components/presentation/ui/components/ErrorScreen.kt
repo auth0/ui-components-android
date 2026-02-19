@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.theme.SectionDescriptionTextColor
-import interFamily
+import com.auth0.android.ui_components.theme.interFamily
 
 @Composable
 fun ErrorScreen(

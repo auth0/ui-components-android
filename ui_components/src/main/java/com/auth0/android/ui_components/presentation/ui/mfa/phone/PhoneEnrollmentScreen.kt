@@ -67,8 +67,8 @@ import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.enrollmentTopbarTitle
 import com.auth0.android.ui_components.theme.secondaryTextColor
 import com.auth0.android.ui_components.theme.textInputStyle
+import com.auth0.android.ui_components.theme.interFamily
 import com.auth0.android.ui_components.utils.ValidationUtil
-import interFamily
 
 
 @OptIn(ExperimentalMaterial3Api::class)

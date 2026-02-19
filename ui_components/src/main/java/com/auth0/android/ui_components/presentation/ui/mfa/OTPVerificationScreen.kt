@@ -64,7 +64,7 @@ import com.auth0.android.ui_components.theme.ButtonBlack
 import com.auth0.android.ui_components.theme.ErrorRed
 import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.secondaryTextColor
-import interFamily
+import com.auth0.android.ui_components.theme.interFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

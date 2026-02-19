@@ -75,9 +75,9 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewMode
 import com.auth0.android.ui_components.theme.ButtonBlack
 import com.auth0.android.ui_components.theme.contentTextStyle
 import com.auth0.android.ui_components.theme.secondaryTextColor
+import com.auth0.android.ui_components.theme.interFamily
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import interFamily
 
 @Composable
 fun QREnrollmentScreen(
