@@ -25,7 +25,7 @@ import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 fun TopBar(
     title: String,
     modifier: Modifier = Modifier,
-    topBarColor: Color = Color.White,
+    topBarColor: Color = Auth0TokenDefaults.color().background,
     showSeparator: Boolean = false,
     showBackNavigation: Boolean = true,
     trailingIcon: Painter? = null,

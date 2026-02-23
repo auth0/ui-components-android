@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -30,7 +29,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,8 +44,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.auth0.android.myaccount.PhoneAuthenticationMethodType
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
@@ -60,13 +58,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.ErrorRed
-import com.auth0.android.ui_components.theme.ErrorTextRed
-import com.auth0.android.ui_components.theme.TextInputBlack
-import com.auth0.android.ui_components.theme.contentTextStyle
-import com.auth0.android.ui_components.theme.enrollmentTopbarTitle
-import com.auth0.android.ui_components.theme.secondaryTextColor
-import com.auth0.android.ui_components.theme.textInputStyle
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 import com.auth0.android.ui_components.theme.interFamily
 import com.auth0.android.ui_components.utils.ValidationUtil
 
@@ -81,6 +73,8 @@ fun PhoneEnrollmentScreen(
     onContinueToOTP: (authenticationId: kotlin.String, authSession: kotlin.String, phoneNumber: kotlin.String) -> Unit,
     onBackClick: () -> Unit
 ) {
+    val colors = Auth0TokenDefaults.color()
+
     var phoneNumber by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(Country.countries[0]) }
     var validationError by remember { mutableStateOf(false) }
@@ -112,7 +106,7 @@ fun PhoneEnrollmentScreen(
                 showSeparator = false
             )
         },
-        containerColor = Color.White
+        containerColor = colors.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -184,27 +178,23 @@ fun PhoneEnrollmentScreen(
 
 @Composable
 private fun PhoneEnrollmentHeader() {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     Text(
         text = stringResource(R.string.enter_phone_number),
-        style = contentTextStyle,
+        style = typography.titleLarge,
         textAlign = TextAlign.Start,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        color = Color.Black,
-        lineHeight = 1.em,
-        letterSpacing = 0.em
+        color = colors.textPrimary,
     )
 
-    Spacer(Modifier.height(8.dp))
+    Spacer(Modifier.height(dimensions.spacingXs))
 
     Text(
         text = stringResource(R.string.verification_code_text),
-        style = contentTextStyle,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 0.15.em,
-        color = secondaryTextColor,
-        letterSpacing = 0.01.em
+        style = typography.body,
+        color = colors.textSecondary
     )
 }
 
@@ -239,16 +229,16 @@ private fun PhoneFormField(
     onCountryCodeClick: () -> Unit,
     isValidationError: Boolean,
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     Text(
         text = stringResource(R.string.phone_number_label),
-        fontWeight = FontWeight.SemiBold,
-        style = contentTextStyle,
-        fontSize = 14.sp,
-        color = Color.Black,
-        lineHeight = 16.sp,
-        letterSpacing = 0.em
+        style = typography.label,
+        color = colors.textPrimary,
     )
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingXs))
 
     PhoneTextField(
         phoneNumber = phoneNumber,
@@ -268,25 +258,30 @@ private fun PhoneTextField(
     onCountryCodeClick: () -> Unit,
     isError: Boolean,
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val shapes = Auth0TokenDefaults.shapes()
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     val backgroundColor = if (isError) {
-        ErrorRed.copy(alpha = 0.05f)
+        colors.error.copy(alpha = 0.05f)
     } else {
-        Color.White
+        colors.surface
     }
 
     val borderColor = if (isError) {
-        ErrorRed.copy(alpha = 0.25f)
+        colors.error.copy(alpha = 0.5f)
     } else {
-        Color(0xFFE0E0E0)
+        colors.border
     }
 
     val textColor = if (isError) {
-        ErrorTextRed
+        colors.onError
     } else {
-        TextInputBlack
+        colors.textPrimary
     }
 
-    val shape = RoundedCornerShape(14.dp)
+    val shape = shapes.medium
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -307,14 +302,14 @@ private fun PhoneTextField(
             modifier = Modifier
                 .fillMaxSize()
                 .background(backgroundColor)
-                .padding(horizontal = 12.dp),
+                .padding(horizontal = dimensions.spacingSm),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(dimensions.spacingMd)
         ) {
             Row(
                 modifier = Modifier.clickable(onClick = onCountryCodeClick),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(dimensions.spacingXxs)
             ) {
                 Text(
                     text = selectedCountry.flagEmoji,
@@ -323,20 +318,16 @@ private fun PhoneTextField(
                 )
 
                 Text(
-                    modifier = Modifier.padding(horizontal = 4.dp),
+                    modifier = Modifier.padding(horizontal = dimensions.spacingXxs),
                     text = selectedCountry.phoneCode,
-                    style = contentTextStyle,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 20.sp,
-                    lineHeight = 24.sp,
-                    letterSpacing = 0.em,
+                    style = typography.title,
                     color = textColor
                 )
 
                 Icon(
                     painter = painterResource(R.drawable.ic_chevron_down),
                     contentDescription = stringResource(R.string.select_country),
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(dimensions.spacingMd),
                     tint = textColor
                 )
             }
@@ -344,7 +335,7 @@ private fun PhoneTextField(
             BasicTextField(
                 value = phoneNumber,
                 onValueChange = onPhoneNumberChange,
-                textStyle = textInputStyle.copy(color = textColor),
+                textStyle = typography.title.copy(color = textColor),
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Phone
                 ),
@@ -354,7 +345,7 @@ private fun PhoneTextField(
                     if (phoneNumber.isEmpty()) {
                         Text(
                             text = stringResource(R.string.phone_number_placeholder),
-                            style = textInputStyle.copy(color = TextInputBlack.copy(alpha = 0.54f))
+                            style = typography.title.copy(color = colors.textPrimary.copy(alpha = 0.54f))
                         )
                     }
                     innerTextField()
@@ -366,13 +357,9 @@ private fun PhoneTextField(
     if (isError) {
         Text(
             text = stringResource(R.string.invalid_phone_number),
-            color = ErrorTextRed,
-            style = contentTextStyle,
-            fontWeight = FontWeight.Normal,
-            fontSize = 16.sp,
-            lineHeight = 0.15.em,
-            letterSpacing = 0.01.em,
-            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+            color = colors.onError,
+            style = typography.body,
+            modifier = Modifier.padding(start = dimensions.spacingXxs, top = dimensions.spacingXs)
         )
     }
 }
@@ -385,6 +372,11 @@ private fun CountrySelectorSheet(
     onCountrySelected: (Country) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val shapes = Auth0TokenDefaults.shapes()
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     val sheetState = rememberModalBottomSheetState()
     var searchQuery by remember { mutableStateOf("") }
 
@@ -402,47 +394,43 @@ private fun CountrySelectorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.White
+        containerColor = colors.surface
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = dimensions.spacingMd)
         ) {
             Text(
                 text = stringResource(R.string.select_country_code),
-                style = enrollmentTopbarTitle,
-                modifier = Modifier.padding(bottom = 16.dp)
+                style = typography.title,
+                modifier = Modifier.padding(bottom = dimensions.spacingMd)
             )
 
-            val searchShape = RoundedCornerShape(14.dp)
+            val searchShape = shapes.medium
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp, horizontal = 12.dp),
+                    .padding(vertical = dimensions.spacingMd, horizontal = dimensions.spacingSm),
                 trailingIcon = {
                     Icon(
                         painter = painterResource(R.drawable.ic_search),
                         contentDescription = stringResource(R.string.search),
-                        modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF000000).copy(alpha = 0.5f)
+                        modifier = Modifier.size(dimensions.spacingLg),
+                        tint = colors.textPrimary.copy(alpha = 0.5f)
                     )
                 },
                 placeholder = {
                     Text(
                         text = stringResource(R.string.search_country),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium,
-                        color = Color(0xFF1F1F1F).copy(alpha = 0.54f)
+                        style = typography.label,
+                        color = colors.textPrimary.copy(alpha = 0.54f)
                     )
                 },
-                textStyle = contentTextStyle.copy(
-                    fontSize = 18.sp,
-                    lineHeight = 18.sp,
-                    letterSpacing = 0.em,
-                    color = Color(0xFF1F1F1F)
+                textStyle = typography.body.copy(
+                    color = colors.textPrimary
                 ),
                 singleLine = true,
                 shape = searchShape,
@@ -493,12 +481,8 @@ private fun CountryItem(
 
             Text(
                 text = "${country.name} (${country.phoneCode})",
-                fontFamily = interFamily,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 28.sp,
-                color = Color(0xFF333C4D),
-                letterSpacing = 0.em
+                style = Auth0TokenDefaults.typography().body,
+                color = Auth0TokenDefaults.color().textPrimary
             )
         }
 

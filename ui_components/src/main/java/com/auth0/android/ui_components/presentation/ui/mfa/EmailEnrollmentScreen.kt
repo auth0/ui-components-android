@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -18,14 +17,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -33,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
@@ -46,12 +44,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.ErrorRed
-import com.auth0.android.ui_components.theme.ErrorTextRed
-import com.auth0.android.ui_components.theme.TextInputBlack
-import com.auth0.android.ui_components.theme.contentTextStyle
-import com.auth0.android.ui_components.theme.secondaryTextColor
-import com.auth0.android.ui_components.theme.textInputStyle
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 import com.auth0.android.ui_components.utils.ValidationUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,6 +57,9 @@ fun EmailEnrollmentScreen(
     onBackClick: () -> Unit,
     onContinueToOTP: (authenticationId: String, authSession: String, email: String) -> Unit = { _, _, _ -> }
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     var email by remember { mutableStateOf("") }
     var validationErrorMessage by remember { mutableStateOf("") }
 
@@ -93,14 +89,14 @@ fun EmailEnrollmentScreen(
                 showSeparator = false
             )
         },
-        containerColor = Color.White
+        containerColor = colors.background
     ) { paddingValues ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 38.dp)
+                .padding(horizontal = dimensions.spacingMd, vertical = 38.dp)
         ) {
 
             Column(
@@ -108,7 +104,7 @@ fun EmailEnrollmentScreen(
             ) {
                 EmailEnrollmentHeader()
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(dimensions.spacingLg))
                 EmailFormField(
                     email = email,
                     onEmailChange = { newEmail ->
@@ -144,11 +140,13 @@ fun EmailEnrollmentScreen(
 
 @Composable
 private fun LoadingScreen(state: EnrollmentUiState) {
+    val colors = Auth0TokenDefaults.color()
+
     if (state.enrollingAuthenticator)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White),
+                .background(colors.background),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
@@ -164,29 +162,24 @@ private fun ErrorScreen(state: EnrollmentUiState) {
 
 @Composable
 private fun EmailEnrollmentHeader() {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     Text(
         text = stringResource(R.string.enter_email_address),
-        style = contentTextStyle,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 1.em,
-        letterSpacing = 0.em,
-        color = Color.Black,
+        style = typography.titleLarge,
+        color = colors.textPrimary,
         textAlign = TextAlign.Start,
         modifier = Modifier.fillMaxWidth()
     )
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingXs))
 
     Text(
         text = stringResource(R.string.email_verification_code_text),
-        style = contentTextStyle,
-        fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
-        lineHeight = 1.5.em,
-        letterSpacing = 0.01.em,
-        color = secondaryTextColor,
+        style = typography.body,
+        color = colors.textSecondary,
         textAlign = TextAlign.Start,
         modifier = Modifier.fillMaxWidth()
     )
@@ -198,17 +191,18 @@ private fun EmailFormField(
     onEmailChange: (String) -> Unit,
     errorMessage: String
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     Text(
         text = stringResource(R.string.email_label),
-        style = contentTextStyle,
-        fontSize = 14.sp,
-        lineHeight = 14.sp,
-        letterSpacing = 0.em,
-        color = Color.Black,
+        style = typography.body,
+        color = colors.textPrimary,
         textAlign = TextAlign.Start
     )
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingXs))
 
     EmailTextField(
         email = email,
@@ -225,46 +219,49 @@ private fun EmailTextField(
     isError: Boolean,
     errorMessage: String
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val shapes = Auth0TokenDefaults.shapes()
+
     val backgroundColor = if (isError) {
-        ErrorRed.copy(alpha = 0.05f)
+        colors.error
     } else {
-        Color.White
+        colors.surface
     }
 
     val borderColor = if (isError) {
-        ErrorRed.copy(alpha = 0.25f)
+        colors.error.copy(alpha = 0.5f)
     } else {
-        Color(0xFFE0E0E0)
+        colors.border
     }
 
     val textColor = if (isError) {
-        ErrorTextRed
+        colors.onError
     } else {
-        TextInputBlack
+        colors.textPrimary
     }
 
-    val shape = RoundedCornerShape(14.dp)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(60.dp)
             .background(
                 color = backgroundColor,
-                shape = shape
+                shape = shapes.medium
             )
             .border(
                 width = 1.dp,
                 color = borderColor,
-                shape = shape
+                shape = shapes.medium
             ),
         shadowElevation = 10.dp,
-        shape = shape,
+        shape = shapes.medium,
     )
     {
         BasicTextField(
             value = email,
             onValueChange = onEmailChange,
-            textStyle = textInputStyle.copy(color = textColor, textAlign = TextAlign.Start),
+            textStyle = typography.title.copy(color = textColor, textAlign = TextAlign.Start),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email
             ),
@@ -277,8 +274,8 @@ private fun EmailTextField(
                 if (email.isEmpty()) {
                     Text(
                         text = stringResource(R.string.email_placeholder),
-                        style = textInputStyle.copy(
-                            color = TextInputBlack.copy(alpha = 0.54f),
+                        style = typography.title.copy(
+                            color = colors.textPrimary.copy(alpha = 0.54f),
                             textAlign = TextAlign.Start
                         )
                     )
@@ -292,12 +289,8 @@ private fun EmailTextField(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = errorMessage,
-            color = ErrorTextRed,
-            style = contentTextStyle,
-            fontWeight = FontWeight.Normal,
-            fontSize = 16.sp,
-            lineHeight = 0.15.em,
-            letterSpacing = 0.01.em,
+            color = colors.onError,
+            style = typography.body,
             modifier = Modifier.padding(start = 4.dp, top = 8.dp)
         )
     }

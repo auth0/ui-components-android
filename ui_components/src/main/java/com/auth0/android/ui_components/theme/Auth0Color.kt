@@ -42,7 +42,7 @@ data class Auth0Color(
             // Border
             border = Color(0xFFD9D9D9),
             // Error colors
-            error = Color(0xFFFDECE8),
+            error = Color(0xFFF5694D),
             errorContainer = Color(0xFFFFFCFC),
             onError = Color(0xFF5D251D),
             // Success colors
