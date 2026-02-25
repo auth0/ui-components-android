@@ -72,12 +72,12 @@ fun EnrolledAuthenticatorItem(
                 Text(
                     text = title,
                     style = typography.bodyLarge,
-                    color = colors.textPrimary
+                    color = colors.cardForeground
                 )
                 Text(
                     text = subtitle,
                     style = typography.body,
-                    color = colors.textSecondary
+                    color = colors.mutedForeground
                 )
             }
 
@@ -90,7 +90,7 @@ fun EnrolledAuthenticatorItem(
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = stringResource(R.string.more_options),
-                            tint = colors.textPrimary
+                            tint = colors.foreground
                         )
                     }
 

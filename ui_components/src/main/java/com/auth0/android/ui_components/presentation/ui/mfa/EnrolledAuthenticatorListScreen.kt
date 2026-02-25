@@ -19,7 +19,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -43,7 +42,7 @@ import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyViewModel
 import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
 import com.auth0.android.ui_components.presentation.viewmodel.EnrolledAuthenticatorViewModel
-import com.auth0.android.ui_components.theme.enrollmentSubTitle
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 import com.auth0.android.ui_components.utils.DateUtil
 import com.auth0.android.ui_components.utils.createCredential
 
@@ -64,6 +63,8 @@ fun EnrolledAuthenticatorListScreen(
         factory = MyAccountModule.providePasskeyViewModelFactory()
     )
 ) {
+    val colors = Auth0TokenDefaults.color()
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val isPasskeyType = authenticatorType == AuthenticatorType.PASSKEY
@@ -84,7 +85,6 @@ fun EnrolledAuthenticatorListScreen(
         topBar = {
             TopBar(
                 title = UiUtils.formatTopBarTitleForAuthenticator(authenticatorType.type),
-                topBarColor = Color.White,
                 showSeparator = false,
                 trailingIcon = if (!uiState.loading && uiState.uiError == null) {
                     rememberVectorPainter(Icons.Default.Add)
@@ -103,7 +103,7 @@ fun EnrolledAuthenticatorListScreen(
                 onBackClick = onBackClick
             )
         },
-        containerColor = Color.White,
+        containerColor = colors.background,
         modifier = modifier
     ) { paddingValues ->
 
@@ -139,7 +139,7 @@ fun EnrolledAuthenticatorListScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.White),
+                                .background(colors.background),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularLoader()
@@ -150,7 +150,7 @@ fun EnrolledAuthenticatorListScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(Color.White),
+                                .background(colors.background),
                             contentAlignment = Alignment.Center
                         ) {
                             ErrorHandler(
@@ -159,6 +159,7 @@ fun EnrolledAuthenticatorListScreen(
                             )
                         }
                     }
+
                     else -> {}
                 }
             }
@@ -177,6 +178,9 @@ fun AuthenticatorListContent(
     onDeleteAuthenticator: (EnrolledAuthenticationMethod) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -186,7 +190,8 @@ fun AuthenticatorListContent(
 
         Text(
             text = UiUtils.formatDescriptionForAuthenticator(authenticatorType),
-            style = enrollmentSubTitle,
+            style = typography.bodyMedium,
+            color = colors.textSecondary,
             modifier = Modifier.height(16.dp)
         )
 

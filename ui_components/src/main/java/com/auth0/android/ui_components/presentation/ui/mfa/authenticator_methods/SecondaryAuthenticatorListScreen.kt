@@ -13,8 +13,7 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
 import com.auth0.android.ui_components.presentation.viewmodel.SecondaryAuthenticatorUiData
-import com.auth0.android.ui_components.theme.sectionHeading1
-import com.auth0.android.ui_components.theme.sectionHeading2
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 
 
 /**
@@ -25,11 +24,14 @@ fun SecondaryAuthenticatorListScreen(
     secondaryAuthenticatorUiData: List<SecondaryAuthenticatorUiData>,
     onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+
     Spacer(modifier = Modifier.height(12.dp))
     Text(
         text = stringResource(R.string.verification_methods),
-        modifier = Modifier.height(24.dp),
-        style = sectionHeading1,
+        style = typography.display,
+        color = colors.textPrimary,
     )
 
     Spacer(modifier = Modifier.height(8.dp))
@@ -37,7 +39,8 @@ fun SecondaryAuthenticatorListScreen(
     Text(
         text = stringResource(R.string.manage_2fa_methods),
         modifier = Modifier.height(17.dp),
-        style = sectionHeading2,
+        style = typography.bodyMedium,
+        color = colors.textSecondary,
     )
 
     Spacer(modifier = Modifier.height(24.dp))

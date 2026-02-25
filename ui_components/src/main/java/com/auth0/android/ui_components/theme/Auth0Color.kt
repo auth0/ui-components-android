@@ -23,7 +23,10 @@ data class Auth0Color(
     val onSuccess: Color,
     val successContainer: Color,
     val textPrimary: Color,
-    val textSecondary: Color
+    val textSecondary: Color,
+    val foreground: Color,
+    val cardForeground: Color,
+    val mutedForeground: Color,
 ) {
     companion object {
         /**
@@ -52,6 +55,9 @@ data class Auth0Color(
             // Text colors
             textPrimary = Color(0xFF1F1F1F),
             textSecondary = Color(0xFF636363),
+            foreground = Color(0xFF1F1F1F),
+            cardForeground = Color.Black,
+            mutedForeground = Color(0xFF828282)
         )
 
         /**
@@ -80,6 +86,9 @@ data class Auth0Color(
             // Text colors
             textPrimary = Color(0xFFEEEEEE),
             textSecondary = Color(0xFFB4B4B4),
+            foreground = Color(0xFFEEEEEE),
+            cardForeground = Color.White,
+            mutedForeground = Color(0xFF7B7B7B)
         )
     }
 }

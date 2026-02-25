@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -22,7 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -32,11 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.viewmodel.PrimaryAuthenticatorUiData
-import com.auth0.android.ui_components.theme.ButtonBlack
-import com.auth0.android.ui_components.theme.PasskeyCardBackground
-import com.auth0.android.ui_components.theme.TextInputBlack
-import com.auth0.android.ui_components.theme.sectionHeading1
-import com.auth0.android.ui_components.theme.textInputStyle
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 
 /**
  * Primary Authenticator List Screen
@@ -46,16 +40,18 @@ import com.auth0.android.ui_components.theme.textInputStyle
 @Composable
 fun PrimaryAuthenticatorListScreen(
     primaryAuthenticatorUiData: List<PrimaryAuthenticatorUiData>,
+    modifier: Modifier = Modifier,
     onAddPasskeyClick: () -> Unit = {},
-    onPasskeysClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onPasskeysClick: () -> Unit = {}
 ) {
+    val colors = Auth0TokenDefaults.color()
+
     var isCardDismissed by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(colors.background)
     ) {
         if (primaryAuthenticatorUiData.isEmpty() && !isCardDismissed) {
             PasskeyInfoCard(
@@ -84,13 +80,17 @@ private fun PasskeyInfoCard(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+    val shapes = Auth0TokenDefaults.shapes()
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 14.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = PasskeyCardBackground
+            containerColor = colors.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -101,8 +101,8 @@ private fun PasskeyInfoCard(
         ) {
             Text(
                 text = stringResource(id = R.string.passkey_info_card_title),
-                style = textInputStyle.copy(fontSize = 14.sp, fontWeight = FontWeight(550)),
-                color = Color.Black,
+                style = typography.bodyMedium,
+                color = colors.textPrimary,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -110,35 +110,27 @@ private fun PasskeyInfoCard(
 
             Text(
                 text = stringResource(R.string.what_are_passkeys),
-                style = textInputStyle.copy(fontSize = 14.sp, lineHeight = 20.sp),
-                color = TextInputBlack,
+                style = typography.bodyMedium,
+                color = colors.textPrimary,
             )
 
             Text(
                 text = stringResource(R.string.passkey_info_card_text_1),
-                style = textInputStyle.copy(
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp
-                ),
-                color = TextInputBlack,
+                style = typography.bodyMedium,
+                color = colors.textPrimary,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.where_are_passkeys_saved),
-                style = textInputStyle.copy(fontSize = 14.sp, lineHeight = 20.sp),
-                color = TextInputBlack,
+                style = typography.bodyMedium,
+                color = colors.textPrimary,
             )
             Text(
                 text = stringResource(R.string.passkey_info_card_text_2),
-                style = textInputStyle.copy(
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp
-                ),
-                color = TextInputBlack,
+                style = typography.bodyMedium,
+                color = colors.textPrimary,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
@@ -149,10 +141,10 @@ private fun PasskeyInfoCard(
                     .fillMaxWidth()
                     .height(48.dp),
                 onClick = onAddPasskeyClick,
-                shape = RoundedCornerShape(16.dp),
-                borderStroke = BorderStroke(1.dp, ButtonBlack.copy(alpha = 0.35f)),
+                shape = shapes.large,
+                borderStroke = BorderStroke(1.dp, colors.primary.copy(alpha = 0.35f)),
                 buttonDefaultColor = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.White, contentColor = ButtonBlack
+                    containerColor = colors.surface, contentColor = colors.primary
                 ),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 2.dp, pressedElevation = 2.dp
@@ -162,13 +154,13 @@ private fun PasskeyInfoCard(
                     painter = painterResource(id = R.drawable.ic_passkey),
                     contentDescription = "Passkey icon",
                     modifier = Modifier.size(16.dp),
-                    tint = ButtonBlack
+                    tint = colors.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = stringResource(id = R.string.add_passkey), style = textInputStyle.copy(
-                        fontSize = 16.sp, fontWeight = FontWeight.Medium, color = TextInputBlack
-                    )
+                    text = stringResource(id = R.string.add_passkey),
+                    style = typography.bodyLarge,
+                    color = colors.textPrimary
                 )
             }
 
@@ -180,12 +172,9 @@ private fun PasskeyInfoCard(
                         onDismissClick()
                     },
                 text = stringResource(R.string.dismiss),
-                style = textInputStyle.copy(
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight(550),
-                    color = TextInputBlack,
-                    textAlign = TextAlign.Center
-                ),
+                color = colors.textPrimary,
+                textAlign = TextAlign.Center,
+                style = typography.bodyMedium,
             )
             Spacer(modifier = Modifier.height(24.dp))
         }
@@ -202,11 +191,14 @@ private fun SignInMethodsSection(
     isPasskeyEnrolled: Boolean,
     onPasskeysClick: () -> Unit,
 ) {
+    val colors = Auth0TokenDefaults.color()
+    val typography = Auth0TokenDefaults.typography()
+
     Spacer(modifier = Modifier.height(18.dp))
     Text(
         text = stringResource(R.string.sign_in_methods),
-        modifier = Modifier.height(24.dp),
-        style = sectionHeading1,
+        style = typography.display,
+        color = colors.textPrimary,
     )
     Spacer(modifier = Modifier.height(18.dp))
 
