@@ -206,7 +206,7 @@ private fun LoadingScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White),
+                .background(Auth0TokenDefaults.color().background),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
