@@ -15,11 +15,12 @@ public fun SnackBar(
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
+    val sizes = com.auth0.android.ui_components.theme.Auth0TokenDefaults.sizes()
 
     SnackbarHost(
         hostState = snackbarHostState,
         modifier = Modifier
-            .padding(16.dp)
+            .padding(sizes.padding)
     )
 
     LaunchedEffect(Unit) {

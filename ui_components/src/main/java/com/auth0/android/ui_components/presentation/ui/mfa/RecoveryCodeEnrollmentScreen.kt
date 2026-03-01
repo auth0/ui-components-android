@@ -205,11 +205,12 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
     val dimensions = Auth0TokenDefaults.dimensions()
+    val sizes = Auth0TokenDefaults.sizes()
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         shape = shapes.medium,
         color = colors.backgroundLayerMedium,
         shadowElevation = 6.dp,
@@ -221,7 +222,7 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = dimensions.spacingSm, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -237,7 +238,7 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
                     painter = painterResource(id = R.drawable.ic_copy),
                     contentDescription = "Copy",
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(sizes.iconMedium)
                         .padding(vertical = 2.dp),
                     tint = colors.textBold
                 )
@@ -255,10 +256,13 @@ private fun ContinueButton(
     onClick: () -> Unit
 ) {
     val colors = Auth0TokenDefaults.color()
+    val sizes = Auth0TokenDefaults.sizes()
+    val typography = Auth0TokenDefaults.typography()
+
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         gradient = Brush.verticalGradient(
             colors = listOf(
                 colors.backgroundPrimary.copy(alpha = 0.15f),
@@ -269,7 +273,10 @@ private fun ContinueButton(
         enabled = !isLoading,
         onClick = onClick
     ) {
-        Text(stringResource(R.string.continue_button))
+        Text(
+            text = stringResource(R.string.continue_button),
+            style = typography.label
+        )
     }
 }
 

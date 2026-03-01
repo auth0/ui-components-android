@@ -26,15 +26,16 @@ fun SecondaryAuthenticatorListScreen(
 ) {
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingSm))
     Text(
         text = stringResource(R.string.verification_methods),
         style = typography.display,
         color = colors.textBold,
     )
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingXs))
 
     Text(
         text = stringResource(R.string.manage_2fa_methods),
@@ -43,7 +44,7 @@ fun SecondaryAuthenticatorListScreen(
         color = colors.textDefault,
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
     if (secondaryAuthenticatorUiData.isEmpty()) {
         EmptyAuthenticatorItem(emptyMessage = stringResource(R.string.no_authenticators_enabled))
@@ -57,7 +58,7 @@ fun SecondaryAuthenticatorListScreen(
             showActiveTag = item.confirmed,
             onClick = { onAuthenticatorItemClick(item) }
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(dimensions.spacingSm))
     }
 }
 

@@ -43,12 +43,14 @@ fun ErrorScreen(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(colors.backgroundLayerBase)
-            .padding(horizontal = 32.dp),
+            .padding(horizontal = dimensions.spacingXl),
         contentAlignment = Alignment.Center
     ) {
         Column(
@@ -71,14 +73,14 @@ fun ErrorScreen(
                 clickableLinkText = clickableString
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
             if (shouldRetry) {
                 Button(
                     onClick = onRetryClick,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(48.dp),
+                        .height(sizes.buttonHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = colors.backgroundPrimary,
                         contentColor = colors.textOnPrimary

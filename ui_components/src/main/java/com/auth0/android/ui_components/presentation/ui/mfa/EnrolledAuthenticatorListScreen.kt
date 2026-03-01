@@ -180,24 +180,25 @@ fun AuthenticatorListContent(
 ) {
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
+    val sizes = Auth0TokenDefaults.sizes()
+    val spacing = Auth0TokenDefaults.dimensions()
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = sizes.padding)
     ) {
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(spacing.spacingLg))
 
         Text(
             text = UiUtils.formatDescriptionForAuthenticator(authenticatorType),
             style = typography.body,
             color = colors.textDefault,
-            modifier = Modifier.height(16.dp)
         )
 
         if (authenticators.isEmpty()) {
             EmptyAuthenticatorItem(
-                modifier = Modifier.padding(vertical = 8.dp),
+                modifier = Modifier.padding(vertical = spacing.spacingXs),
                 emptyMessage = UiUtils.formatEmptyStateMessageForAuthenticatorItems(
                     authenticatorType
                 )
@@ -205,9 +206,11 @@ fun AuthenticatorListContent(
             return
         }
 
+        Spacer(modifier = Modifier.height(Auth0TokenDefaults.dimensions().spacingSm))
+
         LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(vertical = 8.dp)
+            verticalArrangement = Arrangement.spacedBy(spacing.spacingSm),
+            modifier = Modifier.padding(vertical = spacing.spacingXs)
         ) {
             items(key = { it.id }, items = authenticators) { authenticator ->
                 val menuActions = listOf(

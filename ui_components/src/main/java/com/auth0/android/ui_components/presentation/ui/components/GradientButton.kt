@@ -43,6 +43,7 @@ fun GradientButton(
     content: @Composable () -> Unit,
 ) {
     val colors = Auth0TokenDefaults.color()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     val buttonColors = buttonDefaultColor ?: ButtonDefaults.buttonColors(
         containerColor = colors.backgroundPrimary,
@@ -77,7 +78,7 @@ fun GradientButton(
                         color = Color.White.copy(alpha = 0.75f),
                         strokeWidth = 2.dp
                     )
-                    Spacer(modifier = Modifier.size(8.dp))
+                    Spacer(modifier = Modifier.size(dimensions.spacingXs))
                 } else {
                     content()
                 }

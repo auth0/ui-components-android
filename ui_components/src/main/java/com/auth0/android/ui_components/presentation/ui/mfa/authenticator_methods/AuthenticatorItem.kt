@@ -35,6 +35,8 @@ fun AuthenticatorItem(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     Surface(
         modifier = Modifier
@@ -49,16 +51,16 @@ fun AuthenticatorItem(
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp),
+                .padding(sizes.padding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 painter = leadingIcon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(sizes.iconMedium),
                 tint = colors.textBold
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(dimensions.spacingMd))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -71,21 +73,21 @@ fun AuthenticatorItem(
 
                 Spacer(Modifier.weight(1f))
                 if (showActiveTag) {
-                    Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(dimensions.spacingXs))
                     Icon(
                         painter = painterResource(R.drawable.ic_active),
                         contentDescription = null,
-                        modifier = Modifier.size(20.dp),
+                        modifier = Modifier.size(sizes.iconMedium),
                         tint = Color.Unspecified
                     )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(dimensions.spacingMd))
 
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.navigate),
                     tint = colors.textBold,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(sizes.iconMedium)
                 )
             }
         }

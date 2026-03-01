@@ -198,13 +198,15 @@ fun OTPVerificationScreen(
                 }
             }
 
+            val sizes = Auth0TokenDefaults.sizes()
+
             GradientButton(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
+                    .height(sizes.buttonHeight),
                 onClick = click
             ) {
-                Text(text)
+                Text(text, style = typography.label)
             }
         }
 
@@ -272,6 +274,8 @@ private fun OTPInputField(
     onValueChange: (String) -> Unit,
     focusRequester: FocusRequester
 ) {
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -282,7 +286,7 @@ private fun OTPInputField(
         decorationBox = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(dimensions.spacingXs)
             ) {
                 repeat(length) { index ->
                     OTPBox(

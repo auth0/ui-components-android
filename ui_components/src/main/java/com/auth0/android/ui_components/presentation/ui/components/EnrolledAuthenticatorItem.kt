@@ -44,6 +44,8 @@ fun EnrolledAuthenticatorItem(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -66,7 +68,7 @@ fun EnrolledAuthenticatorItem(
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(dimensions.spacingXxs)
             ) {
                 Text(
                     text = title,
@@ -84,7 +86,7 @@ fun EnrolledAuthenticatorItem(
                 Box {
                     IconButton(
                         onClick = { expanded = true },
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(sizes.iconMedium)
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,

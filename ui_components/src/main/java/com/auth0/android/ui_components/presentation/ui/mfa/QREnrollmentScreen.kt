@@ -19,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -155,6 +154,8 @@ private fun QREnrollmentContent(
     viewModel: EnrollmentViewModel,
     onContinueClick: (String, String) -> Unit
 ) {
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
     val totpEnrollment = enrollmentResult as EnrollmentResult.TotpEnrollment
     val manualCode = totpEnrollment.challenge.manualInputCode
     val barcodeUri = totpEnrollment.challenge.barcodeUri
@@ -177,7 +178,7 @@ private fun QREnrollmentContent(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = sizes.paddingLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = if (!hasManualCode) Arrangement.Center else Arrangement.Top
         ) {
@@ -190,11 +191,11 @@ private fun QREnrollmentContent(
                 modifier = Modifier.size(170.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXl))
 
             InstructionsText()
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXl))
 
             if (hasManualCode) {
                 ManualCodeSection(
@@ -233,7 +234,7 @@ private fun QREnrollmentContent(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(16.dp)
+                .padding(sizes.padding)
         )
     }
 }
@@ -261,12 +262,13 @@ private fun ManualCodeSection(
     manualCode: String,
     onCopyClick: () -> Unit
 ) {
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     ManualCodeCard(
-        manualCode = manualCode,
-        onCopyClick = onCopyClick
+        manualCode = manualCode
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingMd))
 
     CopyCodeButton(
         onCopyClick = onCopyClick
@@ -281,11 +283,13 @@ private fun CopyCodeButton(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         gradient = Brush.verticalGradient(
             colors = listOf(
                 colors.backgroundPrimary.copy(alpha = 0f),
@@ -319,11 +323,11 @@ private fun CopyCodeButton(
             Icon(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
                 contentDescription = "Copy",
-                modifier = Modifier.size(16.dp),
+                modifier = Modifier.size(sizes.iconMedium),
                 tint = colors.textBold
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(dimensions.spacingXs))
 
             Text(
                 text = stringResource(R.string.copy_as_code),
@@ -341,10 +345,12 @@ private fun CopyCodeButton(
 private fun ContinueButtonSection(
     onContinueClick: () -> Unit
 ) {
+    val sizes = Auth0TokenDefaults.sizes()
+
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         gradient = Brush.verticalGradient(
             colors = listOf(
                 Color.White.copy(alpha = 0.15f),
@@ -405,45 +411,31 @@ private fun QRCodeDisplay(
 @Composable
 private fun ManualCodeCard(
     manualCode: String,
-    onCopyClick: () -> Unit
 ) {
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         shape = shapes.medium,
         color = colors.backgroundLayerMedium,
         shadowElevation = 6.dp,
     ) {
         Row(
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(sizes.padding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = manualCode,
                 style = typography.label,
-                color = colors.textBold
+                color = colors.textDefault,
+                textAlign = TextAlign.Center,
             )
-
-            IconButton(
-                onClick = onCopyClick,
-                modifier = Modifier
-                    .size(24.dp)
-                    .padding(2.dp)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
-                    contentDescription = "Copy secret code",
-                    tint = colors.textBold,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
         }
     }
 }

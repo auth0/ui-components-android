@@ -21,13 +21,15 @@ import androidx.compose.runtime.Immutable
  * @property typography Custom typography scale, or null to use default
  * @property shapes Custom shapes, or null to use default
  * @property dimensions Custom dimensions/spacing, or null to use default
+ * @property sizes Custom component sizes, or null to use default
  */
 @Immutable
 data class Auth0ThemeConfiguration(
     val color: Auth0Color? = null,
     val typography: Auth0Typography? = null,
     val shapes: Auth0Shapes? = null,
-    val dimensions: Auth0Dimensions? = null
+    val dimensions: Auth0Dimensions? = null,
+    val sizes: Auth0Sizes? = null
 ) {
     companion object {
         /**
@@ -94,6 +96,8 @@ fun Auth0Theme(
 
     val dimensions = configuration.dimensions ?: Auth0Dimensions.default()
 
+    val sizes = configuration.sizes ?: Auth0Sizes.default()
+
     // Step 3: Bridge Auth0 tokens to Material3
     val material3ColorScheme = color.toMaterial3ColorScheme(isDark)
     val material3Typography = typography.toMaterial3Typography()
@@ -104,7 +108,8 @@ fun Auth0Theme(
         LocalAuth0Color provides color,
         LocalAuth0Typography provides typography,
         LocalAuth0Shapes provides shapes,
-        LocalAuth0Dimensions provides dimensions
+        LocalAuth0Dimensions provides dimensions,
+        LocalAuth0Sizes provides sizes
     ) {
         // Step 5: Wrap with MaterialTheme
         MaterialTheme(

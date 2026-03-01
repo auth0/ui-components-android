@@ -33,3 +33,11 @@ internal val LocalAuth0Shapes = staticCompositionLocalOf<Auth0Shapes> {
 internal val LocalAuth0Dimensions = staticCompositionLocalOf<Auth0Dimensions> {
     error("No Auth0Dimensions provided. Wrap your composable with Auth0Theme { }.")
 }
+
+/**
+ * CompositionLocal for Auth0 size tokens.
+ * Must be provided by Auth0Theme, will throw error if accessed outside Auth0Theme.
+ */
+internal val LocalAuth0Sizes = staticCompositionLocalOf<Auth0Sizes> {
+    error("No Auth0Sizes provided. Wrap your composable with Auth0Theme { }.")
+}

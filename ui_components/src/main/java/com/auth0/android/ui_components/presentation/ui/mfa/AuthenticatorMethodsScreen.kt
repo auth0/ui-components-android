@@ -83,10 +83,13 @@ fun AuthenticatorMethodsScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
+            val sizes = Auth0TokenDefaults.sizes()
+            val dimensions = Auth0TokenDefaults.dimensions()
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = sizes.padding)
             ) {
                 when (val state = uiState) {
                     is AuthenticatorUiState.Error -> {
@@ -148,7 +151,7 @@ fun AuthenticatorMethodsScreen(
                         modifier = Modifier
                             .background(colors.backgroundLayerBase)
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = dimensions.spacingMd),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularLoader()
@@ -159,7 +162,7 @@ fun AuthenticatorMethodsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = dimensions.spacingMd)
                     ) {
                         ErrorHandler(
                             uiError = state.error, shouldRetry = state.shouldRetry

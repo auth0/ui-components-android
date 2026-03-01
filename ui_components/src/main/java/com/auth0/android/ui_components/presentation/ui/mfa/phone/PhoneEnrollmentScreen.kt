@@ -74,6 +74,7 @@ fun PhoneEnrollmentScreen(
     onBackClick: () -> Unit
 ) {
     val colors = Auth0TokenDefaults.color()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     var phoneNumber by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(Country.countries[0]) }
@@ -112,7 +113,7 @@ fun PhoneEnrollmentScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 32.dp)
+                .padding(horizontal = dimensions.spacingMd, vertical = dimensions.spacingXl)
         ) {
 
             Column(
@@ -120,7 +121,7 @@ fun PhoneEnrollmentScreen(
             ) {
                 PhoneEnrollmentHeader()
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
                 PhoneFormField(
                     phoneNumber = phoneNumber,
@@ -155,7 +156,7 @@ fun PhoneEnrollmentScreen(
                 }
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXs))
         }
 
         LoadingScreen(uiState)
@@ -262,6 +263,7 @@ private fun PhoneTextField(
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
     val dimensions = Auth0TokenDefaults.dimensions()
+    val sizes = Auth0TokenDefaults.sizes()
 
     val backgroundColor = if (isError) {
         colors.backgroundError.copy(alpha = 0.05f)
@@ -285,7 +287,7 @@ private fun PhoneTextField(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(sizes.otpFieldHeight)
             .background(
                 color = backgroundColor,
                 shape = shape
@@ -461,17 +463,19 @@ private fun CountryItem(
     country: Country,
     onClick: () -> Unit
 ) {
+    val dimensions = Auth0TokenDefaults.dimensions()
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp)
             .clickable(onClick = onClick)
-            .padding(vertical = 20.dp, horizontal = 16.dp)
+            .padding(vertical = 20.dp, horizontal = dimensions.spacingMd)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(dimensions.spacingSm)
         ) {
             Text(
                 text = country.flagEmoji,
@@ -499,12 +503,18 @@ private fun CountryItem(
 private fun ContinueButton(
     onClick: () -> Unit
 ) {
+    val sizes = Auth0TokenDefaults.sizes()
+    val typography = Auth0TokenDefaults.typography()
+
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         onClick = onClick
     ) {
-        Text(stringResource(R.string.continue_button))
+        Text(
+            text = stringResource(R.string.continue_button),
+            style = typography.label
+        )
     }
 }

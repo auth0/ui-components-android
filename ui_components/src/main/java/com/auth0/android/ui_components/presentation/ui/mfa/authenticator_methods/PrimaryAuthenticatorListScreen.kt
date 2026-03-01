@@ -81,11 +81,13 @@ private fun PasskeyInfoCard(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 8.dp),
+            .padding(dimensions.spacingXs),
         shape = shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = colors.backgroundLayerMedium
@@ -95,7 +97,7 @@ private fun PasskeyInfoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(sizes.padding),
         ) {
             Text(
                 text = stringResource(id = R.string.passkey_info_card_title),
@@ -103,7 +105,7 @@ private fun PasskeyInfoCard(
                 color = colors.textBold,
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
 
             Text(
@@ -116,10 +118,10 @@ private fun PasskeyInfoCard(
                 text = stringResource(R.string.passkey_info_card_text_1),
                 style = typography.body,
                 color = colors.textDefault,
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(vertical = dimensions.spacingXs)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingMd))
             Text(
                 text = stringResource(R.string.where_are_passkeys_saved),
                 style = typography.title,
@@ -129,15 +131,15 @@ private fun PasskeyInfoCard(
                 text = stringResource(R.string.passkey_info_card_text_2),
                 style = typography.body,
                 color = colors.textDefault,
-                modifier = Modifier.padding(vertical = 8.dp)
+                modifier = Modifier.padding(vertical = dimensions.spacingXs)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingMd))
 
             GradientButton(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(sizes.buttonHeight),
                 onClick = onAddPasskeyClick,
                 shape = shapes.large,
                 borderStroke = BorderStroke(1.dp, colors.backgroundPrimary.copy(alpha = 0.35f)),
@@ -152,13 +154,13 @@ private fun PasskeyInfoCard(
                 Icon(
                     painter = painterResource(id = R.drawable.ic_passkey),
                     contentDescription = "Passkey icon",
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(sizes.iconMedium),
                     tint = colors.backgroundPrimary
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(dimensions.spacingXs))
                 Text(
                     text = stringResource(id = R.string.add_passkey),
-                    style = typography.body,
+                    style = typography.label,
                     color = colors.textBold
                 )
             }
@@ -175,7 +177,7 @@ private fun PasskeyInfoCard(
                 textAlign = TextAlign.Center,
                 style = typography.body,
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
         }
     }
 }
@@ -192,6 +194,7 @@ private fun SignInMethodsSection(
 ) {
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     Spacer(modifier = Modifier.height(18.dp))
     Text(
@@ -207,5 +210,5 @@ private fun SignInMethodsSection(
         showActiveTag = isPasskeyEnrolled,
         onClick = onPasskeysClick
     )
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingLg))
 }

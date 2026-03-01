@@ -63,4 +63,13 @@ object Auth0TokenDefaults {
     @Composable
     @ReadOnlyComposable
     fun dimensions(): Auth0Dimensions = LocalAuth0Dimensions.current
+
+    /**
+     * Returns the current Auth0 component sizes.
+     *
+     * @throws IllegalStateException if called outside Auth0Theme
+     */
+    @Composable
+    @ReadOnlyComposable
+    fun sizes(): Auth0Sizes = LocalAuth0Sizes.current
 }

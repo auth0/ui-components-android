@@ -46,6 +46,8 @@ fun PasskeyEnableScreen(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     Scaffold(
         topBar = {
@@ -65,7 +67,7 @@ fun PasskeyEnableScreen(
         ) {
             PasskeyIcon()
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXxl))
 
             Text(
                 text = stringResource(R.string.enable_passkey),
@@ -108,7 +110,7 @@ fun PasskeyEnableScreen(
             GradientButton(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(sizes.buttonHeight),
                 onClick = onEnableClick,
                 shape = shapes.large,
                 buttonDefaultColor = ButtonDefaults.buttonColors(
@@ -129,7 +131,7 @@ fun PasskeyEnableScreen(
             ) {
                 Text(
                     text = stringResource(R.string.enable),
-                    style = typography.body,
+                    style = typography.label,
                     color = colors.textOnPrimary
                 )
             }

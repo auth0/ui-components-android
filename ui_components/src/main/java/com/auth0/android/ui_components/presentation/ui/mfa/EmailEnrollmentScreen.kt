@@ -222,6 +222,8 @@ private fun EmailTextField(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
+    val dimensions = Auth0TokenDefaults.dimensions()
 
     val backgroundColor = if (isError) {
         colors.backgroundError
@@ -244,7 +246,7 @@ private fun EmailTextField(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(60.dp)
+            .height(sizes.otpFieldHeight)
             .background(
                 color = backgroundColor,
                 shape = shapes.medium
@@ -269,7 +271,7 @@ private fun EmailTextField(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(backgroundColor)
-                .padding(16.dp),
+                .padding(sizes.padding),
             decorationBox = { innerTextField ->
                 if (email.isEmpty()) {
                     Text(
@@ -286,12 +288,12 @@ private fun EmailTextField(
     }
 
     if (isError) {
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(dimensions.spacingXs))
         Text(
             text = errorMessage,
             color = colors.textOnError,
             style = typography.body,
-            modifier = Modifier.padding(start = 4.dp, top = 8.dp)
+            modifier = Modifier.padding(start = dimensions.spacingXxs, top = dimensions.spacingXs)
         )
     }
 }
@@ -300,12 +302,18 @@ private fun EmailTextField(
 private fun ContinueButton(
     onClick: () -> Unit,
 ) {
+    val typography = Auth0TokenDefaults.typography()
+    val sizes = Auth0TokenDefaults.sizes()
+
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         onClick = onClick
     ) {
-        Text(text = stringResource(R.string.continue_button))
+        Text(
+            text = stringResource(R.string.continue_button),
+            style = typography.label
+        )
     }
 }

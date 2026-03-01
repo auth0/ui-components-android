@@ -23,6 +23,7 @@ fun EmptyAuthenticatorItem(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
     val shapes = Auth0TokenDefaults.shapes()
+    val sizes = Auth0TokenDefaults.sizes()
 
     Column(
         modifier = modifier
@@ -31,7 +32,7 @@ fun EmptyAuthenticatorItem(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(68.dp),
+                .height(sizes.inputHeight),
             shape = shapes.large,
             color = colors.backgroundLayerMedium,
             shadowElevation = 0.dp,
@@ -40,7 +41,7 @@ fun EmptyAuthenticatorItem(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 24.dp, horizontal = 16.dp),
+                    .padding(vertical = sizes.paddingLarge, horizontal = sizes.padding),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
