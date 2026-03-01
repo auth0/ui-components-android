@@ -103,7 +103,7 @@ fun EnrolledAuthenticatorListScreen(
                 onBackClick = onBackClick
             )
         },
-        containerColor = colors.background,
+        containerColor = colors.backgroundLayerBase,
         modifier = modifier
     ) { paddingValues ->
 
@@ -139,7 +139,7 @@ fun EnrolledAuthenticatorListScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(colors.background),
+                                .background(colors.backgroundLayerBase),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularLoader()
@@ -150,7 +150,7 @@ fun EnrolledAuthenticatorListScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(colors.background),
+                                .background(colors.backgroundLayerBase),
                             contentAlignment = Alignment.Center
                         ) {
                             ErrorHandler(
@@ -191,7 +191,7 @@ fun AuthenticatorListContent(
         Text(
             text = UiUtils.formatDescriptionForAuthenticator(authenticatorType),
             style = typography.bodyMedium,
-            color = colors.textSecondary,
+            color = colors.textDefault,
             modifier = Modifier.height(16.dp)
         )
 

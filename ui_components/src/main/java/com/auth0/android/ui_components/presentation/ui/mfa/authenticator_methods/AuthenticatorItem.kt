@@ -42,10 +42,10 @@ fun AuthenticatorItem(
             .height(70.dp)
             .clickable(onClick = onClick),
         shape = shapes.large,
-        color = colors.surface,
+        color = colors.backgroundLayerMedium,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, colors.border)
+        border = BorderStroke(1.dp, colors.borderDefault)
     ) {
         Row(
             modifier = Modifier
@@ -56,7 +56,7 @@ fun AuthenticatorItem(
                 painter = leadingIcon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
-                tint = colors.foreground
+                tint = colors.textBold
             )
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -66,7 +66,7 @@ fun AuthenticatorItem(
                 Text(
                     text = title,
                     style = typography.bodyLarge,
-                    color = colors.cardForeground
+                    color = colors.textBold
                 )
 
                 Spacer(Modifier.weight(1f))
@@ -84,7 +84,7 @@ fun AuthenticatorItem(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.navigate),
-                    tint = colors.foreground,
+                    tint = colors.textBold,
                     modifier = Modifier.size(16.dp)
                 )
             }

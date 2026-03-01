@@ -124,7 +124,7 @@ fun QREnrollmentScreen(
                 showSeparator = false
             )
         },
-        containerColor = colors.background
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
         Box(
             modifier = modifier
@@ -288,15 +288,15 @@ private fun CopyCodeButton(
             .height(52.dp),
         gradient = Brush.verticalGradient(
             colors = listOf(
-                colors.primary.copy(alpha = 0f),
-                colors.primary.copy(alpha = 0.05f)
+                colors.backgroundPrimary.copy(alpha = 0f),
+                colors.backgroundPrimary.copy(alpha = 0.05f)
             )
         ),
         buttonDefaultColor = ButtonDefaults.buttonColors(
-            containerColor = colors.surface,
-            contentColor = colors.primary,
-            disabledContainerColor = colors.surface.copy(alpha = 0.6f),
-            disabledContentColor = colors.primary.copy(alpha = 0.4f)
+            containerColor = colors.backgroundLayerMedium,
+            contentColor = colors.backgroundPrimary,
+            disabledContainerColor = colors.backgroundLayerMedium.copy(alpha = 0.6f),
+            disabledContentColor = colors.backgroundPrimary.copy(alpha = 0.4f)
         ),
         elevation = ButtonDefaults.buttonElevation(
             defaultElevation = 2.dp,
@@ -305,7 +305,7 @@ private fun CopyCodeButton(
         ),
         borderStroke = BorderStroke(
             width = 1.dp,
-            color = colors.primary.copy(alpha = 0.35f)
+            color = colors.backgroundPrimary.copy(alpha = 0.35f)
         ),
         shape = shapes.large,
         onClick = onCopyClick
@@ -320,7 +320,7 @@ private fun CopyCodeButton(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
                 contentDescription = "Copy",
                 modifier = Modifier.size(16.dp),
-                tint = colors.textPrimary
+                tint = colors.textBold
             )
 
             Spacer(modifier = Modifier.width(8.dp))
@@ -328,7 +328,7 @@ private fun CopyCodeButton(
             Text(
                 text = stringResource(R.string.copy_as_code),
                 style = typography.label,
-                color = colors.textPrimary
+                color = colors.textBold
             )
         }
     }
@@ -375,7 +375,7 @@ private fun InstructionsText() {
         text = instructionText,
         textAlign = TextAlign.Center,
         style = typography.body,
-        color = colors.textSecondary,
+        color = colors.textDefault,
     )
 }
 
@@ -416,7 +416,7 @@ private fun ManualCodeCard(
             .fillMaxWidth()
             .height(52.dp),
         shape = shapes.medium,
-        color = colors.surface,
+        color = colors.backgroundLayerMedium,
         shadowElevation = 6.dp,
     ) {
         Row(
@@ -428,7 +428,7 @@ private fun ManualCodeCard(
             Text(
                 text = manualCode,
                 style = typography.labelLarge,
-                color = colors.textPrimary
+                color = colors.textBold
             )
 
             IconButton(
@@ -440,7 +440,7 @@ private fun ManualCodeCard(
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
                     contentDescription = "Copy secret code",
-                    tint = colors.textPrimary,
+                    tint = colors.textBold,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -458,7 +458,7 @@ private fun DownloadLinkText(
         withStyle(
             style = SpanStyle(
                 fontFamily = interFamily,
-                color = colors.textSecondary,
+                color = colors.textDefault,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = (0.011).em
@@ -473,7 +473,7 @@ private fun DownloadLinkText(
         )
         withStyle(
             style = SpanStyle(
-                color = colors.textPrimary,
+                color = colors.textBold,
                 fontFamily = interFamily,
                 textDecoration = TextDecoration.Underline,
                 fontWeight = FontWeight.SemiBold,
@@ -498,7 +498,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Auth0TokenDefaults.color().background),
+                .background(Auth0TokenDefaults.color().backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()

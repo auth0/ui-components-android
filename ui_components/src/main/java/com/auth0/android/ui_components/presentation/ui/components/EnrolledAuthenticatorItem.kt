@@ -53,10 +53,10 @@ fun EnrolledAuthenticatorItem(
             .fillMaxWidth()
             .height(84.dp),
         shape = shapes.large,
-        color = colors.surface,
+        color = colors.backgroundLayerMedium,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, colors.border)
+        border = BorderStroke(1.dp, colors.borderDefault)
     ) {
         Row(
             modifier = Modifier
@@ -72,12 +72,12 @@ fun EnrolledAuthenticatorItem(
                 Text(
                     text = title,
                     style = typography.bodyLarge,
-                    color = colors.cardForeground
+                    color = colors.textBold
                 )
                 Text(
                     text = subtitle,
                     style = typography.body,
-                    color = colors.mutedForeground
+                    color = colors.textDisabled
                 )
             }
 
@@ -90,14 +90,14 @@ fun EnrolledAuthenticatorItem(
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = stringResource(R.string.more_options),
-                            tint = colors.foreground
+                            tint = colors.textBold
                         )
                     }
 
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = !expanded },
-                        modifier = Modifier.background(colors.surface)
+                        modifier = Modifier.background(colors.backgroundLayerMedium)
                     ) {
                         menuActions.forEach { menuAction ->
                             DropdownMenuItem(

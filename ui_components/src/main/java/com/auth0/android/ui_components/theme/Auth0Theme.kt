@@ -123,38 +123,38 @@ fun Auth0Theme(
 private fun Auth0Color.toMaterial3ColorScheme(isDark: Boolean): ColorScheme {
     return if (isDark) {
         darkColorScheme(
-            primary = this.primary,
-            onPrimary = this.onPrimary,
-            background = this.background,
-            surface = this.surface,
-            onSurface = this.onSurface,
-            error = this.error,
-            errorContainer = this.errorContainer,
-            onError = this.onError,
+            primary = this.backgroundPrimary,
+            onPrimary = this.textOnPrimary,
+            background = this.backgroundLayerBase,
+            surface = this.backgroundLayerMedium,
+            onSurface = this.textDefault,
+            error = this.backgroundError,
+            errorContainer = this.backgroundErrorSubtle,
+            onError = this.textOnError,
             // Map success to tertiary (Material3 doesn't have semantic "success")
-            tertiary = this.success,
-            onTertiary = this.onSuccess,
-            tertiaryContainer = this.successContainer,
-            // Use border for outline
-            outline = this.border,
-            // Use textSecondary for onSurfaceVariant
-            onSurfaceVariant = this.textSecondary
+            tertiary = this.backgroundSuccess,
+            onTertiary = this.textOnSuccess,
+            tertiaryContainer = this.backgroundSuccessSubtle,
+            // Use borderDefault for outline
+            outline = this.borderDefault,
+            // Use textDefault for onSurfaceVariant
+            onSurfaceVariant = this.textDefault
         )
     } else {
         lightColorScheme(
-            primary = this.primary,
-            onPrimary = this.onPrimary,
-            background = this.background,
-            surface = this.surface,
-            onSurface = this.onSurface,
-            error = this.error,
-            errorContainer = this.errorContainer,
-            onError = this.onError,
-            tertiary = this.success,
-            onTertiary = this.onSuccess,
-            tertiaryContainer = this.successContainer,
-            outline = this.border,
-            onSurfaceVariant = this.textSecondary
+            primary = this.backgroundPrimary,
+            onPrimary = this.textOnPrimary,
+            background = this.backgroundLayerBase,
+            surface = this.backgroundLayerMedium,
+            onSurface = this.textDefault,
+            error = this.backgroundError,
+            errorContainer = this.backgroundErrorSubtle,
+            onError = this.textOnError,
+            tertiary = this.backgroundSuccess,
+            onTertiary = this.textOnSuccess,
+            tertiaryContainer = this.backgroundSuccessSubtle,
+            outline = this.borderDefault,
+            onSurfaceVariant = this.textDefault
         )
     }
 }

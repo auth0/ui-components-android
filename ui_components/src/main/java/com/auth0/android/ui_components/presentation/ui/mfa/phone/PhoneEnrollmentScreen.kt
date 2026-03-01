@@ -106,7 +106,7 @@ fun PhoneEnrollmentScreen(
                 showSeparator = false
             )
         },
-        containerColor = colors.background
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -186,7 +186,7 @@ private fun PhoneEnrollmentHeader() {
         text = stringResource(R.string.enter_phone_number),
         style = typography.titleLarge,
         textAlign = TextAlign.Start,
-        color = colors.textPrimary,
+        color = colors.textBold,
     )
 
     Spacer(Modifier.height(dimensions.spacingXs))
@@ -194,7 +194,7 @@ private fun PhoneEnrollmentHeader() {
     Text(
         text = stringResource(R.string.verification_code_text),
         style = typography.body,
-        color = colors.textSecondary
+        color = colors.textDefault
     )
 }
 
@@ -206,7 +206,7 @@ private fun LoadingScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Auth0TokenDefaults.color().background),
+                .background(Auth0TokenDefaults.color().backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
@@ -236,7 +236,7 @@ private fun PhoneFormField(
     Text(
         text = stringResource(R.string.phone_number_label),
         style = typography.label,
-        color = colors.textPrimary,
+        color = colors.textBold,
     )
     Spacer(modifier = Modifier.height(dimensions.spacingXs))
 
@@ -264,21 +264,21 @@ private fun PhoneTextField(
     val dimensions = Auth0TokenDefaults.dimensions()
 
     val backgroundColor = if (isError) {
-        colors.error.copy(alpha = 0.05f)
+        colors.backgroundError.copy(alpha = 0.05f)
     } else {
-        colors.surface
+        colors.backgroundLayerMedium
     }
 
     val borderColor = if (isError) {
-        colors.error.copy(alpha = 0.5f)
+        colors.backgroundError.copy(alpha = 0.5f)
     } else {
-        colors.border
+        colors.borderDefault
     }
 
     val textColor = if (isError) {
-        colors.onError
+        colors.textOnError
     } else {
-        colors.textPrimary
+        colors.textBold
     }
 
     val shape = shapes.medium
@@ -345,7 +345,7 @@ private fun PhoneTextField(
                     if (phoneNumber.isEmpty()) {
                         Text(
                             text = stringResource(R.string.phone_number_placeholder),
-                            style = typography.title.copy(color = colors.textPrimary.copy(alpha = 0.54f))
+                            style = typography.title.copy(color = colors.textBold.copy(alpha = 0.54f))
                         )
                     }
                     innerTextField()
@@ -357,7 +357,7 @@ private fun PhoneTextField(
     if (isError) {
         Text(
             text = stringResource(R.string.invalid_phone_number),
-            color = colors.onError,
+            color = colors.textOnError,
             style = typography.body,
             modifier = Modifier.padding(start = dimensions.spacingXxs, top = dimensions.spacingXs)
         )
@@ -394,7 +394,7 @@ private fun CountrySelectorSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = colors.surface
+        containerColor = colors.backgroundLayerMedium
     ) {
         Column(
             modifier = Modifier
@@ -419,18 +419,18 @@ private fun CountrySelectorSheet(
                         painter = painterResource(R.drawable.ic_search),
                         contentDescription = stringResource(R.string.search),
                         modifier = Modifier.size(dimensions.spacingLg),
-                        tint = colors.textPrimary.copy(alpha = 0.5f)
+                        tint = colors.textBold.copy(alpha = 0.5f)
                     )
                 },
                 placeholder = {
                     Text(
                         text = stringResource(R.string.search_country),
                         style = typography.label,
-                        color = colors.textPrimary.copy(alpha = 0.54f)
+                        color = colors.textBold.copy(alpha = 0.54f)
                     )
                 },
                 textStyle = typography.body.copy(
-                    color = colors.textPrimary
+                    color = colors.textBold
                 ),
                 singleLine = true,
                 shape = searchShape,
@@ -482,7 +482,7 @@ private fun CountryItem(
             Text(
                 text = "${country.name} (${country.phoneCode})",
                 style = Auth0TokenDefaults.typography().body,
-                color = Auth0TokenDefaults.color().textPrimary
+                color = Auth0TokenDefaults.color().textBold
             )
         }
 

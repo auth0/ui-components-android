@@ -31,7 +31,7 @@ fun SecondaryAuthenticatorListScreen(
     Text(
         text = stringResource(R.string.verification_methods),
         style = typography.display,
-        color = colors.textPrimary,
+        color = colors.textBold,
     )
 
     Spacer(modifier = Modifier.height(8.dp))
@@ -40,7 +40,7 @@ fun SecondaryAuthenticatorListScreen(
         text = stringResource(R.string.manage_2fa_methods),
         modifier = Modifier.height(17.dp),
         style = typography.bodyMedium,
-        color = colors.textSecondary,
+        color = colors.textDefault,
     )
 
     Spacer(modifier = Modifier.height(24.dp))

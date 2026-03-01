@@ -25,7 +25,7 @@ import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 fun TopBar(
     title: String,
     modifier: Modifier = Modifier,
-    topBarColor: Color = Auth0TokenDefaults.color().background,
+    topBarColor: Color = Auth0TokenDefaults.color().backgroundLayerBase,
     showSeparator: Boolean = false,
     showBackNavigation: Boolean = true,
     trailingIcon: Painter? = null,
@@ -44,7 +44,7 @@ fun TopBar(
                 Text(
                     text = title,
                     style = titleStyle,
-                    color = colors.textPrimary
+                    color = colors.textBold
                 )
             },
             navigationIcon = {
@@ -79,7 +79,7 @@ fun TopBar(
             HorizontalDivider(
                 modifier = Modifier.fillMaxWidth(),
                 thickness = 0.3.dp,
-                color = colors.border
+                color = colors.borderDefault
             )
         }
     }

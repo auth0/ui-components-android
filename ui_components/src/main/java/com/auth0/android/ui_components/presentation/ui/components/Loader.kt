@@ -6,12 +6,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 
 
 @Composable
 public fun CircularLoader(
     modifier: Modifier = Modifier,
-    color: Color = Color.Black,
+    color: Color = Auth0TokenDefaults.color().backgroundPrimary,
     strokeWidth: Dp = 2.dp
 ) {
     CircularProgressIndicator(

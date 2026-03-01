@@ -45,10 +45,10 @@ fun GradientButton(
     val colors = Auth0TokenDefaults.color()
 
     val buttonColors = buttonDefaultColor ?: ButtonDefaults.buttonColors(
-        containerColor = colors.primary,
-        contentColor = colors.onPrimary,
-        disabledContainerColor = colors.primary.copy(alpha = 0.38f),
-        disabledContentColor = colors.onPrimary.copy(alpha = 0.38f)
+        containerColor = colors.backgroundPrimary,
+        contentColor = colors.textOnPrimary,
+        disabledContainerColor = colors.backgroundPrimary.copy(alpha = 0.38f),
+        disabledContentColor = colors.textOnPrimary.copy(alpha = 0.38f)
     )
 
     Button(

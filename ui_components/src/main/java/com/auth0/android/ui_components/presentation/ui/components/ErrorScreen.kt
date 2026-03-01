@@ -47,7 +47,7 @@ fun ErrorScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.background)
+            .background(colors.backgroundLayerBase)
             .padding(horizontal = 32.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -59,7 +59,7 @@ fun ErrorScreen(
             Text(
                 text = mainErrorMessage,
                 style = typography.displayMedium,
-                color = colors.textPrimary,
+                color = colors.textBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -80,8 +80,8 @@ fun ErrorScreen(
                         .fillMaxWidth()
                         .height(48.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = colors.primary,
-                        contentColor = colors.onPrimary
+                        containerColor = colors.backgroundPrimary,
+                        contentColor = colors.textOnPrimary
                     ),
                     shape = shapes.medium
                 ) {
@@ -109,7 +109,7 @@ fun MessageWithLink(
             style = SpanStyle(
                 fontFamily = interFamily,
                 fontWeight = FontWeight.Normal,
-                color = colors.textSecondary,
+                color = colors.textDefault,
                 fontSize = 14.sp,
                 letterSpacing = 0.em,
             )
@@ -125,7 +125,7 @@ fun MessageWithLink(
                 style = SpanStyle(
                     fontFamily = interFamily,
                     fontWeight = FontWeight.Normal,
-                    color = colors.textSecondary,
+                    color = colors.textDefault,
                     fontSize = 14.sp,
                     letterSpacing = 0.em,
                     textDecoration = TextDecoration.Underline

@@ -33,7 +33,7 @@ fun EmptyAuthenticatorItem(
                 .fillMaxWidth()
                 .height(68.dp),
             shape = shapes.large,
-            color = colors.surface,
+            color = colors.backgroundLayerMedium,
             shadowElevation = 0.dp,
             tonalElevation = 0.dp
         ) {
@@ -46,7 +46,7 @@ fun EmptyAuthenticatorItem(
                 Text(
                     text = emptyMessage,
                     style = typography.body,
-                    color = colors.textSecondary
+                    color = colors.textDefault
                 )
             }
         }

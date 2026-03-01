@@ -51,7 +51,7 @@ fun PrimaryAuthenticatorListScreen(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(colors.background)
+            .background(colors.backgroundLayerBase)
     ) {
         if (primaryAuthenticatorUiData.isEmpty() && !isCardDismissed) {
             PasskeyInfoCard(
@@ -90,7 +90,7 @@ private fun PasskeyInfoCard(
             .padding(vertical = 8.dp, horizontal = 14.dp),
         shape = shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = colors.surface
+            containerColor = colors.backgroundLayerMedium
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -102,7 +102,7 @@ private fun PasskeyInfoCard(
             Text(
                 text = stringResource(id = R.string.passkey_info_card_title),
                 style = typography.bodyMedium,
-                color = colors.textPrimary,
+                color = colors.textBold,
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -111,13 +111,13 @@ private fun PasskeyInfoCard(
             Text(
                 text = stringResource(R.string.what_are_passkeys),
                 style = typography.bodyMedium,
-                color = colors.textPrimary,
+                color = colors.textBold,
             )
 
             Text(
                 text = stringResource(R.string.passkey_info_card_text_1),
                 style = typography.bodyMedium,
-                color = colors.textPrimary,
+                color = colors.textBold,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
@@ -125,12 +125,12 @@ private fun PasskeyInfoCard(
             Text(
                 text = stringResource(R.string.where_are_passkeys_saved),
                 style = typography.bodyMedium,
-                color = colors.textPrimary,
+                color = colors.textBold,
             )
             Text(
                 text = stringResource(R.string.passkey_info_card_text_2),
                 style = typography.bodyMedium,
-                color = colors.textPrimary,
+                color = colors.textBold,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
@@ -142,9 +142,9 @@ private fun PasskeyInfoCard(
                     .height(48.dp),
                 onClick = onAddPasskeyClick,
                 shape = shapes.large,
-                borderStroke = BorderStroke(1.dp, colors.primary.copy(alpha = 0.35f)),
+                borderStroke = BorderStroke(1.dp, colors.backgroundPrimary.copy(alpha = 0.35f)),
                 buttonDefaultColor = ButtonDefaults.outlinedButtonColors(
-                    containerColor = colors.surface, contentColor = colors.primary
+                    containerColor = colors.backgroundLayerMedium, contentColor = colors.backgroundPrimary
                 ),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 2.dp, pressedElevation = 2.dp
@@ -154,13 +154,13 @@ private fun PasskeyInfoCard(
                     painter = painterResource(id = R.drawable.ic_passkey),
                     contentDescription = "Passkey icon",
                     modifier = Modifier.size(16.dp),
-                    tint = colors.primary
+                    tint = colors.backgroundPrimary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(id = R.string.add_passkey),
                     style = typography.bodyLarge,
-                    color = colors.textPrimary
+                    color = colors.textBold
                 )
             }
 
@@ -172,7 +172,7 @@ private fun PasskeyInfoCard(
                         onDismissClick()
                     },
                 text = stringResource(R.string.dismiss),
-                color = colors.textPrimary,
+                color = colors.textBold,
                 textAlign = TextAlign.Center,
                 style = typography.bodyMedium,
             )
@@ -198,7 +198,7 @@ private fun SignInMethodsSection(
     Text(
         text = stringResource(R.string.sign_in_methods),
         style = typography.display,
-        color = colors.textPrimary,
+        color = colors.textBold,
     )
     Spacer(modifier = Modifier.height(18.dp))
 

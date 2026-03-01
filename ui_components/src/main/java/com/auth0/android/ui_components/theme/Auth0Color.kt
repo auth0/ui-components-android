@@ -10,23 +10,56 @@ import androidx.compose.ui.graphics.Color
  * including both semantic colors for direct use and Material3 bridge colors for compatibility.
  */
 data class Auth0Color(
-    val primary: Color,
-    val onPrimary: Color,
-    val background: Color,
-    val surface: Color,
-    val onSurface: Color,
-    val border: Color,
-    val error: Color,
-    val errorContainer: Color,
-    val onError: Color,
-    val success: Color,
-    val onSuccess: Color,
-    val successContainer: Color,
-    val textPrimary: Color,
-    val textSecondary: Color,
-    val foreground: Color,
-    val cardForeground: Color,
-    val mutedForeground: Color,
+    // Background
+
+    /** Default background color for CTA. */
+    val backgroundPrimary: Color,
+    /** Softer variant of the primary background for low-emphasis areas. */
+    val backgroundPrimarySubtle: Color,
+    /** Background that flips contrast, used against the primary background. */
+    val backgroundInverse: Color,
+    /** Topmost layer background, for overlays, modals, and popovers. */
+    val backgroundLayerTop: Color,
+    /** Mid-level layer background, for cards and raised containers. */
+    val backgroundLayerMedium: Color,
+    /** Foundational layer background, sitting beneath all other layers. */
+    val backgroundLayerBase: Color,
+    /** Background for error states, alerts, and destructive messaging. */
+    val backgroundError: Color,
+    /** Muted error background for low-severity or inline error hints. */
+    val backgroundErrorSubtle: Color,
+    /** Background for success states and positive confirmations. */
+    val backgroundSuccess: Color,
+    /** Muted success background for subtle positive feedback. */
+    val backgroundSuccessSubtle: Color,
+    /** Background used to highlight branded or featured UI elements. */
+    val backgroundAccent: Color,
+
+    // Border
+
+    /** High-contrast border for emphasis or strong visual separation and selected elements. */
+    val borderBold: Color,
+    /** Standard border color for most UI elements and containers. */
+    val borderDefault: Color,
+    /** Low-contrast border for delicate dividers and understated boundaries. */
+    val borderSubtle: Color,
+    /** Border-like shadow color for depth and elevation cues. */
+    val borderShadow: Color,
+
+    // Text
+
+    /** High-emphasis color for default body text on neutral backgrounds or surfaces. */
+    val textBold: Color,
+    /** Lower-emphasis color for helper text, captions, or secondary information. */
+    val textDefault: Color,
+    /** Color used for disabled text. */
+    val textDisabled: Color,
+    /** Color for text and icons placed on top of a primary background, ensuring readable contrast. */
+    val textOnPrimary: Color,
+    /** Color for text and icons placed on top of a success background, ensuring readable contrast. */
+    val textOnSuccess: Color,
+    /** Color for text and icons placed on top of an error background, ensuring readable contrast. */
+    val textOnError: Color,
 ) {
     companion object {
         /**
@@ -35,29 +68,30 @@ data class Auth0Color(
          * @return A configured Auth0Color for light theme
          */
         fun light(): Auth0Color = Auth0Color(
-            // Primary colors
-            primary = Color(0xFF1F1F1F),
-            onPrimary = Color(0xFFF0F0F0),
-            // Background and surface
-            background = Color(0xFFFCFCFC),
-            surface = Color(0xFFFCFCFC),
-            onSurface = Color(0xFF636363),
-            // Border
-            border = Color(0xFFD9D9D9),
-            // Error colors
-            error = Color(0xFFF5694D),
-            errorContainer = Color(0xFFFFFCFC),
-            onError = Color(0xFF5D251D),
-            // Success colors
-            success = Color(0xFFE6F7EA),
-            onSuccess = Color(0xFF1B3D26),
-            successContainer = Color(0xFFFAFEFB),
+            // Background colors
+            backgroundPrimary = Color(0xFF09090B),
+            backgroundPrimarySubtle = Color(0x5909090B), // #09090B at 35% alpha
+            backgroundInverse = Color(0xFF18181B),
+            backgroundLayerTop = Color(0xFFFFFFFF),
+            backgroundLayerMedium = Color(0xFFFCFCFC),
+            backgroundLayerBase = Color(0xFFF4F4F5),
+            backgroundError = Color(0xFFFDECE8),
+            backgroundErrorSubtle = Color(0xFFFFFCFC),
+            backgroundSuccess = Color(0xFFE6F7EA),
+            backgroundSuccessSubtle = Color(0xFFFAFEFB),
+            backgroundAccent = Color(0xFF09090B),
+            // Border colors
+            borderBold = Color(0xFFA1A1AA),
+            borderDefault = Color(0xFFD9D9D9),
+            borderSubtle = Color(0xFFE4E4E7),
+            borderShadow = Color(0x80CECECE), // #CECECE at 50% alpha
             // Text colors
-            textPrimary = Color(0xFF1F1F1F),
-            textSecondary = Color(0xFF636363),
-            foreground = Color(0xFF1F1F1F),
-            cardForeground = Color.Black,
-            mutedForeground = Color(0xFF828282)
+            textBold = Color(0xFF1F1F1F),
+            textDefault = Color(0xFF636363),
+            textDisabled = Color(0xFF8E8E8E),
+            textOnPrimary = Color(0xFFF0F0F0),
+            textOnSuccess = Color(0xFF6EE7B7),
+            textOnError = Color(0xFF5D251D),
         )
 
         /**
@@ -66,29 +100,30 @@ data class Auth0Color(
          * @return A configured Auth0Color for dark theme
          */
         fun dark(): Auth0Color = Auth0Color(
-            // Primary colors
-            primary = Color(0xFFEEEEEE),
-            onPrimary = Color(0xFF222222),
-            // Background and surface
-            background = Color(0xFF111111),
-            surface = Color(0xFF111111),
-            onSurface = Color(0xFFB4B4B4),
-            // Border
-            border = Color(0xFF3A3A3A),
-            // Error colors
-            error = Color(0xFF400D07),
-            errorContainer = Color(0xFF180E0D),
-            onError = Color(0xFFFFCFC5),
-            // Success colors
-            success = Color(0xFF152D1C),
-            onSuccess = Color(0xFFB1F2C2),
-            successContainer = Color(0xFF0C130E),
+            // Background colors
+            backgroundPrimary = Color(0xFFFAFAFA),
+            backgroundPrimarySubtle = Color(0x80FAFAFA), // #FAFAFA at 50% alpha
+            backgroundInverse = Color(0xFFFAFAFA),
+            backgroundLayerTop = Color(0xFF3F3F46),
+            backgroundLayerMedium = Color(0xFF27272A),
+            backgroundLayerBase = Color(0xFF09090B),
+            backgroundError = Color(0xFFFDA4AF),
+            backgroundErrorSubtle = Color(0xFFBE123C),
+            backgroundSuccess = Color(0xFFA7F3D0),
+            backgroundSuccessSubtle = Color(0xFF059669),
+            backgroundAccent = Color(0xFFA7F3D0),
+            // Border colors
+            borderBold = Color(0xFF71717A),
+            borderDefault = Color(0xFF3F3F46),
+            borderSubtle = Color(0x00D4D4D4), // #D4D4D4 at 0% alpha
+            borderShadow = Color(0xFF3F3F46),
             // Text colors
-            textPrimary = Color(0xFFEEEEEE),
-            textSecondary = Color(0xFFB4B4B4),
-            foreground = Color(0xFFEEEEEE),
-            cardForeground = Color.White,
-            mutedForeground = Color(0xFF7B7B7B)
+            textBold = Color(0xFFFAFAFA),
+            textDefault = Color(0xFFA1A1AA),
+            textDisabled = Color(0xFF52525B),
+            textOnPrimary = Color(0xFF18181B),
+            textOnSuccess = Color(0xFFA7F3D0),
+            textOnError = Color(0xFFFFCFC5),
         )
     }
 }

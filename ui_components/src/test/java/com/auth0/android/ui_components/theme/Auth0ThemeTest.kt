@@ -54,9 +54,9 @@ class Auth0ThemeTest {
 
         // Should use light mode colors
         assertEquals(
-            Auth0Color.light().primary,
-            capturedColor?.primary,
-            "Should use light mode primary color"
+            Auth0Color.light().backgroundPrimary,
+            capturedColor?.backgroundPrimary,
+            "Should use light mode backgroundPrimary color"
         )
     }
 
@@ -74,9 +74,9 @@ class Auth0ThemeTest {
 
         // Should use dark mode colors
         assertEquals(
-            Auth0Color.dark().primary,
-            capturedColor?.primary,
-            "Should use dark mode primary color"
+            Auth0Color.dark().backgroundPrimary,
+            capturedColor?.backgroundPrimary,
+            "Should use dark mode backgroundPrimary color"
         )
     }
 
@@ -88,7 +88,7 @@ class Auth0ThemeTest {
         composeTestRule.setContent {
             Auth0Theme(
                 configuration = Auth0ThemeConfiguration(
-                    color = Auth0Color.light().copy(primary = customPrimary)
+                    color = Auth0Color.light().copy(backgroundPrimary = customPrimary)
                 )
             ) {
                 capturedColor = Auth0TokenDefaults.color()
@@ -97,11 +97,11 @@ class Auth0ThemeTest {
 
         composeTestRule.waitForIdle()
 
-        // Should use custom primary color
+        // Should use custom backgroundPrimary color
         assertEquals(
             customPrimary,
-            capturedColor?.primary,
-            "Should use custom primary color"
+            capturedColor?.backgroundPrimary,
+            "Should use custom backgroundPrimary color"
         )
     }
 

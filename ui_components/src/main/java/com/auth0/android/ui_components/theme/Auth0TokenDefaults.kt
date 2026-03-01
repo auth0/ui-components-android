@@ -18,7 +18,7 @@ import androidx.compose.runtime.ReadOnlyComposable
  *
  *     Button(
  *         colors = ButtonDefaults.buttonColors(
- *             containerColor = colors.primary
+ *             containerColor = colors.backgroundPrimary
  *         )
  *     ) {
  *         Text("Click me", style = typography.labelLarge)

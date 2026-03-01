@@ -130,8 +130,8 @@ fun MFASettingsScreen() {
     AuthenticatorSettingsComponent(
         themeConfiguration = Auth0ThemeConfiguration(
             color = Auth0Color.light().copy(
-                primary = Color(0xFFFF6B00),       // Brand orange
-                onPrimary = Color.White
+                backgroundPrimary = Color(0xFFFF6B00),       // Brand orange
+                textOnPrimary = Color.White
             )
         )
     )
@@ -186,15 +186,15 @@ fun MFASettingsScreen() {
     AuthenticatorSettingsComponent(
         themeConfiguration = Auth0ThemeConfiguration(
             color = Auth0Color.light().copy(
-                primary = Color(0xFF0066CC),
-                onPrimary = Color.White,
-                background = Color(0xFFF5F5F5),
-                surface = Color.White,
-                textPrimary = Color(0xFF1F1F1F),
-                textSecondary = Color(0xFF636363),
-                error = Color(0xFFFF4444),
-                success = Color(0xFF00CC66),
-                border = Color(0xFFE0E0E0)
+                backgroundPrimary = Color(0xFF0066CC),
+                textOnPrimary = Color.White,
+                backgroundLayerBase = Color(0xFFF5F5F5),
+                backgroundLayerMedium = Color.White,
+                textBold = Color(0xFF1F1F1F),
+                textDefault = Color(0xFF636363),
+                backgroundError = Color(0xFFFF4444),
+                backgroundSuccess = Color(0xFF00CC66),
+                borderDefault = Color(0xFFE0E0E0)
             ),
             typography = Auth0Typography.default().copy(
                 displayMedium = TextStyle(

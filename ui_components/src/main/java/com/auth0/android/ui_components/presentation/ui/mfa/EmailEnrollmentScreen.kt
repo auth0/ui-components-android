@@ -89,7 +89,7 @@ fun EmailEnrollmentScreen(
                 showSeparator = false
             )
         },
-        containerColor = colors.background
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
 
         Column(
@@ -146,7 +146,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.background),
+                .background(colors.backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
@@ -169,7 +169,7 @@ private fun EmailEnrollmentHeader() {
     Text(
         text = stringResource(R.string.enter_email_address),
         style = typography.titleLarge,
-        color = colors.textPrimary,
+        color = colors.textBold,
         textAlign = TextAlign.Start,
         modifier = Modifier.fillMaxWidth()
     )
@@ -179,7 +179,7 @@ private fun EmailEnrollmentHeader() {
     Text(
         text = stringResource(R.string.email_verification_code_text),
         style = typography.body,
-        color = colors.textSecondary,
+        color = colors.textDefault,
         textAlign = TextAlign.Start,
         modifier = Modifier.fillMaxWidth()
     )
@@ -198,7 +198,7 @@ private fun EmailFormField(
     Text(
         text = stringResource(R.string.email_label),
         style = typography.body,
-        color = colors.textPrimary,
+        color = colors.textBold,
         textAlign = TextAlign.Start
     )
 
@@ -224,21 +224,21 @@ private fun EmailTextField(
     val shapes = Auth0TokenDefaults.shapes()
 
     val backgroundColor = if (isError) {
-        colors.error
+        colors.backgroundError
     } else {
-        colors.surface
+        colors.backgroundLayerMedium
     }
 
     val borderColor = if (isError) {
-        colors.error.copy(alpha = 0.5f)
+        colors.backgroundError.copy(alpha = 0.5f)
     } else {
-        colors.border
+        colors.borderDefault
     }
 
     val textColor = if (isError) {
-        colors.onError
+        colors.textOnError
     } else {
-        colors.textPrimary
+        colors.textBold
     }
 
     Surface(
@@ -275,7 +275,7 @@ private fun EmailTextField(
                     Text(
                         text = stringResource(R.string.email_placeholder),
                         style = typography.title.copy(
-                            color = colors.textPrimary.copy(alpha = 0.54f),
+                            color = colors.textBold.copy(alpha = 0.54f),
                             textAlign = TextAlign.Start
                         )
                     )
@@ -289,7 +289,7 @@ private fun EmailTextField(
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = errorMessage,
-            color = colors.onError,
+            color = colors.textOnError,
             style = typography.body,
             modifier = Modifier.padding(start = 4.dp, top = 8.dp)
         )

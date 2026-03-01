@@ -76,7 +76,7 @@ fun AuthenticatorMethodsScreen(
                 onBackClick = onBackPress
             )
         },
-        containerColor = colors.background
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -146,7 +146,7 @@ fun AuthenticatorMethodsScreen(
                 is PasskeyUiState.EnrollingPasskey -> {
                     Box(
                         modifier = Modifier
-                            .background(colors.background)
+                            .background(colors.backgroundLayerBase)
                             .fillMaxSize()
                             .padding(horizontal = 16.dp),
                         contentAlignment = Alignment.Center

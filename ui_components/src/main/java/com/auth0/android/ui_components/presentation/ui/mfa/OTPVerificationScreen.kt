@@ -114,7 +114,7 @@ fun OTPVerificationScreen(
                 showSeparator = false
             )
         },
-        containerColor = colors.background
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
 
         Column(
@@ -127,7 +127,7 @@ fun OTPVerificationScreen(
             Text(
                 text = screenText.primaryText,
                 style = typography.title,
-                color = colors.textPrimary,
+                color = colors.textBold,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -138,7 +138,7 @@ fun OTPVerificationScreen(
                 Text(
                     text = screenText.description,
                     style = typography.body,
-                    color = colors.textSecondary,
+                    color = colors.textDefault,
                     textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -150,7 +150,7 @@ fun OTPVerificationScreen(
             Text(
                 text = "One-Time Passcode",
                 style = typography.body,
-                color = colors.textPrimary,
+                color = colors.textBold,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -234,7 +234,7 @@ private fun OTPFieldError(
         Text(
             text = errorString,
             style = typography.title,
-            color = colors.error,
+            color = colors.backgroundError,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Start
         )
@@ -250,7 +250,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.background),
+                .background(colors.backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
@@ -314,13 +314,13 @@ private fun OTPBox(
     val shapes = Auth0TokenDefaults.shapes()
 
     val backgroundColor = when {
-        isError -> colors.error.copy(alpha = 0.1f)
-        else -> colors.surface
+        isError -> colors.backgroundError.copy(alpha = 0.1f)
+        else -> colors.backgroundLayerMedium
     }
 
     val borderColor = when {
-        isError -> colors.error
-        else -> colors.border
+        isError -> colors.backgroundError
+        else -> colors.borderDefault
     }
 
     val borderWidth = if (isFocused) 3.dp else 1.dp
@@ -342,7 +342,7 @@ private fun OTPBox(
         Text(
             text = value,
             style = typography.titleLarge,
-            color = if (isError) colors.error else colors.textPrimary,
+            color = if (isError) colors.backgroundError else colors.textBold,
             textAlign = TextAlign.Center
         )
     }
@@ -359,7 +359,7 @@ private fun ResendLink(
             style = SpanStyle(
                 fontFamily = interFamily,
                 fontWeight = FontWeight.Normal,
-                color = colors.textSecondary,
+                color = colors.textDefault,
                 letterSpacing = 0.em,
                 fontSize = 16.sp
             )
@@ -376,7 +376,7 @@ private fun ResendLink(
                 style = SpanStyle(
                     fontFamily = interFamily,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary,
+                    color = colors.textBold,
                     letterSpacing = 0.em,
                     fontSize = 16.sp,
                     textDecoration = TextDecoration.Underline

@@ -104,7 +104,7 @@ fun RecoveryCodeEnrollmentScreen(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = colors.background
+        containerColor = colors.backgroundLayerBase
     ) { padding ->
         Box(
             modifier = Modifier
@@ -185,7 +185,7 @@ private fun RecoveryCodeHeader() {
         Text(
             text = stringResource(R.string.save_recovery_code),
             style = typography.titleLarge,
-            color = colors.textPrimary,
+            color = colors.textBold,
             modifier = Modifier
                 .fillMaxWidth()
         )
@@ -193,7 +193,7 @@ private fun RecoveryCodeHeader() {
         Text(
             text = stringResource(R.string.recovery_code_description),
             style = typography.body,
-            color = colors.textSecondary,
+            color = colors.textDefault,
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -211,11 +211,11 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .height(52.dp),
         shape = shapes.medium,
-        color = colors.surface,
+        color = colors.backgroundLayerMedium,
         shadowElevation = 6.dp,
         border = BorderStroke(
             width = 1.dp,
-            color = colors.border
+            color = colors.borderDefault
         )
     ) {
         Row(
@@ -228,7 +228,7 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
             Text(
                 style = typography.labelLarge,
                 text = code,
-                color = colors.textSecondary,
+                color = colors.textDefault,
             )
 
             IconButton(onClick = onClick) {
@@ -239,7 +239,7 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
                     modifier = Modifier
                         .size(24.dp)
                         .padding(vertical = 2.dp),
-                    tint = colors.textPrimary
+                    tint = colors.textBold
                 )
             }
         }
@@ -261,7 +261,7 @@ private fun ContinueButton(
             .height(52.dp),
         gradient = Brush.verticalGradient(
             colors = listOf(
-                colors.primary.copy(alpha = 0.15f),
+                colors.backgroundPrimary.copy(alpha = 0.15f),
                 Color.Transparent
             )
         ),
@@ -281,7 +281,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(colors.background),
+                .background(colors.backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
