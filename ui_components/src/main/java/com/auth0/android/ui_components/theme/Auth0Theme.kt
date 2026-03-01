@@ -170,12 +170,9 @@ private fun Auth0Typography.toMaterial3Typography(): Typography {
         displaySmall = this.display,  // Auth0's "display" -> Material3's displaySmall
         headlineLarge = this.titleLarge,
         headlineMedium = this.title,
-        bodyLarge = this.bodyLarge,
-        bodyMedium = this.bodyMedium,
+        bodyMedium = this.body,
         bodySmall = this.bodySmall,
-        labelLarge = this.labelLarge,
-        labelMedium = this.labelMedium,
-        labelSmall = this.labelSmall
+        labelMedium = this.label,
     )
 }
 

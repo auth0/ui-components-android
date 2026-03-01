@@ -65,7 +65,7 @@ fun AuthenticatorItem(
             ) {
                 Text(
                     text = title,
-                    style = typography.bodyLarge,
+                    style = typography.body,
                     color = colors.textBold
                 )
 

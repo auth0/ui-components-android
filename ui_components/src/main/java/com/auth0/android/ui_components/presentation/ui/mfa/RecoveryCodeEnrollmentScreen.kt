@@ -226,7 +226,7 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                style = typography.labelLarge,
+                style = typography.label,
                 text = code,
                 color = colors.textDefault,
             )

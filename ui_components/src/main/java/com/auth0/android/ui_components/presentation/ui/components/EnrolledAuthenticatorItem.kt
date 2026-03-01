@@ -16,7 +16,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -71,7 +70,7 @@ fun EnrolledAuthenticatorItem(
             ) {
                 Text(
                     text = title,
-                    style = typography.bodyLarge,
+                    style = typography.body,
                     color = colors.textBold
                 )
                 Text(
@@ -104,7 +103,7 @@ fun EnrolledAuthenticatorItem(
                                 text = {
                                     Text(
                                         text = menuAction.label,
-                                        style = MaterialTheme.typography.bodyMedium
+                                        style = typography.bodySmall
                                     )
                                 },
                                 onClick = {

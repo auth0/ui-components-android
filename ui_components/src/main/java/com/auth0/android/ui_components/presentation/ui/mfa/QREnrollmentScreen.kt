@@ -427,7 +427,7 @@ private fun ManualCodeCard(
         ) {
             Text(
                 text = manualCode,
-                style = typography.labelLarge,
+                style = typography.label,
                 color = colors.textBold
             )
 

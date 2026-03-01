@@ -11,30 +11,38 @@ import androidx.compose.ui.unit.sp
  */
 data class Auth0Typography(
     // Display styles
+
+    /** Large display text for hero sections and prominent headings. Inter SemiBold 34sp / 41sp line height / -0.2sp tracking. */
     val displayLarge: TextStyle,
+    /** Medium display text for page titles and featured content. Inter SemiBold 28sp / 34sp line height / -0.1sp tracking. */
     val displayMedium: TextStyle,
+    /** Standard display text for dialog titles and smaller display contexts. Inter SemiBold 22sp / 28sp line height / -0.05sp tracking. */
     val display: TextStyle,
 
     // Title styles
+
+    /** Large title text for section headers. Inter SemiBold 20sp / 25sp line height / 0sp tracking. */
     val titleLarge: TextStyle,
-//    val titleMedium: TextStyle,
-//    val titleSmall: TextStyle,
+    /** Standard title text for card titles and navigation bars. Inter SemiBold 17sp / 24sp line height / 0sp tracking. */
     val title: TextStyle,
 
     // Body styles
-    val bodyLarge: TextStyle,
-    val bodyMedium: TextStyle,
+
+    /** Small body text for secondary content and supporting descriptions. Inter Regular 15sp / 20sp line height / 0.1sp tracking. */
     val bodySmall: TextStyle,
+    /** Standard body text for primary content and paragraphs. Inter Regular 17sp / 24sp line height / 0sp tracking. */
     val body: TextStyle,
 
     // Label styles
-    val labelLarge: TextStyle,
-    val labelMedium: TextStyle,
-    val labelSmall: TextStyle,
+
+    /** Label text for button labels, form fields, and interactive elements. Inter Medium 16sp / 21sp line height / 0.1sp tracking. */
     val label: TextStyle,
 
     // Other styles
-    val caption: TextStyle,
+
+    /** Helper text for hints, validation messages, and supplementary information. Inter Regular 13sp / 18sp line height / 0.2sp tracking. */
+    val helper: TextStyle,
+    /** Overline text for tags, categories, and small annotations. Inter Regular 11sp / 16sp line height / 0.77sp tracking. */
     val overline: TextStyle,
 ) {
     companion object {
@@ -79,21 +87,6 @@ data class Auth0Typography(
                 letterSpacing = 0.sp,
                 fontFamily = fontFamily
             ),
-            bodyLarge = TextStyle(
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 24.sp,
-                letterSpacing = 0.sp,
-                fontFamily = fontFamily
-            ),
-            // Body Medium: 14sp, Medium, 17.5sp line, 0.084sp letter
-            bodyMedium = TextStyle(
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 17.5.sp,
-                letterSpacing = 0.084.sp,
-                fontFamily = fontFamily
-            ),
             bodySmall = TextStyle(
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Normal,
@@ -108,31 +101,6 @@ data class Auth0Typography(
                 letterSpacing = 0.sp,
                 fontFamily = fontFamily
             ),
-            // Label Large: 14sp, SemiBold, 20sp line, 0.084sp letter
-            labelLarge = TextStyle(
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 20.sp,
-                letterSpacing = 0.084.sp,
-                fontFamily = fontFamily
-            ),
-            // Label Medium: 12sp, Medium, 16sp line, 0.5sp letter
-            labelMedium = TextStyle(
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 16.sp,
-                letterSpacing = 0.5.sp,
-                fontFamily = fontFamily
-            ),
-            // Label Small: 11sp, Medium, 16sp line, 0.5sp letter
-            labelSmall = TextStyle(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                lineHeight = 16.sp,
-                letterSpacing = 0.5.sp,
-                fontFamily = fontFamily
-            ),
-            // Label: 12sp, Medium, 16sp line, 0.5sp letter
             label = TextStyle(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
@@ -140,12 +108,11 @@ data class Auth0Typography(
                 letterSpacing = 0.1.sp,
                 fontFamily = fontFamily
             ),
-            // Caption: 12sp, Normal, 16sp line, 0sp letter
-            caption = TextStyle(
-                fontSize = 12.sp,
+            helper = TextStyle(
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Normal,
-                lineHeight = 16.sp,
-                letterSpacing = 0.sp,
+                lineHeight = 18.sp,
+                letterSpacing = 0.2.sp,
                 fontFamily = fontFamily
             ),
             overline = TextStyle(

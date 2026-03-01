@@ -23,10 +23,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.viewmodel.PrimaryAuthenticatorUiData
@@ -87,7 +85,7 @@ private fun PasskeyInfoCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp, horizontal = 14.dp),
+            .padding(vertical = 8.dp, horizontal = 8.dp),
         shape = shapes.medium,
         colors = CardDefaults.cardColors(
             containerColor = colors.backgroundLayerMedium
@@ -97,11 +95,11 @@ private fun PasskeyInfoCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(16.dp),
         ) {
             Text(
                 text = stringResource(id = R.string.passkey_info_card_title),
-                style = typography.bodyMedium,
+                style = typography.title,
                 color = colors.textBold,
             )
 
@@ -110,27 +108,27 @@ private fun PasskeyInfoCard(
 
             Text(
                 text = stringResource(R.string.what_are_passkeys),
-                style = typography.bodyMedium,
+                style = typography.title,
                 color = colors.textBold,
             )
 
             Text(
                 text = stringResource(R.string.passkey_info_card_text_1),
-                style = typography.bodyMedium,
-                color = colors.textBold,
+                style = typography.body,
+                color = colors.textDefault,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = stringResource(R.string.where_are_passkeys_saved),
-                style = typography.bodyMedium,
+                style = typography.title,
                 color = colors.textBold,
             )
             Text(
                 text = stringResource(R.string.passkey_info_card_text_2),
-                style = typography.bodyMedium,
-                color = colors.textBold,
+                style = typography.body,
+                color = colors.textDefault,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
@@ -144,7 +142,8 @@ private fun PasskeyInfoCard(
                 shape = shapes.large,
                 borderStroke = BorderStroke(1.dp, colors.backgroundPrimary.copy(alpha = 0.35f)),
                 buttonDefaultColor = ButtonDefaults.outlinedButtonColors(
-                    containerColor = colors.backgroundLayerMedium, contentColor = colors.backgroundPrimary
+                    containerColor = colors.backgroundLayerMedium,
+                    contentColor = colors.backgroundPrimary
                 ),
                 elevation = ButtonDefaults.buttonElevation(
                     defaultElevation = 2.dp, pressedElevation = 2.dp
@@ -159,7 +158,7 @@ private fun PasskeyInfoCard(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(id = R.string.add_passkey),
-                    style = typography.bodyLarge,
+                    style = typography.body,
                     color = colors.textBold
                 )
             }
@@ -174,7 +173,7 @@ private fun PasskeyInfoCard(
                 text = stringResource(R.string.dismiss),
                 color = colors.textBold,
                 textAlign = TextAlign.Center,
-                style = typography.bodyMedium,
+                style = typography.body,
             )
             Spacer(modifier = Modifier.height(24.dp))
         }

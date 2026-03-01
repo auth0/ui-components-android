@@ -190,7 +190,7 @@ fun AuthenticatorListContent(
 
         Text(
             text = UiUtils.formatDescriptionForAuthenticator(authenticatorType),
-            style = typography.bodyMedium,
+            style = typography.body,
             color = colors.textDefault,
             modifier = Modifier.height(16.dp)
         )

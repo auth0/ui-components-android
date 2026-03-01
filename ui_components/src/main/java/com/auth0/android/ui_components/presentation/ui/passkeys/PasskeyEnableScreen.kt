@@ -79,13 +79,13 @@ fun PasskeyEnableScreen(
 
             Text(
                 text = "\u2022  ${stringResource(R.string.what_are_passkeys)}",
-                style = typography.bodyLarge,
+                style = typography.body,
                 color = colors.textBold
             )
             Text(
                 modifier = Modifier.padding(vertical = 6.dp),
                 text = stringResource(R.string.passkeys_description),
-                style = typography.bodyLarge,
+                style = typography.body,
                 color = colors.textDefault
             )
 
@@ -93,13 +93,13 @@ fun PasskeyEnableScreen(
 
             Text(
                 text = "\u2022  ${stringResource(R.string.where_are_passkeys_saved)}",
-                style = typography.bodyLarge,
+                style = typography.body,
                 color = colors.textBold
             )
             Text(
                 modifier = Modifier.padding(vertical = 6.dp),
                 text = stringResource(R.string.passkeys_saved_description),
-                style = typography.bodyLarge,
+                style = typography.body,
                 color = colors.textDefault
             )
 
@@ -129,7 +129,7 @@ fun PasskeyEnableScreen(
             ) {
                 Text(
                     text = stringResource(R.string.enable),
-                    style = typography.bodyLarge,
+                    style = typography.body,
                     color = colors.textOnPrimary
                 )
             }

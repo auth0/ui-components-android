@@ -21,7 +21,7 @@ import androidx.compose.runtime.ReadOnlyComposable
  *             containerColor = colors.backgroundPrimary
  *         )
  *     ) {
- *         Text("Click me", style = typography.labelLarge)
+ *         Text("Click me", style = typography.label)
  *     }
  * }
  * ```
