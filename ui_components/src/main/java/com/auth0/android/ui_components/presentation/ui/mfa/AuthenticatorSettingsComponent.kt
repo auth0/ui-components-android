@@ -26,7 +26,8 @@ import com.auth0.android.ui_components.theme.Auth0ThemeConfiguration
  * AuthenticatorSettingsComponent(
  *     themeConfiguration = Auth0ThemeConfiguration(
  *         color = Auth0Color.light().copy(
- *             primary = Color(0xFFFF6B00)  // Custom orange
+ *             backgroundPrimary = Color(0xFFFF6B00),  // Custom primary background
+ *             textOnPrimary = Color.White              // Text color on primary background
  *         )
  *     )
  * )

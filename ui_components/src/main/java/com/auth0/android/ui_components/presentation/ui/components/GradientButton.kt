@@ -31,7 +31,7 @@ fun GradientButton(
         )
     ),
     buttonDefaultColor: ButtonColors? = null,
-    shape: RoundedCornerShape = Auth0TokenDefaults.shapes().large,
+    shape: RoundedCornerShape? = null,
     elevation: ButtonElevation = ButtonDefaults.buttonElevation(
         defaultElevation = 0.dp,
         pressedElevation = 2.dp
@@ -44,6 +44,7 @@ fun GradientButton(
 ) {
     val colors = Auth0TokenDefaults.color()
     val dimensions = Auth0TokenDefaults.dimensions()
+    val resolvedShape = shape ?: Auth0TokenDefaults.shapes().large
 
     val buttonColors = buttonDefaultColor ?: ButtonDefaults.buttonColors(
         containerColor = colors.backgroundPrimary,
@@ -55,7 +56,7 @@ fun GradientButton(
     Button(
         modifier = modifier,
         colors = buttonColors,
-        shape = shape,
+        shape = resolvedShape,
         contentPadding = PaddingValues(),
         elevation = elevation,
         enabled = enabled && !isLoading,

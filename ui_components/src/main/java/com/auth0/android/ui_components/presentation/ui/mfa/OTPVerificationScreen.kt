@@ -236,7 +236,7 @@ private fun OTPFieldError(
         Text(
             text = errorString,
             style = typography.title,
-            color = colors.backgroundError,
+            color = colors.textOnError,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Start
         )
@@ -346,7 +346,7 @@ private fun OTPBox(
         Text(
             text = value,
             style = typography.titleLarge,
-            color = if (isError) colors.backgroundError else colors.textBold,
+            color = if (isError) colors.textOnError else colors.textBold,
             textAlign = TextAlign.Center
         )
     }

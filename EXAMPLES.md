@@ -201,7 +201,7 @@ fun MFASettingsScreen() {
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 ),
-                bodyLarge = TextStyle(
+                body = TextStyle(
                     fontSize = 18.sp
                 )
             ),

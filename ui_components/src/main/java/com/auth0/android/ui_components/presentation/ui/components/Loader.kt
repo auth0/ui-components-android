@@ -12,12 +12,14 @@ import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 @Composable
 public fun CircularLoader(
     modifier: Modifier = Modifier,
-    color: Color = Auth0TokenDefaults.color().backgroundPrimary,
+    color: Color = Color.Unspecified,
     strokeWidth: Dp = 2.dp
 ) {
+    val resolvedColor = if (color == Color.Unspecified) Auth0TokenDefaults.color().backgroundPrimary else color
+
     CircularProgressIndicator(
         modifier = modifier,
-        color = color,
+        color = resolvedColor,
         strokeWidth = strokeWidth
     )
 }

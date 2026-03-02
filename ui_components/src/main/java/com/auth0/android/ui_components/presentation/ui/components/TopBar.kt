@@ -25,7 +25,7 @@ import com.auth0.android.ui_components.theme.Auth0TokenDefaults
 fun TopBar(
     title: String,
     modifier: Modifier = Modifier,
-    topBarColor: Color = Auth0TokenDefaults.color().backgroundLayerBase,
+    topBarColor: Color = Color.Unspecified,
     showSeparator: Boolean = false,
     showBackNavigation: Boolean = true,
     trailingIcon: Painter? = null,
@@ -36,6 +36,7 @@ fun TopBar(
     val colors = Auth0TokenDefaults.color()
     val typography = Auth0TokenDefaults.typography()
 
+    val resolvedTopBarColor = if (topBarColor == Color.Unspecified) colors.backgroundLayerBase else topBarColor
     val titleStyle = titleTextStyle ?: typography.title
 
     Column {
@@ -71,7 +72,7 @@ fun TopBar(
                 }
             },
             colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = topBarColor,
+                containerColor = resolvedTopBarColor,
             ),
             modifier = modifier
         )

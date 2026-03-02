@@ -76,7 +76,7 @@ fun AuthenticatorItem(
                     Spacer(modifier = Modifier.width(dimensions.spacingXs))
                     Icon(
                         painter = painterResource(R.drawable.ic_active),
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.active_label),
                         modifier = Modifier.size(sizes.iconMedium),
                         tint = Color.Unspecified
                     )
