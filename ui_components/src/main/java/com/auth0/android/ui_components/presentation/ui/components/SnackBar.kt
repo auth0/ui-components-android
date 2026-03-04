@@ -15,7 +15,7 @@ public fun SnackBar(
     modifier: Modifier = Modifier
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    val sizes = com.auth0.android.ui_components.theme.Auth0TokenDefaults.sizes()
+    val sizes = com.auth0.android.ui_components.theme.Auth0Theme.sizes
 
     SnackbarHost(
         hostState = snackbarHostState,

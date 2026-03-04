@@ -42,7 +42,7 @@ import com.auth0.android.ui_components.presentation.ui.passkeys.PasskeyViewModel
 import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
 import com.auth0.android.ui_components.presentation.viewmodel.EnrolledAuthenticatorViewModel
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.utils.DateUtil
 import com.auth0.android.ui_components.utils.createCredential
 
@@ -63,7 +63,7 @@ fun EnrolledAuthenticatorListScreen(
         factory = MyAccountModule.providePasskeyViewModelFactory()
     )
 ) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -178,10 +178,10 @@ fun AuthenticatorListContent(
     onDeleteAuthenticator: (EnrolledAuthenticationMethod) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val sizes = Auth0TokenDefaults.sizes()
-    val spacing = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val sizes = Auth0Theme.sizes
+    val spacing = Auth0Theme.dimensions
 
     Column(
         modifier = modifier
@@ -206,7 +206,7 @@ fun AuthenticatorListContent(
             return
         }
 
-        Spacer(modifier = Modifier.height(Auth0TokenDefaults.dimensions().spacingSm))
+        Spacer(modifier = Modifier.height(Auth0Theme.dimensions.spacingSm))
 
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(spacing.spacingSm),

@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
 
 /**
  * Configuration object for Auth0Theme.
@@ -38,6 +39,46 @@ data class Auth0ThemeConfiguration(
          */
         val Default = Auth0ThemeConfiguration()
     }
+}
+
+/**
+ * Accessor object for Auth0 design tokens within the current theme.
+ *
+ * Follows the same naming convention as Material3's [MaterialTheme]
+ *
+ *
+ * Example usage:
+ * ```kotlin
+ * @Composable
+ * fun MyButton() {
+ *     val colors = Auth0Theme.colors
+ *     val typography = Auth0Theme.typography
+ *
+ *     Button(
+ *         colors = ButtonDefaults.buttonColors(
+ *             containerColor = colors.backgroundPrimary
+ *         )
+ *     ) {
+ *         Text("Click me", style = typography.label)
+ *     }
+ * }
+ * ```
+ */
+object Auth0Theme {
+    val colors: Auth0Color
+        @Composable @ReadOnlyComposable get() = LocalAuth0Color.current
+
+    val typography: Auth0Typography
+        @Composable @ReadOnlyComposable get() = LocalAuth0Typography.current
+
+    val shapes: Auth0Shapes
+        @Composable @ReadOnlyComposable get() = LocalAuth0Shapes.current
+
+    val dimensions: Auth0Dimensions
+        @Composable @ReadOnlyComposable get() = LocalAuth0Dimensions.current
+
+    val sizes: Auth0Sizes
+        @Composable @ReadOnlyComposable get() = LocalAuth0Sizes.current
 }
 
 /**

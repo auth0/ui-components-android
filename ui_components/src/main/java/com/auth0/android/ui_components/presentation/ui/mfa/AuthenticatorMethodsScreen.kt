@@ -32,7 +32,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorMethodsViewModel
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiState
 import com.auth0.android.ui_components.presentation.viewmodel.SecondaryAuthenticatorUiData
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.utils.createCredential
 
 
@@ -49,8 +49,8 @@ fun AuthenticatorMethodsScreen(
     onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit,
     onBackPress: () -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
 
     val uiState by authenticatorMethodViewModel.uiState.collectAsStateWithLifecycle()
     val passkeyUiState by passkeyViewModel.uiState.collectAsStateWithLifecycle()
@@ -83,8 +83,8 @@ fun AuthenticatorMethodsScreen(
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            val sizes = Auth0TokenDefaults.sizes()
-            val dimensions = Auth0TokenDefaults.dimensions()
+            val sizes = Auth0Theme.sizes
+            val dimensions = Auth0Theme.dimensions
 
             Column(
                 modifier = Modifier

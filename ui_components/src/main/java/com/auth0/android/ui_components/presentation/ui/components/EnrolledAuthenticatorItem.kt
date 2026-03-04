@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 
 @Composable
@@ -41,11 +41,11 @@ fun EnrolledAuthenticatorItem(
     menuActions: List<MenuItem>? = null,
     onMenuActionClick: ((MenuAction) -> Unit)? = null
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val sizes = Auth0TokenDefaults.sizes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
 
     var expanded by remember { mutableStateOf(false) }
 

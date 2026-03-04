@@ -57,7 +57,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.theme.interFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,9 +78,9 @@ fun OTPVerificationScreen(
     onVerificationSuccess: () -> Unit = {},
     onResend: () -> Unit = {}
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     var otpValue by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
@@ -198,7 +198,7 @@ fun OTPVerificationScreen(
                 }
             }
 
-            val sizes = Auth0TokenDefaults.sizes()
+            val sizes = Auth0Theme.sizes
 
             GradientButton(
                 modifier = Modifier
@@ -225,9 +225,9 @@ private fun OTPFieldError(
     isError: Boolean,
     errorMessage: String
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     val error = state.otpError || isError
     val errorString =
@@ -246,7 +246,7 @@ private fun OTPFieldError(
 
 @Composable
 private fun LoadingScreen(state: EnrollmentUiState) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     if (state.enrollingAuthenticator)
         Box(
@@ -274,7 +274,7 @@ private fun OTPInputField(
     onValueChange: (String) -> Unit,
     focusRequester: FocusRequester
 ) {
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val dimensions = Auth0Theme.dimensions
 
     BasicTextField(
         value = value,
@@ -313,9 +313,9 @@ private fun OTPBox(
     isError: Boolean,
     isFocused: Boolean = false
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
 
     val backgroundColor = when {
         isError -> colors.backgroundError.copy(alpha = 0.1f)
@@ -356,7 +356,7 @@ private fun OTPBox(
 private fun ResendLink(
     onResend: () -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     val annotatedString = buildAnnotatedString {
         withStyle(

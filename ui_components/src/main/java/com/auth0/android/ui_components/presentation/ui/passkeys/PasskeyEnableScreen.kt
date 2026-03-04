@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 /**
  * Passkey Enable Screen
@@ -43,11 +43,11 @@ fun PasskeyEnableScreen(
     onBackClick: () -> Unit = {},
     onEnableClick: () -> Unit = {}
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val sizes = Auth0TokenDefaults.sizes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
 
     Scaffold(
         topBar = {
@@ -167,7 +167,7 @@ private fun PasskeyIcon() {
             painter = painterResource(id = R.drawable.ic_passkey),
             contentDescription = stringResource(R.string.passkeys_title),
             modifier = Modifier.size(48.dp),
-            tint = Auth0TokenDefaults.color().textBold
+            tint = Auth0Theme.colors.textBold
         )
     }
 }

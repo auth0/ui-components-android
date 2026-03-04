@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.viewmodel.PrimaryAuthenticatorUiData
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 /**
  * Primary Authenticator List Screen
@@ -42,7 +42,7 @@ fun PrimaryAuthenticatorListScreen(
     onAddPasskeyClick: () -> Unit = {},
     onPasskeysClick: () -> Unit = {}
 ) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     var isCardDismissed by remember { mutableStateOf(false) }
 
@@ -78,11 +78,11 @@ private fun PasskeyInfoCard(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val sizes = Auth0TokenDefaults.sizes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
 
     Card(
         modifier = modifier
@@ -192,9 +192,9 @@ private fun SignInMethodsSection(
     isPasskeyEnrolled: Boolean,
     onPasskeysClick: () -> Unit,
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     Spacer(modifier = Modifier.height(18.dp))
     Text(

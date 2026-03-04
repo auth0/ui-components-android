@@ -19,7 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 @Composable
 fun GradientButton(
@@ -42,9 +42,9 @@ fun GradientButton(
     onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val dimensions = Auth0TokenDefaults.dimensions()
-    val resolvedShape = shape ?: Auth0TokenDefaults.shapes().large
+    val colors = Auth0Theme.colors
+    val dimensions = Auth0Theme.dimensions
+    val resolvedShape = shape ?: Auth0Theme.shapes.large
 
     val buttonColors = buttonDefaultColor ?: ButtonDefaults.buttonColors(
         containerColor = colors.backgroundPrimary,

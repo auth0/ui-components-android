@@ -13,7 +13,7 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
 import com.auth0.android.ui_components.presentation.viewmodel.SecondaryAuthenticatorUiData
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 
 /**
@@ -24,9 +24,9 @@ fun SecondaryAuthenticatorListScreen(
     secondaryAuthenticatorUiData: List<SecondaryAuthenticatorUiData>,
     onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     Spacer(modifier = Modifier.height(dimensions.spacingSm))
     Text(

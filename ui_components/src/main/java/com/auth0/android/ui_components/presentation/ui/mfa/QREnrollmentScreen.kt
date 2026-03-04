@@ -69,7 +69,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.theme.interFamily
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
@@ -87,7 +87,7 @@ fun QREnrollmentScreen(
         authSession: String,
     ) -> Unit,
 ) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -154,8 +154,8 @@ private fun QREnrollmentContent(
     viewModel: EnrollmentViewModel,
     onContinueClick: (String, String) -> Unit
 ) {
-    val sizes = Auth0TokenDefaults.sizes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
     val totpEnrollment = enrollmentResult as EnrollmentResult.TotpEnrollment
     val manualCode = totpEnrollment.challenge.manualInputCode
     val barcodeUri = totpEnrollment.challenge.barcodeUri
@@ -262,7 +262,7 @@ private fun ManualCodeSection(
     manualCode: String,
     onCopyClick: () -> Unit
 ) {
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val dimensions = Auth0Theme.dimensions
 
     ManualCodeCard(
         manualCode = manualCode
@@ -280,11 +280,11 @@ private fun ManualCodeSection(
 private fun CopyCodeButton(
     onCopyClick: () -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val sizes = Auth0TokenDefaults.sizes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
 
     GradientButton(
         modifier = Modifier
@@ -345,7 +345,7 @@ private fun CopyCodeButton(
 private fun ContinueButtonSection(
     onContinueClick: () -> Unit
 ) {
-    val sizes = Auth0TokenDefaults.sizes()
+    val sizes = Auth0Theme.sizes
 
     GradientButton(
         modifier = Modifier
@@ -361,7 +361,7 @@ private fun ContinueButtonSection(
     ) {
         Text(
             stringResource(R.string.continue_button),
-            style = Auth0TokenDefaults.typography().label
+            style = Auth0Theme.typography.label
         )
     }
 }
@@ -369,8 +369,8 @@ private fun ContinueButtonSection(
 
 @Composable
 private fun InstructionsText() {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
 
     val instructionText =
         "Use your Authenticator App (like Google Authenticator or Auth0 Guardian) to scan this QR code."
@@ -412,10 +412,10 @@ private fun QRCodeDisplay(
 private fun ManualCodeCard(
     manualCode: String,
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val sizes = Auth0TokenDefaults.sizes()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
 
     Surface(
         modifier = Modifier
@@ -444,7 +444,7 @@ private fun ManualCodeCard(
 private fun DownloadLinkText(
     downloadLink: String = "https://play.google.com/store/apps/details?id=com.auth0.guardian&hl=en_IN",
 ) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     val annotatedString = buildAnnotatedString {
         withStyle(
@@ -490,7 +490,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Auth0TokenDefaults.color().backgroundLayerBase),
+                .background(Auth0Theme.colors.backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()

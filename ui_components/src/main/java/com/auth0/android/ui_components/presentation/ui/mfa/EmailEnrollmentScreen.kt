@@ -44,7 +44,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.utils.ValidationUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,8 +57,8 @@ fun EmailEnrollmentScreen(
     onBackClick: () -> Unit,
     onContinueToOTP: (authenticationId: String, authSession: String, email: String) -> Unit = { _, _, _ -> }
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val dimensions = Auth0Theme.dimensions
 
     var email by remember { mutableStateOf("") }
     var validationErrorMessage by remember { mutableStateOf("") }
@@ -140,7 +140,7 @@ fun EmailEnrollmentScreen(
 
 @Composable
 private fun LoadingScreen(state: EnrollmentUiState) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     if (state.enrollingAuthenticator)
         Box(
@@ -162,9 +162,9 @@ private fun ErrorScreen(state: EnrollmentUiState) {
 
 @Composable
 private fun EmailEnrollmentHeader() {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     Text(
         text = stringResource(R.string.enter_email_address),
@@ -191,9 +191,9 @@ private fun EmailFormField(
     onEmailChange: (String) -> Unit,
     errorMessage: String
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     Text(
         text = stringResource(R.string.email_label),
@@ -219,11 +219,11 @@ private fun EmailTextField(
     isError: Boolean,
     errorMessage: String
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val sizes = Auth0TokenDefaults.sizes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
 
     val backgroundColor = if (isError) {
         colors.backgroundError
@@ -302,8 +302,8 @@ private fun EmailTextField(
 private fun ContinueButton(
     onClick: () -> Unit,
 ) {
-    val typography = Auth0TokenDefaults.typography()
-    val sizes = Auth0TokenDefaults.sizes()
+    val typography = Auth0Theme.typography
+    val sizes = Auth0Theme.sizes
 
     GradientButton(
         modifier = Modifier

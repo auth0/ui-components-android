@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,8 +33,8 @@ fun TopBar(
     onBackClick: () -> Unit,
     trailingIconClick: () -> Unit = {}
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
 
     val resolvedTopBarColor = if (topBarColor == Color.Unspecified) colors.backgroundLayerBase else topBarColor
     val titleStyle = titleTextStyle ?: typography.title

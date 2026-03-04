@@ -58,7 +58,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.theme.interFamily
 import com.auth0.android.ui_components.utils.ValidationUtil
 
@@ -73,8 +73,8 @@ fun PhoneEnrollmentScreen(
     onContinueToOTP: (authenticationId: kotlin.String, authSession: kotlin.String, phoneNumber: kotlin.String) -> Unit,
     onBackClick: () -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val dimensions = Auth0Theme.dimensions
 
     var phoneNumber by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(Country.countries[0]) }
@@ -179,9 +179,9 @@ fun PhoneEnrollmentScreen(
 
 @Composable
 private fun PhoneEnrollmentHeader() {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     Text(
         text = stringResource(R.string.enter_phone_number),
@@ -207,7 +207,7 @@ private fun LoadingScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Auth0TokenDefaults.color().backgroundLayerBase),
+                .background(Auth0Theme.colors.backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
@@ -230,9 +230,9 @@ private fun PhoneFormField(
     onCountryCodeClick: () -> Unit,
     isValidationError: Boolean,
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     Text(
         text = stringResource(R.string.phone_number_label),
@@ -259,11 +259,11 @@ private fun PhoneTextField(
     onCountryCodeClick: () -> Unit,
     isError: Boolean,
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val dimensions = Auth0TokenDefaults.dimensions()
-    val sizes = Auth0TokenDefaults.sizes()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val dimensions = Auth0Theme.dimensions
+    val sizes = Auth0Theme.sizes
 
     val backgroundColor = if (isError) {
         colors.backgroundError.copy(alpha = 0.05f)
@@ -374,10 +374,10 @@ private fun CountrySelectorSheet(
     onCountrySelected: (Country) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val dimensions = Auth0Theme.dimensions
 
     val sheetState = rememberModalBottomSheetState()
     var searchQuery by remember { mutableStateOf("") }
@@ -463,7 +463,7 @@ private fun CountryItem(
     country: Country,
     onClick: () -> Unit
 ) {
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val dimensions = Auth0Theme.dimensions
 
     Column(
         modifier = Modifier
@@ -485,8 +485,8 @@ private fun CountryItem(
 
             Text(
                 text = "${country.name} (${country.phoneCode})",
-                style = Auth0TokenDefaults.typography().body,
-                color = Auth0TokenDefaults.color().textBold
+                style = Auth0Theme.typography.body,
+                color = Auth0Theme.colors.textBold
             )
         }
 
@@ -503,8 +503,8 @@ private fun CountryItem(
 private fun ContinueButton(
     onClick: () -> Unit
 ) {
-    val sizes = Auth0TokenDefaults.sizes()
-    val typography = Auth0TokenDefaults.typography()
+    val sizes = Auth0Theme.sizes
+    val typography = Auth0Theme.typography
 
     GradientButton(
         modifier = Modifier

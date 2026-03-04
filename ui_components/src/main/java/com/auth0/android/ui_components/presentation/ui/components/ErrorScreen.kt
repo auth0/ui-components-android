@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.theme.interFamily
 
 @Composable
@@ -40,11 +40,11 @@ fun ErrorScreen(
     shouldRetry: Boolean = true,
     onRetryClick: () -> Unit = {}
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val sizes = Auth0TokenDefaults.sizes()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
 
     Box(
         modifier = modifier
@@ -104,7 +104,7 @@ fun MessageWithLink(
     clickableLinkText: String? = null,
     clickableLink: String = "https://auth0.com/contact-us"
 ) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     val annotatedString = buildAnnotatedString {
         withStyle(

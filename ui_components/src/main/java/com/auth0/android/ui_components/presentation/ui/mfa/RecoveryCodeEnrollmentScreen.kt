@@ -51,7 +51,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.Auth0TokenDefaults
+import com.auth0.android.ui_components.theme.Auth0Theme
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
@@ -67,7 +67,7 @@ fun RecoveryCodeEnrollmentScreen(
         String, String
     ) -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
@@ -146,7 +146,7 @@ private fun RecoveryCodeContent(
     onCopyClick: () -> Unit,
     onContinueClick: () -> Unit
 ) {
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val dimensions = Auth0Theme.dimensions
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -172,9 +172,9 @@ private fun RecoveryCodeContent(
 
 @Composable
 private fun RecoveryCodeHeader() {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val dimensions = Auth0TokenDefaults.dimensions()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -200,11 +200,11 @@ private fun RecoveryCodeHeader() {
 
 @Composable
 private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
-    val colors = Auth0TokenDefaults.color()
-    val typography = Auth0TokenDefaults.typography()
-    val shapes = Auth0TokenDefaults.shapes()
-    val dimensions = Auth0TokenDefaults.dimensions()
-    val sizes = Auth0TokenDefaults.sizes()
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val dimensions = Auth0Theme.dimensions
+    val sizes = Auth0Theme.sizes
 
     Surface(
         modifier = Modifier
@@ -254,9 +254,9 @@ private fun ContinueButton(
     isLoading: Boolean = false,
     onClick: () -> Unit
 ) {
-    val colors = Auth0TokenDefaults.color()
-    val sizes = Auth0TokenDefaults.sizes()
-    val typography = Auth0TokenDefaults.typography()
+    val colors = Auth0Theme.colors
+    val sizes = Auth0Theme.sizes
+    val typography = Auth0Theme.typography
 
     GradientButton(
         modifier = Modifier
@@ -281,7 +281,7 @@ private fun ContinueButton(
 
 @Composable
 private fun LoadingScreen(state: EnrollmentUiState) {
-    val colors = Auth0TokenDefaults.color()
+    val colors = Auth0Theme.colors
 
     if (state.enrollingAuthenticator)
         Box(
