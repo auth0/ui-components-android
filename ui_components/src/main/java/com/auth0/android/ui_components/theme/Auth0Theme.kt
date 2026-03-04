@@ -65,20 +65,33 @@ data class Auth0ThemeConfiguration(
  * ```
  */
 object Auth0Theme {
+    /**
+     * Encapsulates all Auth0 design token subsystems.
+     * Internal implementation detail — consumers use Auth0Theme.colors, etc.
+     */
+    @Immutable
+    class Values(
+        val colors: Auth0Color,
+        val typography: Auth0Typography,
+        val shapes: Auth0Shapes,
+        val dimensions: Auth0Dimensions,
+        val sizes: Auth0Sizes,
+    )
+
     val colors: Auth0Color
-        @Composable @ReadOnlyComposable get() = LocalAuth0Color.current
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.colors
 
     val typography: Auth0Typography
-        @Composable @ReadOnlyComposable get() = LocalAuth0Typography.current
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.typography
 
     val shapes: Auth0Shapes
-        @Composable @ReadOnlyComposable get() = LocalAuth0Shapes.current
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.shapes
 
     val dimensions: Auth0Dimensions
-        @Composable @ReadOnlyComposable get() = LocalAuth0Dimensions.current
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.dimensions
 
     val sizes: Auth0Sizes
-        @Composable @ReadOnlyComposable get() = LocalAuth0Sizes.current
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.sizes
 }
 
 /**
@@ -139,18 +152,22 @@ fun Auth0Theme(
 
     val sizes = configuration.sizes ?: Auth0Sizes.default()
 
-    // Step 3: Bridge Auth0 tokens to Material3
+    // Step 3: Single Values wrapper
+    val themeValues = Auth0Theme.Values(
+        colors = color,
+        typography = typography,
+        shapes = shapes,
+        dimensions = dimensions,
+        sizes = sizes,
+    )
+
+    // Step 4: Bridge Auth0 tokens to Material3
     val material3ColorScheme = color.toMaterial3ColorScheme(isDark)
     val material3Typography = typography.toMaterial3Typography()
     val material3Shapes = shapes.toMaterial3Shapes()
 
-    // Step 4: Provide all CompositionLocals
     CompositionLocalProvider(
-        LocalAuth0Color provides color,
-        LocalAuth0Typography provides typography,
-        LocalAuth0Shapes provides shapes,
-        LocalAuth0Dimensions provides dimensions,
-        LocalAuth0Sizes provides sizes
+        LocalAuth0Theme provides themeValues,
     ) {
         // Step 5: Wrap with MaterialTheme
         MaterialTheme(
