@@ -58,7 +58,6 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.Auth0Theme
-import com.auth0.android.ui_components.theme.interFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -361,11 +360,11 @@ private fun ResendLink(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                fontFamily = interFamily,
-                fontWeight = FontWeight.Normal,
+                fontFamily = Auth0Theme.typography.body.fontFamily,
+                fontWeight = Auth0Theme.typography.body.fontWeight,
                 color = colors.textDefault,
-                letterSpacing = 0.em,
-                fontSize = 16.sp
+                letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                fontSize = Auth0Theme.typography.body.fontSize
             )
         ) {
             append("Didn't get a code? ")
@@ -378,11 +377,11 @@ private fun ResendLink(
         ) {
             withStyle(
                 style = SpanStyle(
-                    fontFamily = interFamily,
+                    fontFamily = Auth0Theme.typography.body.fontFamily,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textBold,
-                    letterSpacing = 0.em,
-                    fontSize = 16.sp,
+                    letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                    fontSize = Auth0Theme.typography.body.fontSize,
                     textDecoration = TextDecoration.Underline
                 )
             ) {

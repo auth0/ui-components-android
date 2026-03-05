@@ -51,8 +51,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,7 +68,6 @@ import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.android.ui_components.theme.Auth0Theme
-import com.auth0.android.ui_components.theme.interFamily
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
 
@@ -449,11 +446,11 @@ private fun DownloadLinkText(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                fontFamily = interFamily,
+                fontFamily = Auth0Theme.typography.body.fontFamily,
+                fontWeight = Auth0Theme.typography.body.fontWeight,
                 color = colors.textDefault,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = (0.011).em
+                letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                fontSize = Auth0Theme.typography.body.fontSize
             )
         ) {
             append("Don't have the Auth0 Guardian App?\n")
@@ -465,12 +462,12 @@ private fun DownloadLinkText(
         )
         withStyle(
             style = SpanStyle(
-                color = colors.textBold,
-                fontFamily = interFamily,
-                textDecoration = TextDecoration.Underline,
+                fontFamily = Auth0Theme.typography.body.fontFamily,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 14.sp,
-                letterSpacing = 0.em
+                color = colors.textBold,
+                letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                fontSize = Auth0Theme.typography.body.fontSize,
+                textDecoration = TextDecoration.Underline
             )
         ) {
             withLink(LinkAnnotation.Url(url = downloadLink)) {

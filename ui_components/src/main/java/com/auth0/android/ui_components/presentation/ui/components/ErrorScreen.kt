@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.theme.Auth0Theme
-import com.auth0.android.ui_components.theme.interFamily
 
 @Composable
 fun ErrorScreen(
@@ -109,11 +108,11 @@ fun MessageWithLink(
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                fontFamily = interFamily,
-                fontWeight = FontWeight.Normal,
+                fontFamily = Auth0Theme.typography.bodySmall.fontFamily,
+                fontWeight = Auth0Theme.typography.bodySmall.fontWeight,
                 color = colors.textDefault,
-                fontSize = 14.sp,
-                letterSpacing = 0.em,
+                fontSize = Auth0Theme.typography.bodySmall.fontSize,
+                letterSpacing = Auth0Theme.typography.bodySmall.letterSpacing,
             )
         ) {
             append(message)
@@ -125,11 +124,11 @@ fun MessageWithLink(
             )
             withStyle(
                 style = SpanStyle(
-                    fontFamily = interFamily,
-                    fontWeight = FontWeight.Normal,
+                    fontFamily = Auth0Theme.typography.bodySmall.fontFamily,
+                    fontWeight = Auth0Theme.typography.bodySmall.fontWeight,
                     color = colors.textDefault,
-                    fontSize = 14.sp,
-                    letterSpacing = 0.em,
+                    fontSize = Auth0Theme.typography.bodySmall.fontSize,
+                    letterSpacing = Auth0Theme.typography.bodySmall.letterSpacing,
                     textDecoration = TextDecoration.Underline
                 )
             ) {
