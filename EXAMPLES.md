@@ -107,7 +107,11 @@ fun MFASettingsScreen() {
 
 ## Theme Customization
 
-The `universal-components-android` SDK supports full theme customization through `Auth0ThemeConfiguration`. You can customize colors, typography, shapes, and spacing to match your brand.
+The SDK supports full theme customization through `Auth0ThemeConfiguration`. You can customize colors, typography, shapes, dimensions, and sizes to match your brand.
+
+The theming system follows the same pattern as Material3's `MaterialTheme`:
+- `Auth0Theme { }` — composable that provides theme tokens to all descendants
+- `Auth0Theme.colors`, `Auth0Theme.typography`, etc. — accessors for reading tokens inside composables
 
 ### Default Theme
 
@@ -140,9 +144,18 @@ fun MFASettingsScreen() {
 
 ### Dark Mode
 
-Apply the built-in dark color scheme:
+Force dark mode via the `Auth0Theme` composable's `darkTheme` parameter, or apply the dark color scheme explicitly:
 
 ```kotlin
+// Option 1: Force dark mode via Auth0Theme
+@Composable
+fun MFASettingsScreen() {
+    Auth0Theme(darkTheme = true) {
+        AuthenticatorSettingsComponent()
+    }
+}
+
+// Option 2: Explicit dark color scheme
 @Composable
 fun MFASettingsScreen() {
     AuthenticatorSettingsComponent(
@@ -216,6 +229,55 @@ fun MFASettingsScreen() {
             )
         )
     )
+}
+```
+
+### Accessing Theme Tokens in Custom Composables
+
+Use `Auth0Theme.colors`, `Auth0Theme.typography`, `Auth0Theme.shapes`, `Auth0Theme.dimensions`, and `Auth0Theme.sizes` to read theme tokens inside any composable wrapped by `Auth0Theme`:
+
+```kotlin
+@Composable
+fun CustomAuthCard() {
+    Card(
+        shape = Auth0Theme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = Auth0Theme.colors.backgroundLayerMedium
+        )
+    ) {
+        Column(modifier = Modifier.padding(Auth0Theme.dimensions.spacingMd)) {
+            Text(
+                text = "Authenticator",
+                style = Auth0Theme.typography.title,
+                color = Auth0Theme.colors.textBold
+            )
+            Text(
+                text = "Enabled",
+                style = Auth0Theme.typography.bodySmall,
+                color = Auth0Theme.colors.textDefault
+            )
+        }
+    }
+}
+```
+
+### Using Auth0Theme Directly
+
+Wrap custom composables with `Auth0Theme` to provide theme tokens without using `AuthenticatorSettingsComponent`:
+
+```kotlin
+@Composable
+fun BrandedScreen() {
+    Auth0Theme(
+        configuration = Auth0ThemeConfiguration(
+            color = Auth0Color.light().copy(
+                backgroundPrimary = Color(0xFFFF6B00)
+            )
+        )
+    ) {
+        // All descendants can access Auth0Theme.colors, Auth0Theme.typography, etc.
+        CustomAuthCard()
+    }
 }
 ```
 
