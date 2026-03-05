@@ -1,5 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.mfa.authenticator_methods
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,21 +45,21 @@ fun PrimaryAuthenticatorListScreen(
 ) {
     val colors = Auth0Theme.colors
 
-    var isCardDismissed by remember { mutableStateOf(false) }
+    var isCardVisible by remember { mutableStateOf(true) }
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(colors.backgroundLayerBase)
     ) {
-        if (primaryAuthenticatorUiData.isEmpty() && !isCardDismissed) {
-            PasskeyInfoCard(
-                onAddPasskeyClick = onAddPasskeyClick,
-                onDismissClick = {
-                    isCardDismissed = true
-                }
-            )
-        }
+            AnimatedVisibility(visible = primaryAuthenticatorUiData.isEmpty() && isCardVisible) {
+                PasskeyInfoCard(
+                    onAddPasskeyClick = onAddPasskeyClick,
+                    onDismissClick = {
+                        isCardVisible = false
+                    }
+                )
+            }
 
         SignInMethodsSection(
             isPasskeyEnrolled = primaryAuthenticatorUiData.isNotEmpty(),
