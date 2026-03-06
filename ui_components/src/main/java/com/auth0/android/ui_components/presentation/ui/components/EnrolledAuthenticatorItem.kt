@@ -10,14 +10,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,15 +25,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.menu.MenuAction
 import com.auth0.android.ui_components.presentation.ui.menu.MenuItem
-import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
-import com.auth0.android.ui_components.theme.authenticatorItemSubTitle
-import com.auth0.android.ui_components.theme.authenticatorItemTitle
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 
 @Composable
@@ -46,17 +41,23 @@ fun EnrolledAuthenticatorItem(
     menuActions: List<MenuItem>? = null,
     onMenuActionClick: ((MenuAction) -> Unit)? = null
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
+
     var expanded by remember { mutableStateOf(false) }
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .height(84.dp),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        shape = shapes.large,
+        color = colors.backgroundLayerMedium,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, AuthenticatorItemBorder)
+        border = BorderStroke(1.dp, colors.borderDefault)
     ) {
         Row(
             modifier = Modifier
@@ -67,15 +68,17 @@ fun EnrolledAuthenticatorItem(
         ) {
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(dimensions.spacingXxs)
             ) {
                 Text(
                     text = title,
-                    style = authenticatorItemTitle
+                    style = typography.body,
+                    color = colors.textBold
                 )
                 Text(
                     text = subtitle,
-                    style = authenticatorItemSubTitle
+                    style = typography.body,
+                    color = colors.textDisabled
                 )
             }
 
@@ -83,26 +86,26 @@ fun EnrolledAuthenticatorItem(
                 Box {
                     IconButton(
                         onClick = { expanded = true },
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(sizes.iconMedium)
                     ) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
                             contentDescription = stringResource(R.string.more_options),
-                            tint = Color.Black
+                            tint = colors.textBold
                         )
                     }
 
                     DropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = !expanded },
-                        modifier = Modifier.background(Color.White)
+                        modifier = Modifier.background(colors.backgroundLayerMedium)
                     ) {
                         menuActions.forEach { menuAction ->
                             DropdownMenuItem(
                                 text = {
                                     Text(
                                         text = menuAction.label,
-                                        style = MaterialTheme.typography.bodyMedium
+                                        style = typography.bodySmall
                                     )
                                 },
                                 onClick = {

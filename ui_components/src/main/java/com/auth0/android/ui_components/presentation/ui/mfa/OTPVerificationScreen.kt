@@ -13,17 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +43,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.di.MyAccountModule
@@ -60,11 +57,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.UiUtils
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.ButtonBlack
-import com.auth0.android.ui_components.theme.ErrorRed
-import com.auth0.android.ui_components.theme.contentTextStyle
-import com.auth0.android.ui_components.theme.secondaryTextColor
-import interFamily
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,6 +77,10 @@ fun OTPVerificationScreen(
     onVerificationSuccess: () -> Unit = {},
     onResend: () -> Unit = {}
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
+
     var otpValue by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
@@ -116,56 +113,48 @@ fun OTPVerificationScreen(
                 showSeparator = false
             )
         },
-        containerColor = Color.White
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 16.dp, vertical = 38.dp),
+                .padding(horizontal = dimensions.spacingMd, vertical = 38.dp),
             horizontalAlignment = Alignment.Start
         ) {
             Text(
                 text = screenText.primaryText,
-                style = contentTextStyle,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 20.sp,
-                color = Color.Black,
-                lineHeight = 1.em,
-                letterSpacing = 0.em,
+                style = typography.title,
+                color = colors.textBold,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXs))
 
             if (!screenText.description.isNullOrEmpty()) {
                 Text(
                     text = screenText.description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontSize = 14.sp,
-                    color = secondaryTextColor,
+                    style = typography.body,
+                    color = colors.textDefault,
                     textAlign = TextAlign.Start,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(dimensions.spacingLg))
             } else {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(dimensions.spacingXl))
             }
 
             Text(
                 text = "One-Time Passcode",
-                style = contentTextStyle,
-                fontSize = 14.sp,
-                lineHeight = 14.sp,
-                letterSpacing = 0.em,
-                color = Color.Black,
+                style = typography.body,
+                color = colors.textBold,
                 textAlign = TextAlign.Start,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingMd))
 
             OTPInputField(
                 value = otpValue,
@@ -182,7 +171,7 @@ fun OTPVerificationScreen(
                 focusRequester = focusRequester
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingMd))
 
             OTPFieldError(uiState, isError, errorMessage)
 
@@ -208,19 +197,15 @@ fun OTPVerificationScreen(
                 }
             }
 
+            val sizes = Auth0Theme.sizes
+
             GradientButton(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                buttonDefaultColor = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBlack,
-                    contentColor = Color.White,
-                    disabledContainerColor = ButtonBlack.copy(alpha = 0.6f),
-                    disabledContentColor = Color.White.copy(alpha = 0.6f)
-                ),
+                    .height(sizes.buttonHeight),
                 onClick = click
             ) {
-                Text(text)
+                Text(text, style = typography.label)
             }
         }
 
@@ -239,6 +224,9 @@ private fun OTPFieldError(
     isError: Boolean,
     errorMessage: String
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
 
     val error = state.otpError || isError
     val errorString =
@@ -246,24 +234,24 @@ private fun OTPFieldError(
     if (error && errorString.isNotEmpty()) {
         Text(
             text = errorString,
-            style = contentTextStyle,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Normal,
-            color = ErrorRed,
+            style = typography.title,
+            color = colors.textOnError,
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.Start
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(dimensions.spacingMd))
     }
 }
 
 @Composable
 private fun LoadingScreen(state: EnrollmentUiState) {
+    val colors = Auth0Theme.colors
+
     if (state.enrollingAuthenticator)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White),
+                .background(colors.backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()
@@ -285,6 +273,8 @@ private fun OTPInputField(
     onValueChange: (String) -> Unit,
     focusRequester: FocusRequester
 ) {
+    val dimensions = Auth0Theme.dimensions
+
     BasicTextField(
         value = value,
         onValueChange = onValueChange,
@@ -295,7 +285,7 @@ private fun OTPInputField(
         decorationBox = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(dimensions.spacingXs)
             ) {
                 repeat(length) { index ->
                     OTPBox(
@@ -322,15 +312,18 @@ private fun OTPBox(
     isError: Boolean,
     isFocused: Boolean = false
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+
     val backgroundColor = when {
-        isError -> Color(0xFFFFEBEE)
-        else -> Color.White
+        isError -> colors.backgroundError.copy(alpha = 0.1f)
+        else -> colors.backgroundLayerMedium
     }
 
     val borderColor = when {
-        isError -> Color(0xFFD32F2F)
-        value.isNotEmpty() -> Color(0xFFE0E0E0)
-        else -> Color(0xFFE0E0E0)
+        isError -> colors.backgroundError
+        else -> colors.borderDefault
     }
 
     val borderWidth = if (isFocused) 3.dp else 1.dp
@@ -340,23 +333,19 @@ private fun OTPBox(
             .aspectRatio(0.85f)
             .background(
                 color = backgroundColor,
-                shape = RoundedCornerShape(14.dp)
+                shape = shapes.medium
             )
             .border(
                 width = borderWidth,
                 color = borderColor,
-                shape = RoundedCornerShape(14.dp)
+                shape = shapes.medium
             ),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = value,
-            style = contentTextStyle,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 20.sp,
-            lineHeight = 28.sp,
-            letterSpacing = 0.em,
-            color = if (isError) Color(0xFFD32F2F) else Color.Black,
+            style = typography.titleLarge,
+            color = if (isError) colors.textOnError else colors.textBold,
             textAlign = TextAlign.Center
         )
     }
@@ -366,14 +355,16 @@ private fun OTPBox(
 private fun ResendLink(
     onResend: () -> Unit
 ) {
+    val colors = Auth0Theme.colors
+
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                fontFamily = interFamily,
-                fontWeight = FontWeight.Normal,
-                color = secondaryTextColor,
-                letterSpacing = 0.em,
-                fontSize = 16.sp
+                fontFamily = Auth0Theme.typography.body.fontFamily,
+                fontWeight = Auth0Theme.typography.body.fontWeight,
+                color = colors.textDefault,
+                letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                fontSize = Auth0Theme.typography.body.fontSize
             )
         ) {
             append("Didn't get a code? ")
@@ -386,11 +377,11 @@ private fun ResendLink(
         ) {
             withStyle(
                 style = SpanStyle(
-                    fontFamily = interFamily,
+                    fontFamily = Auth0Theme.typography.body.fontFamily,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.Black,
-                    letterSpacing = 0.em,
-                    fontSize = 16.sp,
+                    color = colors.textBold,
+                    letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                    fontSize = Auth0Theme.typography.body.fontSize,
                     textDecoration = TextDecoration.Underline
                 )
             ) {

@@ -13,8 +13,7 @@ import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.domain.model.AuthenticatorType
 import com.auth0.android.ui_components.presentation.ui.components.EmptyAuthenticatorItem
 import com.auth0.android.ui_components.presentation.viewmodel.SecondaryAuthenticatorUiData
-import com.auth0.android.ui_components.theme.sectionHeading1
-import com.auth0.android.ui_components.theme.sectionHeading2
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 
 /**
@@ -25,22 +24,27 @@ fun SecondaryAuthenticatorListScreen(
     secondaryAuthenticatorUiData: List<SecondaryAuthenticatorUiData>,
     onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit
 ) {
-    Spacer(modifier = Modifier.height(12.dp))
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
+
+    Spacer(modifier = Modifier.height(dimensions.spacingSm))
     Text(
         text = stringResource(R.string.verification_methods),
-        modifier = Modifier.height(24.dp),
-        style = sectionHeading1,
+        style = typography.display,
+        color = colors.textBold,
     )
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingXs))
 
     Text(
         text = stringResource(R.string.manage_2fa_methods),
         modifier = Modifier.height(17.dp),
-        style = sectionHeading2,
+        style = typography.body,
+        color = colors.textDefault,
     )
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
     if (secondaryAuthenticatorUiData.isEmpty()) {
         EmptyAuthenticatorItem(emptyMessage = stringResource(R.string.no_authenticators_enabled))
@@ -54,7 +58,7 @@ fun SecondaryAuthenticatorListScreen(
             showActiveTag = item.confirmed,
             onClick = { onAuthenticatorItemClick(item) }
         )
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(dimensions.spacingSm))
     }
 }
 

@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -33,7 +32,7 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorMethodsViewModel
 import com.auth0.android.ui_components.presentation.viewmodel.AuthenticatorUiState
 import com.auth0.android.ui_components.presentation.viewmodel.SecondaryAuthenticatorUiData
-import com.auth0.android.ui_components.theme.defaultTopbarTitle
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.utils.createCredential
 
 
@@ -50,6 +49,9 @@ fun AuthenticatorMethodsScreen(
     onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit,
     onBackPress: () -> Unit
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+
     val uiState by authenticatorMethodViewModel.uiState.collectAsStateWithLifecycle()
     val passkeyUiState by passkeyViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -69,22 +71,25 @@ fun AuthenticatorMethodsScreen(
             TopBar(
                 title = stringResource(R.string.login_security),
                 showBackNavigation = false,
-                titleTextStyle = defaultTopbarTitle,
                 showSeparator = false,
+                titleTextStyle = typography.displayMedium,
                 onBackClick = onBackPress
             )
         },
-        containerColor = Color.White
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
         Box(
             modifier = Modifier
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
+            val sizes = Auth0Theme.sizes
+            val dimensions = Auth0Theme.dimensions
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = sizes.padding)
             ) {
                 when (val state = uiState) {
                     is AuthenticatorUiState.Error -> {
@@ -144,9 +149,9 @@ fun AuthenticatorMethodsScreen(
                 is PasskeyUiState.EnrollingPasskey -> {
                     Box(
                         modifier = Modifier
-                            .background(Color.White)
+                            .background(colors.backgroundLayerBase)
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp),
+                            .padding(horizontal = dimensions.spacingMd),
                         contentAlignment = Alignment.Center
                     ) {
                         CircularLoader()
@@ -157,7 +162,7 @@ fun AuthenticatorMethodsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(horizontal = 16.dp)
+                            .padding(horizontal = dimensions.spacingMd)
                     ) {
                         ErrorHandler(
                             uiError = state.error, shouldRetry = state.shouldRetry

@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -31,9 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
-import com.auth0.android.ui_components.theme.ButtonBlack
-import com.auth0.android.ui_components.theme.TextInputBlack
-import com.auth0.android.ui_components.theme.textInputStyle
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 /**
  * Passkey Enable Screen
@@ -42,10 +39,16 @@ import com.auth0.android.ui_components.theme.textInputStyle
  */
 @Composable
 fun PasskeyEnableScreen(
+    modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
-    onEnableClick: () -> Unit = {},
-    modifier: Modifier = Modifier
+    onEnableClick: () -> Unit = {}
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
+
     Scaffold(
         topBar = {
             TopBar(
@@ -53,7 +56,7 @@ fun PasskeyEnableScreen(
                 onBackClick = onBackClick
             )
         },
-        containerColor = Color.White
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
         Column(
             modifier = modifier
@@ -64,16 +67,12 @@ fun PasskeyEnableScreen(
         ) {
             PasskeyIcon()
 
-            Spacer(modifier = Modifier.height(48.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXxl))
 
             Text(
                 text = stringResource(R.string.enable_passkey),
-                style = textInputStyle.copy(
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 36.sp
-                ),
-                color = Color.Black,
+                style = typography.displayMedium,
+                color = colors.textBold,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -82,48 +81,28 @@ fun PasskeyEnableScreen(
 
             Text(
                 text = "\u2022  ${stringResource(R.string.what_are_passkeys)}",
-                style = textInputStyle.copy(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 26.sp,
-                    letterSpacing = (-0.34).sp
-                ),
-                color = Color.Black
+                style = typography.body,
+                color = colors.textBold
             )
             Text(
                 modifier = Modifier.padding(vertical = 6.dp),
                 text = stringResource(R.string.passkeys_description),
-                style = textInputStyle.copy(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 24.sp,
-                    letterSpacing = (-0.176).sp
-                ),
-                color = Color(0xFF606060)
+                style = typography.body,
+                color = colors.textDefault
             )
 
             Spacer(modifier = Modifier.height(30.dp))
 
             Text(
                 text = "\u2022  ${stringResource(R.string.where_are_passkeys_saved)}",
-                style = textInputStyle.copy(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    lineHeight = 26.sp,
-                    letterSpacing = (-0.34).sp
-                ),
-                color = Color.Black
+                style = typography.body,
+                color = colors.textBold
             )
             Text(
                 modifier = Modifier.padding(vertical = 6.dp),
                 text = stringResource(R.string.passkeys_saved_description),
-                style = textInputStyle.copy(
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal,
-                    lineHeight = 24.sp,
-                    letterSpacing = (-0.176).sp
-                ),
-                color = Color(0xFF606060)
+                style = typography.body,
+                color = colors.textDefault
             )
 
             Spacer(modifier = Modifier.height(40.dp))
@@ -131,12 +110,12 @@ fun PasskeyEnableScreen(
             GradientButton(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(sizes.buttonHeight),
                 onClick = onEnableClick,
-                shape = RoundedCornerShape(16.dp),
+                shape = shapes.large,
                 buttonDefaultColor = ButtonDefaults.buttonColors(
-                    containerColor = ButtonBlack,
-                    contentColor = Color.White
+                    containerColor = colors.backgroundPrimary,
+                    contentColor = colors.textOnPrimary
                 ),
                 gradient = Brush.verticalGradient(
                     colors = listOf(
@@ -152,12 +131,8 @@ fun PasskeyEnableScreen(
             ) {
                 Text(
                     text = stringResource(R.string.enable),
-                    style = textInputStyle.copy(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 24.sp
-                    ),
-                    color = Color.White
+                    style = typography.label,
+                    color = colors.textOnPrimary
                 )
             }
         }
@@ -192,7 +167,7 @@ private fun PasskeyIcon() {
             painter = painterResource(id = R.drawable.ic_passkey),
             contentDescription = stringResource(R.string.passkeys_title),
             modifier = Modifier.size(48.dp),
-            tint = TextInputBlack
+            tint = Auth0Theme.colors.textBold
         )
     }
 }

@@ -1,0 +1,254 @@
+package com.auth0.android.ui_components.theme
+
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+
+/**
+ * Configuration object for Auth0Theme.
+ *
+ * Allows customization of theme tokens. Any null value will use the default
+ * value based on dark mode settings.
+ *
+ * @property color Custom colors, or null to use default for dark mode
+ * @property typography Custom typography scale, or null to use default
+ * @property shapes Custom shapes, or null to use default
+ * @property dimensions Custom dimensions/spacing, or null to use default
+ * @property sizes Custom component sizes, or null to use default
+ */
+@Immutable
+data class Auth0ThemeConfiguration(
+    val color: Auth0Color? = null,
+    val typography: Auth0Typography? = null,
+    val shapes: Auth0Shapes? = null,
+    val dimensions: Auth0Dimensions? = null,
+    val sizes: Auth0Sizes? = null
+) {
+    companion object {
+        /**
+         * Default theme configuration.
+         * Uses system-appropriate light/dark colors with default tokens.
+         */
+        val Default = Auth0ThemeConfiguration()
+    }
+}
+
+/**
+ * Accessor object for Auth0 design tokens within the current theme.
+ *
+ * Follows the same naming convention as Material3's [MaterialTheme]
+ *
+ *
+ * Example usage:
+ * ```kotlin
+ * @Composable
+ * fun MyButton() {
+ *     val colors = Auth0Theme.colors
+ *     val typography = Auth0Theme.typography
+ *
+ *     Button(
+ *         colors = ButtonDefaults.buttonColors(
+ *             containerColor = colors.backgroundPrimary
+ *         )
+ *     ) {
+ *         Text("Click me", style = typography.label)
+ *     }
+ * }
+ * ```
+ */
+object Auth0Theme {
+    /**
+     * Encapsulates all Auth0 design token subsystems.
+     * Internal implementation detail — consumers use Auth0Theme.colors, etc.
+     */
+    @Immutable
+    class Values(
+        val colors: Auth0Color,
+        val typography: Auth0Typography,
+        val shapes: Auth0Shapes,
+        val dimensions: Auth0Dimensions,
+        val sizes: Auth0Sizes,
+    )
+
+    val colors: Auth0Color
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.colors
+
+    val typography: Auth0Typography
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.typography
+
+    val shapes: Auth0Shapes
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.shapes
+
+    val dimensions: Auth0Dimensions
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.dimensions
+
+    val sizes: Auth0Sizes
+        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.sizes
+}
+
+/**
+ * Auth0 theme provider composable.
+ *
+ * Wraps content with Auth0 design tokens and Material3 theme.
+ * All Auth0 UI components must be descendants of this composable.
+ *
+ * Usage:
+ * ```kotlin
+ * // Default theme
+ * Auth0Theme {
+ *     MyContent()
+ * }
+ *
+ * // Custom brand colors
+ * Auth0Theme(
+ *     configuration = Auth0ThemeConfiguration(
+ *         color = Auth0Color.light().copy(
+ *             primary = Color(0xFFFF6B00)
+ *         )
+ *     )
+ * ) {
+ *     MyContent()
+ * }
+ *
+ * // Force dark mode
+ * Auth0Theme(darkTheme = true) {
+ *     MyContent()
+ * }
+ * ```
+ *
+ * @param configuration Theme configuration with optional custom tokens
+ * @param darkTheme Force dark mode (true), light mode (false), or system default (null)
+ * @param content The composable content to wrap with the theme
+ */
+@Composable
+fun Auth0Theme(
+    configuration: Auth0ThemeConfiguration = Auth0ThemeConfiguration.Default,
+    darkTheme: Boolean? = null,
+    content: @Composable () -> Unit
+) {
+    // Step 1: Resolve dark mode
+    val isDark = darkTheme ?: isSystemInDarkTheme()
+
+    // Step 2: Resolve each token type (custom override or default)
+    val color = configuration.color ?: if (isDark) {
+        Auth0Color.dark()
+    } else {
+        Auth0Color.light()
+    }
+
+    val typography = configuration.typography ?: Auth0Typography.default()
+
+    val shapes = configuration.shapes ?: Auth0Shapes.default()
+
+    val dimensions = configuration.dimensions ?: Auth0Dimensions.default()
+
+    val sizes = configuration.sizes ?: Auth0Sizes.default()
+
+    // Step 3: Single Values wrapper
+    val themeValues = Auth0Theme.Values(
+        colors = color,
+        typography = typography,
+        shapes = shapes,
+        dimensions = dimensions,
+        sizes = sizes,
+    )
+
+    // Step 4: Bridge Auth0 tokens to Material3
+    val material3ColorScheme = color.toMaterial3ColorScheme(isDark)
+    val material3Typography = typography.toMaterial3Typography()
+    val material3Shapes = shapes.toMaterial3Shapes()
+
+    CompositionLocalProvider(
+        LocalAuth0Theme provides themeValues,
+    ) {
+        // Step 5: Wrap with MaterialTheme
+        MaterialTheme(
+            colorScheme = material3ColorScheme,
+            typography = material3Typography,
+            shapes = material3Shapes,
+            content = content
+        )
+    }
+}
+
+/**
+ * Bridges Auth0Color to Material3 ColorScheme.
+ * Maps Auth0 semantic tokens to Material3 slots.
+ */
+private fun Auth0Color.toMaterial3ColorScheme(isDark: Boolean): ColorScheme {
+    return if (isDark) {
+        darkColorScheme(
+            primary = this.backgroundPrimary,
+            onPrimary = this.textOnPrimary,
+            background = this.backgroundLayerBase,
+            surface = this.backgroundLayerMedium,
+            onSurface = this.textDefault,
+            error = this.backgroundError,
+            errorContainer = this.backgroundErrorSubtle,
+            onError = this.textOnError,
+            // Map success to tertiary (Material3 doesn't have semantic "success")
+            tertiary = this.backgroundSuccess,
+            onTertiary = this.textOnSuccess,
+            tertiaryContainer = this.backgroundSuccessSubtle,
+            // Use borderDefault for outline
+            outline = this.borderDefault,
+            // Use textDefault for onSurfaceVariant
+            onSurfaceVariant = this.textDefault
+        )
+    } else {
+        lightColorScheme(
+            primary = this.backgroundPrimary,
+            onPrimary = this.textOnPrimary,
+            background = this.backgroundLayerBase,
+            surface = this.backgroundLayerMedium,
+            onSurface = this.textDefault,
+            error = this.backgroundError,
+            errorContainer = this.backgroundErrorSubtle,
+            onError = this.textOnError,
+            tertiary = this.backgroundSuccess,
+            onTertiary = this.textOnSuccess,
+            tertiaryContainer = this.backgroundSuccessSubtle,
+            outline = this.borderDefault,
+            onSurfaceVariant = this.textDefault
+        )
+    }
+}
+
+/**
+ * Bridges Auth0Typography to Material3 Typography.
+ * Maps Auth0 type scale to Material3 slots.
+ */
+private fun Auth0Typography.toMaterial3Typography(): Typography {
+    return Typography(
+        displayLarge = this.displayLarge,
+        displayMedium = this.displayMedium,
+        displaySmall = this.display,  // Auth0's "display" -> Material3's displaySmall
+        headlineLarge = this.titleLarge,
+        headlineMedium = this.title,
+        bodyMedium = this.body,
+        bodySmall = this.bodySmall,
+        labelMedium = this.label,
+    )
+}
+
+/**
+ * Bridges Auth0Shapes to Material3 Shapes.
+ * Maps Auth0 shape tokens to Material3 slots.
+ */
+private fun Auth0Shapes.toMaterial3Shapes(): Shapes {
+    return Shapes(
+        extraSmall = this.extraSmall,
+        small = this.small,
+        medium = this.medium,
+        large = this.large,
+        extraLarge = this.extraLarge
+    )
+}

@@ -1,7 +1,6 @@
 package com.auth0.android.ui_components.presentation.ui.mfa
 
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -17,11 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,8 +51,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.set
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -72,12 +67,9 @@ import com.auth0.android.ui_components.presentation.ui.utils.ObserveAsEvents
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentEvent
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentUiState
 import com.auth0.android.ui_components.presentation.viewmodel.EnrollmentViewModel
-import com.auth0.android.ui_components.theme.ButtonBlack
-import com.auth0.android.ui_components.theme.contentTextStyle
-import com.auth0.android.ui_components.theme.secondaryTextColor
+import com.auth0.android.ui_components.theme.Auth0Theme
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
-import interFamily
 
 @Composable
 fun QREnrollmentScreen(
@@ -92,6 +84,7 @@ fun QREnrollmentScreen(
         authSession: String,
     ) -> Unit,
 ) {
+    val colors = Auth0Theme.colors
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
@@ -127,7 +120,7 @@ fun QREnrollmentScreen(
                 showSeparator = false
             )
         },
-        containerColor = Color.White
+        containerColor = colors.backgroundLayerBase
     ) { paddingValues ->
         Box(
             modifier = modifier
@@ -158,6 +151,8 @@ private fun QREnrollmentContent(
     viewModel: EnrollmentViewModel,
     onContinueClick: (String, String) -> Unit
 ) {
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
     val totpEnrollment = enrollmentResult as EnrollmentResult.TotpEnrollment
     val manualCode = totpEnrollment.challenge.manualInputCode
     val barcodeUri = totpEnrollment.challenge.barcodeUri
@@ -180,7 +175,7 @@ private fun QREnrollmentContent(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = sizes.paddingLarge),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = if (!hasManualCode) Arrangement.Center else Arrangement.Top
         ) {
@@ -193,11 +188,11 @@ private fun QREnrollmentContent(
                 modifier = Modifier.size(170.dp)
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXl))
 
             InstructionsText()
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXl))
 
             if (hasManualCode) {
                 ManualCodeSection(
@@ -236,7 +231,7 @@ private fun QREnrollmentContent(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(16.dp)
+                .padding(sizes.padding)
         )
     }
 }
@@ -264,12 +259,13 @@ private fun ManualCodeSection(
     manualCode: String,
     onCopyClick: () -> Unit
 ) {
+    val dimensions = Auth0Theme.dimensions
+
     ManualCodeCard(
-        manualCode = manualCode,
-        onCopyClick = onCopyClick
+        manualCode = manualCode
     )
 
-    Spacer(modifier = Modifier.height(16.dp))
+    Spacer(modifier = Modifier.height(dimensions.spacingMd))
 
     CopyCodeButton(
         onCopyClick = onCopyClick
@@ -281,21 +277,27 @@ private fun ManualCodeSection(
 private fun CopyCodeButton(
     onCopyClick: () -> Unit
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
+
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         gradient = Brush.verticalGradient(
             colors = listOf(
-                ButtonBlack.copy(alpha = 0f),
-                ButtonBlack.copy(alpha = 0.05f)
+                colors.backgroundPrimary.copy(alpha = 0f),
+                colors.backgroundPrimary.copy(alpha = 0.05f)
             )
         ),
         buttonDefaultColor = ButtonDefaults.buttonColors(
-            containerColor = Color.White,
-            contentColor = ButtonBlack,
-            disabledContainerColor = Color.White.copy(alpha = 0.6f),
-            disabledContentColor = ButtonBlack.copy(alpha = 0.4f)
+            containerColor = colors.backgroundLayerMedium,
+            contentColor = colors.backgroundPrimary,
+            disabledContainerColor = colors.backgroundLayerMedium.copy(alpha = 0.6f),
+            disabledContentColor = colors.backgroundPrimary.copy(alpha = 0.4f)
         ),
         elevation = ButtonDefaults.buttonElevation(
             defaultElevation = 2.dp,
@@ -304,9 +306,9 @@ private fun CopyCodeButton(
         ),
         borderStroke = BorderStroke(
             width = 1.dp,
-            color = ButtonBlack.copy(alpha = 0.35f)
+            color = colors.backgroundPrimary.copy(alpha = 0.35f)
         ),
-        shape = RoundedCornerShape(16.dp),
+        shape = shapes.large,
         onClick = onCopyClick
     ) {
 
@@ -318,19 +320,16 @@ private fun CopyCodeButton(
             Icon(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
                 contentDescription = "Copy",
-                modifier = Modifier.size(16.dp),
-                tint = Color.Black
+                modifier = Modifier.size(sizes.iconMedium),
+                tint = colors.textBold
             )
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(dimensions.spacingXs))
 
             Text(
                 text = stringResource(R.string.copy_as_code),
-                style = contentTextStyle,
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
-                letterSpacing = 0.em,
-                color = Color.Black
+                style = typography.label,
+                color = colors.textBold
             )
         }
     }
@@ -343,10 +342,12 @@ private fun CopyCodeButton(
 private fun ContinueButtonSection(
     onContinueClick: () -> Unit
 ) {
+    val sizes = Auth0Theme.sizes
+
     GradientButton(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(sizes.buttonHeight),
         gradient = Brush.verticalGradient(
             colors = listOf(
                 Color.White.copy(alpha = 0.15f),
@@ -355,24 +356,29 @@ private fun ContinueButtonSection(
         ),
         onClick = onContinueClick
     ) {
-        Text(stringResource(R.string.continue_button))
+        Text(
+            stringResource(R.string.continue_button),
+            style = Auth0Theme.typography.label
+        )
     }
 }
 
 
 @Composable
 private fun InstructionsText() {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+
     val instructionText =
         "Use your Authenticator App (like Google Authenticator or Auth0 Guardian) to scan this QR code."
 
 
     Text(
-        modifier = Modifier.width(300.dp),
+        modifier = Modifier.fillMaxWidth(0.9f),
         text = instructionText,
-        style = contentTextStyle,
-        fontWeight = FontWeight.Normal,
-        lineHeight = 20.sp,
-        color = secondaryTextColor
+        textAlign = TextAlign.Center,
+        style = typography.body,
+        color = colors.textDefault,
     )
 }
 
@@ -402,44 +408,31 @@ private fun QRCodeDisplay(
 @Composable
 private fun ManualCodeCard(
     manualCode: String,
-    onCopyClick: () -> Unit
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp),
-        shape = RoundedCornerShape(14.dp),
-        color = Color.White,
+            .height(sizes.buttonHeight),
+        shape = shapes.medium,
+        color = colors.backgroundLayerMedium,
         shadowElevation = 6.dp,
     ) {
         Row(
-            modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(sizes.padding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = manualCode,
-                style = contentTextStyle,
-                fontWeight = FontWeight.Normal,
-                lineHeight = 20.sp,
-                letterSpacing = 0.sp,
-                color = Color.Black
+                style = typography.label,
+                color = colors.textDefault,
+                textAlign = TextAlign.Center,
             )
-
-            IconButton(
-                onClick = onCopyClick,
-                modifier = Modifier
-                    .size(24.dp)
-                    .padding(2.dp)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_copy),
-                    contentDescription = "Copy secret code",
-                    tint = Color.Black,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
         }
     }
 }
@@ -448,14 +441,16 @@ private fun ManualCodeCard(
 private fun DownloadLinkText(
     downloadLink: String = "https://play.google.com/store/apps/details?id=com.auth0.guardian&hl=en_IN",
 ) {
+    val colors = Auth0Theme.colors
+
     val annotatedString = buildAnnotatedString {
         withStyle(
             style = SpanStyle(
-                fontFamily = interFamily,
-                color = secondaryTextColor,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Normal,
-                letterSpacing = (0.011).em
+                fontFamily = Auth0Theme.typography.body.fontFamily,
+                fontWeight = Auth0Theme.typography.body.fontWeight,
+                color = colors.textDefault,
+                letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                fontSize = Auth0Theme.typography.body.fontSize
             )
         ) {
             append("Don't have the Auth0 Guardian App?\n")
@@ -467,12 +462,12 @@ private fun DownloadLinkText(
         )
         withStyle(
             style = SpanStyle(
-                color = Color.Black,
-                fontFamily = interFamily,
-                textDecoration = TextDecoration.Underline,
+                fontFamily = Auth0Theme.typography.body.fontFamily,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
-                letterSpacing = 0.em
+                color = colors.textBold,
+                letterSpacing = Auth0Theme.typography.body.letterSpacing,
+                fontSize = Auth0Theme.typography.body.fontSize,
+                textDecoration = TextDecoration.Underline
             )
         ) {
             withLink(LinkAnnotation.Url(url = downloadLink)) {
@@ -492,7 +487,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White),
+                .background(Auth0Theme.colors.backgroundLayerBase),
             contentAlignment = Alignment.Center
         ) {
             CircularLoader()

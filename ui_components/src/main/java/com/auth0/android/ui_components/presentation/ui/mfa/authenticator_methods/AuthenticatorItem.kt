@@ -9,11 +9,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,16 +19,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.auth0.android.ui_components.R
-import com.auth0.android.ui_components.theme.ActiveLabelBackground
-import com.auth0.android.ui_components.theme.ActiveLabelText
-import com.auth0.android.ui_components.theme.AuthenticatorItemBorder
-import com.auth0.android.ui_components.theme.authenticatorItemTitle
+import com.auth0.android.ui_components.theme.Auth0Theme
 
 @Composable
 fun AuthenticatorItem(
@@ -39,66 +32,62 @@ fun AuthenticatorItem(
     showActiveTag: Boolean = false,
     onClick: () -> Unit = {}
 ) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val shapes = Auth0Theme.shapes
+    val sizes = Auth0Theme.sizes
+    val dimensions = Auth0Theme.dimensions
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .height(70.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        shape = shapes.large,
+        color = colors.backgroundLayerMedium,
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
-        border = BorderStroke(1.dp, AuthenticatorItemBorder)
+        border = BorderStroke(1.dp, colors.borderDefault)
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp),
+                .padding(sizes.padding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 painter = leadingIcon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = Color.Black
+                modifier = Modifier.size(sizes.iconMedium),
+                tint = colors.textBold
             )
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(dimensions.spacingMd))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = title,
-                    style = authenticatorItemTitle
+                    style = typography.body,
+                    color = colors.textBold
                 )
 
                 Spacer(Modifier.weight(1f))
                 if (showActiveTag) {
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = ActiveLabelBackground
-                    ) {
-                        Text(
-                            modifier = Modifier
-                                .width(74.dp)
-                                .padding(8.dp),
-                            text = stringResource(R.string.active_label),
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                textAlign = TextAlign.Center
-                            ),
-                            color = ActiveLabelText
-                        )
-                    }
+                    Spacer(modifier = Modifier.width(dimensions.spacingXs))
+                    Icon(
+                        painter = painterResource(R.drawable.ic_active),
+                        contentDescription = stringResource(R.string.active_label),
+                        modifier = Modifier.size(sizes.iconMedium),
+                        tint = Color.Unspecified
+                    )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(dimensions.spacingMd))
 
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = stringResource(R.string.navigate),
-                    tint = Color.Black,
-                    modifier = Modifier.size(16.dp)
+                    tint = colors.textBold,
+                    modifier = Modifier.size(sizes.iconMedium)
                 )
             }
         }
