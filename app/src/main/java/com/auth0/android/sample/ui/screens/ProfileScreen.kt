@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.HorizontalDivider
@@ -134,7 +135,7 @@ fun ProfileScreen(
                     color = colors.borderSubtle
                 )
                 ProfileInfoRow(
-                    icon = Icons.Outlined.Email,
+                    icon = Icons.Outlined.DateRange,
                     text = joinedDate
                 )
             }

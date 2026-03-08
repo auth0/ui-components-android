@@ -19,11 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.navArgument
 import com.auth0.android.Auth0
 import com.auth0.android.authentication.AuthenticationAPIClient
 import com.auth0.android.authentication.storage.CredentialsManager
@@ -46,8 +44,8 @@ import com.auth0.android.sample.ui.screens.SessionsScreen
 import com.auth0.android.sample.ui.screens.Settings
 import com.auth0.android.sample.ui.screens.TokensScreen
 import com.auth0.android.sample.ui.screens.UpdateFullNameScreen
-import com.auth0.android.sample.ui.theme.ThemePreset
 import com.auth0.android.sample.ui.theme.Ui_components_androidTheme
+import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.sample.ui.viewmodels.AuthState
 import com.auth0.android.sample.ui.viewmodels.AuthViewModel
 import com.auth0.android.ui_components.Auth0UI
@@ -114,10 +112,12 @@ fun SampleApp(
     credentialsManager: CredentialsManager,
     webAuthProvider: WebAuthProvider.Builder,
     logoutBuilder: WebAuthProvider.LogoutBuilder,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    appearanceViewModel: AppearanceViewModel = viewModel()
 ) {
     val navController = rememberNavController()
     val userProfile by authViewModel.userProfile.collectAsStateWithLifecycle()
+    val appliedTheme by appearanceViewModel.appliedOption.collectAsStateWithLifecycle()
 
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
 
@@ -153,7 +153,10 @@ fun SampleApp(
         "chooseSignIn"
     }
 
-    Auth0Theme {
+    Auth0Theme(
+        configuration = appliedTheme.configuration,
+        darkTheme = appliedTheme.darkTheme
+    ) {
         NavHost(
             navController = navController,
             startDestination = startDestination,
@@ -231,6 +234,7 @@ fun SampleApp(
                 ProfileScreen(
                     userName = userProfile.name,
                     userEmail = userProfile.email,
+                    currentTheme = appliedTheme.label,
                     onBack = { navController.popBackStack() },
                     onEditName = { navController.navigate("updateFullName") },
                     onTheme = { navController.navigate("appearance") }
@@ -253,8 +257,9 @@ fun SampleApp(
                 LoginSecurityScreen(
                     onBack = { navController.navigateUp() },
                     onManageMfa = {
-                        navController.navigate("settings/0")
-                    }
+                        navController.navigate("settings")
+                    },
+                    themeConfiguration = appliedTheme.configuration
                 )
             }
 
@@ -262,9 +267,7 @@ fun SampleApp(
             composable("appearance") {
                 AppearanceScreen(
                     onBack = { navController.popBackStack() },
-                    onUpdateTheme = { presetIndex ->
-                        navController.navigate("settings/$presetIndex")
-                    }
+                    appearanceViewModel = appearanceViewModel
                 )
             }
 
@@ -282,14 +285,9 @@ fun SampleApp(
                 FavoritesScreen(onBack = { navController.popBackStack() })
             }
 
-            // --- Settings with Theme (existing) ---
-            composable(
-                route = "settings/{presetIndex}",
-                arguments = listOf(navArgument("presetIndex") { type = NavType.IntType })
-            ) { backStackEntry ->
-                val presetIndex = backStackEntry.arguments?.getInt("presetIndex") ?: 0
-                val preset = ThemePreset.all().getOrElse(presetIndex) { ThemePreset.DefaultLight }
-                Settings(themeConfiguration = preset.configuration)
+            // --- Settings (MFA) ---
+            composable("settings") {
+                Settings(themeConfiguration = appliedTheme.configuration)
             }
         }
     }

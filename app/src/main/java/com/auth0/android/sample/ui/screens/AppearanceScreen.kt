@@ -20,26 +20,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.ui_components.presentation.ui.components.GradientButton
 import com.auth0.android.ui_components.presentation.ui.components.TopBar
 import com.auth0.android.ui_components.theme.Auth0Theme
 
 /**
- * Appearance/Theme selection screen matching the Figma design.
+ * Appearance/Theme selection screen.
  *
- * Shows radio buttons for: Automatic, Light, Dark, Custom Theme (Olive), Custom Theme (Purple).
- * The "Update Theme" button navigates to Settings with the selected theme applied.
+ * Shows radio buttons for: Automatic, Light, Dark.
+ * The "Update Theme" button applies the selected theme globally and navigates back.
  *
  * @param onBack Navigate back
- * @param onUpdateTheme Callback with the selected ThemePreset index
+ * @param appearanceViewModel Shared ViewModel that holds the global theme state
  */
 @Composable
 fun AppearanceScreen(
     onBack: () -> Unit,
-    onUpdateTheme: (Int) -> Unit,
-    appearanceViewModel: AppearanceViewModel = viewModel()
+    appearanceViewModel: AppearanceViewModel
 ) {
     val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
@@ -133,7 +131,8 @@ fun AppearanceScreen(
                     .fillMaxWidth()
                     .height(sizes.buttonHeight),
                 onClick = {
-                    onUpdateTheme(appearanceViewModel.getSelectedPresetIndex())
+                    appearanceViewModel.applySelectedTheme()
+                    onBack()
                 }
             ) {
                 Text(

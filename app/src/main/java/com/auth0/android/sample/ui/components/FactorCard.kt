@@ -51,7 +51,7 @@ fun FactorCard(
             .clickable { onClick() },
         shape = shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = Color.White
+            containerColor = Auth0Theme.colors.backgroundLayerBase
         ),
         border = BorderStroke(1.dp, colors.borderBold)
     ) {

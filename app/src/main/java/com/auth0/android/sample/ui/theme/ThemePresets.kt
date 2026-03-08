@@ -162,51 +162,51 @@ AuthenticatorSettingsComponent(
 )""".trimIndent()
     )
 
-    /** Custom olive/dark green brand color matching the Figma "Custom Theme (Olive)". */
-    data object OliveBrand : ThemePreset(
-        name = "Custom Theme (Olive)",
-        description = "Dark olive green primary for an earthy, professional look.",
-        configuration = Auth0ThemeConfiguration(
-            color = Auth0Color.light().copy(
-                backgroundPrimary = Color(0xFF3D4F27),
-                textOnPrimary = Color.White,
-                backgroundLayerBase = Color(0xFFF8F6F0)
-            )
-        ),
-        darkTheme = false,
-        codeSnippet = """
-AuthenticatorSettingsComponent(
-    themeConfiguration = Auth0ThemeConfiguration(
-        color = Auth0Color.light().copy(
-            backgroundPrimary = Color(0xFF3D4F27),
-            textOnPrimary = Color.White,
-            backgroundLayerBase = Color(0xFFF8F6F0)
-        )
-    )
-)""".trimIndent()
-    )
+    // /** Custom olive/dark green brand color matching the Figma "Custom Theme (Olive)". */
+    // data object OliveBrand : ThemePreset(
+    //     name = "Custom Theme (Olive)",
+    //     description = "Dark olive green primary for an earthy, professional look.",
+    //     configuration = Auth0ThemeConfiguration(
+    //         color = Auth0Color.light().copy(
+    //             backgroundPrimary = Color(0xFF3D4F27),
+    //             textOnPrimary = Color.White,
+    //             backgroundLayerBase = Color(0xFFF8F6F0)
+    //         )
+    //     ),
+    //     darkTheme = false,
+    //     codeSnippet = """
+    // AuthenticatorSettingsComponent(
+    //     themeConfiguration = Auth0ThemeConfiguration(
+    //         color = Auth0Color.light().copy(
+    //             backgroundPrimary = Color(0xFF3D4F27),
+    //             textOnPrimary = Color.White,
+    //             backgroundLayerBase = Color(0xFFF8F6F0)
+    //         )
+    //     )
+    // )""".trimIndent()
+    // )
 
-    /** Custom purple brand color matching the Figma "Custom Theme (Purple)". */
-    data object PurpleBrand : ThemePreset(
-        name = "Custom Theme (Purple)",
-        description = "Vibrant purple primary for a bold, modern feel.",
-        configuration = Auth0ThemeConfiguration(
-            color = Auth0Color.light().copy(
-                backgroundPrimary = Color(0xFF6B21A8),
-                textOnPrimary = Color.White
-            )
-        ),
-        darkTheme = false,
-        codeSnippet = """
-AuthenticatorSettingsComponent(
-    themeConfiguration = Auth0ThemeConfiguration(
-        color = Auth0Color.light().copy(
-            backgroundPrimary = Color(0xFF6B21A8),
-            textOnPrimary = Color.White
-        )
-    )
-)""".trimIndent()
-    )
+    // /** Custom purple brand color matching the Figma "Custom Theme (Purple)". */
+    // data object PurpleBrand : ThemePreset(
+    //     name = "Custom Theme (Purple)",
+    //     description = "Vibrant purple primary for a bold, modern feel.",
+    //     configuration = Auth0ThemeConfiguration(
+    //         color = Auth0Color.light().copy(
+    //             backgroundPrimary = Color(0xFF6B21A8),
+    //             textOnPrimary = Color.White
+    //         )
+    //     ),
+    //     darkTheme = false,
+    //     codeSnippet = """
+    // AuthenticatorSettingsComponent(
+    //     themeConfiguration = Auth0ThemeConfiguration(
+    //         color = Auth0Color.light().copy(
+    //             backgroundPrimary = Color(0xFF6B21A8),
+    //             textOnPrimary = Color.White
+    //         )
+    //     )
+    // )""".trimIndent()
+    // )
 
     companion object {
         fun all(): List<ThemePreset> = listOf(
@@ -216,8 +216,8 @@ AuthenticatorSettingsComponent(
             TealBrand,
             CompactShapes,
             BoldShapes,
-            OliveBrand,
-            PurpleBrand
+            // OliveBrand,
+            // PurpleBrand
         )
     }
 }
