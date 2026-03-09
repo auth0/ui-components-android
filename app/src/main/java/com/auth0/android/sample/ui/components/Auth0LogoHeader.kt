@@ -9,6 +9,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.auth0.android.sample.R
 import com.auth0.android.ui_components.theme.Auth0Theme
@@ -33,7 +34,8 @@ fun Auth0LogoHeader(
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            painterResource(R.drawable.ic_auth0), contentDescription = "Auth0 logo"
+            painterResource(R.drawable.ic_auth0), contentDescription = "Auth0 logo",
+            tint = Color.Unspecified
         )
     }
 }

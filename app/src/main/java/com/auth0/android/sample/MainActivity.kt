@@ -44,6 +44,7 @@ import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.sample.ui.viewmodels.AuthState
 import com.auth0.android.sample.ui.viewmodels.AuthViewModel
 import com.auth0.android.ui_components.Auth0UI
+import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
 import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.token.DefaultTokenProvider
 
@@ -134,13 +135,11 @@ fun SampleApp(
         }
 
         is AuthState.Error -> {
-            Toast.makeText(
-                LocalContext.current,
-                (authState as AuthState.Error).message,
-                Toast.LENGTH_SHORT
+            ErrorScreen(
+                mainErrorMessage = (authState as AuthState.Error).message
             )
-                .show()
         }
+
 
         else -> {
             Log.d("LoginScreen", ": ${authState}")
@@ -148,7 +147,7 @@ fun SampleApp(
     }
 
     // Determine start destination based on existing credentials
-    val startDestination: Any = if (credentialsManager.hasValidCredentials()) {
+    val startDestination = if (credentialsManager.hasValidCredentials()) {
         // Load profile from existing credentials on resume
         authViewModel.loadProfileFromCredentials(credentialsManager)
         AppRoute.Dashboard

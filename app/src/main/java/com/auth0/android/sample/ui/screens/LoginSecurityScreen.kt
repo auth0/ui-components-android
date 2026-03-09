@@ -23,11 +23,8 @@ fun LoginSecurityScreen(
     val colors = Auth0Theme.colors
 
     Scaffold(
-//        topBar = {
-//            TopBar(title = "", showBackNavigation = true, onBackClick = onBack)
-//        },
         containerColor = colors.backgroundLayerBase
-    ) { padding ->
+    ) { _ ->
         AuthenticatorSettingsComponent(themeConfiguration = themeConfiguration)
     }
 }

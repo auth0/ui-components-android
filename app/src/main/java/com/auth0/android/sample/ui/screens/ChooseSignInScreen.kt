@@ -83,7 +83,7 @@ fun ChooseSignInScreen(
         ) {
             Icon(
                 painter = painterResource(com.auth0.android.sample.R.drawable.ic_appearance_prefix),
-                contentDescription = "Add Icon",
+                contentDescription = "Appearance",
                 tint = Auth0Theme.colors.backgroundPrimary,
                 modifier = Modifier.padding(end = 8.dp)
             )

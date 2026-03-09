@@ -91,7 +91,7 @@ class AuthViewModel : ViewModel() {
                 _userProfile.value = UserProfile()
                 _authState.value = AuthState.Idle
             } catch (e: AuthenticationException) {
-                Log.e("TAG", "logout: ${e.printStackTrace()}")
+                Log.e("TAG", "logout: ${e.stackTraceToString()}")
                 _authState.value = AuthState.Error(e.message ?: "Logout failed")
             }
         }
