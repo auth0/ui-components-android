@@ -6,16 +6,11 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,6 +23,7 @@ import com.auth0.android.authentication.storage.CredentialsManager
 import com.auth0.android.authentication.storage.SharedPreferencesStorage
 import com.auth0.android.provider.WebAuthProvider
 import com.auth0.android.request.DefaultClient
+import com.auth0.android.sample.ui.navigation.AppRoute
 import com.auth0.android.sample.ui.screens.AppearanceScreen
 import com.auth0.android.sample.ui.screens.ChooseSignInScreen
 import com.auth0.android.sample.ui.screens.DashboardDestination
@@ -125,8 +121,8 @@ fun SampleApp(
     when (authState) {
         is AuthState.Authenticated -> {
             credentialsManager.saveCredentials((authState as AuthState.Authenticated).credentials)
-            navController.navigate("dashboard") {
-                popUpTo("chooseSignIn") { inclusive = true }
+            navController.navigate(AppRoute.Dashboard) {
+                popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
             }
         }
 
@@ -145,12 +141,12 @@ fun SampleApp(
     }
 
     // Determine start destination based on existing credentials
-    val startDestination = if (credentialsManager.hasValidCredentials()) {
+    val startDestination: Any = if (credentialsManager.hasValidCredentials()) {
         // Load profile from existing credentials on resume
         authViewModel.loadProfileFromCredentials(credentialsManager)
-        "dashboard"
+        AppRoute.Dashboard
     } else {
-        "chooseSignIn"
+        AppRoute.ChooseSignIn
     }
 
     Auth0Theme(
@@ -162,58 +158,58 @@ fun SampleApp(
             startDestination = startDestination,
         ) {
 
-            composable("chooseSignIn") {
+            composable<AppRoute.ChooseSignIn> {
                 val context = LocalContext.current
                 ChooseSignInScreen(
                     onHostedLogin = { authViewModel.login(context, webAuthProvider) },
-                    onEmbeddedLogin = { navController.navigate("embeddedLogin") },
-                    onSettings = { navController.navigate("appearance") }
+                    onEmbeddedLogin = { navController.navigate(AppRoute.EmbeddedLogin) },
+                    onSettings = { navController.navigate(AppRoute.Appearance) }
                 )
             }
 
-            composable("embeddedLogin") {
+            composable<AppRoute.EmbeddedLogin> {
                 EmbeddedLoginScreen(
                     onGoogleLogin = {
-                        navController.navigate("login")
+                        navController.navigate(AppRoute.Login)
                     },
                     onContinueWithEmail = { _ ->
-                        navController.navigate("login")
+                        navController.navigate(AppRoute.Login)
                     },
-                    onOtherMethods = { navController.navigate("exploreLogin") },
+                    onOtherMethods = { navController.navigate(AppRoute.ExploreLogin) },
                     onBack = { navController.popBackStack() }
                 )
             }
 
-            composable("exploreLogin") {
+            composable<AppRoute.ExploreLogin> {
                 ExploreLoginScreen(
                     onBack = { navController.popBackStack() }
                 )
             }
 
-            composable("login") {
+            composable<AppRoute.Login> {
                 LoginScreen(
                     webAuthProvider = webAuthProvider,
                     authViewModel = authViewModel,
                     onLoginSuccess = { credentials ->
                         credentialsManager.saveCredentials(credentials)
-                        navController.navigate("dashboard") {
-                            popUpTo("chooseSignIn") { inclusive = true }
+                        navController.navigate(AppRoute.Dashboard) {
+                            popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
                         }
                     }
                 )
             }
 
-            composable("dashboard") {
+            composable<AppRoute.Dashboard> {
                 DashboardScreen(
                     userName = userProfile.name,
                     onNavigate = { destination ->
                         when (destination) {
-                            DashboardDestination.Profile -> navController.navigate("profile")
-                            DashboardDestination.LoginSecurity -> navController.navigate("loginSecurity")
-                            DashboardDestination.Tokens -> navController.navigate("tokens")
-                            DashboardDestination.Sessions -> navController.navigate("sessions")
-                            DashboardDestination.Docs -> navController.navigate("docs")
-                            DashboardDestination.Favorites -> navController.navigate("favorites")
+                            DashboardDestination.Profile -> navController.navigate(AppRoute.Profile)
+                            DashboardDestination.LoginSecurity -> navController.navigate(AppRoute.LoginSecurity)
+                            DashboardDestination.Tokens -> navController.navigate(AppRoute.Tokens)
+                            DashboardDestination.Sessions -> navController.navigate(AppRoute.Sessions)
+                            DashboardDestination.Docs -> navController.navigate(AppRoute.Docs)
+                            DashboardDestination.Favorites -> navController.navigate(AppRoute.Favorites)
                         }
                     },
                     onLogout = {
@@ -222,49 +218,49 @@ fun SampleApp(
                             credentialsManager,
                             logoutBuilder
                         )
-                        navController.navigate("chooseSignIn") {
-                            popUpTo(0) { inclusive = true }
+                        navController.navigate(AppRoute.ChooseSignIn) {
+                            popUpTo(navController.graph.id) { inclusive = true }
                         }
                     }
                 )
             }
 
             // --- Profile ---
-            composable("profile") {
+            composable<AppRoute.Profile> {
                 ProfileScreen(
                     userName = userProfile.name,
                     userEmail = userProfile.email,
                     currentTheme = appliedTheme.label,
                     onBack = { navController.popBackStack() },
-                    onEditName = { navController.navigate("updateFullName") },
-                    onTheme = { navController.navigate("appearance") }
+                    onEditName = { navController.navigate(AppRoute.UpdateFullName) },
+                    onTheme = { navController.navigate(AppRoute.Appearance) }
                 )
             }
 
-            composable("updateFullName") {
+            composable<AppRoute.UpdateFullName> {
                 UpdateFullNameScreen(
                     onBack = { navController.popBackStack() }
                 )
             }
 
-            composable("enablePasskey") {
+            composable<AppRoute.EnablePasskey> {
                 EnablePasskeyScreen(
                     onBack = { navController.popBackStack() }
                 )
             }
 
-            composable("loginSecurity") {
+            composable<AppRoute.LoginSecurity> {
                 LoginSecurityScreen(
                     onBack = { navController.navigateUp() },
                     onManageMfa = {
-                        navController.navigate("settings")
+                        navController.navigate(AppRoute.Settings)
                     },
                     themeConfiguration = appliedTheme.configuration
                 )
             }
 
             // --- Appearance ---
-            composable("appearance") {
+            composable<AppRoute.Appearance> {
                 AppearanceScreen(
                     onBack = { navController.popBackStack() },
                     appearanceViewModel = appearanceViewModel
@@ -272,21 +268,21 @@ fun SampleApp(
             }
 
             // --- Placeholder Screens ---
-            composable("tokens") {
+            composable<AppRoute.Tokens> {
                 TokensScreen(onBack = { navController.popBackStack() })
             }
-            composable("sessions") {
+            composable<AppRoute.Sessions> {
                 SessionsScreen(onBack = { navController.popBackStack() })
             }
-            composable("docs") {
+            composable<AppRoute.Docs> {
                 DocsScreen(onBack = { navController.popBackStack() })
             }
-            composable("favorites") {
+            composable<AppRoute.Favorites> {
                 FavoritesScreen(onBack = { navController.popBackStack() })
             }
 
             // --- Settings (MFA) ---
-            composable("settings") {
+            composable<AppRoute.Settings> {
                 Settings(themeConfiguration = appliedTheme.configuration)
             }
         }
