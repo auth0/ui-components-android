@@ -224,6 +224,20 @@ class TokenManagerTest {
     }
 
     @Test
+    fun `saveToken - multi-scope token - also cached under combined scope key`() = runTest {
+        val multiScope = "read:users write:users"
+        tokenManager.saveToken(testAudience, multiScope, TestData.multiScopeApiCredentials)
+
+        val tokenForCombined = tokenManager.fetchToken(testAudience, multiScope)
+
+        assertThat(tokenForCombined).isEqualTo("multi_scope_token_abc")
+
+        coVerify(exactly = 0) {
+            mockTokenProvider.fetchApiCredentials(any(), any())
+        }
+    }
+
+    @Test
     fun `fetchToken - multi-scope response - caches for each individual scope`() = runTest {
         val multiScope = "read:data write:data"
         coEvery {

@@ -33,8 +33,7 @@ class TokenManager private constructor() {
     private val tokenProvider = Auth0UI.tokenProvider
     private val account = Auth0UI.account
 
-    private val tokenMap: ConcurrentHashMap<String, ConcurrentHashMap<String, APICredentials>> =
-        ConcurrentHashMap()
+    private val tokenMap: ConcurrentHashMap<String, APICredentials> = ConcurrentHashMap()
 
     /**
      * Gets the audience for MyAccount API
@@ -50,9 +49,7 @@ class TokenManager private constructor() {
      */
     suspend fun fetchToken(audience: String, scope: String): String {
 
-        val scopeMap = tokenMap.getOrPut(audience) { ConcurrentHashMap() }
-
-        val cachedCredentials = scopeMap[scope]
+        val cachedCredentials = tokenMap[cacheKey(audience, scope)]
         if (cachedCredentials != null) {
             if (!willTokenExpire(cachedCredentials.expiresAt.time)) {
                 Log.d(TAG, "Returning cached token for audience: $audience, scope: $scope")
@@ -64,27 +61,27 @@ class TokenManager private constructor() {
         val credentials = tokenProvider.fetchApiCredentials(audience, scope)
 
         // Saving the same token for scenario where we request multiple scopes together
-        saveToScopeCache(scopeMap, scope, credentials)
+        saveToScopeCache(audience, scope, credentials)
         return credentials.accessToken
     }
 
     fun saveToken(audience: String, scope: String, credentials: APICredentials) {
-        val scopeMap = tokenMap.getOrPut(audience) { ConcurrentHashMap() }
-        saveToScopeCache(scopeMap, scope, credentials)
+        saveToScopeCache(audience, scope, credentials)
     }
 
+    private fun cacheKey(audience: String, scope: String): String = "$audience|$scope"
 
     private fun saveToScopeCache(
-        scopeMap: ConcurrentHashMap<String, APICredentials>,
+        audience: String,
         scope: String,
         credentials: APICredentials
     ) {
-        scopeMap[scope] = credentials
+        tokenMap[cacheKey(audience, scope)] = credentials
         val splitScope = scope.split(" ")
         if (splitScope.size > 1) {
             splitScope.forEach {
                 Log.d(TAG, "token:$it ")
-                scopeMap[it] = credentials
+                tokenMap[cacheKey(audience, it)] = credentials
             }
         }
     }
