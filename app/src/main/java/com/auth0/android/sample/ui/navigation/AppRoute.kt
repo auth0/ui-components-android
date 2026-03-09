@@ -15,7 +15,7 @@ sealed interface AppRoute {
     data object ExploreLogin : AppRoute
 
     @Serializable
-    data object Login : AppRoute
+    data object GoogleLogin : AppRoute
 
     @Serializable
     data object Dashboard : AppRoute

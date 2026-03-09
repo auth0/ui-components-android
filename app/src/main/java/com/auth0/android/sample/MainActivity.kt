@@ -33,7 +33,6 @@ import com.auth0.android.sample.ui.screens.EmbeddedLoginScreen
 import com.auth0.android.sample.ui.screens.EnablePasskeyScreen
 import com.auth0.android.sample.ui.screens.ExploreLoginScreen
 import com.auth0.android.sample.ui.screens.FavoritesScreen
-import com.auth0.android.sample.ui.screens.LoginScreen
 import com.auth0.android.sample.ui.screens.LoginSecurityScreen
 import com.auth0.android.sample.ui.screens.ProfileScreen
 import com.auth0.android.sample.ui.screens.SessionsScreen
@@ -178,7 +177,7 @@ fun SampleApp(
             composable<AppRoute.EmbeddedLogin> {
                 EmbeddedLoginScreen(
                     onGoogleLogin = {
-                        navController.navigate(AppRoute.Login)
+                        navController.navigate(AppRoute.GoogleLogin)
                     },
                     onContinueWithEmail = { email, password ->
                         authViewModel.loginWithPassword(email, password, authClient, audience)
@@ -194,17 +193,8 @@ fun SampleApp(
                 )
             }
 
-            composable<AppRoute.Login> {
-                LoginScreen(
-                    webAuthProvider = webAuthProvider,
-                    authViewModel = authViewModel,
-                    onLoginSuccess = { credentials ->
-                        credentialsManager.saveCredentials(credentials)
-                        navController.navigate(AppRoute.Dashboard) {
-                            popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
-                        }
-                    }
-                )
+            composable<AppRoute.GoogleLogin> {
+                // Add support for Google Login
             }
 
             composable<AppRoute.Dashboard> {
