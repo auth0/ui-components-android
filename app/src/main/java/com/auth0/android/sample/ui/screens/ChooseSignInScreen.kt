@@ -88,7 +88,7 @@ fun ChooseSignInScreen(
                 modifier = Modifier.padding(end = 8.dp)
             )
             Text(
-                text = "Appearance", style = Auth0Theme.typography.title
+                text = "Appearance", style = Auth0Theme.typography.title, color = Auth0Theme.colors.textBold
             )
         }
 

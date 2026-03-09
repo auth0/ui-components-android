@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.auth0.android.authentication.AuthenticationAPIClient
 import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.authentication.storage.CredentialsManager
 import com.auth0.android.provider.WebAuthProvider
@@ -49,6 +50,30 @@ class AuthViewModel : ViewModel() {
             } catch (e: AuthenticationException) {
                 Log.e("TAG", "login: ${e.printStackTrace()}")
                 _authState.value = AuthState.Error(e.message ?: "An unknown error occurred")
+            }
+        }
+    }
+
+    fun loginWithPassword(
+        email: String,
+        password: String,
+        authClient: AuthenticationAPIClient,
+        audience: String
+    ) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                val credentials = authClient
+                    .login(email, password, "Username-Password-Authentication")
+                    .setScope(scope)
+                    .setAudience(audience)
+                    .validateClaims()
+                    .await()
+                extractUserProfile(credentials)
+                _authState.value = AuthState.Authenticated(credentials)
+            } catch (e: AuthenticationException) {
+                Log.e("TAG", "loginWithPassword: ${e.printStackTrace()}")
+                _authState.value = AuthState.Error(e.message ?: "Login failed")
             }
         }
     }

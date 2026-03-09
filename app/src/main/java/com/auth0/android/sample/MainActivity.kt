@@ -59,8 +59,12 @@ class MainActivity : ComponentActivity() {
         account
     }
 
+    private val authClient: AuthenticationAPIClient by lazy {
+        AuthenticationAPIClient(account)
+    }
+
     private val credentialsManager: CredentialsManager by lazy {
-        CredentialsManager(AuthenticationAPIClient(account), SharedPreferencesStorage(this))
+        CredentialsManager(authClient, SharedPreferencesStorage(this))
     }
 
     private val audience: String by lazy {
@@ -95,7 +99,9 @@ class MainActivity : ComponentActivity() {
                     SampleApp(
                         credentialsManager = credentialsManager,
                         webAuthProvider = webAuthProvider,
-                        logoutBuilder = logoutBuilder
+                        logoutBuilder = logoutBuilder,
+                        authClient = authClient,
+                        audience = audience
                     )
                 }
             }
@@ -108,6 +114,8 @@ fun SampleApp(
     credentialsManager: CredentialsManager,
     webAuthProvider: WebAuthProvider.Builder,
     logoutBuilder: WebAuthProvider.LogoutBuilder,
+    authClient: AuthenticationAPIClient,
+    audience: String,
     authViewModel: AuthViewModel = viewModel(),
     appearanceViewModel: AppearanceViewModel = viewModel()
 ) {
@@ -172,8 +180,8 @@ fun SampleApp(
                     onGoogleLogin = {
                         navController.navigate(AppRoute.Login)
                     },
-                    onContinueWithEmail = { _ ->
-                        navController.navigate(AppRoute.Login)
+                    onContinueWithEmail = { email, password ->
+                        authViewModel.loginWithPassword(email, password, authClient, audience)
                     },
                     onOtherMethods = { navController.navigate(AppRoute.ExploreLogin) },
                     onBack = { navController.popBackStack() }

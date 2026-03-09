@@ -1,5 +1,6 @@
 package com.auth0.android.sample.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +24,7 @@ import androidx.compose.ui.res.painterResource
 import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.FactorCard
 import com.auth0.android.sample.ui.components.SectionHeader
+import com.auth0.android.sample.ui.theme.BackGroundColor
 import com.auth0.android.ui_components.R
 import com.auth0.android.ui_components.theme.Auth0Theme
 
@@ -49,6 +51,7 @@ fun ExploreLoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(BackGroundColor)
             .verticalScroll(rememberScrollState())
             .padding(horizontal = dimensions.spacingLg),
         horizontalAlignment = Alignment.CenterHorizontally
