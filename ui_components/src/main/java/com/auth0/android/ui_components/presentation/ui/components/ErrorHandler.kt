@@ -33,11 +33,15 @@ fun ErrorHandler(
 
             if (mfaError != null) {
                 ErrorScreen(
-                    mainErrorMessage = mfaError?.message.orEmpty(),
-                    onRetryClick = uiError.onRetry
+                    mainErrorMessage = mfaError?.message?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.unable_to_process_contact),
+                    onRetryClick = {
+                        mfaError = null
+                        uiError.onRetry()
+                    }
                 )
             } else {
-                LaunchedEffect(Unit) {
+                LaunchedEffect(error.mfaScope) {
                     mfaRecoveryHandler(context, error.mfaScope)
                         .onSuccess {
                             TokenManager.getInstance().apply {
