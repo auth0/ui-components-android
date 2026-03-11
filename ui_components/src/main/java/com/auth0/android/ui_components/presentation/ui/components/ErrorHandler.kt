@@ -2,6 +2,10 @@ package com.auth0.android.ui_components.presentation.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -21,18 +25,33 @@ fun ErrorHandler(
 ) {
     when (val error = uiError.error) {
         is Auth0Error.MfaRequired -> {
+            /**
+             * Handle this with native UI instead of UL flow
+             */
+            var mfaError by remember { mutableStateOf<Auth0Error?>(null) }
             val context = LocalContext.current
-            LaunchedEffect(Unit) {
-                mfaRecoveryHandler(
-                    context,
-                    error.mfaScope
-                ).onSuccess {
-                    TokenManager.getInstance().apply {
-                        saveToken(getMyAccountAudience(), error.mfaScope, it)
-                    }
-                    uiError.onRetry.invoke()
-                }.onError {
 
+            if (mfaError != null) {
+                ErrorScreen(
+                    mainErrorMessage = mfaError?.message?.takeIf { it.isNotBlank() }
+                        ?: stringResource(R.string.unable_to_process_contact),
+                    onRetryClick = {
+                        mfaError = null
+                        uiError.onRetry()
+                    }
+                )
+            } else {
+                LaunchedEffect(error.mfaScope) {
+                    mfaRecoveryHandler(context, error.mfaScope)
+                        .onSuccess {
+                            TokenManager.getInstance().apply {
+                                saveToken(getMyAccountAudience(), error.mfaScope, it)
+                            }
+                            uiError.onRetry.invoke()
+                        }
+                        .onError {
+                            mfaError = it
+                        }
                 }
             }
         }
