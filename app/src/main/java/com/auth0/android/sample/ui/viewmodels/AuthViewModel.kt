@@ -9,9 +9,11 @@ import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.authentication.storage.CredentialsManager
 import com.auth0.android.provider.WebAuthProvider
 import com.auth0.android.result.Credentials
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 
@@ -38,6 +40,15 @@ class AuthViewModel : ViewModel() {
     private val _userProfile: MutableStateFlow<UserProfile> = MutableStateFlow(UserProfile())
     val userProfile: StateFlow<UserProfile> = _userProfile.asStateFlow()
 
+    private val _loginError = Channel<String>(Channel.BUFFERED)
+    val loginError = _loginError.receiveAsFlow()
+
+    fun sendLoginError(message: String) {
+        viewModelScope.launch {
+            _loginError.send(message)
+        }
+    }
+
     fun login(context: Context, webAuthProvider: WebAuthProvider.Builder) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
@@ -48,8 +59,13 @@ class AuthViewModel : ViewModel() {
                 extractUserProfile(credentials)
                 _authState.value = AuthState.Authenticated(credentials)
             } catch (e: AuthenticationException) {
-                Log.e("TAG", "login: ${e.printStackTrace()}")
-                _authState.value = AuthState.Error(e.message ?: "An unknown error occurred")
+                if (e.isBrowserAppNotAvailable || e.isCanceled) {
+                    Log.d("TAG", "login: User cancelled or browser not available")
+                    _authState.value = AuthState.Idle
+                } else {
+                    Log.e("TAG", "login: ${e.printStackTrace()}")
+                    _authState.value = AuthState.Error(e.message ?: "An unknown error occurred")
+                }
             }
         }
     }
@@ -73,7 +89,8 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.Authenticated(credentials)
             } catch (e: AuthenticationException) {
                 Log.e("TAG", "loginWithPassword: ${e.printStackTrace()}")
-                _authState.value = AuthState.Error(e.message ?: "Login failed")
+                _loginError.send(e.getDescription())
+                _authState.value = AuthState.Idle
             }
         }
     }

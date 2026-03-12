@@ -8,8 +8,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -43,7 +47,6 @@ import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.sample.ui.viewmodels.AuthState
 import com.auth0.android.sample.ui.viewmodels.AuthViewModel
 import com.auth0.android.ui_components.Auth0UI
-import com.auth0.android.ui_components.presentation.ui.components.ErrorScreen
 import com.auth0.android.ui_components.theme.Auth0Theme
 import com.auth0.android.ui_components.token.DefaultTokenProvider
 
@@ -125,23 +128,25 @@ fun SampleApp(
     val authState by authViewModel.authState.collectAsStateWithLifecycle()
 
 
-    when (authState) {
-        is AuthState.Authenticated -> {
-            credentialsManager.saveCredentials((authState as AuthState.Authenticated).credentials)
-            navController.navigate(AppRoute.Dashboard) {
-                popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
+    LaunchedEffect(authState) {
+        when (authState) {
+            is AuthState.Authenticated -> {
+                credentialsManager.saveCredentials((authState as AuthState.Authenticated).credentials)
+                navController.navigate(AppRoute.Dashboard) {
+                    popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
+                }
             }
-        }
 
-        is AuthState.Error -> {
-            ErrorScreen(
-                mainErrorMessage = (authState as AuthState.Error).message
-            )
-        }
+            is AuthState.Error -> {
+                Log.e("SampleApp", "Auth error: ${(authState as AuthState.Error).message}")
+                navController.navigate(AppRoute.ChooseSignIn) {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                }
+            }
 
-
-        else -> {
-            Log.d("LoginScreen", ": ${authState}")
+            else -> {
+                Log.d("SampleApp", "Auth state: $authState")
+            }
         }
     }
 
@@ -174,16 +179,34 @@ fun SampleApp(
 
             composable<AppRoute.EmbeddedLogin> {
                 val context = LocalContext.current
-                EmbeddedLoginScreen(
-                    onGoogleLogin = {
-                        Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
-                    },
-                    onContinueWithEmail = { email, password ->
-                        authViewModel.loginWithPassword(email, password, authClient, audience)
-                    },
-                    onOtherMethods = { navController.navigate(AppRoute.ExploreLogin) },
-                    onBack = { navController.popBackStack() }
-                )
+                val snackbarHostState = remember { SnackbarHostState() }
+
+                LaunchedEffect(Unit) {
+                    authViewModel.loginError.collect { message ->
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
+
+                Scaffold(
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent
+                ) { _ ->
+                    EmbeddedLoginScreen(
+                        onGoogleLogin = {
+                            Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
+                        },
+                        onContinueWithEmail = { email, password ->
+                            when {
+                                email.isBlank() -> authViewModel.sendLoginError("Email is required")
+                                !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> authViewModel.sendLoginError("Enter a valid email address")
+                                password.isBlank() -> authViewModel.sendLoginError("Password is required")
+                                else -> authViewModel.loginWithPassword(email, password, authClient, audience)
+                            }
+                        },
+                        onOtherMethods = { navController.navigate(AppRoute.ExploreLogin) },
+                        onBack = { navController.popBackStack() }
+                    )
+                }
             }
 
             composable<AppRoute.ExploreLogin> {
