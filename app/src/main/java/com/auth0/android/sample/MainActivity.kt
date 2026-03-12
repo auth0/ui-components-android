@@ -30,7 +30,6 @@ import com.auth0.android.sample.ui.screens.DashboardDestination
 import com.auth0.android.sample.ui.screens.DashboardScreen
 import com.auth0.android.sample.ui.screens.DocsScreen
 import com.auth0.android.sample.ui.screens.EmbeddedLoginScreen
-import com.auth0.android.sample.ui.screens.EnablePasskeyScreen
 import com.auth0.android.sample.ui.screens.ExploreLoginScreen
 import com.auth0.android.sample.ui.screens.FavoritesScreen
 import com.auth0.android.sample.ui.screens.LoginSecurityScreen
@@ -174,9 +173,10 @@ fun SampleApp(
             }
 
             composable<AppRoute.EmbeddedLogin> {
+                val context = LocalContext.current
                 EmbeddedLoginScreen(
                     onGoogleLogin = {
-                        navController.navigate(AppRoute.GoogleLogin)
+                        Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
                     },
                     onContinueWithEmail = { email, password ->
                         authViewModel.loginWithPassword(email, password, authClient, audience)
@@ -236,12 +236,6 @@ fun SampleApp(
 
             composable<AppRoute.UpdateFullName> {
                 UpdateFullNameScreen(
-                    onBack = { navController.popBackStack() }
-                )
-            }
-
-            composable<AppRoute.EnablePasskey> {
-                EnablePasskeyScreen(
                     onBack = { navController.popBackStack() }
                 )
             }

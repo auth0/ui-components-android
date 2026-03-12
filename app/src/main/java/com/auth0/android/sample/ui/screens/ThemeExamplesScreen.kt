@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.auth0.android.sample.ui.theme.ThemePreset
+import com.auth0.android.ui_components.theme.Auth0Dimensions
+import com.auth0.android.ui_components.theme.Auth0Shapes
 
 /**
  * Theme selection screen displayed before the AuthenticatorSettingsComponent.
@@ -39,25 +40,26 @@ import com.auth0.android.sample.ui.theme.ThemePreset
  */
 @Composable
 fun ThemeSelectionScreen(onThemeSelected: (Int) -> Unit) {
+    val dimensions = Auth0Dimensions.default()
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .padding(horizontal = dimensions.spacingMd),
+        verticalArrangement = Arrangement.spacedBy(dimensions.spacingSm)
     ) {
         item {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
             Text(
                 text = "Select a Theme",
                 style = MaterialTheme.typography.headlineMedium
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXxs))
             Text(
                 text = "Choose a theme to apply to the Authenticator Settings component.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingXs))
         }
 
         itemsIndexed(ThemePreset.all()) { index, preset ->
@@ -68,7 +70,7 @@ fun ThemeSelectionScreen(onThemeSelected: (Int) -> Unit) {
         }
 
         item {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
         }
     }
 }
@@ -81,23 +83,25 @@ private fun ThemeSelectionCard(
     preset: ThemePreset,
     onClick: () -> Unit
 ) {
+    val dimensions = Auth0Dimensions.default()
+    val shapes = Auth0Shapes.default()
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
+        shape = shapes.medium
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(dimensions.spacingMd),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Color swatch showing the preset's primary + background colors
             ThemeColorSwatch(preset)
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(dimensions.spacingMd))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -124,12 +128,13 @@ private fun ThemeColorSwatch(preset: ThemePreset) {
     val primaryColor = colors?.backgroundPrimary ?: MaterialTheme.colorScheme.primary
     val bgColor = colors?.backgroundLayerBase ?: MaterialTheme.colorScheme.background
 
+    val shapes = Auth0Shapes.default()
     val shape = if (preset is ThemePreset.BoldShapes) {
-        RoundedCornerShape(16.dp)
+        shapes.large
     } else if (preset is ThemePreset.CompactShapes) {
-        RoundedCornerShape(4.dp)
+        shapes.extraSmall
     } else {
-        RoundedCornerShape(10.dp)
+        shapes.medium
     }
 
     Box(

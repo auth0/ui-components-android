@@ -46,9 +46,9 @@ import com.auth0.android.ui_components.theme.Auth0Theme
  */
 @Composable
 fun ProfileScreen(
-    userName: String = "Sarah Doe",
-    userEmail: String = "sarah.doe@example.com",
-    joinedDate: String = "January 8th 2026, 2:14:07",
+    userName: String,
+    userEmail: String,
+    joinedDate: String? = null,
     currentTheme: String = "Automatic",
     onBack: () -> Unit,
     onEditName: () -> Unit,
@@ -120,24 +120,28 @@ fun ProfileScreen(
                     text = userName,
                     onClick = onEditName
                 )
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = dimensions.spacingLg),
-                    thickness = 0.5.dp,
-                    color = colors.borderSubtle
-                )
-                ProfileInfoRow(
-                    icon = Icons.Outlined.Email,
-                    text = userEmail
-                )
-                HorizontalDivider(
-                    modifier = Modifier.padding(horizontal = dimensions.spacingLg),
-                    thickness = 0.5.dp,
-                    color = colors.borderSubtle
-                )
-                ProfileInfoRow(
-                    icon = Icons.Outlined.DateRange,
-                    text = joinedDate
-                )
+                if (userEmail.isNotEmpty()) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = dimensions.spacingLg),
+                        thickness = 0.5.dp,
+                        color = colors.borderSubtle
+                    )
+                    ProfileInfoRow(
+                        icon = Icons.Outlined.Email,
+                        text = userEmail
+                    )
+                }
+                if (joinedDate != null) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = dimensions.spacingLg),
+                        thickness = 0.5.dp,
+                        color = colors.borderSubtle
+                    )
+                    ProfileInfoRow(
+                        icon = Icons.Outlined.DateRange,
+                        text = joinedDate
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(dimensions.spacingXl))
@@ -201,6 +205,7 @@ private fun ProfileInfoRow(
     val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
     val dimensions = Auth0Theme.dimensions
+    val sizes = Auth0Theme.sizes
 
     Row(
         modifier = Modifier
@@ -216,7 +221,7 @@ private fun ProfileInfoRow(
             imageVector = icon,
             contentDescription = null,
             tint = colors.textDefault,
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(sizes.iconMedium)
         )
         Spacer(modifier = Modifier.width(dimensions.spacingMd))
         Text(

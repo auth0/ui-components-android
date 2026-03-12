@@ -27,9 +27,6 @@ sealed interface AppRoute {
     data object UpdateFullName : AppRoute
 
     @Serializable
-    data object EnablePasskey : AppRoute
-
-    @Serializable
     data object LoginSecurity : AppRoute
 
     @Serializable

@@ -43,6 +43,7 @@ fun NavigationGridCard(
     val typography = Auth0Theme.typography
     val shapes = Auth0Theme.shapes
     val dimensions = Auth0Theme.dimensions
+    val sizes = Auth0Theme.sizes
 
     Card(
         modifier = Modifier
@@ -63,7 +64,7 @@ fun NavigationGridCard(
             Icon(
                 imageVector = ImageVector.vectorResource(icon),
                 contentDescription = label,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(sizes.iconMedium),
                 tint = colors.textBold
             )
             Text(

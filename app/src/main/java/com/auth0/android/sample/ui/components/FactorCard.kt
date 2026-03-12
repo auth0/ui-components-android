@@ -44,6 +44,7 @@ fun FactorCard(
     val typography = Auth0Theme.typography
     val shapes = Auth0Theme.shapes
     val dimensions = Auth0Theme.dimensions
+    val sizes = Auth0Theme.sizes
 
     Card(
         modifier = Modifier
@@ -65,7 +66,7 @@ fun FactorCard(
             Icon(
                 painter = icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(sizes.iconMedium),
                 tint = colors.textBold
             )
 
