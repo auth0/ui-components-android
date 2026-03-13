@@ -2,10 +2,9 @@ package com.auth0.android.sample.ui.screens
 
 import androidx.compose.runtime.Composable
 import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorSettingsComponent
+import com.auth0.android.ui_components.theme.Auth0ThemeConfiguration
 
 @Composable
-fun Settings() {
-    // Simple - no navigation configuration needed!
-    // All MFA navigation is handled internally within the UI components module
-    AuthenticatorSettingsComponent()
+fun Settings(themeConfiguration: Auth0ThemeConfiguration = Auth0ThemeConfiguration.Default) {
+    AuthenticatorSettingsComponent(themeConfiguration = themeConfiguration)
 }
