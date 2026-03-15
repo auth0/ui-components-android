@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * A card used in the dashboard 2x3 grid for navigation.

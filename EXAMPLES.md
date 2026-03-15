@@ -1,12 +1,12 @@
-# Auth0 Android UI Components - Code Examples
+# Auth0 Android Universal Components - Code Examples
 
-This guide provides practical code examples demonstrating how to use the Auth0 Android UI Components
+This guide provides practical code examples demonstrating how to use the Auth0 Android Universal Components
 SDK in your application.
 
 ## Table of Contents
 
 - [Initialization](#initialization)
-- [Using UI Components](#using-ui-components)
+- [Using Universal Components](#using-ui-components)
 - [Theme Customization](#theme-customization)
 - [Support](#support)
 
@@ -31,7 +31,7 @@ private val credentialsManager: CredentialsManager by lazy {
     )
 }
 
-// Initialize Auth0 UI Components
+// Initialize Auth0 Universal Components
 Auth0UI.initialize(
     account = account,
     tokenProvider = DefaultTokenProvider(credentialsManager),
@@ -61,7 +61,7 @@ class CustomTokenProvider : TokenProvider {
 }
 
 
-// Initialize Auth0 UI Components
+// Initialize Auth0 Universal Components
 Auth0UI.initialize(
     account = account,
     tokenProvider = CustomTokenProvider(),
@@ -83,7 +83,7 @@ val passkeyConfiguration = PasskeyConfiguration(
     userIdentity = userIdentity // userIdentity if the user is logged in with a linked account
 )
 
-// Initialize Auth0 UI Components
+// Initialize Auth0 Universal Components
 Auth0UI.initialize(
     account = account,
     tokenProvider = CustomTokenProvider(),
@@ -93,7 +93,7 @@ Auth0UI.initialize(
 
 ```
 
-## Using UI Components
+## Using Universal Components
 
 The simplest way to add UI components to your app is to call the `AuthenticatorSettingsComponent` composable function from your application. The SDK will handle all the internal navigation.
 
@@ -308,6 +308,6 @@ fun MFASettingsScreen() {
 
 For issues and questions:
 
-- [GitHub Issues](https://github.com/auth0/ui-components-android/issues)
+- [GitHub Issues](https://github.com/auth0/universal-components-android/issues)
 - [Auth0 Community](https://community.auth0.com/)
 - [Auth0 Support](https://support.auth0.com/)

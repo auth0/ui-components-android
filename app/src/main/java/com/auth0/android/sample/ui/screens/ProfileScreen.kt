@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.presentation.ui.components.TopBar
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * User profile screen matching the Figma design.

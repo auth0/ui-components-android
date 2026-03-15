@@ -16,9 +16,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.auth0.android.ui_components.presentation.ui.components.GradientButton
-import com.auth0.android.ui_components.presentation.ui.components.TopBar
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.presentation.ui.components.GradientButton
+import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * Screen for updating the user's full name.

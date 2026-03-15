@@ -27,8 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import com.auth0.android.sample.ui.theme.ThemePreset
-import com.auth0.android.ui_components.theme.Auth0Dimensions
-import com.auth0.android.ui_components.theme.Auth0Shapes
+import com.auth0.universalcomponents.theme.Auth0Dimensions
+import com.auth0.universalcomponents.theme.Auth0Shapes
 
 /**
  * Theme selection screen displayed before the AuthenticatorSettingsComponent.

@@ -23,7 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.FactorCard
 import com.auth0.android.sample.ui.theme.BackGroundColor
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * Pre-login screen for choosing the sign-in method.

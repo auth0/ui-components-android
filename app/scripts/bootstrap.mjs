@@ -36,7 +36,7 @@ import {
 // ============================================================================
 
 async function main() {
-  console.log("\n🚀 Auth0 Android UI Components - Bootstrap Script\n")
+  console.log("\n🚀 Auth0 Android Universal Components - Bootstrap Script\n")
 
   // Parse command-line arguments
   const args = process.argv.slice(2)

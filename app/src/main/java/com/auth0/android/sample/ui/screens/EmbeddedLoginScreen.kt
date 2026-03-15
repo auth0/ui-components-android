@@ -36,8 +36,8 @@ import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.OrDivider
 import com.auth0.android.sample.ui.components.SectionHeader
 import com.auth0.android.sample.ui.theme.BackGroundColor
-import com.auth0.android.ui_components.presentation.ui.components.GradientButton
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.presentation.ui.components.GradientButton
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * Embedded login screen matching the Figma design.

@@ -3,9 +3,9 @@ package com.auth0.android.sample.ui.theme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.theme.Auth0Color
-import com.auth0.android.ui_components.theme.Auth0Shapes
-import com.auth0.android.ui_components.theme.Auth0ThemeConfiguration
+import com.auth0.universalcomponents.theme.Auth0Color
+import com.auth0.universalcomponents.theme.Auth0Shapes
+import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 
 /**
  * Pre-built theme presets demonstrating Auth0 token system customization capabilities.

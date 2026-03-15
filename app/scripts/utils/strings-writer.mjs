@@ -36,7 +36,7 @@ export async function writeStringsFile(domain, clientId, scheme, stringsXmlPath)
 
     // Ensure app_name exists
     if (!existingStrings.has("app_name")) {
-      existingStrings.set("app_name", "ui_components_android")
+      existingStrings.set("app_name", "universal_components_android")
     }
 
     // Build XML output

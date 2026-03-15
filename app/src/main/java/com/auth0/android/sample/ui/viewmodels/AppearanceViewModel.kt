@@ -1,8 +1,8 @@
 package com.auth0.android.sample.ui.viewmodels
 
 import androidx.lifecycle.ViewModel
-import com.auth0.android.ui_components.theme.Auth0Color
-import com.auth0.android.ui_components.theme.Auth0ThemeConfiguration
+import com.auth0.universalcomponents.theme.Auth0Color
+import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

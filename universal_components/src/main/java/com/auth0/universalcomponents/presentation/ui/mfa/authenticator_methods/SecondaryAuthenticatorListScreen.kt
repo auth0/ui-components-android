@@ -1,0 +1,77 @@
+package com.auth0.universalcomponents.presentation.ui.mfa.authenticator_methods
+
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.domain.model.AuthenticatorType
+import com.auth0.universalcomponents.presentation.ui.components.EmptyAuthenticatorItem
+import com.auth0.universalcomponents.presentation.viewmodel.SecondaryAuthenticatorUiData
+import com.auth0.universalcomponents.theme.Auth0Theme
+
+
+/**
+ * Screen displaying the list of enabled authenticators
+ */
+@Composable
+fun SecondaryAuthenticatorListScreen(
+    secondaryAuthenticatorUiData: List<SecondaryAuthenticatorUiData>,
+    onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit
+) {
+    val colors = Auth0Theme.colors
+    val typography = Auth0Theme.typography
+    val dimensions = Auth0Theme.dimensions
+
+    Spacer(modifier = Modifier.height(dimensions.spacingSm))
+    Text(
+        text = stringResource(R.string.verification_methods),
+        style = typography.display,
+        color = colors.textBold,
+    )
+
+    Spacer(modifier = Modifier.height(dimensions.spacingXs))
+
+    Text(
+        text = stringResource(R.string.manage_2fa_methods),
+        modifier = Modifier.height(17.dp),
+        style = typography.body,
+        color = colors.textDefault,
+    )
+
+    Spacer(modifier = Modifier.height(dimensions.spacingLg))
+
+    if (secondaryAuthenticatorUiData.isEmpty()) {
+        EmptyAuthenticatorItem(emptyMessage = stringResource(R.string.no_authenticators_enabled))
+        return
+    }
+
+    for (item in secondaryAuthenticatorUiData) {
+        AuthenticatorItem(
+            title = item.title,
+            leadingIcon = getMFAMethodIcon(item.type),
+            showActiveTag = item.confirmed,
+            onClick = { onAuthenticatorItemClick(item) }
+        )
+        Spacer(modifier = Modifier.height(dimensions.spacingSm))
+    }
+}
+
+@Composable
+private fun getMFAMethodIcon(authenticatorType: AuthenticatorType): Painter {
+    return painterResource(
+        when (authenticatorType) {
+            AuthenticatorType.TOTP -> R.drawable.ic_authenticator
+            AuthenticatorType.PHONE -> R.drawable.ic_sms_otp
+            AuthenticatorType.EMAIL -> R.drawable.ic_email
+            AuthenticatorType.PUSH -> R.drawable.ic_authenticator
+            AuthenticatorType.RECOVERY_CODE -> R.drawable.ic_recovery_code
+            AuthenticatorType.PASSKEY -> R.drawable.ic_passkey
+        }
+    )
+}

@@ -2,9 +2,9 @@ package com.auth0.android.sample.ui.screens
 
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import com.auth0.android.ui_components.presentation.ui.mfa.AuthenticatorSettingsComponent
-import com.auth0.android.ui_components.theme.Auth0Theme
-import com.auth0.android.ui_components.theme.Auth0ThemeConfiguration
+import com.auth0.universalcomponents.presentation.ui.mfa.AuthenticatorSettingsComponent
+import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 
 /**
  *

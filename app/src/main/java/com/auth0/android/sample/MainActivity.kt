@@ -42,13 +42,13 @@ import com.auth0.android.sample.ui.screens.SessionsScreen
 import com.auth0.android.sample.ui.screens.Settings
 import com.auth0.android.sample.ui.screens.TokensScreen
 import com.auth0.android.sample.ui.screens.UpdateFullNameScreen
-import com.auth0.android.sample.ui.theme.Ui_components_androidTheme
+import com.auth0.android.sample.ui.theme.UniversalComponentsTheme
 import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.sample.ui.viewmodels.AuthState
 import com.auth0.android.sample.ui.viewmodels.AuthViewModel
-import com.auth0.android.ui_components.Auth0UI
-import com.auth0.android.ui_components.theme.Auth0Theme
-import com.auth0.android.ui_components.token.DefaultTokenProvider
+import com.auth0.universalcomponents.Auth0UI
+import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.token.DefaultTokenProvider
 
 class MainActivity : ComponentActivity() {
 
@@ -96,7 +96,7 @@ class MainActivity : ComponentActivity() {
             scheme = getString(R.string.com_auth0_scheme)
         )
         setContent {
-            Ui_components_androidTheme {
+            UniversalComponentsTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     SampleApp(
                         credentialsManager = credentialsManager,
