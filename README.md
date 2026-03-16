@@ -1,7 +1,7 @@
 
 ![Auth0 Android Universal Components](https://cdn.auth0.com/website/sdks/banners/universal-components-android.png) 
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.auth0.android/universal-components.svg?style=flat-square)](https://search.maven.org/artifact/com.auth0.android/universal-components)
+[![Maven Central](https://img.shields.io/maven-central/v/com.auth0.universalcomponents/universal-components.svg?style=flat-square)](https://search.maven.org/artifact/com.auth0.universalcomponents/universal-components)
 [![License](https://img.shields.io/:license-Apache%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
 📚 [Documentation](#documentation) • 🚀 [Getting Started](#getting-started) • 💻 [Sample App](#run-the-sample-app) • 💬 [Feedback](#feedback)
