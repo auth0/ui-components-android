@@ -3,7 +3,7 @@ package com.auth0.universalcomponents.data
 import android.util.Log
 import androidx.annotation.VisibleForTesting
 import com.auth0.android.result.APICredentials
-import com.auth0.universalcomponents.Auth0UI
+import com.auth0.universalcomponents.Auth0UniversalComponents
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -30,8 +30,8 @@ class TokenManager private constructor() {
         }
     }
 
-    private val tokenProvider = Auth0UI.tokenProvider
-    private val account = Auth0UI.account
+    private val tokenProvider = Auth0UniversalComponents.tokenProvider
+    private val account = Auth0UniversalComponents.account
 
     private val tokenMap: ConcurrentHashMap<String, APICredentials> = ConcurrentHashMap()
 

@@ -49,7 +49,7 @@ object MyAccountModule {
     fun providePasskeyViewModelFactory(): PasskeyViewModelFactory {
         return PasskeyViewModelFactory(
             repository = provideMyAccountRepository(),
-            passkeyConfiguration = com.auth0.universalcomponents.Auth0UI.passkeyConfiguration,
+            passkeyConfiguration = com.auth0.universalcomponents.Auth0UniversalComponents.passkeyConfiguration,
         )
     }
 

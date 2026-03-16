@@ -1,7 +1,7 @@
 package com.auth0.universalcomponents.data
 
 import com.auth0.android.Auth0
-import com.auth0.universalcomponents.Auth0UI
+import com.auth0.universalcomponents.Auth0UniversalComponents
 import com.auth0.universalcomponents.TestData
 import com.auth0.universalcomponents.token.TokenProvider
 import com.google.common.truth.Truth.assertThat
@@ -34,13 +34,13 @@ class TokenManagerTest {
     @Before
     fun setup() {
 
-        mockkObject(Auth0UI)
+        mockkObject(Auth0UniversalComponents)
 
         mockTokenProvider = mockk()
         mockAccount = mockk()
 
-        every { Auth0UI.tokenProvider } returns mockTokenProvider
-        every { Auth0UI.account } returns mockAccount
+        every { Auth0UniversalComponents.tokenProvider } returns mockTokenProvider
+        every { Auth0UniversalComponents.account } returns mockAccount
         every { mockAccount.domain } returns "test.auth0.com"
 
         tokenManager = TokenManager.getInstance()

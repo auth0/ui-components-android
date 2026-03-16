@@ -19,7 +19,7 @@ data class PasskeyConfiguration(
     val userIdentity: String? = null
 )
 
-public object Auth0UI {
+public object Auth0UniversalComponents {
 
     private var initialized = AtomicBoolean(false)
     private lateinit var _account: Auth0
@@ -58,7 +58,7 @@ public object Auth0UI {
         passkeyConfiguration: PasskeyConfiguration = PasskeyConfiguration()
     ) {
         if (initialized.get()) {
-            Log.d("Auth0UI", "Auth0UI is already initialized.")
+            Log.d("Auth0UniversalComponents", "Auth0UniversalComponents is already initialized.")
             return
         }
         _account = account
@@ -70,7 +70,7 @@ public object Auth0UI {
 
     private fun assertInitialized() {
         if (!initialized.get()) {
-            throw IllegalStateException("Auth0UI must be initialized first.")
+            throw IllegalStateException("Auth0UniversalComponents must be initialized first.")
         }
     }
 

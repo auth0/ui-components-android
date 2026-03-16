@@ -46,7 +46,7 @@ import com.auth0.android.sample.ui.theme.UniversalComponentsTheme
 import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.sample.ui.viewmodels.AuthState
 import com.auth0.android.sample.ui.viewmodels.AuthViewModel
-import com.auth0.universalcomponents.Auth0UI
+import com.auth0.universalcomponents.Auth0UniversalComponents
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.token.DefaultTokenProvider
 
@@ -88,7 +88,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        Auth0UI.initialize(
+        Auth0UniversalComponents.initialize(
             account,
             DefaultTokenProvider(
                 credentialsManager,
