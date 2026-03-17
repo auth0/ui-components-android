@@ -217,7 +217,9 @@ object TestData {
         publicKey = "public_key_xyz",
         transports = listOf("internal"),
         userAgent = "Android",
-        userHandle = "handle_123"
+        userHandle = "handle_123",
+        aaguid = "aaguid",
+        relyingPartyId = "relyingParty"
     )
 
     val passkeyAuthMethod2 = SdkPasskeyAuthenticationMethod(
@@ -232,7 +234,9 @@ object TestData {
         publicKey = "public_key_abc",
         transports = listOf("usb", "nfc"),
         userAgent = "Chrome",
-        userHandle = "handle_456"
+        userHandle = "handle_456",
+        aaguid = "aaguid",
+        relyingPartyId = "relyingParty"
     )
 
     // Primary Authenticator domain model test data
@@ -433,6 +437,8 @@ object TestData {
         transports = listOf("internal"),
         userAgent = "Android",
         userHandle = "user_handle_def",
+        aaguid = "aaguid",
+        relyingPartyId = "relyingParty"
     )
 
     val domainPublicKeyCredentials = DomainPublicKeyCredentials(
