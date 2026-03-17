@@ -6,7 +6,7 @@ SDK in your application.
 ## Table of Contents
 
 - [Initialization](#initialization)
-- [Using Universal Components](#using-ui-components)
+- [Using Universal Components](#using-universal-components)
 - [Theme Customization](#theme-customization)
 - [Support](#support)
 
