@@ -5,7 +5,7 @@ import { auth0ApiCall } from "./auth0-api.mjs"
 import { ChangeAction, createChangeItem } from "./change-plan.mjs"
 
 // Constants
-export const CLIENT_NAME = "Android UI Components Demo"
+export const CLIENT_NAME = "Android Universal Components Demo"
 
 // ============================================================================
 // CHECK FUNCTIONS
@@ -102,7 +102,7 @@ export async function applyDashboardClientChanges(
       const clientData = {
         name: CLIENT_NAME,
         description:
-          "Native client for Auth0 Android UI Components sample app",
+          "Native client for Auth0 Android Universal Components sample app",
         app_type: "native",
         oidc_conformant: true,
         is_first_party: true,

@@ -9,7 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * An "OR" divider separating two sections of a form.

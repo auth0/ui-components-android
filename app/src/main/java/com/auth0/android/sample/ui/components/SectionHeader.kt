@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * A section header with a bold title and optional subtitle.

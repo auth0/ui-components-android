@@ -1,7 +1,7 @@
 
-![Auth0 Android UI Components](https://cdn.auth0.com/website/sdks/banners/ui-components-android.png) 
+![Auth0 Android Universal Components](https://cdn.auth0.com/website/sdks/banners/universal-components-android.png) 
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.auth0.android/ui-components.svg?style=flat-square)](https://search.maven.org/artifact/com.auth0.android/ui-components)
+[![Maven Central](https://img.shields.io/maven-central/v/com.auth0.universalcomponents/universal-components.svg?style=flat-square)](https://search.maven.org/artifact/com.auth0.universalcomponents/universal-components)
 [![License](https://img.shields.io/:license-Apache%202.0-blue.svg?style=flat)](https://www.apache.org/licenses/LICENSE-2.0)
 
 📚 [Documentation](#documentation) • 🚀 [Getting Started](#getting-started) • 💻 [Sample App](#run-the-sample-app) • 💬 [Feedback](#feedback)
@@ -10,7 +10,7 @@
 
 Composable UI building blocks for MFA enrollment and verification on Android, built with Jetpack Compose. This library provides ready-to-use components that integrate seamlessly with Auth0's authentication flows.
 
-- [Sample App](https://github.com/atko-cic/ui-components-android/tree/main/app)
+- [Sample App](https://github.com/auth0/ui-components-android/tree/main/app)
 - [API Documentation](#) <!-- Add link when available -->
 
 ## Features
@@ -61,7 +61,7 @@ Add the dependency to your `build.gradle` file:
 
 ```gradle
 dependencies {
-    implementation 'com.auth0.android:ui-components:1.0.0'
+    implementation 'com.auth0.universalcomponents:universal-components:1.0.0'
 }
 ```
 
@@ -72,17 +72,17 @@ Add to your `gradle/libs.versions.toml`:
 
 ```toml
 [versions]
-auth0-ui-components = "1.0.0"
+auth0-universal-components = "1.0.0"
 
 [libraries]
-auth0-ui-components = { module = "com.auth0.android:ui-components", version.ref = "auth0-ui-components" }
+auth0-universal-components = { module = "com.auth0.universalcomponents:universal-components", version.ref = "auth0-universal-components" }
 ```
 
 Then in your `build.gradle`:
 
 ```gradle
 dependencies {
-    implementation(libs.auth0.ui.components)
+    implementation(libs.auth0.universal.components)
 }
 ```
 </details>
@@ -157,7 +157,7 @@ android {
 
 ### Initialize the Library
 
-Initialize the Auth0 UI Components library in your Application class or main Activity:
+Initialize the Auth0 Universal Components library in your Application class or main Activity:
 
 ```kotlin
 // Create Auth0 account instance
@@ -170,7 +170,7 @@ val credentialsManager = CredentialsManager(
 )
 
 // Initialize the UI library
-Auth0UI.initialize(
+Auth0UniversalComponents.initialize(
     account = account,
     tokenProvider = DefaultTokenProvider(credentialsManager),
     scheme = "https"
@@ -205,7 +205,7 @@ class CustomTokenProvider : TokenProvider {
 }
 
 // Initialize with custom configuration
-Auth0UI.initialize(
+Auth0UniversalComponents.initialize(
     account = account,
     tokenProvider = CustomTokenProvider(),
     scheme = "customscheme"
@@ -229,7 +229,7 @@ If you followed the configuration steps above, the default scheme is `https`. Th
 3. Pass your custom scheme when initializing:
 
 ```kotlin
-Auth0UI.initialize(
+Auth0UniversalComponents.initialize(
     account = account,
     tokenProvider = tokenProvider,
     scheme = "customscheme"
@@ -380,7 +380,7 @@ We appreciate feedback and contribution to this repo! Before you get started, pl
 
 ### Raise an Issue
 
-To provide feedback or report a bug, [please raise an issue on our issue tracker](https://github.com/atko-cic/ui-components-android/issues).
+To provide feedback or report a bug, [please raise an issue on our issue tracker](https://github.com/auth0/ui-components-android/issues).
 
 ### Vulnerability Reporting
 

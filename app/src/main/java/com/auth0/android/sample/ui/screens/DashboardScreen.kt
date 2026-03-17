@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.auth0.android.sample.R
 import com.auth0.android.sample.ui.components.NavigationGridCard
 import com.auth0.android.sample.ui.components.SectionHeader
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 enum class DashboardDestination(val label: String, val icon: Int) {
     Profile("Profile", R.drawable.ic_person),

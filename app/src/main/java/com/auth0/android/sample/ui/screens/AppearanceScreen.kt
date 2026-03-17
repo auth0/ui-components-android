@@ -21,9 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
-import com.auth0.android.ui_components.presentation.ui.components.GradientButton
-import com.auth0.android.ui_components.presentation.ui.components.TopBar
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.presentation.ui.components.GradientButton
+import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * Appearance/Theme selection screen.

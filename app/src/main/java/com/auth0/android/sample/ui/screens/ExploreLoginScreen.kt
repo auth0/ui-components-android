@@ -19,7 +19,7 @@ import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.FactorCard
 import com.auth0.android.sample.ui.components.SectionHeader
 import com.auth0.android.sample.ui.theme.BackGroundColor
-import com.auth0.android.ui_components.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * Explore login experience screen matching the Figma design.

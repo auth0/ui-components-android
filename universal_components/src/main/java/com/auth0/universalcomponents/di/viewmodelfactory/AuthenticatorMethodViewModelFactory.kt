@@ -1,0 +1,21 @@
+package com.auth0.universalcomponents.di.viewmodelfactory
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
+import com.auth0.universalcomponents.presentation.viewmodel.AuthenticatorMethodsViewModel
+
+class AuthenticatorMethodViewModelFactory(private val getEnabledAuthenticatorMethodsUseCase: GetEnabledAuthenticatorMethodsUseCase) :
+    ViewModelProvider.Factory {
+
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        return when {
+            modelClass.isAssignableFrom(AuthenticatorMethodsViewModel::class.java) -> {
+                AuthenticatorMethodsViewModel(getEnabledAuthenticatorMethodsUseCase) as T
+            }
+
+            else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        }
+    }
+}

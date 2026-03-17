@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ui_components_android"
+rootProject.name = "universal-components-android"
 include ':app'
-include ':ui_components'
+include ':universal_components'
