@@ -2,19 +2,17 @@ package com.auth0.universalcomponents.data.mapper
 
 import com.auth0.universalcomponents.domain.model.AuthenticatorSelection
 import com.auth0.universalcomponents.domain.model.AuthnParamsPublicKey
-import com.auth0.universalcomponents.domain.model.EnrollmentChallenge
 import com.auth0.universalcomponents.domain.model.MfaEnrollmentChallenge
 import com.auth0.universalcomponents.domain.model.PasskeyAuthenticationMethod
 import com.auth0.universalcomponents.domain.model.PasskeyEnrollmentChallenge
-import com.auth0.universalcomponents.domain.model.User
 import com.auth0.universalcomponents.domain.model.PubKeyCredParam
 import com.auth0.universalcomponents.domain.model.PublicKeyCredentials
 import com.auth0.universalcomponents.domain.model.RecoveryCodeEnrollmentChallenge
 import com.auth0.universalcomponents.domain.model.RelyingParty
 import com.auth0.universalcomponents.domain.model.TotpEnrollmentChallenge
+import com.auth0.universalcomponents.domain.model.User
 import com.auth0.android.request.PublicKeyCredentials as SdkPublicKeyCredentials
 import com.auth0.android.result.AuthnParamsPublicKey as SdkAuthParamsPublicKey
-import com.auth0.android.result.EnrollmentChallenge as SdkEnrollmentChallenge
 import com.auth0.android.result.MfaEnrollmentChallenge as SdkMfaEnrollmentChallenge
 import com.auth0.android.result.PasskeyAuthenticationMethod as SdkPasskeyAuthenticationMethod
 import com.auth0.android.result.PasskeyEnrollmentChallenge as SdkPasskeyEnrollmentChallenge
@@ -49,14 +47,6 @@ fun SdkRecoveryCodeEnrollmentChallenge.toDomainModel(): RecoveryCodeEnrollmentCh
         authSession = this.authSession,
         recoveryCode = this.recoveryCode
     )
-}
-
-fun SdkEnrollmentChallenge.toDomainModel(): EnrollmentChallenge {
-    return when (this) {
-        is SdkTotpEnrollmentChallenge -> this.toDomainModel()
-        is SdkRecoveryCodeEnrollmentChallenge -> this.toDomainModel()
-        is SdkMfaEnrollmentChallenge -> this.toDomainModel()
-    }
 }
 
 fun SdkPasskeyEnrollmentChallenge.toDomainModel(): PasskeyEnrollmentChallenge {
@@ -151,7 +141,7 @@ fun PublicKeyCredentials.toSdkModel(): SdkPublicKeyCredentials {
             clientDataJSON = this.response.clientDataJSON,
             transports = this.response.transports,
             signature = this.response.signature ?: "",
-            userHandle = this.response.userHandle ?:""
+            userHandle = this.response.userHandle ?: ""
         ),
         type = this.type
     )
