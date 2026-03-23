@@ -2,7 +2,8 @@ package com.auth0.android.sample.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,7 +19,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.theme.Auth0Theme
@@ -31,6 +31,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * @param title Factor name (e.g. "Hosted Login")
  * @param description Short description of the factor
  * @param icon Leading icon for the factor
+ * @param isSelected Whether this card is currently selected; shows bold border and filled radio indicator
  * @param onClick Callback when the card is tapped
  */
 @Composable
@@ -38,6 +39,7 @@ fun FactorCard(
     title: String,
     description: String,
     icon: Painter,
+    isSelected: Boolean = false,
     onClick: () -> Unit = {}
 ) {
     val colors = Auth0Theme.colors
@@ -47,21 +49,22 @@ fun FactorCard(
     val sizes = Auth0Theme.sizes
 
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(112.dp)
-            .clickable { onClick() },
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
         shape = shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = Auth0Theme.colors.backgroundLayerBase
+            containerColor = if (isSelected) colors.backgroundLayerTop else colors.backgroundLayerMedium
         ),
-        border = BorderStroke(1.dp, colors.borderBold)
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp,
+            color = if (isSelected) colors.borderBold else colors.borderDefault
+        )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(dimensions.spacingMd),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 painter = icon,
@@ -78,11 +81,40 @@ fun FactorCard(
                     style = typography.title,
                     color = colors.textBold
                 )
+                Spacer(modifier = Modifier.height(dimensions.spacingXxs))
                 Text(
                     text = description,
                     style = typography.body,
-                    color = colors.textDefault
+                    color = colors.textDefault,
+                    minLines = 2
                 )
+            }
+
+            Spacer(modifier = Modifier.width(dimensions.spacingMd))
+
+            // Radio selection indicator: filled dark circle + white dot when selected,
+            // empty light circle with grey ring when unselected.
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .border(
+                        width = if (isSelected) 0.dp else 1.dp,
+                        color = if (isSelected) colors.backgroundPrimary else colors.borderDefault,
+                        shape = shapes.full
+                    )
+                    .background(
+                        color = if (isSelected) colors.backgroundPrimary else colors.backgroundLayerBase,
+                        shape = shapes.full
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSelected) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .background(color = colors.backgroundLayerTop, shape = shapes.full)
+                    )
+                }
             }
         }
     }
