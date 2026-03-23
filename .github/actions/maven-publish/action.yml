@@ -1,9 +1,6 @@
 name: Publish release to Maven Central
 
 inputs:
-  java-version:
-    required: false
-    default: '17'
   ossr-username:
     required: true
   ossr-token:

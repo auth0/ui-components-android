@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v4.1.1
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
         with:
           fetch-depth: 0
 
@@ -56,15 +56,19 @@ jobs:
 
       # If the tag already exists, exit with an error
       - if: steps.tag_exists.outputs.exists == 'true'
-        run: exit 1
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "Tag '$VERSION' already exists. Skipping release."
+          exit 1
 
       # Publish the release to Maven Central
       - uses: ./.github/actions/maven-publish
         with:
-          ossr-username: ${{ secrets.ossr-username }}
-          ossr-token: ${{ secrets.ossr-token }}
-          signing-key: ${{ secrets.signing-key }}
-          signing-password: ${{ secrets.signing-password }}
+          ossr-username: ${{ secrets['ossr-username'] }}
+          ossr-token: ${{ secrets['ossr-token'] }}
+          signing-key: ${{ secrets['signing-key'] }}
+          signing-password: ${{ secrets['signing-password'] }}
 
       # Create the GitHub release
       - uses: ./.github/actions/release-create

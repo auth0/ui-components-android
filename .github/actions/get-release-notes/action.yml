@@ -4,7 +4,7 @@ inputs:
   version:
     required: true
   repo_name:
-    required: false
+    required: true
   repo_owner:
     required: true
   token:
@@ -29,6 +29,13 @@ runs:
             state: 'all',
             head: `${process.env.REPO_OWNER}:release/${process.env.VERSION}`,
           });
+          if (!pulls || pulls.length === 0 || !pulls[0]) {
+            core.setFailed(
+              `No pull request found for head "${process.env.REPO_OWNER}:release/${process.env.VERSION}". ` +
+              'Ensure a release PR exists for this version and that the branch name is correct.'
+            );
+            return;
+          }
           core.setOutput('RELEASE_NOTES', pulls[0].body);
       env:
         GITHUB_TOKEN: ${{ inputs.token }}
