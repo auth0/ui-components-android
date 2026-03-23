@@ -23,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.universalcomponents.presentation.ui.components.GradientButton
 import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -55,7 +56,7 @@ fun AppearanceScreen(
     val shapes = Auth0Theme.shapes
     val dimensions = Auth0Theme.dimensions
     val sizes = Auth0Theme.sizes
-    val isDark = colors.backgroundLayerBase.red < 0.1f
+    val isDark = isAuth0DarkTheme()
 
     Scaffold(
         topBar = {

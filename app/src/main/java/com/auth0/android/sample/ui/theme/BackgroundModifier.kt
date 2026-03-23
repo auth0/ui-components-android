@@ -6,6 +6,15 @@ import androidx.compose.foundation.background
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
+ * Returns true when the active Auth0Theme is in dark mode.
+ *
+ * Centralises the dark-mode check so it only needs updating in one place
+ * if the underlying token changes.
+ */
+@Composable
+fun isAuth0DarkTheme(): Boolean = Auth0Theme.colors.backgroundLayerBase.red < 0.1f
+
+/**
  * Applies the Auth0 screen background to this modifier.
  *
  * Light theme: vertical gradient [BackGroundColor]
@@ -16,8 +25,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  */
 @Composable
 fun Modifier.auth0ScreenBackground(): Modifier {
-    val colors = Auth0Theme.colors
-    val isDark = colors.backgroundLayerBase.red < 0.1f
+    val isDark = isAuth0DarkTheme()
     val brush = if (isDark) DarkBackGroundColor else BackGroundColor
     return this
         .background(brush)

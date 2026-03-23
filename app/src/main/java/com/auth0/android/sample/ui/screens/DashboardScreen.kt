@@ -84,8 +84,7 @@ fun DashboardScreen(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(0.dp),
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
-                modifier = Modifier
+                verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)
             ) {
                 items(DashboardDestination.entries.toList()) { destination ->
                     NavigationGridCard(

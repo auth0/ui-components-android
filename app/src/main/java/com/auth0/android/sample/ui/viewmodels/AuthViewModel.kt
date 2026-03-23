@@ -60,10 +60,12 @@ class AuthViewModel : ViewModel() {
                 _authState.value = AuthState.Authenticated(credentials)
             } catch (e: AuthenticationException) {
                 if (e.isBrowserAppNotAvailable || e.isCanceled) {
-                    Log.e("TAG", "login: User cancelled or browser not available")
+                    Log.i("TAG", "login: User cancelled or browser not available")
+                    _loginError.send("User cancelled or browser not available\"")
                     _authState.value = AuthState.Idle
                 } else {
                     Log.e("TAG", "login: ${e.printStackTrace()}")
+                    _loginError.send(e.message ?: "An unknown error occurred")
                     _authState.value = AuthState.Error(e.message ?: "An unknown error occurred")
                 }
             }

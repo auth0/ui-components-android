@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
+import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -47,10 +48,7 @@ fun FactorCard(
     val shapes = Auth0Theme.shapes
     val dimensions = Auth0Theme.dimensions
     val sizes = Auth0Theme.sizes
-    // Detect current theme from Auth0Theme tokens (not isSystemInDarkTheme) so it
-    // respects the app's in-app theme switcher, not just the OS dark mode setting.
-    // backgroundLayerBase is #09090B (dark) vs #F4F4F5 (light) — red channel distinguishes them.
-    val isDark = colors.backgroundLayerBase.red < 0.1f
+    val isDark = isAuth0DarkTheme()
 
     // Light: selected=white (layerTop), unselected=near-white (layerMedium)
     // Dark:  both cards use layerMedium (#27272A); selection is shown via border only
