@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -60,9 +61,9 @@ fun ChooseSignInScreen(
         modifier = Modifier
             .fillMaxSize()
             .auth0ScreenBackground()
+            .statusBarsPadding()
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
-        // Scrollable main content — weight(1f) leaves room for the pinned Appearance button
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -74,7 +75,7 @@ fun ChooseSignInScreen(
 
             Auth0LogoHeader()
 
-            Spacer(modifier = Modifier.height(dimensions.spacingXxl * 4))
+            Spacer(modifier = Modifier.height(dimensions.spacingXxl * 2))
 
             Text(
                 text = "Choose how to sign in",

@@ -17,7 +17,6 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 @Composable
 fun Modifier.auth0ScreenBackground(): Modifier {
     val colors = Auth0Theme.colors
-    // backgroundLayerBase is #09090B (red≈0.035) in dark, #F4F4F5 (red≈0.957) in light.
     val isDark = colors.backgroundLayerBase.red < 0.1f
     val brush = if (isDark) DarkBackGroundColor else BackGroundColor
     return this
