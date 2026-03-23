@@ -85,7 +85,7 @@ fun DashboardScreen(
                 contentPadding = PaddingValues(0.dp),
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
                 verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
             ) {
                 items(DashboardDestination.entries.toList()) { destination ->
                     NavigationGridCard(
@@ -95,6 +95,8 @@ fun DashboardScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
             TextButton(onClick = onLogout) {
                 Text(

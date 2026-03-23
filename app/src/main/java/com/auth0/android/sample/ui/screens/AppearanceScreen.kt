@@ -39,13 +39,23 @@ fun AppearanceScreen(
     onBack: () -> Unit,
     appearanceViewModel: AppearanceViewModel
 ) {
+    val selectedIndex by appearanceViewModel.selectedIndex.collectAsStateWithLifecycle()
+    val previewOption = appearanceViewModel.themeOptions.getOrElse(selectedIndex) {
+        appearanceViewModel.themeOptions[0]
+    }
+
+    // Wrap in a local Auth0Theme so the screen previews the selected theme immediately,
+    // while the global theme (in MainActivity) only updates when "Update Theme" is tapped.
+    Auth0Theme(
+        configuration = previewOption.configuration,
+        darkTheme = previewOption.darkTheme
+    ) {
     val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
     val shapes = Auth0Theme.shapes
     val dimensions = Auth0Theme.dimensions
     val sizes = Auth0Theme.sizes
-
-    val selectedIndex by appearanceViewModel.selectedIndex.collectAsStateWithLifecycle()
+    val isDark = colors.backgroundLayerBase.red < 0.1f
 
     Scaffold(
         topBar = {
@@ -108,7 +118,7 @@ fun AppearanceScreen(
                             selected = selectedIndex == index,
                             onClick = { appearanceViewModel.selectTheme(index) },
                             colors = RadioButtonDefaults.colors(
-                                selectedColor = colors.backgroundPrimary,
+                                selectedColor = if (isDark) colors.backgroundAccent else colors.backgroundPrimary,
                                 unselectedColor = colors.borderDefault
                             )
                         )
@@ -124,7 +134,7 @@ fun AppearanceScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
             GradientButton(
                 modifier = Modifier
@@ -142,7 +152,7 @@ fun AppearanceScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(dimensions.spacingLg))
         }
     }
+    } // Auth0Theme
 }

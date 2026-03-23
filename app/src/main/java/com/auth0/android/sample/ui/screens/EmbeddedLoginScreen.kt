@@ -66,6 +66,8 @@ fun EmbeddedLoginScreen(
     val dimensions = Auth0Theme.dimensions
     val sizes = Auth0Theme.sizes
     val shapes = Auth0Theme.shapes
+    val isDark = colors.backgroundLayerBase.red < 0.1f
+    val fieldFocusedBorder = if (isDark) colors.backgroundAccent else colors.backgroundPrimary
 
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -148,10 +150,13 @@ fun EmbeddedLoginScreen(
             textStyle = typography.body,
             shape = shapes.medium,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colors.backgroundPrimary,
+                focusedBorderColor = fieldFocusedBorder,
                 unfocusedBorderColor = colors.borderDefault,
                 focusedContainerColor = colors.backgroundLayerTop,
-                unfocusedContainerColor = colors.backgroundLayerTop
+                unfocusedContainerColor = colors.backgroundLayerTop,
+                focusedTextColor = colors.textBold,
+                unfocusedTextColor = colors.textBold,
+                cursorColor = fieldFocusedBorder
             ),
             singleLine = true
         )
@@ -193,10 +198,13 @@ fun EmbeddedLoginScreen(
                 }
             },
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colors.backgroundPrimary,
+                focusedBorderColor = fieldFocusedBorder,
                 unfocusedBorderColor = colors.borderDefault,
                 focusedContainerColor = colors.backgroundLayerTop,
-                unfocusedContainerColor = colors.backgroundLayerTop
+                unfocusedContainerColor = colors.backgroundLayerTop,
+                focusedTextColor = colors.textBold,
+                unfocusedTextColor = colors.textBold,
+                cursorColor = fieldFocusedBorder
             ),
             singleLine = true
         )
