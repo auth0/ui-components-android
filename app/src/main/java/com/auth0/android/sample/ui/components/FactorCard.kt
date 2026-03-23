@@ -47,17 +47,30 @@ fun FactorCard(
     val shapes = Auth0Theme.shapes
     val dimensions = Auth0Theme.dimensions
     val sizes = Auth0Theme.sizes
+    // Detect current theme from Auth0Theme tokens (not isSystemInDarkTheme) so it
+    // respects the app's in-app theme switcher, not just the OS dark mode setting.
+    // backgroundLayerBase is #09090B (dark) vs #F4F4F5 (light) — red channel distinguishes them.
+    val isDark = colors.backgroundLayerBase.red < 0.1f
+
+    // Light: selected=white (layerTop), unselected=near-white (layerMedium)
+    // Dark:  both cards use layerMedium (#27272A); selection is shown via border only
+    val cardBackground = when {
+        isSelected && !isDark -> colors.backgroundLayerTop
+        else -> colors.backgroundLayerMedium
+    }
 
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         shape = shapes.large,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) colors.backgroundLayerTop else colors.backgroundLayerMedium
-        ),
+        colors = CardDefaults.cardColors(containerColor = cardBackground),
         border = BorderStroke(
             width = if (isSelected) 2.dp else 1.dp,
-            color = if (isSelected) colors.borderBold else colors.borderDefault
+            color = when {
+                isSelected && isDark -> colors.backgroundAccent  // green #A7F3D0 in dark
+                isSelected -> colors.borderBold                  // grey #A1A1AA in light
+                else -> colors.borderDefault
+            }
         )
     ) {
         Row(
@@ -92,27 +105,34 @@ fun FactorCard(
 
             Spacer(modifier = Modifier.width(dimensions.spacingMd))
 
-            // Radio selection indicator: filled dark circle + white dot when selected,
-            // empty light circle with grey ring when unselected.
+            // Radio selection indicator:
+            //   Light selected: dark filled circle (#09090B) + white inner dot
+            //   Dark selected:  green filled circle (#A7F3D0 accent) + dark inner dot
+            //   Unselected:     transparent circle with subtle border
+            val radioFill = when {
+                isSelected && isDark -> colors.backgroundAccent
+                isSelected -> colors.backgroundPrimary
+                else -> colors.backgroundLayerBase
+            }
+            val radioBorder = if (isSelected) radioFill else colors.borderDefault
+            val radioInnerDot = if (isDark) colors.backgroundLayerMedium else colors.backgroundLayerTop
+
             Box(
                 modifier = Modifier
                     .size(20.dp)
                     .border(
                         width = if (isSelected) 0.dp else 1.dp,
-                        color = if (isSelected) colors.backgroundPrimary else colors.borderDefault,
+                        color = radioBorder,
                         shape = shapes.full
                     )
-                    .background(
-                        color = if (isSelected) colors.backgroundPrimary else colors.backgroundLayerBase,
-                        shape = shapes.full
-                    ),
+                    .background(color = radioFill, shape = shapes.full),
                 contentAlignment = Alignment.Center
             ) {
                 if (isSelected) {
                     Box(
                         modifier = Modifier
                             .size(8.dp)
-                            .background(color = colors.backgroundLayerTop, shape = shapes.full)
+                            .background(color = radioInnerDot, shape = shapes.full)
                     )
                 }
             }

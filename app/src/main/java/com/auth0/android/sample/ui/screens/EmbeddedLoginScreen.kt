@@ -35,7 +35,7 @@ import com.auth0.android.sample.R
 import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.OrDivider
 import com.auth0.android.sample.ui.components.SectionHeader
-import com.auth0.android.sample.ui.theme.BackGroundColor
+import com.auth0.android.sample.ui.theme.auth0ScreenBackground
 import com.auth0.universalcomponents.presentation.ui.components.GradientButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
@@ -70,7 +70,7 @@ fun EmbeddedLoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackGroundColor)
+            .auth0ScreenBackground()
             .padding(horizontal = dimensions.spacingLg),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

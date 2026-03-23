@@ -1,7 +1,6 @@
 package com.auth0.android.sample.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -29,11 +28,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.FactorCard
-import com.auth0.android.sample.ui.theme.BackGroundColor
-import com.auth0.android.sample.ui.theme.BottomCoolOverlay
-import com.auth0.android.sample.ui.theme.BottomWarmOverlay
-import com.auth0.android.sample.ui.theme.DarkBackGroundColor
+import com.auth0.android.sample.ui.theme.auth0ScreenBackground
 import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.Auth0Theme.colors
 
 private enum class LoginOption { Embedded, Hosted }
 
@@ -54,9 +51,6 @@ fun ChooseSignInScreen(
     onSettings: () -> Unit = {}
 ) {
     var selectedOption by remember { mutableStateOf<LoginOption?>(null) }
-    val backgroundBrush = if (isSystemInDarkTheme()) DarkBackGroundColor else BackGroundColor
-    val isDark = isSystemInDarkTheme()
-    val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
     val dimensions = Auth0Theme.dimensions
     val shapes = Auth0Theme.shapes
@@ -65,13 +59,7 @@ fun ChooseSignInScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundBrush)
-            .run {
-                // Layer warm (bottom-left) and cool/lavender (bottom-right) overlays
-                // to match the Figma diagonal gradient at the bottom of the screen.
-                if (!isDark) background(BottomWarmOverlay).background(BottomCoolOverlay)
-                else this
-            }
+            .auth0ScreenBackground()
             .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         // Scrollable main content — weight(1f) leaves room for the pinned Appearance button

@@ -24,6 +24,11 @@ fun Auth0LogoHeader(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = Auth0Theme.dimensions
+    val colors = Auth0Theme.colors
+    // ic_auth0.xml paths are hardcoded #09090B — invisible on dark backgrounds.
+    // Detect dark mode from Auth0Theme tokens (not isSystemInDarkTheme) so the in-app
+    // theme switcher is respected. Light: preserve SVG fill. Dark: tint white (#FAFAFA).
+    val logoTint = if (colors.backgroundLayerBase.red < 0.1f) colors.textBold else Color.Unspecified
 
     Spacer(modifier = Modifier.height(dimensions.spacingXl))
 
@@ -35,7 +40,7 @@ fun Auth0LogoHeader(
     ) {
         Icon(
             painterResource(R.drawable.ic_auth0), contentDescription = "Auth0 logo",
-            tint = Color.Unspecified
+            tint = logoTint
         )
     }
 }
