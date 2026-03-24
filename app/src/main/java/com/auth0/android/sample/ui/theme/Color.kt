@@ -12,14 +12,42 @@ val Purple40 = Color(0xFF6650a4)
 val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
-
+/**
+ * Light theme background — vertical base gradient.
+ *
+ */
 val BackGroundColor = Brush.linearGradient(
-    colors = listOf(
-        Color(0xFFF4F4F5),
-        Color(0xFFFCFCFC),
-        Color(0xFFECE5EB),
-        Color(0xFFEDE9F1)
+    colorStops = arrayOf(
+        0.00f to Color(0xFFF4F4F5),
+        0.75f to Color(0xFFEDEBF1),
+        1.00f to Color(0xFFEBE1E4)
     ),
     start = Offset(0f, 0f),
     end = Offset(0f, Float.POSITIVE_INFINITY)
+)
+
+/**
+ * Blended on top of [BackGroundColor] to reproduce the #E9D7D4 bottom-left sample.
+ */
+val BottomWarmOverlay = Brush.radialGradient(
+    colors = listOf(Color(0x99E9D7D4), Color(0x00E9D7D4)),
+    center = Offset(0f, Float.POSITIVE_INFINITY),
+    radius = 900f
+)
+
+/**
+ * Blended on top of [BackGroundColor] to reproduce the #EDEBF4 bottom-right sample.
+ */
+val BottomCoolOverlay = Brush.radialGradient(
+    colors = listOf(Color(0x99EDEBF4), Color(0x00EDEBF4)),
+    center = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
+    radius = 900f
+)
+
+/**
+ * Dark theme background — flat #09090B (Auth0 backgroundLayerBase dark).
+ *
+ */
+val DarkBackGroundColor = Brush.linearGradient(
+    colors = listOf(Color(0xFF09090B), Color(0xFF09090B))
 )

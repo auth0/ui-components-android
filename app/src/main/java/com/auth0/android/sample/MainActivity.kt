@@ -170,11 +170,24 @@ fun SampleApp(
 
             composable<AppRoute.ChooseSignIn> {
                 val context = LocalContext.current
-                ChooseSignInScreen(
-                    onHostedLogin = { authViewModel.login(context, webAuthProvider) },
-                    onEmbeddedLogin = { navController.navigate(AppRoute.EmbeddedLogin) },
-                    onSettings = { navController.navigate(AppRoute.Appearance) }
-                )
+                val snackbarHostState = remember { SnackbarHostState() }
+
+                LaunchedEffect(Unit) {
+                    authViewModel.loginError.collect { message ->
+                        snackbarHostState.showSnackbar(message)
+                    }
+                }
+
+                Scaffold(
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
+                    containerColor = androidx.compose.ui.graphics.Color.Transparent
+                ) { _ ->
+                    ChooseSignInScreen(
+                        onHostedLogin = { authViewModel.login(context, webAuthProvider) },
+                        onEmbeddedLogin = { navController.navigate(AppRoute.EmbeddedLogin) },
+                        onSettings = { navController.navigate(AppRoute.Appearance) }
+                    )
+                }
             }
 
             composable<AppRoute.EmbeddedLogin> {

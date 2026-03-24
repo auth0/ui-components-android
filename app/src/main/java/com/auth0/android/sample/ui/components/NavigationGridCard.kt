@@ -51,8 +51,8 @@ fun NavigationGridCard(
             .clickable { onClick() },
         shape = shapes.extraLarge,
         colors = CardDefaults.cardColors(containerColor = colors.backgroundLayerTop),
-        border = BorderStroke(1.dp, colors.borderBold),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = BorderStroke(1.dp, colors.borderDefault),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier

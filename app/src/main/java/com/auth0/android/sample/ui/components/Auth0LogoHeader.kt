@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.auth0.android.sample.R
+import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -24,6 +25,8 @@ fun Auth0LogoHeader(
     modifier: Modifier = Modifier,
 ) {
     val dimensions = Auth0Theme.dimensions
+    val colors = Auth0Theme.colors
+    val logoTint = if (isAuth0DarkTheme()) colors.textBold else Color.Unspecified
 
     Spacer(modifier = Modifier.height(dimensions.spacingXl))
 
@@ -35,7 +38,7 @@ fun Auth0LogoHeader(
     ) {
         Icon(
             painterResource(R.drawable.ic_auth0), contentDescription = "Auth0 logo",
-            tint = Color.Unspecified
+            tint = logoTint
         )
     }
 }

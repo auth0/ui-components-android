@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.auth0.android.sample.R
 import com.auth0.android.sample.ui.components.NavigationGridCard
 import com.auth0.android.sample.ui.components.SectionHeader
+import com.auth0.android.sample.ui.theme.auth0ScreenBackground
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 enum class DashboardDestination(val label: String, val icon: Int) {
@@ -60,7 +61,9 @@ fun DashboardScreen(
     val dimensions = Auth0Theme.dimensions
 
     Box(
-        modifier = Modifier.background(colors.backgroundLayerBase)
+        modifier = Modifier
+            .fillMaxSize()
+            .auth0ScreenBackground()
     ) {
         Column(
             modifier = Modifier
@@ -81,8 +84,7 @@ fun DashboardScreen(
                 columns = GridCells.Fixed(2),
                 contentPadding = PaddingValues(0.dp),
                 horizontalArrangement = Arrangement.spacedBy(13.dp),
-                verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
-                modifier = Modifier.weight(1f)
+                verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)
             ) {
                 items(DashboardDestination.entries.toList()) { destination ->
                     NavigationGridCard(
@@ -92,6 +94,8 @@ fun DashboardScreen(
                     )
                 }
             }
+
+            Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
             TextButton(onClick = onLogout) {
                 Text(

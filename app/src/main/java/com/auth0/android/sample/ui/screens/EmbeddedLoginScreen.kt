@@ -2,23 +2,26 @@ package com.auth0.android.sample.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -34,8 +38,8 @@ import androidx.compose.ui.unit.dp
 import com.auth0.android.sample.R
 import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.OrDivider
-import com.auth0.android.sample.ui.components.SectionHeader
-import com.auth0.android.sample.ui.theme.BackGroundColor
+import com.auth0.android.sample.ui.theme.auth0ScreenBackground
+import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
 import com.auth0.universalcomponents.presentation.ui.components.GradientButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
@@ -62,6 +66,8 @@ fun EmbeddedLoginScreen(
     val dimensions = Auth0Theme.dimensions
     val sizes = Auth0Theme.sizes
     val shapes = Auth0Theme.shapes
+    val isDark = isAuth0DarkTheme()
+    val fieldFocusedBorder = if (isDark) colors.backgroundAccent else colors.backgroundPrimary
 
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
@@ -70,15 +76,32 @@ fun EmbeddedLoginScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BackGroundColor)
+            .auth0ScreenBackground()
+            .statusBarsPadding()
             .padding(horizontal = dimensions.spacingLg),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Row(modifier = Modifier.fillMaxWidth()) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = colors.textBold
+                )
+            }
+        }
+
         Auth0LogoHeader()
 
         Spacer(modifier = Modifier.height(dimensions.spacingXxl))
 
-        SectionHeader(title = "Login or Signup to continue")
+        Text(
+            text = "Login or Signup to continue",
+            style = typography.displayMedium,
+            color = colors.textBold,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
 
         Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
@@ -89,7 +112,10 @@ fun EmbeddedLoginScreen(
                 .fillMaxWidth()
                 .height(sizes.buttonHeight),
             shape = shapes.large,
-            border = BorderStroke(1.dp, colors.borderDefault)
+            border = BorderStroke(1.dp, colors.borderDefault),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (isDark) colors.backgroundLayerMedium else colors.backgroundLayerTop
+            )
         ) {
             Image(
                 painter = painterResource(id = R.drawable.ic_google),
@@ -131,12 +157,15 @@ fun EmbeddedLoginScreen(
                 )
             },
             textStyle = typography.body,
-            shape = shapes.medium,
+            shape = shapes.large,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colors.backgroundPrimary,
+                focusedBorderColor = fieldFocusedBorder,
                 unfocusedBorderColor = colors.borderDefault,
-                focusedContainerColor = colors.backgroundLayerTop,
-                unfocusedContainerColor = colors.backgroundLayerTop
+                focusedContainerColor = if (isDark) colors.backgroundLayerMedium else colors.backgroundLayerTop,
+                unfocusedContainerColor = if (isDark) colors.backgroundLayerMedium else colors.backgroundLayerTop,
+                focusedTextColor = colors.textBold,
+                unfocusedTextColor = colors.textBold,
+                cursorColor = fieldFocusedBorder
             ),
             singleLine = true
         )
@@ -163,7 +192,7 @@ fun EmbeddedLoginScreen(
                 )
             },
             textStyle = typography.body,
-            shape = shapes.medium,
+            shape = shapes.large,
             visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             trailingIcon = {
@@ -178,10 +207,13 @@ fun EmbeddedLoginScreen(
                 }
             },
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colors.backgroundPrimary,
+                focusedBorderColor = fieldFocusedBorder,
                 unfocusedBorderColor = colors.borderDefault,
-                focusedContainerColor = colors.backgroundLayerTop,
-                unfocusedContainerColor = colors.backgroundLayerTop
+                focusedContainerColor = if (isDark) colors.backgroundLayerMedium else colors.backgroundLayerTop,
+                unfocusedContainerColor = if (isDark) colors.backgroundLayerMedium else colors.backgroundLayerTop,
+                focusedTextColor = colors.textBold,
+                unfocusedTextColor = colors.textBold,
+                cursorColor = fieldFocusedBorder
             ),
             singleLine = true
         )
