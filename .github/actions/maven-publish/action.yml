@@ -10,20 +10,10 @@ inputs:
   signing-password:
     required: true
 
-
 runs:
   using: composite
 
   steps:
-    - name: Checkout code
-      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-
-    - name: Set up Java
-      uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
     - uses: gradle/wrapper-validation-action@56b90f209b02bf6d1deae490e9ef18b21a389cd4 # pin@1.1.0
 
     - name: Publish Android Packages to Maven
@@ -32,6 +22,5 @@ runs:
       env:
         MAVEN_USERNAME: ${{ inputs.ossr-username }}
         MAVEN_PASSWORD: ${{ inputs.ossr-token }}
-        SIGNING_KEY: ${{ inputs.signing-key}}
-        SIGNING_PASSWORD: ${{ inputs.signing-password}}
-
+        SIGNING_KEY: ${{ inputs.signing-key }}
+        SIGNING_PASSWORD: ${{ inputs.signing-password }}

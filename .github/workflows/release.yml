@@ -6,6 +6,7 @@ on:
       - closed
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -15,7 +16,7 @@ jobs:
   release:
     name: Publish Release
     if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/'))
-    runs-on: ubuntu-22.04-2cpu-8ram-75ssd   # replace with ubuntu-latest once migrated to public
+    runs-on: ubuntu-latest
     environment: release
 
     steps:
@@ -27,15 +28,57 @@ jobs:
       - name: Setup build environment
         uses: ./.github/actions/setup
 
-      ## Add other in between steps here
-      # Publish the release to Maven
+      # Get the version from the .version file
+      - id: get_version
+        uses: ./.github/actions/get-version
+
+      # Get the prerelease flag from the version
+      - id: get_prerelease
+        uses: ./.github/actions/get-prerelease
+        with:
+          version: ${{ steps.get_version.outputs.version }}
+
+      # Get the release notes from the merged PR body
+      - id: get_release_notes
+        uses: ./.github/actions/get-release-notes
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: ${{ steps.get_version.outputs.version }}
+          repo_owner: ${{ github.repository_owner }}
+          repo_name: ${{ github.event.repository.name }}
+
+      # Check if the tag already exists
+      - id: tag_exists
+        uses: ./.github/actions/tag-exists
+        with:
+          tag: ${{ steps.get_version.outputs.version }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # If the tag already exists, exit with an error
+      - if: steps.tag_exists.outputs.exists == 'true'
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+        run: |
+          echo "Tag '$VERSION' already exists. Skipping release."
+          exit 1
+
+      # Publish the release to Maven Central
       - uses: ./.github/actions/maven-publish
         with:
-          ossr-username: ${{ secrets.ossr-username }}
-          ossr-token: ${{ secrets.ossr-token }}
-          signing-key: ${{ secrets.signing-key}}
-          signing-password: ${{ secrets.signing-password}}
+          ossr-username: ${{ secrets['ossr-username'] }}
+          ossr-token: ${{ secrets['ossr-token'] }}
+          signing-key: ${{ secrets['signing-key'] }}
+          signing-password: ${{ secrets['signing-password'] }}
 
+      # Create the GitHub release
+      - uses: ./.github/actions/release-create
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          name: ${{ steps.get_version.outputs.version }}
+          body: ${{ steps.get_release_notes.outputs.release-notes }}
+          tag: ${{ steps.get_version.outputs.version }}
+          commit: ${{ github.sha }}
+          prerelease: ${{ steps.get_prerelease.outputs.prerelease }}
 
       - name: Announce release
         env:
