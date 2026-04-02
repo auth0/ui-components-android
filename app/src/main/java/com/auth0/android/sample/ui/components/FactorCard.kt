@@ -20,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
 import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
 import com.auth0.universalcomponents.theme.Auth0Theme
@@ -41,6 +42,7 @@ fun FactorCard(
     description: String,
     icon: Painter,
     isSelected: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit = {}
 ) {
     val colors = Auth0Theme.colors
@@ -59,7 +61,9 @@ fun FactorCard(
 
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .alpha(if (enabled) 1f else 0.4f),
         shape = shapes.large,
         colors = CardDefaults.cardColors(containerColor = cardBackground),
         border = BorderStroke(
