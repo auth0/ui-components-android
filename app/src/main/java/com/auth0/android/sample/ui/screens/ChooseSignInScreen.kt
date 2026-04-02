@@ -40,7 +40,8 @@ private enum class LoginOption { Embedded, Hosted }
  * Pre-login screen for choosing the sign-in method.
  *
  * Cards are selectable — tapping a card sets the selection state. The Continue button
- * navigates to the chosen flow and is disabled until a card is selected.
+ * navigates to the chosen flow. Hosted Login is selected by default so the button is
+ * enabled immediately on load.
  *
  * @param onEmbeddedLogin Navigate to embedded login
  * @param onHostedLogin Navigate to hosted (redirect) Auth0 login

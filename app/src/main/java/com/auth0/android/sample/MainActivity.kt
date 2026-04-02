@@ -268,7 +268,7 @@ fun SampleApp(
             }
 
             composable<AppRoute.UpdateFullName> {
-                val nameParts = userProfile.name.trim().split(" ", limit = 2)
+                val nameParts = userProfile.name.trim().split("\\s+".toRegex(), limit = 2).map { it.trim() }
                 UpdateFullNameScreen(
                     currentFirstName = nameParts.getOrElse(0) { "" },
                     currentLastName = nameParts.getOrElse(1) { "" },
