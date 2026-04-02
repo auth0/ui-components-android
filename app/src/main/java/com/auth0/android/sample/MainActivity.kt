@@ -228,9 +228,6 @@ fun SampleApp(
                 )
             }
 
-            composable<AppRoute.GoogleLogin> {
-                // Add support for Google Login
-            }
 
             composable<AppRoute.Dashboard> {
                 DashboardScreen(

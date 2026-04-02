@@ -87,9 +87,12 @@ fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)
             ) {
                 items(DashboardDestination.entries.toList()) { destination ->
+                    val enabled = destination == DashboardDestination.Profile ||
+                            destination == DashboardDestination.LoginSecurity
                     NavigationGridCard(
                         label = destination.label,
                         icon = destination.icon,
+                        enabled = enabled,
                         onClick = { onNavigate(destination) }
                     )
                 }
@@ -100,7 +103,7 @@ fun DashboardScreen(
             TextButton(onClick = onLogout) {
                 Text(
                     text = "Log out",
-                    style = typography.label,
+                    style = typography.body,
                     color = colors.textBold
                 )
             }
