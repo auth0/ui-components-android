@@ -271,7 +271,10 @@ fun SampleApp(
             }
 
             composable<AppRoute.UpdateFullName> {
+                val nameParts = userProfile.name.trim().split(" ", limit = 2)
                 UpdateFullNameScreen(
+                    currentFirstName = nameParts.getOrElse(0) { "" },
+                    currentLastName = nameParts.getOrElse(1) { "" },
                     onBack = { navController.popBackStack() }
                 )
             }

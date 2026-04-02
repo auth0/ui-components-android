@@ -123,7 +123,7 @@ class AuthViewModel : ViewModel() {
         try {
             val user = credentials.user
             _userProfile.value = UserProfile(
-                name = user.name ?: user.nickname ?: "User",
+                name = user.nickname ?: "User",
                 email = user.email ?: "",
                 pictureUrl = user.pictureURL ?: ""
             )
