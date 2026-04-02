@@ -120,7 +120,7 @@ fun AppearanceScreen(
                             onClick = { appearanceViewModel.selectTheme(index) },
                             colors = RadioButtonDefaults.colors(
                                 selectedColor = if (isDark) colors.backgroundAccent else colors.backgroundPrimary,
-                                unselectedColor = colors.borderDefault
+                                unselectedColor = if (isDark) colors.backgroundAccent else colors.backgroundPrimary
                             )
                         )
                     }
