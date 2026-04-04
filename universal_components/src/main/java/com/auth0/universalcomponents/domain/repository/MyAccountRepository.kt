@@ -22,6 +22,12 @@ interface MyAccountRepository {
         scope: String
     ): Void?
 
+    suspend fun updateAuthenticationMethodName(
+        authenticationMethodId: String,
+        name: String,
+        scope: String
+    ): AuthenticationMethod
+
     suspend fun enrollTotp(scope: String): TotpEnrollmentChallenge
 
     suspend fun enrollPushNotification(scope: String): TotpEnrollmentChallenge
