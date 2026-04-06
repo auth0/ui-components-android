@@ -73,7 +73,7 @@ class GetEnabledAuthenticatorMethodsUseCase(
                 }
 
         val authMethodsByType = secondaryAuthenticator.groupBy { it.type }
-        val secondaryAuthMethods = factors.map { factor ->
+        val secondaryAuthMethods = factors.distinctBy { it.type }.map { factor ->
             val hasConfirmedAuthMethod = authMethodsByType[factor.type]
                 ?.any {
                     it is MfaAuthenticationMethod && it.confirmed == true
