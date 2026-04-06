@@ -34,6 +34,7 @@ import com.auth0.universalcomponents.domain.model.PublicKeyCredentials as Domain
 import com.auth0.universalcomponents.domain.model.ClientExtensionResults as DomainClientExtensionResults
 import com.auth0.universalcomponents.domain.model.CredProps as DomainCredProps
 import com.auth0.universalcomponents.domain.model.PublicKeyResponse as DomainPublicKeyResponse
+import com.auth0.universalcomponents.domain.model.UserInfo
 import java.util.Date
 
 object TestData {
@@ -398,6 +399,25 @@ object TestData {
         type = "Bearer",
         expiresAt = Date(System.currentTimeMillis() + 1800000),
         scope = "read:profile write:profile"
+    )
+
+    // UserInfo test data
+    val userInfoWithAllFields = UserInfo(
+        email = "user@example.com",
+        name = "John Doe",
+        pictureUrl = "https://example.com/picture.jpg"
+    )
+
+    val userInfoWithNullFields = UserInfo(
+        email = null,
+        name = null,
+        pictureUrl = null
+    )
+
+    val userInfoEmailOnly = UserInfo(
+        email = "prefill@example.com",
+        name = null,
+        pictureUrl = null
     )
 
     // Passkey test data
