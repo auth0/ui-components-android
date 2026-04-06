@@ -1,5 +1,6 @@
 package com.auth0.android.sample.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -24,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import com.auth0.android.sample.ui.components.Auth0LogoHeader
@@ -38,7 +40,8 @@ private enum class LoginOption { Embedded, Hosted }
  * Pre-login screen for choosing the sign-in method.
  *
  * Cards are selectable — tapping a card sets the selection state. The Continue button
- * navigates to the chosen flow and is disabled until a card is selected.
+ * navigates to the chosen flow. Hosted Login is selected by default so the button is
+ * enabled immediately on load.
  *
  * @param onEmbeddedLogin Navigate to embedded login
  * @param onHostedLogin Navigate to hosted (redirect) Auth0 login
@@ -50,7 +53,8 @@ fun ChooseSignInScreen(
     onHostedLogin: () -> Unit,
     onSettings: () -> Unit = {}
 ) {
-    var selectedOption by remember { mutableStateOf<LoginOption?>(null) }
+    var selectedOption by remember { mutableStateOf<LoginOption?>(LoginOption.Hosted) }
+    val context = LocalContext.current
     val typography = Auth0Theme.typography
     val dimensions = Auth0Theme.dimensions
     val shapes = Auth0Theme.shapes
@@ -90,7 +94,8 @@ fun ChooseSignInScreen(
                 description = "Total brand control and low user frictions",
                 icon = painterResource(com.auth0.android.sample.R.drawable.ic_embedded_login),
                 isSelected = selectedOption == LoginOption.Embedded,
-                onClick = { selectedOption = LoginOption.Embedded }
+                enabled = false,
+                onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
             )
 
             Spacer(modifier = Modifier.height(dimensions.spacingMd))
@@ -147,7 +152,7 @@ fun ChooseSignInScreen(
             )
             Text(
                 text = "Appearance",
-                style = typography.label,
+                style = typography.body,
                 color = colors.textBold
             )
         }

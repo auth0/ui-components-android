@@ -230,10 +230,12 @@ private fun ProfileInfoRow(
             color = colors.textBold,
             modifier = Modifier.weight(1f)
         )
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = colors.textDefault
-        )
+        if (onClick != null) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = colors.textDefault
+            )
+        }
     }
 }

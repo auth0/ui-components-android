@@ -76,7 +76,6 @@ class MainActivity : ComponentActivity() {
     val webAuthProvider by lazy {
         WebAuthProvider.login(account)
             .withScheme(getString(R.string.com_auth0_scheme))
-            .withAudience(audience)
     }
 
     private val logoutBuilder by lazy {
@@ -211,9 +210,16 @@ fun SampleApp(
                         onContinueWithEmail = { email, password ->
                             when {
                                 email.isBlank() -> authViewModel.sendLoginError("Email is required")
-                                !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches() -> authViewModel.sendLoginError("Enter a valid email address")
+                                !android.util.Patterns.EMAIL_ADDRESS.matcher(email)
+                                    .matches() -> authViewModel.sendLoginError("Enter a valid email address")
+
                                 password.isBlank() -> authViewModel.sendLoginError("Password is required")
-                                else -> authViewModel.loginWithPassword(email, password, authClient, audience)
+                                else -> authViewModel.loginWithPassword(
+                                    email,
+                                    password,
+                                    authClient,
+                                    audience
+                                )
                             }
                         },
                         onOtherMethods = { navController.navigate(AppRoute.ExploreLogin) },
@@ -228,9 +234,6 @@ fun SampleApp(
                 )
             }
 
-            composable<AppRoute.GoogleLogin> {
-                // Add support for Google Login
-            }
 
             composable<AppRoute.Dashboard> {
                 DashboardScreen(
@@ -271,7 +274,11 @@ fun SampleApp(
             }
 
             composable<AppRoute.UpdateFullName> {
+                val nameParts =
+                    userProfile.name.trim().split("\\s+".toRegex(), limit = 2).map { it.trim() }
                 UpdateFullNameScreen(
+                    currentFirstName = nameParts.getOrElse(0) { "" },
+                    currentLastName = nameParts.getOrElse(1) { "" },
                     onBack = { navController.popBackStack() }
                 )
             }
