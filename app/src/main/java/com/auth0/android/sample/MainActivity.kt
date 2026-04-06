@@ -76,7 +76,6 @@ class MainActivity : ComponentActivity() {
     val webAuthProvider by lazy {
         WebAuthProvider.login(account)
             .withScheme(getString(R.string.com_auth0_scheme))
-//            .withAudience(audience)
     }
 
     private val logoutBuilder by lazy {
