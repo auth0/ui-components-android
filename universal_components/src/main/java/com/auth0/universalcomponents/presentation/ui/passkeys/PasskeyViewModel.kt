@@ -132,6 +132,12 @@ class PasskeyViewModel(
         }
     }
 
+    /**
+     * Resets the [PasskeyUiState] to Idle
+     */
+    fun resetState() {
+        _uiState.update { PasskeyUiState.Idle }
+    }
 
     private fun handleCreationFailure(exception: CreateCredentialException): Auth0Error.PasskeyError {
         return when (exception) {

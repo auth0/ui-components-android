@@ -69,10 +69,16 @@ fun AuthenticatorMethodsScreen(
         topBar = {
             TopBar(
                 title = stringResource(R.string.login_security),
-                showBackNavigation = false,
+                showBackNavigation = passkeyUiState is PasskeyUiState.Error,
                 showSeparator = false,
                 titleTextStyle = typography.displayMedium,
-                onBackClick = onBackPress
+                onBackClick = {
+                    if (passkeyUiState is PasskeyUiState.Error) {
+                        passkeyViewModel.resetState()
+                    } else {
+                        onBackPress()
+                    }
+                }
             )
         },
         containerColor = colors.backgroundLayerBase
