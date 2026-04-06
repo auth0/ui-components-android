@@ -83,30 +83,6 @@ class MyAccountRepositoryImpl(
     }
 
     /**
-     * Updates the name of an authentication method.
-     *
-     * @param authenticationMethodId ID of the authentication method to update
-     * @param name The new friendly name to set
-     * @param scope Required scope for the update API
-     * @return Updated [AuthenticationMethod]
-     */
-    override suspend fun updateAuthenticationMethodName(
-        authenticationMethodId: String,
-        name: String,
-        scope: String
-    ): AuthenticationMethod {
-        return withErrorMapping(scope) {
-            val audience = tokenManager.getMyAccountAudience()
-            val accessToken = tokenManager.fetchToken(
-                audience = audience,
-                scope = scope
-            )
-            val client = myAccountProvider.getMyAccount(accessToken)
-            TODO("Not yet implemented")
-        }
-    }
-
-    /**
      * Enrolls TOTP authenticator
      * @param scope Required scope for the enroll api
      * @return [TotpEnrollmentChallenge]  containing QR code and secret
