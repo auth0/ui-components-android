@@ -25,7 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.di.MyAccountModule
+import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.model.EnrolledAuthenticationMethod
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
@@ -56,10 +56,10 @@ fun EnrolledAuthenticatorListScreen(
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
     viewModel: EnrolledAuthenticatorViewModel = viewModel(
-        factory = MyAccountModule.provideMFAEnrolledItemViewModelFactory(authenticatorType)
+        factory = UniversalComponentsModule.provideMFAEnrolledItemViewModelFactory(authenticatorType)
     ),
     passkeyViewModel: PasskeyViewModel = viewModel(
-        factory = MyAccountModule.providePasskeyViewModelFactory()
+        factory = UniversalComponentsModule.providePasskeyViewModelFactory()
     )
 ) {
     val colors = Auth0Theme.colors

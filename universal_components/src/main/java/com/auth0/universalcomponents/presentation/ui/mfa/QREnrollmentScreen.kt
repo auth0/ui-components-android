@@ -56,7 +56,7 @@ import androidx.core.graphics.set
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.di.MyAccountModule
+import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.model.EnrollmentResult
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
@@ -76,7 +76,7 @@ fun QREnrollmentScreen(
     authenticatorType: AuthenticatorType,
     modifier: Modifier = Modifier,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
+        factory = UniversalComponentsModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit = {},
     onContinueClick: (

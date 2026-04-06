@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.di.MyAccountModule
+import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.model.EnrollmentResult
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
@@ -59,7 +59,7 @@ import kotlinx.coroutines.launch
 fun RecoveryCodeEnrollmentScreen(
     authenticatorType: AuthenticatorType = AuthenticatorType.RECOVERY_CODE,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
+        factory = UniversalComponentsModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit,
     onContinue: (

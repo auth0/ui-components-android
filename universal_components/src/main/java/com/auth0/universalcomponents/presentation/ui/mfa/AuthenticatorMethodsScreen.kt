@@ -18,7 +18,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.di.MyAccountModule
+import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.presentation.ui.components.ErrorHandler
 import com.auth0.universalcomponents.presentation.ui.components.TopBar
@@ -39,10 +39,10 @@ import com.auth0.universalcomponents.utils.createCredential
 @Composable
 fun AuthenticatorMethodsScreen(
     authenticatorMethodViewModel: AuthenticatorMethodsViewModel = viewModel(
-        factory = MyAccountModule.provideAuthenticatorMethodViewModelFactory()
+        factory = UniversalComponentsModule.provideAuthenticatorMethodViewModelFactory()
     ),
     passkeyViewModel: PasskeyViewModel = viewModel(
-        factory = MyAccountModule.providePasskeyViewModelFactory()
+        factory = UniversalComponentsModule.providePasskeyViewModelFactory()
     ),
     onPasskeyClick: () -> Unit,
     onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit,

@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.di.MyAccountModule
+import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.presentation.ui.components.ErrorHandler
@@ -67,7 +67,7 @@ fun OTPVerificationScreen(
     phoneNumberOrEmail: String? = null,
     showResendOption: Boolean = true,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory(
+        factory = UniversalComponentsModule.provideEnrollmentViewModelFactory(
             authenticatorType,
             startDefaultEnrollment = false
         )
