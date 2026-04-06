@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.data.repository
 
-import android.util.Log
 import com.auth0.universalcomponents.domain.model.UserInfo
 import com.auth0.universalcomponents.domain.repository.UserRepository
 import com.auth0.universalcomponents.token.TokenProvider
@@ -16,9 +15,9 @@ class UserRepositoryImpl(
     override suspend fun getUserInfo(): UserInfo {
         val user = tokenProvider.fetchCredentials().user
         return UserInfo(
-            email = user.email,
-            name = user.name,
-            pictureUrl = user.pictureURL
+            email = user?.email,
+            name = user?.name,
+            pictureUrl = user?.pictureURL
         )
     }
 }

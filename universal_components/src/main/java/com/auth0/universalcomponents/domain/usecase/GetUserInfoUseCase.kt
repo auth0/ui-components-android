@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.domain.usecase
 
-import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.domain.model.UserInfo
 import com.auth0.universalcomponents.domain.network.Result

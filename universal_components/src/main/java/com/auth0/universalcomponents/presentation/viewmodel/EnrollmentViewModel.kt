@@ -253,7 +253,7 @@ class EnrollmentViewModel(
         viewModelScope.launch {
             getUserInfoUseCase()
                 .onSuccess { userInfo ->
-                    Log.d(TAG, "Received email ${userInfo.email}: ")
+                    Log.d(TAG, "Email prefill succeeded")
                     _uiState.update { it.copy(prefillEmail = userInfo.email.orEmpty()) }
                 }
                 .onError { error ->
