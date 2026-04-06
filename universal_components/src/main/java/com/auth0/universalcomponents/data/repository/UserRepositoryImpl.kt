@@ -15,9 +15,9 @@ class UserRepositoryImpl(
     override suspend fun getUserInfo(): UserInfo {
         val user = tokenProvider.fetchCredentials().user
         return UserInfo(
-            email = user?.email,
-            name = user?.name,
-            pictureUrl = user?.pictureURL
+            email = user.email,
+            name = user.name,
+            pictureUrl = user.pictureURL
         )
     }
 }
