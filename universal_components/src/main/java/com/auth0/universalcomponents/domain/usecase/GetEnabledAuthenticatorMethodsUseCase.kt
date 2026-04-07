@@ -29,20 +29,20 @@ class GetEnabledAuthenticatorMethodsUseCase(
     }
 
     suspend operator fun invoke(): Result<AuthenticatorMethod, Auth0Error> =
-        withContext(dispatcherProvider.io) {
-            safeCall {
-                coroutineScope {
-                    val factorsDeferred = async {
-                        repository.getFactors(REQUIRED_SCOPES_FACTORS)
-                    }
-                    val authMethodsDeferred = async {
-                        repository.getAuthenticatorMethods(REQUIRED_SCOPES_AUTHENTICATION)
-                    }
+        safeCall {
+            coroutineScope {
+                val factorsDeferred = async {
+                    repository.getFactors(REQUIRED_SCOPES_FACTORS)
+                }
+                val authMethodsDeferred = async {
+                    repository.getAuthenticatorMethods(REQUIRED_SCOPES_AUTHENTICATION)
+                }
 
-                    val (factors, authMethods) = Pair(
-                        factorsDeferred.await(),
-                        authMethodsDeferred.await()
-                    )
+                val (factors, authMethods) = Pair(
+                    factorsDeferred.await(),
+                    authMethodsDeferred.await()
+                )
+                withContext(dispatcherProvider.default) {
                     mapAuthenticatorMethods(factors, authMethods)
                 }
             }

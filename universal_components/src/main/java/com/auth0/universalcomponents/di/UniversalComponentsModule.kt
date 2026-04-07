@@ -11,6 +11,7 @@ import com.auth0.universalcomponents.di.viewmodelfactory.MFAEnrolledItemViewMode
 import com.auth0.universalcomponents.di.viewmodelfactory.PasskeyViewModelFactory
 import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
+import com.auth0.universalcomponents.helper.DispatcherProviderImpl
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
 import com.auth0.universalcomponents.domain.repository.UserRepository
 import com.auth0.universalcomponents.domain.usecase.DeleteAuthenticationMethodUseCase
@@ -19,7 +20,6 @@ import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMetho
 import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
-import com.auth0.universalcomponents.helper.DispatcherProviderImpl
 
 object UniversalComponentsModule {
 
@@ -69,30 +69,26 @@ object UniversalComponentsModule {
 
     private fun provideGetEnrolledAuthenticatorsUseCase(): GetEnrolledAuthenticatorsUseCase {
         return GetEnrolledAuthenticatorsUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 
     private fun provideDeleteAuthenticationMethodUseCase(): DeleteAuthenticationMethodUseCase {
         return DeleteAuthenticationMethodUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 
 
     private fun provideEnrollAuthenticatorUseCase(): EnrollAuthenticatorUseCase {
         return EnrollAuthenticatorUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 
     private fun provideVerifyAuthenticatorUseCase(): VerifyAuthenticatorUseCase {
         return VerifyAuthenticatorUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 

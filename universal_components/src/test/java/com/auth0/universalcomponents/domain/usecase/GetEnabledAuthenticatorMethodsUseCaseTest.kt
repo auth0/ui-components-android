@@ -41,7 +41,7 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
         repository = mockk()
         useCase = GetEnabledAuthenticatorMethodsUseCase(
             repository = repository,
-            dispatcherProvider = dispatcherProvider
+            dispatcherProvider = dispatcherProvider,
         )
     }
 
@@ -72,12 +72,14 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             // Assert on secondaryAuthenticators
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(2)
 
-            val phoneMethod = authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.PHONE }
+            val phoneMethod =
+                authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.PHONE }
             Truth.assertThat(phoneMethod).isNotNull()
             Truth.assertThat(phoneMethod?.confirmed).isTrue()
             Truth.assertThat(phoneMethod?.usage).containsExactly("primary")
 
-            val totpMethod = authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.TOTP }
+            val totpMethod =
+                authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.TOTP }
             Truth.assertThat(totpMethod).isNotNull()
             Truth.assertThat(totpMethod?.confirmed).isTrue()
             Truth.assertThat(totpMethod?.usage).containsExactly("secondary")
@@ -107,10 +109,12 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
 
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(2)
 
-            val phoneMethod = authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.PHONE }
+            val phoneMethod =
+                authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.PHONE }
             Truth.assertThat(phoneMethod?.confirmed).isTrue()
 
-            val totpMethod = authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.TOTP }
+            val totpMethod =
+                authenticatorMethod.secondaryAuthenticators.find { it.type == AuthenticatorType.TOTP }
             Truth.assertThat(totpMethod?.confirmed).isFalse()
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
@@ -118,24 +122,25 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
         }
 
     @Test
-    fun `invoke - empty factors with MFA auth methods - returns empty secondary authenticators list`() = runTest {
-        coEvery { repository.getFactors(any<String>()) } returns emptyList()
-        coEvery { repository.getAuthenticatorMethods(any<String>()) } returns listOf<AuthenticationMethod>(
-            TestData.totpAuthMethod,
-            TestData.phoneAuthMethod
-        )
+    fun `invoke - empty factors with MFA auth methods - returns empty secondary authenticators list`() =
+        runTest {
+            coEvery { repository.getFactors(any<String>()) } returns emptyList()
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns listOf<AuthenticationMethod>(
+                TestData.totpAuthMethod,
+                TestData.phoneAuthMethod
+            )
 
-        val result = useCase.invoke()
+            val result = useCase.invoke()
 
-        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
-        val authenticatorMethod = (result as Result.Success).data
+            Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+            val authenticatorMethod = (result as Result.Success).data
 
-        Truth.assertThat(authenticatorMethod.secondaryAuthenticators).isEmpty()
-        Truth.assertThat(authenticatorMethod.primaryAuthenticators).isEmpty()
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators).isEmpty()
+            Truth.assertThat(authenticatorMethod.primaryAuthenticators).isEmpty()
 
-        coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
-        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
-    }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
+        }
 
     @Test
     fun `invoke - TOTP secondary factor with confirmed auth method - returns secondary TOTP authenticator with confirmed true`() =
@@ -152,9 +157,11 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val authenticatorMethod = (result as Result.Success).data
 
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type).isEqualTo(AuthenticatorType.TOTP)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
+                .isEqualTo(AuthenticatorType.TOTP)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isTrue()
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage).containsExactly("secondary")
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage)
+                .containsExactly("secondary")
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
@@ -175,9 +182,11 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val authenticatorMethod = (result as Result.Success).data
 
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type).isEqualTo(AuthenticatorType.PHONE)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
+                .isEqualTo(AuthenticatorType.PHONE)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isTrue()
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage).containsExactly("primary")
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage)
+                .containsExactly("primary")
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
@@ -199,9 +208,11 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val authenticatorMethod = (result as Result.Success).data
 
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type).isEqualTo(AuthenticatorType.EMAIL)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
+                .isEqualTo(AuthenticatorType.EMAIL)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isTrue()
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage).containsExactly("primary")
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage)
+                .containsExactly("primary")
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
@@ -223,9 +234,11 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val authenticatorMethod = (result as Result.Success).data
 
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type).isEqualTo(AuthenticatorType.PUSH)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
+                .isEqualTo(AuthenticatorType.PUSH)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isTrue()
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage).containsExactly("secondary")
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage)
+                .containsExactly("secondary")
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
@@ -250,34 +263,38 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
                 .isEqualTo(AuthenticatorType.RECOVERY_CODE)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isTrue()
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage).containsExactly("secondary")
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage)
+                .containsExactly("secondary")
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
     @Test
-    fun `invoke - unknown secondary factor type - maps to TOTP as default in secondary authenticators`() = runTest {
-        val unknownFactor = Factor(type = "unknown-type", usage = listOf("secondary"))
-        val factors = listOf(unknownFactor)
-        val authMethods = emptyList<AuthenticationMethod>()
+    fun `invoke - unknown secondary factor type - maps to TOTP as default in secondary authenticators`() =
+        runTest {
+            val unknownFactor = Factor(type = "unknown-type", usage = listOf("secondary"))
+            val factors = listOf(unknownFactor)
+            val authMethods = emptyList<AuthenticationMethod>()
 
-        coEvery { repository.getFactors(any<String>()) } returns factors
-        coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
+            coEvery { repository.getFactors(any<String>()) } returns factors
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
 
-        val result = useCase.invoke()
+            val result = useCase.invoke()
 
-        Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
-        val authenticatorMethod = (result as Result.Success).data
+            Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+            val authenticatorMethod = (result as Result.Success).data
 
-        Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
-        Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type).isEqualTo(AuthenticatorType.TOTP)
-        Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isFalse()
-        Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage).containsExactly("secondary")
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
+                .isEqualTo(AuthenticatorType.TOTP)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isFalse()
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage)
+                .containsExactly("secondary")
 
-        coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
-        coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
-    }
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
+        }
 
 
     @Test
@@ -296,8 +313,9 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
 
             Truth.assertThat(authenticatorMethod.primaryAuthenticators).hasSize(1)
             Truth.assertThat(authenticatorMethod.primaryAuthenticators[0].type).isEqualTo("passkey")
-            Truth.assertThat(authenticatorMethod.primaryAuthenticators[0].id).isEqualTo("passkey_001")
-            
+            Truth.assertThat(authenticatorMethod.primaryAuthenticators[0].id)
+                .isEqualTo("passkey_001")
+
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).isEmpty()
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
@@ -324,7 +342,7 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(authenticatorMethod.primaryAuthenticators).hasSize(2)
             val ids = authenticatorMethod.primaryAuthenticators.map { it.id }
             Truth.assertThat(ids).containsExactly("passkey_001", "passkey_002")
-            
+
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).isEmpty()
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
@@ -353,12 +371,14 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             // Verify primary authenticators (passkeys)
             Truth.assertThat(authenticatorMethod.primaryAuthenticators).hasSize(1)
             Truth.assertThat(authenticatorMethod.primaryAuthenticators[0].type).isEqualTo("passkey")
-            Truth.assertThat(authenticatorMethod.primaryAuthenticators[0].id).isEqualTo("passkey_001")
+            Truth.assertThat(authenticatorMethod.primaryAuthenticators[0].id)
+                .isEqualTo("passkey_001")
 
             // Verify secondary authenticators (MFA)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(2)
             val secondaryTypes = authenticatorMethod.secondaryAuthenticators.map { it.type }
-            Truth.assertThat(secondaryTypes).containsExactly(AuthenticatorType.TOTP, AuthenticatorType.PHONE)
+            Truth.assertThat(secondaryTypes)
+                .containsExactly(AuthenticatorType.TOTP, AuthenticatorType.PHONE)
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
@@ -410,7 +430,8 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             val authenticatorMethod = (result as Result.Success).data
 
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type).isEqualTo(AuthenticatorType.TOTP)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
+                .isEqualTo(AuthenticatorType.TOTP)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isTrue()
         }
 

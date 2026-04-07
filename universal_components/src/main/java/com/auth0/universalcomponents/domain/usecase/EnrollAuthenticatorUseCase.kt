@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.domain.usecase
 
-import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.model.EnrollmentInput
@@ -8,15 +7,13 @@ import com.auth0.universalcomponents.domain.model.EnrollmentResult
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.domain.network.safeCall
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
-import kotlinx.coroutines.withContext
 
 /**
  * UseCase for enrolling authenticators
  * Handles TOTP, Push Notification, Recovery Code, Email, and Phone enrollments
  */
 class EnrollAuthenticatorUseCase(
-    private val repository: MyAccountRepository,
-    private val dispatcherProvider: DispatcherProvider
+    private val repository: MyAccountRepository
 ) {
     private companion object {
         private const val REQUIRED_SCOPES = "create:me:authentication_methods"
@@ -31,8 +28,7 @@ class EnrollAuthenticatorUseCase(
     suspend operator fun invoke(
         authenticatorType: AuthenticatorType,
         input: EnrollmentInput = EnrollmentInput.None
-    ): Result<EnrollmentResult, Auth0Error> = withContext(dispatcherProvider.io) {
-        safeCall {
+    ): Result<EnrollmentResult, Auth0Error> = safeCall {
             val result = when (authenticatorType) {
                 AuthenticatorType.TOTP -> {
                     val challenge = repository.enrollTotp(REQUIRED_SCOPES)
@@ -95,5 +91,4 @@ class EnrollAuthenticatorUseCase(
             }
             result
         }
-    }
 }
