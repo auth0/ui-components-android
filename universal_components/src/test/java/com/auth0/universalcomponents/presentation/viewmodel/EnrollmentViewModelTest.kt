@@ -6,6 +6,7 @@ import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.model.EnrollmentInput
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.domain.usecase.EnrollAuthenticatorUseCase
+import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
@@ -30,6 +31,7 @@ class EnrollmentViewModelTest {
 
     private lateinit var enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase
     private lateinit var verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase
+    private lateinit var getUserInfoUseCase: GetUserInfoUseCase
 
     private lateinit var viewModel: EnrollmentViewModel
 
@@ -41,6 +43,7 @@ class EnrollmentViewModelTest {
 
         enrollAuthenticatorUseCase = mockk(relaxed = true)
         verifyAuthenticatorUseCase = mockk(relaxed = true)
+        getUserInfoUseCase = mockk(relaxed = true)
     }
 
     @After
@@ -62,6 +65,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.TOTP,
                 startDefaultEnrollment = true
             )
@@ -92,6 +96,7 @@ class EnrollmentViewModelTest {
         viewModel = EnrollmentViewModel(
             enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
             verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+            getUserInfoUseCase = getUserInfoUseCase,
             authenticatorType = AuthenticatorType.PHONE,
             startDefaultEnrollment = true
         )
@@ -117,6 +122,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.TOTP,
                 startDefaultEnrollment = false
             )
@@ -143,6 +149,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.TOTP,
                 startDefaultEnrollment = true
             )
@@ -191,6 +198,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.PHONE,
                 startDefaultEnrollment = false
             )
@@ -236,6 +244,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.EMAIL,
                 startDefaultEnrollment = false
             )
@@ -281,6 +290,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.TOTP,
                 startDefaultEnrollment = false
             )
@@ -328,6 +338,7 @@ class EnrollmentViewModelTest {
         viewModel = EnrollmentViewModel(
             enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
             verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+            getUserInfoUseCase = getUserInfoUseCase,
             authenticatorType = AuthenticatorType.PHONE,
             startDefaultEnrollment = false
         )
@@ -366,6 +377,7 @@ class EnrollmentViewModelTest {
         viewModel = EnrollmentViewModel(
             enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
             verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+            getUserInfoUseCase = getUserInfoUseCase,
             authenticatorType = AuthenticatorType.EMAIL,
             startDefaultEnrollment = false
         )
@@ -410,6 +422,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.PHONE,
                 startDefaultEnrollment = false
             )
@@ -464,6 +477,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.PHONE,
                 startDefaultEnrollment = false
             )
@@ -500,6 +514,7 @@ class EnrollmentViewModelTest {
         viewModel = EnrollmentViewModel(
             enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
             verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+            getUserInfoUseCase = getUserInfoUseCase,
             authenticatorType = AuthenticatorType.PHONE,
             startDefaultEnrollment = false
         )
@@ -540,6 +555,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.TOTP,
                 startDefaultEnrollment = false
             )
@@ -591,6 +607,7 @@ class EnrollmentViewModelTest {
         viewModel = EnrollmentViewModel(
             enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
             verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+            getUserInfoUseCase = getUserInfoUseCase,
             authenticatorType = AuthenticatorType.RECOVERY_CODE,
             startDefaultEnrollment = false
         )
@@ -630,6 +647,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.PHONE,
                 startDefaultEnrollment = false
             )
@@ -683,6 +701,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.PHONE,
                 startDefaultEnrollment = false
             )
@@ -729,6 +748,7 @@ class EnrollmentViewModelTest {
             viewModel = EnrollmentViewModel(
                 enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
                 verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
                 authenticatorType = AuthenticatorType.PHONE,
                 startDefaultEnrollment = false
             )
@@ -762,5 +782,94 @@ class EnrollmentViewModelTest {
 
             coVerify(exactly = 1) { enrollAuthenticatorUseCase(any(), any()) }
             coVerify(exactly = 1) { verifyAuthenticatorUseCase(any()) }
+        }
+
+    @Test
+    fun `initialization - EMAIL authenticator - calls getUserInfoUseCase and updates prefillEmail in state`() =
+        runTest {
+            val userInfo = com.auth0.universalcomponents.domain.model.UserInfo(
+                email = "user@example.com",
+                name = "John Doe",
+                pictureUrl = null
+            )
+            coEvery { getUserInfoUseCase() } returns Result.Success(userInfo)
+
+            viewModel = EnrollmentViewModel(
+                enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
+                verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
+                authenticatorType = AuthenticatorType.EMAIL,
+                startDefaultEnrollment = true
+            )
+
+            val job = launch { viewModel.uiState.collect { } }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state.prefillEmail).isEqualTo("user@example.com")
+            assertThat(state.uiError).isNull()
+
+            coVerify(exactly = 1) { getUserInfoUseCase() }
+            coVerify(exactly = 0) { enrollAuthenticatorUseCase(any(), any()) }
+
+            job.cancel()
+        }
+
+    @Test
+    fun `initialization - EMAIL authenticator - getUserInfoUseCase fails - state has no error and empty prefillEmail`() =
+        runTest {
+            coEvery { getUserInfoUseCase() } returns Result.Error(
+                Auth0Error.NetworkError(
+                    message = "Could not fetch credentials",
+                    cause = Exception("Network failure")
+                )
+            )
+
+            viewModel = EnrollmentViewModel(
+                enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
+                verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
+                authenticatorType = AuthenticatorType.EMAIL,
+                startDefaultEnrollment = true
+            )
+
+            val job = launch { viewModel.uiState.collect { } }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state.prefillEmail).isEmpty()
+            assertThat(state.uiError).isNull()
+
+            coVerify(exactly = 1) { getUserInfoUseCase() }
+
+            job.cancel()
+        }
+
+    @Test
+    fun `initialization - EMAIL authenticator with null email - prefillEmail remains empty`() =
+        runTest {
+            val userInfo = com.auth0.universalcomponents.domain.model.UserInfo(
+                email = null,
+                name = "John Doe",
+                pictureUrl = null
+            )
+            coEvery { getUserInfoUseCase() } returns Result.Success(userInfo)
+
+            viewModel = EnrollmentViewModel(
+                enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
+                verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+                getUserInfoUseCase = getUserInfoUseCase,
+                authenticatorType = AuthenticatorType.EMAIL,
+                startDefaultEnrollment = true
+            )
+
+            val job = launch { viewModel.uiState.collect { } }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val state = viewModel.uiState.value
+            assertThat(state.prefillEmail).isEmpty()
+            assertThat(state.uiError).isNull()
+
+            job.cancel()
         }
 }

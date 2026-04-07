@@ -78,7 +78,7 @@ class GetEnrolledAuthenticatorsUseCase(
                 is PushNotificationAuthenticationMethod -> this.name
                 is TotpAuthenticationMethod -> this.name
                 is PhoneAuthenticationMethod -> this.name ?: this.phoneNumber
-                is EmailAuthenticationMethod -> this.name
+                is EmailAuthenticationMethod -> this.email
                 else -> null
             }
         )

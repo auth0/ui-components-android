@@ -366,6 +366,55 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
 
 
     @Test
+    fun `invoke - duplicate factor types in factors list - returns deduplicated secondary authenticators`() =
+        runTest {
+            val duplicateFactors = listOf(
+                Factor(type = "totp", usage = listOf("secondary")),
+                Factor(type = "totp", usage = listOf("secondary")),
+                Factor(type = "phone", usage = listOf("primary"))
+            )
+            val authMethods = listOf<AuthenticationMethod>(
+                TestData.totpAuthMethod,
+                TestData.phoneAuthMethod
+            )
+
+            coEvery { repository.getFactors(any<String>()) } returns duplicateFactors
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
+
+            val result = useCase.invoke()
+
+            Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+            val authenticatorMethod = (result as Result.Success).data
+
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(2)
+            val types = authenticatorMethod.secondaryAuthenticators.map { it.type }
+            Truth.assertThat(types).containsExactly(AuthenticatorType.TOTP, AuthenticatorType.PHONE)
+        }
+
+    @Test
+    fun `invoke - all factors are duplicates of same type - returns single secondary authenticator`() =
+        runTest {
+            val duplicateFactors = listOf(
+                Factor(type = "totp", usage = listOf("secondary")),
+                Factor(type = "totp", usage = listOf("secondary")),
+                Factor(type = "totp", usage = listOf("secondary"))
+            )
+            val authMethods = listOf<AuthenticationMethod>(TestData.totpAuthMethod)
+
+            coEvery { repository.getFactors(any<String>()) } returns duplicateFactors
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
+
+            val result = useCase.invoke()
+
+            Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+            val authenticatorMethod = (result as Result.Success).data
+
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type).isEqualTo(AuthenticatorType.TOTP)
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isTrue()
+        }
+
+    @Test
     fun `invoke - repository getFactors throws exception - returns Auth0Error`() =
         runTest {
             val expectedError = Auth0Error.NetworkError(

@@ -1,8 +1,10 @@
 package com.auth0.universalcomponents.di
 
+import com.auth0.universalcomponents.Auth0UniversalComponents
 import com.auth0.universalcomponents.data.MyAccountProvider
 import com.auth0.universalcomponents.data.TokenManager
 import com.auth0.universalcomponents.data.repository.MyAccountRepositoryImpl
+import com.auth0.universalcomponents.data.repository.UserRepositoryImpl
 import com.auth0.universalcomponents.di.viewmodelfactory.AuthenticatorMethodViewModelFactory
 import com.auth0.universalcomponents.di.viewmodelfactory.EnrollmentViewModelFactory
 import com.auth0.universalcomponents.di.viewmodelfactory.MFAEnrolledItemViewModelFactory
@@ -10,14 +12,16 @@ import com.auth0.universalcomponents.di.viewmodelfactory.PasskeyViewModelFactory
 import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
+import com.auth0.universalcomponents.domain.repository.UserRepository
 import com.auth0.universalcomponents.domain.usecase.DeleteAuthenticationMethodUseCase
 import com.auth0.universalcomponents.domain.usecase.EnrollAuthenticatorUseCase
-import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMethodsUseCase
+import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
+import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.helper.DispatcherProviderImpl
 
-object MyAccountModule {
+object UniversalComponentsModule {
 
 
     //Viewmodel factories
@@ -42,7 +46,9 @@ object MyAccountModule {
         return EnrollmentViewModelFactory(
             enrollAuthenticatorUseCase = provideEnrollAuthenticatorUseCase(),
             verifyAuthenticatorUseCase = provideVerifyAuthenticatorUseCase(),
-            authenticatorType, startDefaultEnrollment
+            getUserInfoUseCase = provideGetUserInfoUseCase(),
+            authenticatorType = authenticatorType,
+            startDefaultEnrollment = startDefaultEnrollment
         )
     }
 
@@ -92,6 +98,16 @@ object MyAccountModule {
 
     private fun provideMyAccountRepository(): MyAccountRepository {
         return MyAccountRepositoryImpl(MyAccountProvider(), provideTokenManager())
+    }
+
+    private fun provideCredentialsRepository(): UserRepository {
+        return UserRepositoryImpl(Auth0UniversalComponents.tokenProvider)
+    }
+
+    fun provideGetUserInfoUseCase(): GetUserInfoUseCase {
+        return GetUserInfoUseCase(
+            userRepository = provideCredentialsRepository()
+        )
     }
 
     private fun provideTokenManager(): TokenManager {

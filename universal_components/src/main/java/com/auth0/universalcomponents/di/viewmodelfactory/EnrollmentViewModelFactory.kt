@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.usecase.EnrollAuthenticatorUseCase
+import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentViewModel
 
@@ -13,6 +14,7 @@ import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentViewModel
 class EnrollmentViewModelFactory(
     private val enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase,
     private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase,
+    private val getUserInfoUseCase: GetUserInfoUseCase,
     private val authenticatorType: AuthenticatorType,
     private val startDefaultEnrollment: Boolean = true
 ) : ViewModelProvider.Factory {
@@ -24,6 +26,7 @@ class EnrollmentViewModelFactory(
                 EnrollmentViewModel(
                     enrollAuthenticatorUseCase,
                     verifyAuthenticatorUseCase,
+                    getUserInfoUseCase,
                     authenticatorType,
                     startDefaultEnrollment
                 ) as T

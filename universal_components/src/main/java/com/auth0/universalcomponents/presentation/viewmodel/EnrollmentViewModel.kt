@@ -12,6 +12,7 @@ import com.auth0.universalcomponents.domain.model.VerificationInput
 import com.auth0.universalcomponents.domain.network.onError
 import com.auth0.universalcomponents.domain.network.onSuccess
 import com.auth0.universalcomponents.domain.usecase.EnrollAuthenticatorUseCase
+import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.presentation.ui.UiError
 import kotlinx.coroutines.channels.Channel
@@ -32,7 +33,8 @@ data class EnrollmentUiState(
     val enrollingAuthenticator: Boolean = false,
     val verifyingAuthenticator: Boolean = false,
     val otpError: Boolean = false,
-    val uiError: UiError? = null
+    val uiError: UiError? = null,
+    val prefillEmail: String = ""
 )
 
 /**
@@ -55,6 +57,7 @@ sealed interface EnrollmentEvent {
 class EnrollmentViewModel(
     private val enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase,
     private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase,
+    private val getUserInfoUseCase: GetUserInfoUseCase,
     authenticatorType: AuthenticatorType,
     startDefaultEnrollment: Boolean = true
 ) : ViewModel() {
@@ -76,6 +79,10 @@ class EnrollmentViewModel(
                 AuthenticatorType.TOTP -> {
                     if (startDefaultEnrollment)
                         startEnrollment(authenticatorType)
+                }
+
+                AuthenticatorType.EMAIL -> {
+                    prefillEmail()
                 }
 
                 else -> {
@@ -238,6 +245,19 @@ class EnrollmentViewModel(
                                 onRetry = { verifyWithoutOtp(authenticationMethodId, authSession) }
                             ))
                     }
+                }
+        }
+    }
+
+    private fun prefillEmail() {
+        viewModelScope.launch {
+            getUserInfoUseCase()
+                .onSuccess { userInfo ->
+                    Log.d(TAG, "Email prefill succeeded")
+                    _uiState.update { it.copy(prefillEmail = userInfo.email.orEmpty()) }
+                }
+                .onError { error ->
+                    Log.w(TAG, "Could not prefill email: ${error.message}")
                 }
         }
     }

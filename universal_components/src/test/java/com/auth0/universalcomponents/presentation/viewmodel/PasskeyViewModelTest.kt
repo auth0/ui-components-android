@@ -250,4 +250,18 @@ class PasskeyViewModelTest {
         val state = viewModel.uiState.value
         assertThat(state).isInstanceOf(PasskeyUiState.Error::class.java)
     }
+
+    @Test
+    fun `resetState - from Error state - transitions uiState back to Idle`() = runTest {
+        coEvery { myAccountRepository.enrollPasskey(any(), any(), any()) } throws Auth0Error.NetworkError("Network failed", Exception())
+
+        viewModel.enrollPasskey(fakeCredentialCreator)
+        advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value).isInstanceOf(PasskeyUiState.Error::class.java)
+
+        viewModel.resetState()
+
+        assertThat(viewModel.uiState.value).isEqualTo(PasskeyUiState.Idle)
+    }
 }

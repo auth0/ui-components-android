@@ -17,6 +17,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -24,16 +25,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.di.MyAccountModule
+import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.model.EnrollmentInput
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
@@ -52,7 +50,7 @@ import com.auth0.universalcomponents.utils.ValidationUtil
 fun EmailEnrollmentScreen(
     authenticatorType: AuthenticatorType,
     viewModel: EnrollmentViewModel = viewModel(
-        factory = MyAccountModule.provideEnrollmentViewModelFactory(authenticatorType)
+        factory = UniversalComponentsModule.provideEnrollmentViewModelFactory(authenticatorType)
     ),
     onBackClick: () -> Unit,
     onContinueToOTP: (authenticationId: String, authSession: String, email: String) -> Unit = { _, _, _ -> }
@@ -64,6 +62,12 @@ fun EmailEnrollmentScreen(
     var validationErrorMessage by remember { mutableStateOf("") }
 
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiState.prefillEmail) {
+        if (email.isEmpty() && uiState.prefillEmail.isNotEmpty()) {
+            email = uiState.prefillEmail
+        }
+    }
 
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
