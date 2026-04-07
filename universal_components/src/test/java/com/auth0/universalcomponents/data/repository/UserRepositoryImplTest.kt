@@ -2,6 +2,7 @@ package com.auth0.universalcomponents.data.repository
 
 import com.auth0.android.result.Credentials
 import com.auth0.android.result.UserProfile
+import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.token.TokenProvider
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
@@ -11,7 +12,6 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
-import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
 
@@ -69,15 +69,17 @@ class UserRepositoryImplTest {
         }
 
     @Test
-    fun `getUserInfo - tokenProvider throws exception - propagates exception`() {
+    fun `getUserInfo - tokenProvider throws exception - propagates as Auth0Error`() = runTest {
         coEvery { tokenProvider.fetchCredentials() } throws RuntimeException("Credentials not available")
 
-        assertThrows(RuntimeException::class.java) {
-            runTest {
-                repository.getUserInfo()
-            }
+        var caughtError: Throwable? = null
+        try {
+            repository.getUserInfo()
+        } catch (e: Auth0Error) {
+            caughtError = e
         }
 
+        assertThat(caughtError).isInstanceOf(Auth0Error::class.java)
         coVerify(exactly = 1) { tokenProvider.fetchCredentials() }
     }
 

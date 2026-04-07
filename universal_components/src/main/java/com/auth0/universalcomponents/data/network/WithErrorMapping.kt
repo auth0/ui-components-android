@@ -13,7 +13,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * @throws [com.auth0.universalcomponents.domain.error.Auth0Error]
  */
 internal suspend inline fun <reified T> withErrorMapping(
-    scope: String,
+    scope: String? = null,
     execute: suspend () -> T
 ): T {
     return try {
