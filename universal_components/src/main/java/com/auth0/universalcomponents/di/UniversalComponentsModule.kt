@@ -9,9 +9,7 @@ import com.auth0.universalcomponents.di.viewmodelfactory.AuthenticatorMethodView
 import com.auth0.universalcomponents.di.viewmodelfactory.EnrollmentViewModelFactory
 import com.auth0.universalcomponents.di.viewmodelfactory.MFAEnrolledItemViewModelFactory
 import com.auth0.universalcomponents.di.viewmodelfactory.PasskeyViewModelFactory
-import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
-import com.auth0.universalcomponents.helper.DispatcherProviderImpl
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
 import com.auth0.universalcomponents.domain.repository.UserRepository
 import com.auth0.universalcomponents.domain.usecase.DeleteAuthenticationMethodUseCase
@@ -63,7 +61,6 @@ object UniversalComponentsModule {
     private fun provideEnabledAuthenticatorMethodsUseCase(): GetEnabledAuthenticatorMethodsUseCase {
         return GetEnabledAuthenticatorMethodsUseCase(
             repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider(),
         )
     }
 
@@ -108,10 +105,6 @@ object UniversalComponentsModule {
 
     private fun provideTokenManager(): TokenManager {
         return TokenManager.getInstance()
-    }
-
-    private fun provideDispatcherProvider(): DispatcherProvider {
-        return DispatcherProviderImpl()
     }
 
 }
