@@ -3,7 +3,6 @@ package com.auth0.universalcomponents.domain.usecase
 import com.auth0.android.result.AuthenticationMethod
 import com.auth0.android.result.Factor
 import com.auth0.android.result.MfaAuthenticationMethod
-import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.domain.model.AuthenticatorMethod
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
@@ -14,14 +13,12 @@ import com.auth0.universalcomponents.domain.network.safeCall
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.withContext
 
 /**
  * UseCase that fetches enabled primary and secondary authenticator methods
  */
 class GetEnabledAuthenticatorMethodsUseCase(
     private val repository: MyAccountRepository,
-    private val dispatcherProvider: DispatcherProvider,
 ) {
     private companion object {
         private const val REQUIRED_SCOPES_FACTORS = "read:me:factors"
@@ -29,22 +26,20 @@ class GetEnabledAuthenticatorMethodsUseCase(
     }
 
     suspend operator fun invoke(): Result<AuthenticatorMethod, Auth0Error> =
-        withContext(dispatcherProvider.io) {
-            safeCall {
-                coroutineScope {
-                    val factorsDeferred = async {
-                        repository.getFactors(REQUIRED_SCOPES_FACTORS)
-                    }
-                    val authMethodsDeferred = async {
-                        repository.getAuthenticatorMethods(REQUIRED_SCOPES_AUTHENTICATION)
-                    }
-
-                    val (factors, authMethods) = Pair(
-                        factorsDeferred.await(),
-                        authMethodsDeferred.await()
-                    )
-                    mapAuthenticatorMethods(factors, authMethods)
+        safeCall {
+            coroutineScope {
+                val factorsDeferred = async {
+                    repository.getFactors(REQUIRED_SCOPES_FACTORS)
                 }
+                val authMethodsDeferred = async {
+                    repository.getAuthenticatorMethods(REQUIRED_SCOPES_AUTHENTICATION)
+                }
+
+                val (factors, authMethods) = Pair(
+                    factorsDeferred.await(),
+                    authMethodsDeferred.await()
+                )
+                mapAuthenticatorMethods(factors, authMethods)
             }
         }
 

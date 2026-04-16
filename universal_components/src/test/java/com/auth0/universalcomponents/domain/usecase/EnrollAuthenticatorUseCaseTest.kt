@@ -7,49 +7,35 @@ import com.auth0.universalcomponents.domain.model.EnrollmentInput
 import com.auth0.universalcomponents.domain.model.EnrollmentResult
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
-import com.auth0.universalcomponents.helpers.TestDispatcherProvider
 import com.google.common.truth.Truth
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class EnrollAuthenticatorUseCaseTest {
 
     private lateinit var repository: MyAccountRepository
     private lateinit var useCase: EnrollAuthenticatorUseCase
-
-    private val testDispatcher = StandardTestDispatcher()
-    private val dispatcherProvider = TestDispatcherProvider(testDispatcher)
 
     private val requiredScope = "create:me:authentication_methods"
 
 
     @Before
     fun setup() {
-        Dispatchers.setMain(testDispatcher)
-
         repository = mockk()
         useCase = EnrollAuthenticatorUseCase(
-            repository = repository,
-            dispatcherProvider = dispatcherProvider
+            repository = repository
         )
     }
 
     @After
     fun tearDown() {
-        Dispatchers.resetMain()
         clearAllMocks()
     }
 

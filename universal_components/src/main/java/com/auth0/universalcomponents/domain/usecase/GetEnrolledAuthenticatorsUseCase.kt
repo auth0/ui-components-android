@@ -7,22 +7,19 @@ import com.auth0.android.result.PasskeyAuthenticationMethod
 import com.auth0.android.result.PhoneAuthenticationMethod
 import com.auth0.android.result.PushNotificationAuthenticationMethod
 import com.auth0.android.result.TotpAuthenticationMethod
-import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.model.EnrolledAuthenticationMethod
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.domain.network.safeCall
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
-import kotlinx.coroutines.withContext
 
 /**
  * UseCase that fetches and filters authentication methods by type
  * Returns only confirmed methods for the specified authenticator type
  */
 class GetEnrolledAuthenticatorsUseCase(
-    private val repository: MyAccountRepository,
-    private val dispatcherProvider: DispatcherProvider
+    private val repository: MyAccountRepository
 ) {
     private companion object {
         private const val REQUIRED_SCOPES = "read:me:authentication_methods"
@@ -34,11 +31,9 @@ class GetEnrolledAuthenticatorsUseCase(
      * @return Result containing list of confirmed authentication methods
      */
     suspend operator fun invoke(type: AuthenticatorType): Result<List<EnrolledAuthenticationMethod>, Auth0Error> =
-        withContext(dispatcherProvider.io) {
-            safeCall {
-                val authMethods = repository.getAuthenticatorMethods(REQUIRED_SCOPES)
-                filterEnrolledAuthenticationMethods(authMethods, type)
-            }
+        safeCall {
+            val authMethods = repository.getAuthenticatorMethods(REQUIRED_SCOPES)
+            filterEnrolledAuthenticationMethods(authMethods, type)
         }
 
     /**

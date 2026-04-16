@@ -1,21 +1,18 @@
 package com.auth0.universalcomponents.domain.usecase
 
 import com.auth0.android.result.AuthenticationMethod
-import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.domain.model.VerificationInput
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.domain.network.safeCall
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
-import kotlinx.coroutines.withContext
 
 /**
  * UseCase for verifying enrolled authenticators
  * Handles both OTP-based and non-OTP verifications
  */
 class VerifyAuthenticatorUseCase(
-    private val repository: MyAccountRepository,
-    private val dispatcherProvider: DispatcherProvider
+    private val repository: MyAccountRepository
 ) {
     private companion object {
         private const val REQUIRED_SCOPES = "create:me:authentication_methods"
@@ -28,8 +25,7 @@ class VerifyAuthenticatorUseCase(
      */
     suspend operator fun invoke(
         input: VerificationInput
-    ): Result<AuthenticationMethod, Auth0Error> = withContext(dispatcherProvider.io) {
-        safeCall {
+    ): Result<AuthenticationMethod, Auth0Error> = safeCall {
 
             val authMethod = when (input) {
                 is VerificationInput.WithOtp -> {
@@ -51,5 +47,4 @@ class VerifyAuthenticatorUseCase(
             }
             authMethod
         }
-    }
 }

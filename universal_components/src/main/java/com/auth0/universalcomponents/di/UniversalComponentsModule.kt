@@ -9,7 +9,6 @@ import com.auth0.universalcomponents.di.viewmodelfactory.AuthenticatorMethodView
 import com.auth0.universalcomponents.di.viewmodelfactory.EnrollmentViewModelFactory
 import com.auth0.universalcomponents.di.viewmodelfactory.MFAEnrolledItemViewModelFactory
 import com.auth0.universalcomponents.di.viewmodelfactory.PasskeyViewModelFactory
-import com.auth0.universalcomponents.domain.DispatcherProvider
 import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
 import com.auth0.universalcomponents.domain.repository.UserRepository
@@ -19,7 +18,6 @@ import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMetho
 import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
-import com.auth0.universalcomponents.helper.DispatcherProviderImpl
 
 object UniversalComponentsModule {
 
@@ -63,36 +61,31 @@ object UniversalComponentsModule {
     private fun provideEnabledAuthenticatorMethodsUseCase(): GetEnabledAuthenticatorMethodsUseCase {
         return GetEnabledAuthenticatorMethodsUseCase(
             repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider(),
         )
     }
 
     private fun provideGetEnrolledAuthenticatorsUseCase(): GetEnrolledAuthenticatorsUseCase {
         return GetEnrolledAuthenticatorsUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 
     private fun provideDeleteAuthenticationMethodUseCase(): DeleteAuthenticationMethodUseCase {
         return DeleteAuthenticationMethodUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 
 
     private fun provideEnrollAuthenticatorUseCase(): EnrollAuthenticatorUseCase {
         return EnrollAuthenticatorUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 
     private fun provideVerifyAuthenticatorUseCase(): VerifyAuthenticatorUseCase {
         return VerifyAuthenticatorUseCase(
-            repository = provideMyAccountRepository(),
-            dispatcherProvider = provideDispatcherProvider()
+            repository = provideMyAccountRepository()
         )
     }
 
@@ -112,10 +105,6 @@ object UniversalComponentsModule {
 
     private fun provideTokenManager(): TokenManager {
         return TokenManager.getInstance()
-    }
-
-    private fun provideDispatcherProvider(): DispatcherProvider {
-        return DispatcherProviderImpl()
     }
 
 }
