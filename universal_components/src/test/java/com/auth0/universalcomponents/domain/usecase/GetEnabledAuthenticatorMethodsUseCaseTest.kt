@@ -258,7 +258,7 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
         }
 
     @Test
-    fun `invoke - unknown secondary factor type - maps to TOTP as default in secondary authenticators`() =
+    fun `invoke - unknown secondary factor type - skips unknown type and returns empty secondary authenticators`() =
         runTest {
             val unknownFactor = Factor(type = "unknown-type", usage = listOf("secondary"))
             val factors = listOf(unknownFactor)
@@ -272,12 +272,32 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
             val authenticatorMethod = (result as Result.Success).data
 
+            Truth.assertThat(authenticatorMethod.secondaryAuthenticators).isEmpty()
+
+            coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
+            coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
+        }
+
+    @Test
+    fun `invoke - mixed known and unknown secondary factor types - skips unknown and returns only known types`() =
+        runTest {
+            val factors = listOf(
+                TestData.totpFactor,
+                Factor(type = "unknown-type", usage = listOf("secondary"))
+            )
+            val authMethods = listOf<AuthenticationMethod>(TestData.totpAuthMethod)
+
+            coEvery { repository.getFactors(any<String>()) } returns factors
+            coEvery { repository.getAuthenticatorMethods(any<String>()) } returns authMethods
+
+            val result = useCase.invoke()
+
+            Truth.assertThat(result).isInstanceOf(Result.Success::class.java)
+            val authenticatorMethod = (result as Result.Success).data
+
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators).hasSize(1)
             Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].type)
                 .isEqualTo(AuthenticatorType.TOTP)
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].confirmed).isFalse()
-            Truth.assertThat(authenticatorMethod.secondaryAuthenticators[0].usage)
-                .containsExactly("secondary")
 
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
