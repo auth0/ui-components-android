@@ -100,11 +100,7 @@ fun ProfileScreen(
                 style = typography.titleLarge,
                 color = colors.textBold,
             )
-            Text(
-                text = "Update your personal information",
-                style = typography.body,
-                color = colors.textDefault,
-            )
+
             Spacer(modifier = Modifier.height(dimensions.spacingMd))
 
             Column(
@@ -118,7 +114,7 @@ fun ProfileScreen(
                 ProfileInfoRow(
                     icon = Icons.Outlined.Person,
                     text = userName,
-                    onClick = onEditName
+                    onClick = null
                 )
                 if (userEmail.isNotEmpty()) {
                     HorizontalDivider(
