@@ -68,14 +68,16 @@ class GetEnabledAuthenticatorMethodsUseCase(
                 }
 
         val authMethodsByType = secondaryAuthenticator.groupBy { it.type }
-        val secondaryAuthMethods = factors.distinctBy { it.type }.map { factor ->
+        val secondaryAuthMethods = factors.distinctBy { it.type }.mapNotNull { factor ->
+            val authenticatorType = mapTypeToAuthenticatorType(factor.type) ?: return@mapNotNull null
+
             val hasConfirmedAuthMethod = authMethodsByType[factor.type]
                 ?.any {
                     it is MfaAuthenticationMethod && it.confirmed == true
                 } ?: false
 
             SecondaryAuthenticator(
-                type = mapTypeToAuthenticatorType(factor.type),
+                type = authenticatorType,
                 confirmed = hasConfirmedAuthMethod,
                 usage = factor.usage ?: emptyList()
             )
@@ -87,7 +89,7 @@ class GetEnabledAuthenticatorMethodsUseCase(
     /**
      * Maps authentication method type to AuthenticatorType enum
      */
-    private fun mapTypeToAuthenticatorType(type: String): AuthenticatorType {
+    private fun mapTypeToAuthenticatorType(type: String): AuthenticatorType? {
         return when (type.lowercase()) {
             "totp" -> AuthenticatorType.TOTP
             "phone" -> AuthenticatorType.PHONE
@@ -95,7 +97,7 @@ class GetEnabledAuthenticatorMethodsUseCase(
             "push-notification" -> AuthenticatorType.PUSH
             "recovery-code" -> AuthenticatorType.RECOVERY_CODE
             "passkey" -> AuthenticatorType.PASSKEY
-            else -> AuthenticatorType.TOTP
+            else -> null
         }
     }
 }
