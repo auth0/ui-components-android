@@ -184,7 +184,8 @@ fun SampleApp(
                     ChooseSignInScreen(
                         onHostedLogin = { authViewModel.login(context, webAuthProvider) },
                         onEmbeddedLogin = { navController.navigate(AppRoute.EmbeddedLogin) },
-                        onSettings = { navController.navigate(AppRoute.Appearance) }
+                        onSettings = { navController.navigate(AppRoute.Appearance) },
+                        isLoading = authState is AuthState.Loading
                     )
                 }
             }

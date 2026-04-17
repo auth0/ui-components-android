@@ -1,6 +1,8 @@
 package com.auth0.android.sample.ui.screens
 
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -15,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -33,6 +37,8 @@ import com.auth0.android.sample.ui.components.FactorCard
 import com.auth0.android.sample.ui.theme.auth0ScreenBackground
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.theme.Auth0Theme.colors
+
+private val LoadingOverlayColor = Color.Black.copy(alpha = 0.4f)
 
 private enum class LoginOption { Embedded, Hosted }
 
@@ -51,7 +57,8 @@ private enum class LoginOption { Embedded, Hosted }
 fun ChooseSignInScreen(
     onEmbeddedLogin: () -> Unit,
     onHostedLogin: () -> Unit,
-    onSettings: () -> Unit = {}
+    onSettings: () -> Unit = {},
+    isLoading: Boolean = false
 ) {
     var selectedOption by remember { mutableStateOf<LoginOption?>(LoginOption.Hosted) }
     val context = LocalContext.current
@@ -60,101 +67,114 @@ fun ChooseSignInScreen(
     val shapes = Auth0Theme.shapes
     val sizes = Auth0Theme.sizes
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .auth0ScreenBackground()
-            .statusBarsPadding()
-            .windowInsetsPadding(WindowInsets.navigationBars)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = dimensions.spacingLg),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .fillMaxSize()
+                .auth0ScreenBackground()
+                .statusBarsPadding()
+                .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
-            Spacer(modifier = Modifier.height(dimensions.spacingSm))
-
-            Auth0LogoHeader()
-
-            Spacer(modifier = Modifier.height(dimensions.spacingXxl * 2))
-
-            Text(
-                text = "Choose how to sign in",
-                style = typography.display,
-                color = colors.textBold,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(dimensions.spacingLg))
-
-            FactorCard(
-                title = "Embedded Login",
-                description = "Total brand control and low user frictions",
-                icon = painterResource(com.auth0.android.sample.R.drawable.ic_embedded_login),
-                isSelected = selectedOption == LoginOption.Embedded,
-                enabled = false,
-                onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-            )
-
-            Spacer(modifier = Modifier.height(dimensions.spacingMd))
-
-            FactorCard(
-                title = "Hosted Login",
-                description = "Easy to setup, works instantly",
-                icon = painterResource(com.auth0.android.sample.R.drawable.ic_hosted_login),
-                isSelected = selectedOption == LoginOption.Hosted,
-                onClick = { selectedOption = LoginOption.Hosted }
-            )
-
-            Spacer(modifier = Modifier.height(dimensions.spacingLg))
-
-            Button(
-                onClick = {
-                    when (selectedOption) {
-                        LoginOption.Embedded -> onEmbeddedLogin()
-                        LoginOption.Hosted -> onHostedLogin()
-                        null -> Unit
-                    }
-                },
-                enabled = selectedOption != null,
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(sizes.buttonHeight),
-                shape = shapes.large,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.backgroundPrimary,
-                    contentColor = colors.textOnPrimary
-                )
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = dimensions.spacingLg),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Spacer(modifier = Modifier.height(dimensions.spacingSm))
+
+                Auth0LogoHeader()
+
+                Spacer(modifier = Modifier.height(dimensions.spacingXxl * 2))
+
                 Text(
-                    text = "Continue",
-                    style = typography.label
+                    text = "Choose how to sign in",
+                    style = typography.display,
+                    color = colors.textBold,
+                    textAlign = TextAlign.Center
                 )
+
+                Spacer(modifier = Modifier.height(dimensions.spacingLg))
+
+                FactorCard(
+                    title = "Embedded Login",
+                    description = "Total brand control and low user frictions",
+                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_embedded_login),
+                    isSelected = selectedOption == LoginOption.Embedded,
+                    enabled = false,
+                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
+                )
+
+                Spacer(modifier = Modifier.height(dimensions.spacingMd))
+
+                FactorCard(
+                    title = "Hosted Login",
+                    description = "Easy to setup, works instantly",
+                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_hosted_login),
+                    isSelected = selectedOption == LoginOption.Hosted,
+                    onClick = { selectedOption = LoginOption.Hosted }
+                )
+
+                Spacer(modifier = Modifier.height(dimensions.spacingLg))
+
+                Button(
+                    onClick = {
+                        when (selectedOption) {
+                            LoginOption.Embedded -> onEmbeddedLogin()
+                            LoginOption.Hosted -> onHostedLogin()
+                            null -> Unit
+                        }
+                    },
+                    enabled = selectedOption != null && !isLoading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(sizes.buttonHeight),
+                    shape = shapes.large,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.backgroundPrimary,
+                        contentColor = colors.textOnPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Continue",
+                        style = typography.label
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(dimensions.spacingLg))
             }
 
-            Spacer(modifier = Modifier.height(dimensions.spacingLg))
+            // Appearance — pinned at screen bottom, outside the scroll area
+            TextButton(
+                onClick = onSettings,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = dimensions.spacingLg, vertical = dimensions.spacingMd)
+            ) {
+                Icon(
+                    painter = painterResource(com.auth0.android.sample.R.drawable.ic_appearance_prefix),
+                    contentDescription = null,
+                    tint = colors.textBold,
+                    modifier = Modifier.padding(end = dimensions.spacingXs)
+                )
+                Text(
+                    text = "Appearance",
+                    style = typography.body,
+                    color = colors.textBold
+                )
+            }
         }
 
-        // Appearance — pinned at screen bottom, outside the scroll area
-        TextButton(
-            onClick = onSettings,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = dimensions.spacingLg, vertical = dimensions.spacingMd)
-        ) {
-            Icon(
-                painter = painterResource(com.auth0.android.sample.R.drawable.ic_appearance_prefix),
-                contentDescription = null,
-                tint = colors.textBold,
-                modifier = Modifier.padding(end = dimensions.spacingXs)
-            )
-            Text(
-                text = "Appearance",
-                style = typography.body,
-                color = colors.textBold
-            )
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(LoadingOverlayColor),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = colors.backgroundPrimary)
+            }
         }
     }
 }
