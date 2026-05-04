@@ -22,7 +22,8 @@ class MyAccountProvider(
         val original = account.auth0UserAgent
         account.auth0UserAgent = Auth0UserAgent(
             SDK_NAME,
-            BuildConfig.VERSION_NAME
+            BuildConfig.VERSION_NAME,
+            original.version
         )
         val client = MyAccountAPIClient(account, accessToken)
         account.auth0UserAgent = original
