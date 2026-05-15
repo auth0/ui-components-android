@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -179,13 +180,9 @@ private fun QREnrollmentContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = if (!hasManualCode) Arrangement.Center else Arrangement.Top
         ) {
-            if (hasManualCode) {
-                Spacer(modifier = Modifier.height(90.dp))
-            }
-
             QRCodeSection(
                 barcodeUri = barcodeUri,
-                modifier = Modifier.size(170.dp)
+                modifier = Modifier.fillMaxWidth(0.8f)
             )
 
             Spacer(modifier = Modifier.height(dimensions.spacingXl))
@@ -204,6 +201,17 @@ private fun QREnrollmentContent(
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            if (isPushNotification) {
+                CopyCodeButton(
+                    onCopyClick = {
+                        clipboardManager.setText(AnnotatedString(barcodeUri))
+                        showSnackbar = true
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(dimensions.spacingMd))
             }
 
             ContinueButtonSection(
@@ -387,12 +395,18 @@ private fun QRCodeDisplay(
     data: String,
     modifier: Modifier = Modifier
 ) {
-    val qrCodeBitmap = remember(data) {
-        generateQRCode(data)
+    val colors = Auth0Theme.colors
+    val qrCodeBitmap = remember(data, colors.backgroundPrimary, colors.backgroundLayerBase) {
+        generateQRCode(
+            content = data,
+            qrCodeColor = colors.backgroundPrimary,
+            qrBackgroundColor = colors.backgroundLayerBase,
+        )
     }
     Box(
         modifier = modifier
-            .background(Color.White),
+            .aspectRatio(1f)
+            .background(color = colors.backgroundLayerBase),
         contentAlignment = Alignment.Center
     ) {
         if (qrCodeBitmap != null) {
@@ -503,9 +517,20 @@ private fun ErrorScreen(state: EnrollmentUiState) {
 
 
 /**
- * Generating QR code using ZXing
+ * Generates a QR code bitmap using ZXing.
+ *
+ * @param content The data to encode in the QR code (e.g., a TOTP barcode URI).
+ * @param size The width and height in pixels of the generated bitmap.
+ * @param qrCodeColor The color used for the QR code modules (foreground).
+ * @param qrBackgroundColor The color used for the empty space (background).
+ * @return A [Bitmap] containing the QR code, or null if encoding fails.
  */
-private fun generateQRCode(content: String, size: Int = 500): Bitmap? {
+private fun generateQRCode(
+    content: String,
+    size: Int = 500,
+    qrCodeColor: Color = Color.Black,
+    qrBackgroundColor: Color = Color.White
+): Bitmap? {
     return try {
         val writer = QRCodeWriter()
         val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size)
@@ -515,8 +540,8 @@ private fun generateQRCode(content: String, size: Int = 500): Bitmap? {
 
         for (x in 0 until width) {
             for (y in 0 until height) {
-                bitmap[x, y] = if (bitMatrix[x, y]) Color.Black.toArgb()
-                else Color.White.toArgb()
+                bitmap[x, y] = if (bitMatrix[x, y]) qrCodeColor.toArgb()
+                else qrBackgroundColor.toArgb()
             }
         }
         bitmap
