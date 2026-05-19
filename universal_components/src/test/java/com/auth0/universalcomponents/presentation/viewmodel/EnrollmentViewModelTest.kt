@@ -53,7 +53,7 @@ class EnrollmentViewModelTest {
     }
 
     @Test
-    fun `initialization - TOTP authenticator with auto-start enabled - automatically starts enrollment on uiState collection`() =
+    fun `initialization - TOTP authenticator with auto-start enabled - automatically starts enrollment on creation`() =
         runTest {
             coEvery {
                 enrollAuthenticatorUseCase(
@@ -872,4 +872,34 @@ class EnrollmentViewModelTest {
 
             job.cancel()
         }
+
+    @Test
+    fun `initialization - TOTP - resubscription does NOT restart enrollment`() = runTest {
+        coEvery {
+            enrollAuthenticatorUseCase(AuthenticatorType.TOTP, EnrollmentInput.None)
+        } returns Result.Success(TestData.totpEnrollmentResult)
+
+        viewModel = EnrollmentViewModel(
+            enrollAuthenticatorUseCase = enrollAuthenticatorUseCase,
+            verifyAuthenticatorUseCase = verifyAuthenticatorUseCase,
+            getUserInfoUseCase = getUserInfoUseCase,
+            authenticatorType = AuthenticatorType.TOTP,
+            startDefaultEnrollment = true
+        )
+
+        val job1 = launch { viewModel.uiState.collect {} }
+        val eventJob = launch { viewModel.events.collect {} }
+        testDispatcher.scheduler.advanceUntilIdle()
+        job1.cancel()
+
+        val job2 = launch { viewModel.uiState.collect {} }
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            enrollAuthenticatorUseCase(AuthenticatorType.TOTP, EnrollmentInput.None)
+        }
+
+        job2.cancel()
+        eventJob.cancel()
+    }
 }
