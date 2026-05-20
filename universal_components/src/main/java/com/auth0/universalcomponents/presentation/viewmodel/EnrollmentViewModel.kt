@@ -17,10 +17,9 @@ import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.presentation.ui.UiError
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -70,21 +69,7 @@ class EnrollmentViewModel(
 
     private val _uiState = MutableStateFlow(EnrollmentUiState())
 
-    val uiState: StateFlow<EnrollmentUiState> = _uiState.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000000),
-        initialValue = when (authenticatorType) {
-            AuthenticatorType.RECOVERY_CODE,
-            AuthenticatorType.PUSH,
-            AuthenticatorType.TOTP -> {
-                if (startDefaultEnrollment)
-                    EnrollmentUiState(enrollingAuthenticator = true)
-                else EnrollmentUiState()
-            }
-
-            else -> EnrollmentUiState()
-        }
-    )
+    val uiState: StateFlow<EnrollmentUiState> = _uiState.asStateFlow()
 
     init {
         when (authenticatorType) {

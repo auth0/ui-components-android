@@ -761,6 +761,8 @@ class EnrollmentViewModelTest {
                 verifyAuthenticatorUseCase(any())
             } returns Result.Success(TestData.verifiedPhoneAuthMethod)
 
+            val eventJob = launch { viewModel.events.collect {} }
+
             viewModel.startEnrollment(
                 AuthenticatorType.PHONE,
                 EnrollmentInput.Phone("+15551234567")
@@ -782,6 +784,8 @@ class EnrollmentViewModelTest {
 
             coVerify(exactly = 1) { enrollAuthenticatorUseCase(any(), any()) }
             coVerify(exactly = 1) { verifyAuthenticatorUseCase(any()) }
+
+            eventJob.cancel()
         }
 
     @Test
