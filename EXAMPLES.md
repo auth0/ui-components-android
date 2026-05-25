@@ -33,6 +33,7 @@ private val credentialsManager: CredentialsManager by lazy {
 
 // Initialize Auth0 Universal Components
 Auth0UniversalComponents.initialize(
+    context = context,
     account = account,
     tokenProvider = DefaultTokenProvider(credentialsManager),
     scheme = getString(R.string.com_auth0_scheme)
@@ -63,6 +64,7 @@ class CustomTokenProvider : TokenProvider {
 
 // Initialize Auth0 Universal Components
 Auth0UniversalComponents.initialize(
+    context = context,
     account = account,
     tokenProvider = CustomTokenProvider(),
     scheme = getString(R.string.com_auth0_scheme)
@@ -85,6 +87,7 @@ val passkeyConfiguration = PasskeyConfiguration(
 
 // Initialize Auth0 Universal Components
 Auth0UniversalComponents.initialize(
+    context = context,
     account = account,
     tokenProvider = CustomTokenProvider(),
     scheme = getString(R.string.com_auth0_scheme),

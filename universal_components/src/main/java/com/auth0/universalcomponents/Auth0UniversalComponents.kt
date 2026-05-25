@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents
 
+import android.content.Context
 import android.util.Log
 import androidx.credentials.CredentialManager
 import com.auth0.android.Auth0
@@ -22,10 +23,17 @@ data class PasskeyConfiguration(
 public object Auth0UniversalComponents {
 
     private var initialized = AtomicBoolean(false)
+    private lateinit var _context: Context
     private lateinit var _account: Auth0
     private lateinit var _tokenProvider: TokenProvider
     private lateinit var _scheme: String
     private lateinit var _passkeyConfiguration: PasskeyConfiguration
+
+    internal val context: Context
+        get() {
+            assertInitialized()
+            return _context
+        }
 
     internal val account: Auth0
         get() {
@@ -52,6 +60,7 @@ public object Auth0UniversalComponents {
         }
 
     public fun initialize(
+        context: Context,
         account: Auth0,
         tokenProvider: TokenProvider,
         scheme: String,
@@ -61,6 +70,7 @@ public object Auth0UniversalComponents {
             Log.d("Auth0UniversalComponents", "Auth0UniversalComponents is already initialized.")
             return
         }
+        _context = context.applicationContext
         _account = account
         _tokenProvider = tokenProvider
         _scheme = scheme
