@@ -171,6 +171,7 @@ val credentialsManager = CredentialsManager(
 
 // Initialize the UI library
 Auth0UniversalComponents.initialize(
+    context = context,
     account = account,
     tokenProvider = DefaultTokenProvider(credentialsManager),
     scheme = "https"
@@ -206,6 +207,7 @@ class CustomTokenProvider : TokenProvider {
 
 // Initialize with custom configuration
 Auth0UniversalComponents.initialize(
+    context = context,
     account = account,
     tokenProvider = CustomTokenProvider(),
     scheme = "customscheme"
@@ -230,6 +232,7 @@ If you followed the configuration steps above, the default scheme is `https`. Th
 
 ```kotlin
 Auth0UniversalComponents.initialize(
+    context = context,
     account = account,
     tokenProvider = tokenProvider,
     scheme = "customscheme"
