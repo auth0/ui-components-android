@@ -4,11 +4,11 @@ apply plugin: 'signing'
 
 apply from: rootProject.file('gradle/versioning.gradle')
 
-//tasks.register('javadocJar', Jar) {
-//    dependsOn dokkaHtml
-//    archiveClassifier = "javadoc"
-//    from dokkaHtml.outputDirectory
-//}
+tasks.register('javadocJar', Jar) {
+    dependsOn dokkaHtml
+    archiveClassifier = "javadoc"
+    from dokkaHtml.outputDirectory
+}
 
 tasks.register('sourcesJar', Jar) {
     archiveClassifier = 'sources'
@@ -24,7 +24,7 @@ publishing {
 
             artifact("${layout.buildDirectory}/outputs/aar/${project.getName()}-release.aar")
             artifact sourcesJar
-//            artifact javadocJar
+            artifact javadocJar
 
             pom {
                 name = POM_NAME
