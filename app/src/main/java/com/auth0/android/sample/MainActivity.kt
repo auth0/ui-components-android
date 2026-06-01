@@ -88,6 +88,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         Auth0UniversalComponents.initialize(
+            this,
             account,
             DefaultTokenProvider(
                 credentialsManager,
