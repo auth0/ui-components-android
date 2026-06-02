@@ -1,0 +1,96 @@
+build:
+  maxIssues: 0
+  excludeCorrectable: false
+
+config:
+  validation: true
+  warningsAsErrors: false
+  checkExhaustiveness: false
+
+processors:
+  active: true
+
+console-reports:
+  active: true
+
+# ktlint-based rules (detekt-formatting plugin)
+formatting:
+  active: true
+  android: true
+  autoCorrect: true
+  Indentation:
+    active: true
+    indentSize: 4
+  MaximumLineLength:
+    active: true
+    maxLineLength: 200
+  FunctionName:
+    active: false # Composable functions use PascalCase
+  ImportOrdering:
+    active: true
+  NoWildcardImports:
+    active: true
+
+complexity:
+  active: true
+  LargeClass:
+    active: true
+    excludes: ['**/test/**', '**/androidTest/**']
+  LongMethod:
+    active: true
+    threshold: 100
+    ignoreAnnotated: ['Composable']
+  LongParameterList:
+    active: true
+    functionThreshold: 10
+    constructorThreshold: 10
+    ignoreDefaultParameters: true
+    ignoreAnnotatedParameter: ['Composable']
+  TooManyFunctions:
+    active: true
+    thresholdInClasses: 30
+    thresholdInFiles: 30
+    thresholdInObjects: 30
+    thresholdInInterfaces: 30
+  CyclomaticComplexMethod:
+    active: true
+    threshold: 30
+
+naming:
+  active: true
+  FunctionNaming:
+    active: true
+    functionPattern: '[a-zA-Z][a-zA-Z0-9]*'
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    active: true
+    constantPattern: '[A-Z][_A-Z0-9]*'
+
+style:
+  active: true
+  MaxLineLength:
+    active: true
+    maxLineLength: 140
+    excludes: ['**/test/**', '**/androidTest/**']
+  MagicNumber:
+    active: true
+    excludes: ['**/theme/**', '**/test/**', '**/androidTest/**']
+    ignoreNumbers: ['-1', '0', '1', '2']
+    ignoreAnnotated: ['Composable', 'Preview']
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+  ReturnCount:
+    active: true
+    max: 8
+  UnusedPrivateMember:
+    active: true
+    ignoreAnnotated: ['Preview']
+
+comments:
+  active: true
+  UndocumentedPublicClass:
+    active: false
+  UndocumentedPublicFunction:
+    active: false
+  UndocumentedPublicProperty:
+    active: false
