@@ -1,1 +1,15 @@
-# Changelog
+# Change Log
+
+## [1.0.0-beta.0](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.0) (2026-06-01)
+
+Auth0UniversalComponents Android — Beta Release
+
+Features
+
+- **Passkey Management**  — Enroll and manage passkeys for your account
+- **MFA factor management** - Enroll / list / remove for TOTP, Push, SMS OTP, Email OTP, Recovery Codes
+- **Guardian MFA Authenticator** — Multi-factor authentication with OTP code generation and copy functionality
+- **Step-up Authentication** — Prompt users for additional verification when accessing sensitive actions
+- **Theming** — Customizable theming system to match your app's brand
+
+
