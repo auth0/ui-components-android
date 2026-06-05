@@ -22,7 +22,7 @@ publishing {
             artifactId = POM_ARTIFACT_ID
             version = getVersionName()
 
-            artifact("${layout.buildDirectory}/outputs/aar/${project.getName()}-release.aar")
+            artifact("${layout.buildDirectory.get()}/outputs/aar/${project.getName()}-release.aar")
             artifact sourcesJar
             artifact javadocJar
 
