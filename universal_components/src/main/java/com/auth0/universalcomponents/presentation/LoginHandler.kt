@@ -9,7 +9,6 @@ import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.domain.network.safeCall
 
-
 suspend fun mfaRecoveryHandler(
     context: Context,
     scope: String,

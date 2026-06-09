@@ -26,25 +26,24 @@ class VerifyAuthenticatorUseCase(
     suspend operator fun invoke(
         input: VerificationInput
     ): Result<AuthenticationMethod, Auth0Error> = safeCall {
-
-            val authMethod = when (input) {
-                is VerificationInput.WithOtp -> {
-                    repository.verifyOtp(
-                        authenticationMethodId = input.authenticationMethodId,
-                        otpCode = input.otpCode,
-                        authSession = input.authSession,
-                        REQUIRED_SCOPES
-                    )
-                }
-
-                is VerificationInput.WithoutOtp -> {
-                    repository.verifyWithoutOtp(
-                        authenticationMethodId = input.authenticationMethodId,
-                        authSession = input.authSession,
-                        REQUIRED_SCOPES
-                    )
-                }
+        val authMethod = when (input) {
+            is VerificationInput.WithOtp -> {
+                repository.verifyOtp(
+                    authenticationMethodId = input.authenticationMethodId,
+                    otpCode = input.otpCode,
+                    authSession = input.authSession,
+                    REQUIRED_SCOPES
+                )
             }
-            authMethod
+
+            is VerificationInput.WithoutOtp -> {
+                repository.verifyWithoutOtp(
+                    authenticationMethodId = input.authenticationMethodId,
+                    authSession = input.authSession,
+                    REQUIRED_SCOPES
+                )
+            }
         }
+        authMethod
+    }
 }

@@ -23,7 +23,6 @@ data class Country(
     }
 }
 
-
 private enum class CountryData(
     val countryCode: String,
     val phoneCode: String
@@ -270,7 +269,6 @@ private enum class CountryData(
     Zambia("ZM", "+260"),
     Zimbabwe("ZW", "+263")
 }
-
 
 private fun countryCodeToEmojiFlag(countryCode: String): String =
     countryCode

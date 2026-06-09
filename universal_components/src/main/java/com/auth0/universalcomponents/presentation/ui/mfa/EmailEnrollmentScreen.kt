@@ -102,7 +102,6 @@ fun EmailEnrollmentScreen(
                 .padding(paddingValues)
                 .padding(horizontal = dimensions.spacingMd, vertical = 38.dp)
         ) {
-
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -146,7 +145,7 @@ fun EmailEnrollmentScreen(
 private fun LoadingScreen(state: EnrollmentUiState) {
     val colors = Auth0Theme.colors
 
-    if (state.enrollingAuthenticator)
+    if (state.enrollingAuthenticator) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -155,6 +154,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         ) {
             CircularLoader()
         }
+    }
 }
 
 @Composable
@@ -262,8 +262,7 @@ private fun EmailTextField(
             ),
         shadowElevation = 10.dp,
         shape = shapes.medium,
-    )
-    {
+    ) {
         BasicTextField(
             value = email,
             onValueChange = onEmailChange,

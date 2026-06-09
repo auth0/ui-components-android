@@ -98,7 +98,6 @@ class PasskeyViewModelTest {
         eventJob.cancel()
     }
 
-
     @Test
     fun `enrollPasskey - calls enrollPasskey with correct scope and configuration`() = runTest {
         coEvery { myAccountRepository.enrollPasskey(any(), any(), any()) } returns TestData.domainPasskeyEnrollmentChallenge
@@ -133,7 +132,6 @@ class PasskeyViewModelTest {
         }
     }
 
-
     @Test
     fun `enrollPasskey - null userIdentity and connection - passes nulls to repository`() = runTest {
         val nullConfig = PasskeyConfiguration(
@@ -163,7 +161,9 @@ class PasskeyViewModelTest {
 
     @Test
     fun `enrollPasskey - Auth0Error - emits Error state with retry callback`() = runTest {
-        coEvery { myAccountRepository.enrollPasskey(any(), any(), any()) } throws Auth0Error.NetworkError("Network failed", Exception())
+        coEvery {
+            myAccountRepository.enrollPasskey(any(), any(), any())
+        } throws Auth0Error.NetworkError("Network failed", Exception())
 
         viewModel.enrollPasskey(fakeCredentialCreator)
         advanceUntilIdle()
@@ -219,7 +219,6 @@ class PasskeyViewModelTest {
         assertThat((state as PasskeyUiState.Error).shouldRetry).isFalse()
     }
 
-
     @Test
     fun `enrollPasskey - retry callback - calls repository again`() = runTest {
         var callCount = 0
@@ -238,11 +237,12 @@ class PasskeyViewModelTest {
         assertThat(callCount).isEqualTo(2)
     }
 
-
     @Test
     fun `enrollPasskey - verifyPasskey throws error - emits Error state`() = runTest {
         coEvery { myAccountRepository.enrollPasskey(any(), any(), any()) } returns TestData.domainPasskeyEnrollmentChallenge
-        coEvery { myAccountRepository.verifyPasskey(any(), any(), any()) } throws Auth0Error.ServerError("Server error", 500, Exception())
+        coEvery {
+            myAccountRepository.verifyPasskey(any(), any(), any())
+        } throws Auth0Error.ServerError("Server error", 500, Exception())
 
         viewModel.enrollPasskey(fakeCredentialCreator)
         advanceUntilIdle()
@@ -253,7 +253,9 @@ class PasskeyViewModelTest {
 
     @Test
     fun `resetState - from Error state - transitions uiState back to Idle`() = runTest {
-        coEvery { myAccountRepository.enrollPasskey(any(), any(), any()) } throws Auth0Error.NetworkError("Network failed", Exception())
+        coEvery {
+            myAccountRepository.enrollPasskey(any(), any(), any())
+        } throws Auth0Error.NetworkError("Network failed", Exception())
 
         viewModel.enrollPasskey(fakeCredentialCreator)
         advanceUntilIdle()

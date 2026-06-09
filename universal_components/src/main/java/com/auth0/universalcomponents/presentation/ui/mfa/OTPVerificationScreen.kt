@@ -103,7 +103,6 @@ fun OTPVerificationScreen(
         }
     }
 
-
     Scaffold(
         topBar = {
             TopBar(
@@ -246,7 +245,7 @@ private fun OTPFieldError(
 private fun LoadingScreen(state: EnrollmentUiState) {
     val colors = Auth0Theme.colors
 
-    if (state.enrollingAuthenticator)
+    if (state.enrollingAuthenticator) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -255,6 +254,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         ) {
             CircularLoader()
         }
+    }
 }
 
 @Composable
@@ -302,7 +302,6 @@ private fun OTPInputField(
         )
     )
 }
-
 
 @Composable
 private fun OTPBox(

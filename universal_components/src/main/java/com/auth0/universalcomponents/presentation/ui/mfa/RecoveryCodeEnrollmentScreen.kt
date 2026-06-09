@@ -63,7 +63,8 @@ fun RecoveryCodeEnrollmentScreen(
     ),
     onBackClick: () -> Unit,
     onContinue: (
-        String, String
+        String,
+        String
     ) -> Unit
 ) {
     val colors = Auth0Theme.colors
@@ -91,7 +92,6 @@ fun RecoveryCodeEnrollmentScreen(
             }
         }
     }
-
 
     Scaffold(
         topBar = {
@@ -168,7 +168,6 @@ private fun RecoveryCodeContent(
     }
 }
 
-
 @Composable
 private fun RecoveryCodeHeader() {
     val colors = Auth0Theme.colors
@@ -231,7 +230,6 @@ private fun RecoveryCodeDisplay(code: String, onClick: () -> Unit) {
             )
 
             IconButton(onClick = onClick) {
-
                 Icon(
                     painter = painterResource(id = R.drawable.ic_copy),
                     contentDescription = "Copy",
@@ -282,7 +280,7 @@ private fun ContinueButton(
 private fun LoadingScreen(state: EnrollmentUiState) {
     val colors = Auth0Theme.colors
 
-    if (state.enrollingAuthenticator)
+    if (state.enrollingAuthenticator) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -291,6 +289,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         ) {
             CircularLoader()
         }
+    }
 }
 
 @Composable

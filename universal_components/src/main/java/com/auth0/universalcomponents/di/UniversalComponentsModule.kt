@@ -21,8 +21,7 @@ import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 
 object UniversalComponentsModule {
 
-
-    //Viewmodel factories
+    // Viewmodel factories
     fun provideAuthenticatorMethodViewModelFactory(): AuthenticatorMethodViewModelFactory {
         return AuthenticatorMethodViewModelFactory(
             getEnabledAuthenticatorMethodsUseCase = provideEnabledAuthenticatorMethodsUseCase()
@@ -57,7 +56,7 @@ object UniversalComponentsModule {
         )
     }
 
-    //Use cases
+    // Use cases
     private fun provideEnabledAuthenticatorMethodsUseCase(): GetEnabledAuthenticatorMethodsUseCase {
         return GetEnabledAuthenticatorMethodsUseCase(
             repository = provideMyAccountRepository(),
@@ -75,7 +74,6 @@ object UniversalComponentsModule {
             repository = provideMyAccountRepository()
         )
     }
-
 
     private fun provideEnrollAuthenticatorUseCase(): EnrollAuthenticatorUseCase {
         return EnrollAuthenticatorUseCase(
@@ -106,5 +104,4 @@ object UniversalComponentsModule {
     private fun provideTokenManager(): TokenManager {
         return TokenManager.getInstance()
     }
-
 }

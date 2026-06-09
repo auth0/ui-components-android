@@ -8,7 +8,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-
 @Composable
 public fun CircularLoader(
     modifier: Modifier = Modifier,

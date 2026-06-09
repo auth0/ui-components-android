@@ -15,7 +15,6 @@ import com.auth0.universalcomponents.presentation.ui.components.EmptyAuthenticat
 import com.auth0.universalcomponents.presentation.viewmodel.SecondaryAuthenticatorUiData
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-
 /**
  * Screen displaying the list of enabled authenticators
  */

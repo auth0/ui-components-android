@@ -124,4 +124,3 @@ data class PasskeyAuthenticationMethod(
     val credentialBackedUp: Boolean,
     val publicKey: String?
 ) : Parcelable
-

@@ -59,7 +59,6 @@ import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.utils.ValidationUtil
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhoneEnrollmentScreen(
@@ -112,7 +111,6 @@ fun PhoneEnrollmentScreen(
                 .padding(paddingValues)
                 .padding(horizontal = dimensions.spacingMd, vertical = dimensions.spacingXl)
         ) {
-
             Column(
                 modifier = Modifier.fillMaxWidth(),
             ) {
@@ -158,7 +156,6 @@ fun PhoneEnrollmentScreen(
 
         LoadingScreen(uiState)
         ErrorScreen(uiState)
-
     }
 
     if (showCountrySelector) {
@@ -172,7 +169,6 @@ fun PhoneEnrollmentScreen(
         )
     }
 }
-
 
 @Composable
 private fun PhoneEnrollmentHeader() {
@@ -200,7 +196,7 @@ private fun PhoneEnrollmentHeader() {
 private fun LoadingScreen(
     state: EnrollmentUiState
 ) {
-    if (state.enrollingAuthenticator)
+    if (state.enrollingAuthenticator) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -209,6 +205,7 @@ private fun LoadingScreen(
         ) {
             CircularLoader()
         }
+    }
 }
 
 @Composable
@@ -217,7 +214,6 @@ private fun ErrorScreen(state: EnrollmentUiState) {
         ErrorHandler(it)
     }
 }
-
 
 @Composable
 private fun PhoneFormField(
@@ -246,7 +242,6 @@ private fun PhoneFormField(
         isError = isValidationError,
     )
 }
-
 
 @Composable
 private fun PhoneTextField(
@@ -363,7 +358,6 @@ private fun PhoneTextField(
     }
 }
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CountrySelectorSheet(
@@ -385,7 +379,7 @@ private fun CountrySelectorSheet(
         } else {
             countries.filter {
                 it.name.startsWith(searchQuery, ignoreCase = true) ||
-                        it.phoneCode.startsWith(searchQuery)
+                    it.phoneCode.startsWith(searchQuery)
             }
         }
     }
@@ -454,7 +448,6 @@ private fun CountrySelectorSheet(
     }
 }
 
-
 @Composable
 private fun CountryItem(
     country: Country,
@@ -494,7 +487,6 @@ private fun CountryItem(
         )
     }
 }
-
 
 @Composable
 private fun ContinueButton(

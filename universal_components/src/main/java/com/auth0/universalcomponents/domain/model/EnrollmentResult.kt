@@ -3,7 +3,6 @@ package com.auth0.universalcomponents.domain.model
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 
-
 /**
  * Wrapper for different enrollment challenge types
  */

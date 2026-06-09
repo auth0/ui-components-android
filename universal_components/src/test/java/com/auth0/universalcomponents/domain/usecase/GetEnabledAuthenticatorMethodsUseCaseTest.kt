@@ -38,7 +38,6 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
         clearAllMocks()
     }
 
-
     @Test
     fun `invoke - multiple secondary factors with confirmed auth methods - returns secondary authenticators with confirmed true`() =
         runTest {
@@ -303,7 +302,6 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
-
     @Test
     fun `invoke - single passkey auth method present - returns primary authenticator with passkey`() =
         runTest {
@@ -356,7 +354,6 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
 
-
     @Test
     fun `invoke - mixed passkey primary and MFA secondary methods - returns both primary and secondary authenticators`() =
         runTest {
@@ -390,7 +387,6 @@ class GetEnabledAuthenticatorMethodsUseCaseTest {
             coVerify(exactly = 1) { repository.getFactors(requiredScopesFactor) }
             coVerify(exactly = 1) { repository.getAuthenticatorMethods(requiredScopesAuthentication) }
         }
-
 
     @Test
     fun `invoke - duplicate factor types in factors list - returns deduplicated secondary authenticators`() =

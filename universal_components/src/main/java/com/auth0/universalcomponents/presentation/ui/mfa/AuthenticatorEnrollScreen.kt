@@ -42,7 +42,9 @@ fun AuthenticatorEnrollmentScreen(
             onBackClick = onBackClick,
             onContinue = { id, type ->
                 onContinue(
-                    id, type, null
+                    id,
+                    type,
+                    null
                 )
             }
         )

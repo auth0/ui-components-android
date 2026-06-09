@@ -34,7 +34,6 @@ import com.auth0.universalcomponents.presentation.viewmodel.SecondaryAuthenticat
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.utils.createCredential
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuthenticatorMethodsScreen(
@@ -55,7 +54,6 @@ fun AuthenticatorMethodsScreen(
     val passkeyUiState by passkeyViewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-
     ObserveAsEvents(passkeyViewModel.events) { event ->
         when (event) {
             is PasskeyEvent.EnrollmentSuccess -> {
@@ -63,7 +61,6 @@ fun AuthenticatorMethodsScreen(
             }
         }
     }
-
 
     Scaffold(
         topBar = {
@@ -170,7 +167,8 @@ fun AuthenticatorMethodsScreen(
                             .padding(horizontal = dimensions.spacingMd)
                     ) {
                         ErrorHandler(
-                            uiError = state.error, shouldRetry = state.shouldRetry
+                            uiError = state.error,
+                            shouldRetry = state.shouldRetry
                         )
                     }
                 }
@@ -180,4 +178,3 @@ fun AuthenticatorMethodsScreen(
         }
     }
 }
-

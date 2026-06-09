@@ -36,7 +36,6 @@ class GetEnrolledAuthenticatorsUseCaseTest {
         clearAllMocks()
     }
 
-
     @Test
     fun `invoke - TOTP type with confirmed methods - returns filtered TOTP list`() = runTest {
         val totpMethod = TestData.totpAuthMethod
@@ -122,7 +121,6 @@ class GetEnrolledAuthenticatorsUseCaseTest {
         Truth.assertThat(enrolledMethods[0].name).isEqualTo("+15551234567")
     }
 
-
     @Test
     fun `invoke - EMAIL type with confirmed methods - returns filtered EMAIL list`() = runTest {
         val emailMethod = TestData.emailAuthMethod
@@ -145,7 +143,6 @@ class GetEnrolledAuthenticatorsUseCaseTest {
             repository.getAuthenticatorMethods("read:me:authentication_methods")
         }
     }
-
 
     @Test
     fun `invoke - PUSH type with confirmed methods - returns filtered PUSH list`() = runTest {
@@ -171,7 +168,6 @@ class GetEnrolledAuthenticatorsUseCaseTest {
         }
     }
 
-
     @Test
     fun `invoke - RECOVERY_CODE type with confirmed methods - returns filtered RECOVERY_CODE list`() =
         runTest {
@@ -195,7 +191,6 @@ class GetEnrolledAuthenticatorsUseCaseTest {
                 repository.getAuthenticatorMethods("read:me:authentication_methods")
             }
         }
-
 
     @Test
     fun `invoke - mixed types with TOTP filter - returns only confirmed TOTP methods`() = runTest {
@@ -254,7 +249,6 @@ class GetEnrolledAuthenticatorsUseCaseTest {
         val enrolledMethods = (result as Result.Success).data
         Truth.assertThat(enrolledMethods).isEmpty()
     }
-
 
     @Test
     fun `invoke - repository throws NetworkError - returns Error with Auth0Error`() = runTest {
@@ -324,7 +318,6 @@ class GetEnrolledAuthenticatorsUseCaseTest {
             repository.getAuthenticatorMethods(expectedScope)
         }
     }
-
 
     @Test
     fun `invoke - PASSKEY type with single passkey - returns filtered PASSKEY list`() = runTest {

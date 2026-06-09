@@ -24,7 +24,6 @@ class VerifyAuthenticatorUseCaseTest {
 
     private val requiredScope = "create:me:authentication_methods"
 
-
     @Before
     fun setup() {
         repository = mockk()
@@ -209,7 +208,6 @@ class VerifyAuthenticatorUseCaseTest {
             )
         }
     }
-
 
     @Test
     fun `invoke - WithoutOtp valid input - returns Success with AuthenticationMethod`() =

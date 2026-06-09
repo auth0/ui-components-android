@@ -55,7 +55,6 @@ class EnrolledAuthenticatorViewModelTest {
         clearAllMocks()
     }
 
-
     @Test
     fun `initialization - uiState collected - starts with default state and automatically fetches enrolled authenticators`() =
         runTest {
@@ -330,7 +329,6 @@ class EnrolledAuthenticatorViewModelTest {
             coVerify(exactly = 1) { deleteAuthenticationMethodUseCase(TestData.enrolledPhoneMethod.id) }
             job.cancel()
         }
-
 
     @Test
     fun `error state retry callback for fetch - invoked after error - triggers fetchEnrolledAuthenticators again and can succeed`() =

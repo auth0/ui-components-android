@@ -48,7 +48,6 @@ class TokenManager private constructor() {
      * If not found or expired, fetches a new token and caches it
      */
     suspend fun fetchToken(audience: String, scope: String): String {
-
         val cachedCredentials = tokenMap[cacheKey(audience, scope)]
         if (cachedCredentials != null) {
             if (!willTokenExpire(cachedCredentials.expiresAt.time)) {

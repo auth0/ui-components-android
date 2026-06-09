@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-
 data class EnrolledUiState(
     val loading: Boolean = false,
     val authenticators: List<EnrolledAuthenticationMethod> = emptyList(),
@@ -54,13 +53,11 @@ class EnrolledAuthenticatorViewModel(
      * Only returns confirmed methods
      */
     fun fetchEnrolledAuthenticators(authenticatorType: AuthenticatorType) {
-
         _uiState.update {
             it.copy(loading = true, uiError = null)
         }
 
         viewModelScope.launch {
-
             getEnrolledAuthenticatorsUseCase(authenticatorType)
                 .onSuccess { data ->
                     cachedAuthenticators = data // Update cache
@@ -76,7 +73,8 @@ class EnrolledAuthenticatorViewModel(
                         it.copy(
                             loading = false,
                             uiError = UiError(
-                                error, {
+                                error,
+                                {
                                     fetchEnrolledAuthenticators(authenticatorType)
                                 }
                             )
@@ -92,13 +90,11 @@ class EnrolledAuthenticatorViewModel(
      * @param authenticationMethodId The ID of the authentication method to delete
      */
     fun deleteAuthenticationMethod(authenticationMethodId: String) {
-
         _uiState.update {
             it.copy(loading = true, uiError = null)
         }
 
         viewModelScope.launch {
-
             val updatedList = cachedAuthenticators.filter { it.id != authenticationMethodId }
 
             deleteAuthenticationMethodUseCase(authenticationMethodId)
@@ -117,7 +113,8 @@ class EnrolledAuthenticatorViewModel(
                         it.copy(
                             loading = false,
                             uiError = UiError(
-                                err, {
+                                err,
+                                {
                                     deleteAuthenticationMethod(authenticationMethodId)
                                 }
                             )

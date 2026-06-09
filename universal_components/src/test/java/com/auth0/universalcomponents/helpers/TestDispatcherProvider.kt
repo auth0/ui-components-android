@@ -2,8 +2,8 @@ package com.auth0.universalcomponents.helpers
 
 import com.auth0.universalcomponents.domain.DispatcherProvider
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
 
 /**
  * Test implementation of DispatcherProvider that returns TestDispatcher for all dispatchers.

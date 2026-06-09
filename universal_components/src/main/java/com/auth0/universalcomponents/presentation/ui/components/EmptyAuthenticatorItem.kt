@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-
 @Composable
 fun EmptyAuthenticatorItem(
     modifier: Modifier = Modifier,

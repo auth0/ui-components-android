@@ -16,7 +16,6 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-
 /**
  * Data class representing the UI data for primary authenticator methods
  * @property id Unique identifier for the authenticator
@@ -70,7 +69,6 @@ class AuthenticatorMethodsViewModel(
             started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5000),
             initialValue = AuthenticatorUiState.Loading
         )
-
 
     fun fetchAuthenticatorMethods() {
         viewModelScope.launch {

@@ -9,7 +9,6 @@ data class AuthenticatorMethod(
     val secondaryAuthenticators: List<SecondaryAuthenticator>
 )
 
-
 data class PrimaryAuthenticator(
     val id: String,
     val type: String,

@@ -10,7 +10,6 @@ sealed interface Result<out D, out E : Auth0Error> {
     data class Error<out E : Auth0Error>(val error: E) : Result<Nothing, E>
 }
 
-
 inline fun <T, E : Auth0Error> Result<T, E>.onSuccess(action: (T) -> Unit): Result<T, E> {
     return when (this) {
         is Result.Error -> this

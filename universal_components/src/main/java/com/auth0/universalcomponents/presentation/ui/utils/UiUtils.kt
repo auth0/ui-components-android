@@ -46,7 +46,6 @@ object UiUtils {
         }
     }
 
-
     /**
      * Formats the default name for the given authenticator type
      */
@@ -60,7 +59,6 @@ object UiUtils {
             else -> "No Recovery code was saved."
         }
     }
-
 
     /**
      * Returns appropriate text content based on authenticator type

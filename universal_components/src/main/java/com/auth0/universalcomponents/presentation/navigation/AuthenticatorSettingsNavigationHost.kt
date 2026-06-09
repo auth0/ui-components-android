@@ -12,12 +12,10 @@ import com.auth0.universalcomponents.presentation.ui.mfa.EnrolledAuthenticatorLi
 import com.auth0.universalcomponents.presentation.ui.mfa.OTPVerificationScreen
 import com.auth0.universalcomponents.presentation.ui.passkeys.PasskeyEnableScreen
 
-
 @Composable
 internal fun AuthenticatorSettingsNavigationHost(
     navController: NavHostController,
 ) {
-
     NavHost(
         navController = navController,
         startDestination = AuthenticatorRoute.AuthenticatorMethodList
@@ -48,7 +46,8 @@ internal fun AuthenticatorSettingsNavigationHost(
                 },
                 onBackPress = {
                     navController.navigateUp()
-                })
+                }
+            )
         }
 
         composable<AuthenticatorRoute.EnrolledAuthenticatorMethod> {
@@ -93,7 +92,6 @@ internal fun AuthenticatorSettingsNavigationHost(
                                 )
                             )
                         }
-
                     }
                 }
             )
@@ -114,7 +112,8 @@ internal fun AuthenticatorSettingsNavigationHost(
                     navController.navigate(AuthenticatorRoute.EnrolledAuthenticatorMethod(args.authenticatorType)) {
                         popUpTo<AuthenticatorRoute.AuthenticatorMethodList> { inclusive = false }
                     }
-                })
+                }
+            )
         }
 
         composable<AuthenticatorRoute.PasskeyEnable> {
