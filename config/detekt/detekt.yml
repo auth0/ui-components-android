@@ -35,17 +35,17 @@ complexity:
   active: true
   LargeClass:
     active: true
-    excludes: ['**/test/**', '**/androidTest/**']
+    excludes: [ '**/test/**', '**/androidTest/**' ]
   LongMethod:
     active: true
     threshold: 100
-    ignoreAnnotated: ['Composable']
+    ignoreAnnotated: [ 'Composable' ]
   LongParameterList:
     active: true
     functionThreshold: 10
     constructorThreshold: 10
     ignoreDefaultParameters: true
-    ignoreAnnotatedParameter: ['Composable']
+    ignoreAnnotatedParameter: [ 'Composable' ]
   TooManyFunctions:
     active: true
     thresholdInClasses: 30
@@ -61,7 +61,7 @@ naming:
   FunctionNaming:
     active: true
     functionPattern: '[a-zA-Z][a-zA-Z0-9]*'
-    ignoreAnnotated: ['Composable']
+    ignoreAnnotated: [ 'Composable' ]
   TopLevelPropertyNaming:
     active: true
     constantPattern: '[A-Z][_A-Z0-9]*'
@@ -71,12 +71,17 @@ style:
   MaxLineLength:
     active: true
     maxLineLength: 140
-    excludes: ['**/test/**', '**/androidTest/**']
+    excludes: [ '**/test/**', '**/androidTest/**' ]
   MagicNumber:
     active: true
-    excludes: ['**/theme/**', '**/test/**', '**/androidTest/**']
-    ignoreNumbers: ['-1', '0', '1', '2']
-    ignoreAnnotated: ['Composable', 'Preview']
+    excludes: [ '**/theme/Auth0Sizes.kt',
+                '**/theme/Auth0Dimensions.kt',
+                '**/theme/Auth0Color.kt',
+                '**/theme/Auth0Shapes.kt',
+                '**/test/**',
+                '**/androidTest/**' ]
+    ignoreNumbers: [ '-1', '0', '1', '2' ]
+    ignoreAnnotated: [ 'Composable', 'Preview' ]
     ignorePropertyDeclaration: true
     ignoreCompanionObjectPropertyDeclaration: true
   ReturnCount:
@@ -84,7 +89,7 @@ style:
     max: 8
   UnusedPrivateMember:
     active: true
-    ignoreAnnotated: ['Preview']
+    ignoreAnnotated: [ 'Preview' ]
 
 comments:
   active: true
