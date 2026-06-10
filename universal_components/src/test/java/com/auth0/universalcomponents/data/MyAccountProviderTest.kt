@@ -24,7 +24,6 @@ class MyAccountProviderTest {
 
     @Before
     fun setup() {
-
         mockkStatic(TextUtils::class)
         mockkStatic(Base64::class)
         every { TextUtils.isEmpty(any()) } answers { (firstArg<CharSequence?>()).isNullOrEmpty() }

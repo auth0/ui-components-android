@@ -79,7 +79,6 @@ class MyAccountRepositoryImpl(
             val client = myAccountProvider.getMyAccount(accessToken)
             client.deleteAuthenticationMethod(authenticationMethodId).await()
         }
-
     }
 
     /**

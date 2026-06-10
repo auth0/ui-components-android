@@ -8,9 +8,6 @@ import com.auth0.android.result.EnrollmentChallenge
 import com.auth0.android.result.Factor
 import com.auth0.android.result.RecoveryCodeEnrollmentChallenge
 import com.auth0.android.result.TotpEnrollmentChallenge
-import com.auth0.android.result.PasskeyEnrollmentChallenge as SdkPasskeyEnrollmentChallenge
-import com.auth0.android.result.PasskeyAuthenticationMethod as SdkPasskeyAuthenticationMethod
-import com.auth0.android.request.PublicKeyCredentials as SdkPublicKeyCredentials
 import com.auth0.universalcomponents.TestData
 import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.data.MyAccountProvider
@@ -27,6 +24,9 @@ import org.junit.After
 import org.junit.Assert.assertThrows
 import org.junit.Before
 import org.junit.Test
+import com.auth0.android.request.PublicKeyCredentials as SdkPublicKeyCredentials
+import com.auth0.android.result.PasskeyAuthenticationMethod as SdkPasskeyAuthenticationMethod
+import com.auth0.android.result.PasskeyEnrollmentChallenge as SdkPasskeyEnrollmentChallenge
 
 class MyAccountRepositoryImplTest {
 
@@ -96,7 +96,6 @@ class MyAccountRepositoryImplTest {
         assertThat(result).isEmpty()
     }
 
-
     @Test
     fun `getAuthenticatorMethods - valid access token - returns list of authentication methods`() =
         runTest {
@@ -149,7 +148,6 @@ class MyAccountRepositoryImplTest {
             assertThat(result).isEmpty()
         }
 
-
     @Test
     fun `deleteAuthenticationMethod - valid method ID and token - returns null successfully`() =
         runTest {
@@ -171,7 +169,6 @@ class MyAccountRepositoryImplTest {
 
         val request = FakeRequestImpl<Void?, MyAccountException>(exception = expectedException)
         every { myAccountClient.deleteAuthenticationMethod(methodId) } returns request
-
 
         val exception = assertThrows(Auth0Error::class.java) {
             runTest {
@@ -213,14 +210,15 @@ class MyAccountRepositoryImplTest {
         assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
     }
 
-
     @Test
     fun `enrollPushNotification - valid access token - returns TotpEnrollmentChallenge`() =
         runTest {
             val scope = "scope:authentication_methods"
 
             val request =
-                FakeRequestImpl<TotpEnrollmentChallenge, MyAccountException>(response = TestData.pushEnrollmentChallenge)
+                FakeRequestImpl<TotpEnrollmentChallenge, MyAccountException>(
+                    response = TestData.pushEnrollmentChallenge
+                )
             every { myAccountClient.enrollPushNotification() } returns request
 
             val result = repository.enrollPushNotification(scope)
@@ -238,14 +236,12 @@ class MyAccountRepositoryImplTest {
             FakeRequestImpl<TotpEnrollmentChallenge, MyAccountException>(exception = expectedException)
         every { myAccountClient.enrollPushNotification() } returns request
 
-
         val exception = assertThrows(Auth0Error::class.java) {
             runTest {
                 repository.enrollPushNotification(scope)
             }
         }
         assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
-
     }
 
     @Test
@@ -254,7 +250,9 @@ class MyAccountRepositoryImplTest {
             val scope = "scope:authentication_methods"
 
             val request =
-                FakeRequestImpl<RecoveryCodeEnrollmentChallenge, MyAccountException>(response = TestData.recoveryCodeEnrollmentChallenge)
+                FakeRequestImpl<RecoveryCodeEnrollmentChallenge, MyAccountException>(
+                    response = TestData.recoveryCodeEnrollmentChallenge
+                )
             every { myAccountClient.enrollRecoveryCode() } returns request
 
             val result = repository.enrollRecoveryCode(scope)
@@ -272,7 +270,6 @@ class MyAccountRepositoryImplTest {
             FakeRequestImpl<RecoveryCodeEnrollmentChallenge, MyAccountException>(exception = expectedException)
         every { myAccountClient.enrollRecoveryCode() } returns request
 
-
         val exception = assertThrows(Auth0Error::class.java) {
             runTest {
                 repository.enrollRecoveryCode(scope)
@@ -281,7 +278,6 @@ class MyAccountRepositoryImplTest {
 
         assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
     }
-
 
     @Test
     fun `enrollEmail - valid email and token - returns MfaEnrollmentChallenge`() = runTest {
@@ -315,7 +311,6 @@ class MyAccountRepositoryImplTest {
         }
         assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
     }
-
 
     @Test
     fun `enrollPhone - valid phone number with SMS method - returns MfaEnrollmentChallenge`() =
@@ -358,7 +353,6 @@ class MyAccountRepositoryImplTest {
             )
         } returns request
 
-
         val exception = assertThrows(Auth0Error::class.java) {
             runTest {
                 repository.enrollPhone(phoneNumber, scope)
@@ -367,7 +361,6 @@ class MyAccountRepositoryImplTest {
 
         assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
     }
-
 
     @Test
     fun `verifyOtp - valid OTP code - returns verified AuthenticationMethod`() = runTest {
@@ -397,7 +390,7 @@ class MyAccountRepositoryImplTest {
             "title" to "Forbidden",
             "detail" to "invalid code"
         )
-        val expectedException = MyAccountException(errorValues,500)
+        val expectedException = MyAccountException(errorValues, 500)
 
         val request =
             FakeRequestImpl<AuthenticationMethod, MyAccountException>(exception = expectedException)
@@ -416,7 +409,6 @@ class MyAccountRepositoryImplTest {
         }
 
         assertThat(exception.message).isEqualTo("Forbidden")
-
     }
 
     @Test
@@ -445,7 +437,6 @@ class MyAccountRepositoryImplTest {
 
         assertThat(exception.message).isEqualTo("Received error with code a0.sdk.internal_error.unknown")
     }
-
 
     @Test
     fun `verifyWithoutOtp - valid auth session - returns verified AuthenticationMethod`() =
@@ -563,7 +554,6 @@ class MyAccountRepositoryImplTest {
         assertThat(exception.message).isEqualTo("The access token is invalid or has expired")
     }
 
-
     @Test
     fun `verifyPasskey - valid credentials and challenge - returns AuthenticationMethod`() = runTest {
         val scope = "scope:authentication_methods"
@@ -633,5 +623,4 @@ class MyAccountRepositoryImplTest {
         }
         assertThat(exception.message).isEqualTo("Invalid passkey credentials")
     }
-
 }

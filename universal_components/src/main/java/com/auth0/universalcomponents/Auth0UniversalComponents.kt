@@ -83,5 +83,4 @@ public object Auth0UniversalComponents {
             throw IllegalStateException("Auth0UniversalComponents must be initialized first.")
         }
     }
-
 }

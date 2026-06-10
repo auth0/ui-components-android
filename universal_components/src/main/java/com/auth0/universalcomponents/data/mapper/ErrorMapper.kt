@@ -25,7 +25,6 @@ internal object ErrorMapper {
                 message = exception.message ?: "Unknown error occurred",
                 cause = exception
             )
-
         }
     }
 
@@ -100,7 +99,6 @@ internal object ErrorMapper {
             )
         }
     }
-
 
     private fun mapCredentialsManagerException(
         exception: CredentialsManagerException,

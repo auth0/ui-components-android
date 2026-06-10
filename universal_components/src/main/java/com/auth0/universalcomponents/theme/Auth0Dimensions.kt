@@ -44,5 +44,4 @@ data class Auth0Dimensions(
     }
 }
 
-
 internal val BASE_DIMEN_VALUE = 4.dp

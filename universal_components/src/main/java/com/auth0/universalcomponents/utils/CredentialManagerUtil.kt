@@ -6,7 +6,6 @@ import androidx.credentials.CreatePublicKeyCredentialResponse
 import androidx.credentials.CredentialManager
 import com.auth0.universalcomponents.Auth0UniversalComponents
 
-
 suspend fun createCredential(
     context: Context,
     authParamsJson: String
@@ -19,4 +18,3 @@ suspend fun createCredential(
         ?: throw IllegalStateException("Unexpected credential response type: ${response::class.java.name}")
     return publicKeyResponse.registrationResponseJson
 }
-

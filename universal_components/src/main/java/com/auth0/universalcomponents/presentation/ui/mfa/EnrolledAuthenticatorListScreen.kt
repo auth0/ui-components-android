@@ -112,7 +112,6 @@ fun EnrolledAuthenticatorListScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
-
             if (uiState.loading) {
                 CircularLoader()
             } else {
@@ -233,12 +232,5 @@ fun AuthenticatorListContent(
                 )
             }
         }
-
     }
 }
-
-
-
-
-
-

@@ -3,7 +3,6 @@ package com.auth0.universalcomponents.data.network
 import com.auth0.universalcomponents.data.mapper.ErrorMapper
 import kotlin.coroutines.cancellation.CancellationException
 
-
 /**
  * Executes a suspend request and maps exceptions to Auth0Error.
  * Rethrows [CancellationException] to preserve structured concurrency.

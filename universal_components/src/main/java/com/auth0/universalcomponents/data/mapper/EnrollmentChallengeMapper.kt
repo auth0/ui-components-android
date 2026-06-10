@@ -31,7 +31,6 @@ fun SdkMfaEnrollmentChallenge.toDomainModel(): MfaEnrollmentChallenge {
     )
 }
 
-
 fun SdkTotpEnrollmentChallenge.toDomainModel(): TotpEnrollmentChallenge {
     return TotpEnrollmentChallenge(
         id = this.id,

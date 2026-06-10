@@ -26,5 +26,3 @@ sealed interface AuthenticatorRoute {
     @Serializable
     object PasskeyEnable
 }
-
-

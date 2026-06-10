@@ -9,7 +9,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 
-
 @Composable
 fun <T> ObserveAsEvents(
     flow: Flow<T>,

@@ -93,7 +93,6 @@ fun ErrorScreen(
     }
 }
 
-
 @Composable
 fun MessageWithLink(
     message: String,

@@ -142,7 +142,6 @@ class EnrollmentViewModelTest {
             job.cancel()
         }
 
-
     @Test
     fun `startEnrollment - TOTP with None input - emits EnrollmentChallengeSuccess event and updates state`() =
         runTest {
@@ -415,7 +414,6 @@ class EnrollmentViewModelTest {
         job.cancel()
     }
 
-
     @Test
     fun `verifyWithOtp - valid OTP - emits VerificationSuccess event and resets state`() =
         runTest {
@@ -457,7 +455,9 @@ class EnrollmentViewModelTest {
             assertThat(state.uiError).isNull()
 
             val capturedInput = inputSlot.captured
-            assertThat(capturedInput).isInstanceOf(com.auth0.universalcomponents.domain.model.VerificationInput.WithOtp::class.java)
+            assertThat(
+                capturedInput
+            ).isInstanceOf(com.auth0.universalcomponents.domain.model.VerificationInput.WithOtp::class.java)
             val otpInput =
                 capturedInput as com.auth0.universalcomponents.domain.model.VerificationInput.WithOtp
             assertThat(otpInput.authenticationMethodId).isEqualTo("auth_phone_001")
@@ -493,7 +493,6 @@ class EnrollmentViewModelTest {
             coEvery {
                 verifyAuthenticatorUseCase(any())
             } returns Result.Error(invalidOtpError)
-
 
             viewModel.verifyWithOtp("auth_phone_001", "000000", "session_001")
             testDispatcher.scheduler.advanceUntilIdle()
@@ -548,7 +547,6 @@ class EnrollmentViewModelTest {
         job.cancel()
     }
 
-
     @Test
     fun `verifyWithoutOtp - valid verification - emits VerificationSuccess event and resets state`() =
         runTest {
@@ -589,7 +587,9 @@ class EnrollmentViewModelTest {
             assertThat(state.uiError).isNull()
 
             val capturedInput = inputSlot.captured
-            assertThat(capturedInput).isInstanceOf(com.auth0.universalcomponents.domain.model.VerificationInput.WithoutOtp::class.java)
+            assertThat(
+                capturedInput
+            ).isInstanceOf(com.auth0.universalcomponents.domain.model.VerificationInput.WithoutOtp::class.java)
             val withoutOtpInput =
                 capturedInput as com.auth0.universalcomponents.domain.model.VerificationInput.WithoutOtp
             assertThat(withoutOtpInput.authenticationMethodId).isEqualTo("auth_totp_001")
@@ -639,7 +639,6 @@ class EnrollmentViewModelTest {
 
         job.cancel()
     }
-
 
     @Test
     fun `error retry callback - startEnrollment retry - invokes startEnrollment again with same parameters`() =

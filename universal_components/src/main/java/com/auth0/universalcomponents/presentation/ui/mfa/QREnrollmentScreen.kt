@@ -5,11 +5,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -280,7 +280,6 @@ private fun ManualCodeSection(
     )
 }
 
-
 @Composable
 private fun CopyCodeButton(
     onCopyClick: () -> Unit
@@ -319,7 +318,6 @@ private fun CopyCodeButton(
         shape = shapes.large,
         onClick = onCopyClick
     ) {
-
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
@@ -371,7 +369,6 @@ private fun ContinueButtonSection(
     }
 }
 
-
 @Composable
 private fun InstructionsText() {
     val colors = Auth0Theme.colors
@@ -379,7 +376,6 @@ private fun InstructionsText() {
 
     val instructionText =
         "Use your Authenticator App (like Google Authenticator or Auth0 Guardian) to scan this QR code."
-
 
     Text(
         modifier = Modifier.fillMaxWidth(0.9f),
@@ -494,10 +490,9 @@ private fun DownloadLinkText(
     Text(annotatedString, textAlign = TextAlign.Center)
 }
 
-
 @Composable
 private fun LoadingScreen(state: EnrollmentUiState) {
-    if (state.enrollingAuthenticator || state.verifyingAuthenticator)
+    if (state.enrollingAuthenticator || state.verifyingAuthenticator) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -506,6 +501,7 @@ private fun LoadingScreen(state: EnrollmentUiState) {
         ) {
             CircularLoader()
         }
+    }
 }
 
 @Composable
@@ -514,7 +510,6 @@ private fun ErrorScreen(state: EnrollmentUiState) {
         ErrorHandler(it)
     }
 }
-
 
 /**
  * Generates a QR code bitmap using ZXing.
@@ -540,8 +535,11 @@ private fun generateQRCode(
 
         for (x in 0 until width) {
             for (y in 0 until height) {
-                bitmap[x, y] = if (bitMatrix[x, y]) qrCodeColor.toArgb()
-                else qrBackgroundColor.toArgb()
+                bitmap[x, y] = if (bitMatrix[x, y]) {
+                    qrCodeColor.toArgb()
+                } else {
+                    qrBackgroundColor.toArgb()
+                }
             }
         }
         bitmap

@@ -52,14 +52,14 @@ fun PrimaryAuthenticatorListScreen(
             .fillMaxWidth()
             .background(colors.backgroundLayerBase)
     ) {
-            AnimatedVisibility(visible = primaryAuthenticatorUiData.isEmpty() && isCardVisible) {
-                PasskeyInfoCard(
-                    onAddPasskeyClick = onAddPasskeyClick,
-                    onDismissClick = {
-                        isCardVisible = false
-                    }
-                )
-            }
+        AnimatedVisibility(visible = primaryAuthenticatorUiData.isEmpty() && isCardVisible) {
+            PasskeyInfoCard(
+                onAddPasskeyClick = onAddPasskeyClick,
+                onDismissClick = {
+                    isCardVisible = false
+                }
+            )
+        }
 
         SignInMethodsSection(
             isPasskeyEnrolled = primaryAuthenticatorUiData.isNotEmpty(),
@@ -108,7 +108,6 @@ private fun PasskeyInfoCard(
 
             Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
-
             Text(
                 text = stringResource(R.string.what_are_passkeys),
                 style = typography.title,
@@ -149,7 +148,8 @@ private fun PasskeyInfoCard(
                     contentColor = colors.backgroundPrimary
                 ),
                 elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 2.dp, pressedElevation = 2.dp
+                    defaultElevation = 2.dp,
+                    pressedElevation = 2.dp
                 )
             ) {
                 Icon(

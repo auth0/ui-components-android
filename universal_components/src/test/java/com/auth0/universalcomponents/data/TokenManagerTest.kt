@@ -33,7 +33,6 @@ class TokenManagerTest {
 
     @Before
     fun setup() {
-
         mockkObject(Auth0UniversalComponents)
 
         mockTokenProvider = mockk()
@@ -59,7 +58,6 @@ class TokenManagerTest {
         assertThat(instance1).isSameInstanceAs(instance2)
     }
 
-
     @Test
     fun `getMyAccountAudience - returns correct audience format`() {
         val audience = tokenManager.getMyAccountAudience()
@@ -72,7 +70,6 @@ class TokenManagerTest {
         val audience = tokenManager.getMyAccountAudience()
         assertThat(audience).isEqualTo("https://example.auth0.com/me/")
     }
-
 
     @Test
     fun `fetchToken - no cached token - fetches from provider and returns access token`() =
@@ -96,10 +93,10 @@ class TokenManagerTest {
                 mockTokenProvider.fetchApiCredentials(testAudience, testScope)
             } returns TestData.validApiCredentials
 
-            //Fetching the first time
+            // Fetching the first time
             tokenManager.fetchToken(testAudience, testScope)
 
-            //Fetching token the second time
+            // Fetching token the second time
             val token = tokenManager.fetchToken(testAudience, testScope)
 
             assertThat(token).isEqualTo("valid_access_token_123")
@@ -174,7 +171,6 @@ class TokenManagerTest {
         coVerify(exactly = 1) { mockTokenProvider.fetchApiCredentials(testAudience, scope1) }
         coVerify(exactly = 1) { mockTokenProvider.fetchApiCredentials(testAudience, scope2) }
     }
-
 
     @Test
     fun `saveToken - saves token to cache - subsequent fetch returns cached token`() = runTest {
@@ -257,7 +253,6 @@ class TokenManagerTest {
         }
     }
 
-
     @Test
     fun `fetchToken - token expires at boundary - treats as expired and fetches new token`() =
         runTest {
@@ -276,7 +271,6 @@ class TokenManagerTest {
                 mockTokenProvider.fetchApiCredentials(testAudience, testScope)
             }
         }
-
 
     @Test
     fun `fetchToken - concurrent requests for same token - handles thread-safe access`() = runTest {
@@ -302,7 +296,6 @@ class TokenManagerTest {
         assertThat(tokens.distinct()).hasSize(1)
     }
 
-
     @Test
     fun `fetchToken - empty scope - fetches and caches token`() = runTest {
         val emptyScope = ""
@@ -317,7 +310,6 @@ class TokenManagerTest {
             mockTokenProvider.fetchApiCredentials(testAudience, emptyScope)
         }
     }
-
 
     @Test
     fun `saveToken - overwrites existing cached token - uses new token`() = runTest {
@@ -352,7 +344,6 @@ class TokenManagerTest {
             mockTokenProvider.fetchApiCredentials(testAudience, testScope)
         }
     }
-
 
     @Test
     fun `fetchToken - multiple audiences and scopes - maintains separate cache entries`() =

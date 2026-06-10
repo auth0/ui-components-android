@@ -48,7 +48,6 @@ class AuthenticatorMethodsViewModelTest {
         clearAllMocks()
     }
 
-
     @Test
     fun `initialization - uiState collected - starts with Loading state and automatically fetches authenticator methods`() =
         runTest {
@@ -72,7 +71,6 @@ class AuthenticatorMethodsViewModelTest {
 
             job.cancel()
         }
-
 
     @Test
     fun `fetchAuthenticatorMethods - successful response - emits Success state with correctly mapped secondary MFA authenticators`() =
@@ -143,7 +141,6 @@ class AuthenticatorMethodsViewModelTest {
 
             job.cancel()
         }
-
 
     @Test
     fun `fetchAuthenticatorMethods - successful response - emits Success state with correctly mapped primary authenticators`() =
@@ -228,7 +225,6 @@ class AuthenticatorMethodsViewModelTest {
             job.cancel()
         }
 
-
     @Test
     fun `fetchAuthenticatorMethods correctly maps both authenticator types`() =
         runTest {
@@ -282,7 +278,6 @@ class AuthenticatorMethodsViewModelTest {
             coVerify(exactly = 1) { getEnabledAuthenticatorMethodsUseCase() }
             job.cancel()
         }
-
 
     @Test
     fun `fetchAuthenticatorMethods - network error - emits Error state with error and retry callback`() =

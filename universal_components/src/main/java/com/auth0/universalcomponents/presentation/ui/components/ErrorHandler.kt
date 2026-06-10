@@ -102,7 +102,6 @@ fun ErrorHandler(
                 shouldRetry = shouldRetry,
                 onRetryClick = uiError.onRetry
             )
-
         }
 
         else -> {
@@ -114,7 +113,5 @@ fun ErrorHandler(
                 onRetryClick = uiError.onRetry
             )
         }
-
     }
 }
-

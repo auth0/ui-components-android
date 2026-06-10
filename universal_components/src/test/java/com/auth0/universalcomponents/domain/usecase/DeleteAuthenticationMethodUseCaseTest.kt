@@ -31,7 +31,6 @@ class DeleteAuthenticationMethodUseCaseTest {
         clearAllMocks()
     }
 
-
     @Test
     fun `invoke - valid authentication method ID - returns Success with Unit`() = runTest {
         val authMethodId = "auth_method_123"

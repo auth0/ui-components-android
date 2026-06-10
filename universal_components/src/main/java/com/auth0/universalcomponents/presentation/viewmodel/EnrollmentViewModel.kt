@@ -23,7 +23,6 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-
 /**
  * Represent different UI state while enrolling an authenticator
  */
@@ -51,7 +50,6 @@ sealed interface EnrollmentEvent {
     ) : EnrollmentEvent
 }
 
-
 class EnrollmentViewModel(
     private val enrollAuthenticatorUseCase: EnrollAuthenticatorUseCase,
     private val verifyAuthenticatorUseCase: VerifyAuthenticatorUseCase,
@@ -76,8 +74,9 @@ class EnrollmentViewModel(
             AuthenticatorType.RECOVERY_CODE,
             AuthenticatorType.PUSH,
             AuthenticatorType.TOTP -> {
-                if (startDefaultEnrollment)
+                if (startDefaultEnrollment) {
                     startEnrollment(authenticatorType)
+                }
             }
 
             AuthenticatorType.EMAIL -> {
@@ -130,7 +129,8 @@ class EnrollmentViewModel(
                         EnrollmentUiState(
                             uiError = UiError(
                                 error,
-                                onRetry = { startEnrollment(authenticatorType, input) })
+                                onRetry = { startEnrollment(authenticatorType, input) }
+                            )
                         )
                     }
                 }
@@ -179,7 +179,8 @@ class EnrollmentViewModel(
                         else -> {
                             _uiState.update {
                                 it.copy(
-                                    verifyingAuthenticator = false, uiError = UiError(
+                                    verifyingAuthenticator = false,
+                                    uiError = UiError(
                                         error = error,
                                         onRetry = {
                                             verifyWithOtp(
@@ -188,14 +189,14 @@ class EnrollmentViewModel(
                                                 authSession
                                             )
                                         }
-                                    ))
+                                    )
+                                )
                             }
                         }
                     }
                 }
         }
     }
-
 
     fun verifyWithoutOtp(
         authenticationMethodId: String,
@@ -227,7 +228,8 @@ class EnrollmentViewModel(
                             uiError = UiError(
                                 error = error,
                                 onRetry = { verifyWithoutOtp(authenticationMethodId, authSession) }
-                            ))
+                            )
+                        )
                     }
                 }
         }
@@ -246,4 +248,3 @@ class EnrollmentViewModel(
         }
     }
 }
-

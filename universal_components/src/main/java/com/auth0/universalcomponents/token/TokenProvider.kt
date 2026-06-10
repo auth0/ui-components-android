@@ -3,7 +3,6 @@ package com.auth0.universalcomponents.token
 import com.auth0.android.result.APICredentials
 import com.auth0.android.result.Credentials
 
-
 interface TokenProvider {
 
     suspend fun fetchCredentials(): Credentials

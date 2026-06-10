@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.domain.model
 
-
 sealed class EnrollmentInput {
 
     object None : EnrollmentInput()

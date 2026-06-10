@@ -2,7 +2,6 @@ package com.auth0.universalcomponents.theme
 
 import androidx.compose.ui.graphics.Color
 
-
 /**
  * Data class representing the Auth0 color scheme with semantic and Material3 bridge colors.
  *

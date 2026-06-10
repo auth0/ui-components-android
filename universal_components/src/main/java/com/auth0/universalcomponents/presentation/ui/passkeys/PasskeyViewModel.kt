@@ -61,7 +61,6 @@ class PasskeyViewModel(
         private const val SCOPE = "create:me:authentication_methods"
     }
 
-
     private val eventChannel = Channel<PasskeyEvent>()
     val events = eventChannel.receiveAsFlow()
 
@@ -109,9 +108,11 @@ class PasskeyViewModel(
                 eventChannel.send(PasskeyEvent.EnrollmentSuccess)
             } catch (exception: Auth0Error) {
                 _uiState.update {
-                    PasskeyUiState.Error(UiError(Auth0Error.Unknown(cause = exception), {
-                        enrollPasskey(createCredential)
-                    }))
+                    PasskeyUiState.Error(
+                        UiError(Auth0Error.Unknown(cause = exception), {
+                            enrollPasskey(createCredential)
+                        })
+                    )
                 }
             } catch (exception: CreateCredentialException) {
                 when (exception) {
@@ -122,9 +123,12 @@ class PasskeyViewModel(
                     else -> {
                         val err = handleCreationFailure(exception)
                         _uiState.update {
-                            PasskeyUiState.Error(UiError(err, {
-                                enrollPasskey(createCredential)
-                            }), err.shouldRetry)
+                            PasskeyUiState.Error(
+                                UiError(err, {
+                                    enrollPasskey(createCredential)
+                                }),
+                                err.shouldRetry
+                            )
                         }
                     }
                 }
@@ -141,7 +145,6 @@ class PasskeyViewModel(
 
     private fun handleCreationFailure(exception: CreateCredentialException): Auth0Error.PasskeyError {
         return when (exception) {
-
             is CreateCredentialInterruptedException -> {
                 Auth0Error.PasskeyError(
                     "Passkey authentication was interrupted. Please retry again.",

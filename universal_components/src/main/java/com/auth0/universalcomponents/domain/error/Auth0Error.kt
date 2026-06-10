@@ -5,7 +5,8 @@ package com.auth0.universalcomponents.domain.error
  * These are mapped from infrastructure exceptions (AuthenticationException, MyAccountException, etc.)
  */
 sealed class Auth0Error(
-    override val message: String, override val cause: Throwable
+    override val message: String,
+    override val cause: Throwable
 ) : Throwable(message, cause) {
 
     data class AccessDenied(
@@ -63,7 +64,6 @@ sealed class Auth0Error(
         override val cause: Throwable
     ) : Auth0Error(message, cause)
 
-
     // Validation Errors
     data class ValidationError(
         override val message: String = "Validation failed",
@@ -96,7 +96,6 @@ sealed class Auth0Error(
         override val cause: Throwable,
         val shouldRetry: Boolean = false
     ) : Auth0Error(message, cause)
-
 
     // Generic/Unknown Errors
     data class Unknown(

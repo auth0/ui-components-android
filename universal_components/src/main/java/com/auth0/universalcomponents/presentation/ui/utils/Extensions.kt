@@ -9,23 +9,33 @@ import com.auth0.universalcomponents.presentation.viewmodel.SecondaryAuthenticat
 internal fun SecondaryAuthenticator.toAuthenticatorUiModel(): SecondaryAuthenticatorUiData {
     return when (type) {
         AuthenticatorType.TOTP -> SecondaryAuthenticatorUiData(
-            "Authenticator App", type, confirmed
+            "Authenticator App",
+            type,
+            confirmed
         )
 
         AuthenticatorType.PHONE -> SecondaryAuthenticatorUiData(
-            "SMS OTP", type, confirmed
+            "SMS OTP",
+            type,
+            confirmed
         )
 
         AuthenticatorType.EMAIL -> SecondaryAuthenticatorUiData(
-            "Email OTP", type, confirmed
+            "Email OTP",
+            type,
+            confirmed
         )
 
         AuthenticatorType.PUSH -> SecondaryAuthenticatorUiData(
-            "Push Notification", type, confirmed
+            "Push Notification",
+            type,
+            confirmed
         )
 
         AuthenticatorType.RECOVERY_CODE -> SecondaryAuthenticatorUiData(
-            "Recovery Code", type, confirmed
+            "Recovery Code",
+            type,
+            confirmed
         )
 
         else -> {

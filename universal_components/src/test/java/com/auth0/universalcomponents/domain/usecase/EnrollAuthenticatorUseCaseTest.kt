@@ -25,7 +25,6 @@ class EnrollAuthenticatorUseCaseTest {
 
     private val requiredScope = "create:me:authentication_methods"
 
-
     @Before
     fun setup() {
         repository = mockk()
@@ -38,7 +37,6 @@ class EnrollAuthenticatorUseCaseTest {
     fun tearDown() {
         clearAllMocks()
     }
-
 
     @Test
     fun `invoke - TOTP with None input - returns Success with TotpEnrollment`() = runTest {
@@ -144,7 +142,6 @@ class EnrollAuthenticatorUseCaseTest {
                 repository.enrollPushNotification(requiredScope)
             }
         }
-
 
     @Test
     fun `invoke - RECOVERY_CODE with None input - returns Success with RecoveryCodeEnrollment`() =
@@ -266,7 +263,6 @@ class EnrollAuthenticatorUseCaseTest {
             repository.enrollEmail(any(), any())
         }
     }
-
 
     @Test
     fun `invoke - EMAIL repository throws NetworkError - returns Auth0Error with NetworkError`() =

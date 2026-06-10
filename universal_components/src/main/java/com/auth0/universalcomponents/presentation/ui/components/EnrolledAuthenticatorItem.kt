@@ -32,7 +32,6 @@ import com.auth0.universalcomponents.presentation.ui.menu.MenuAction
 import com.auth0.universalcomponents.presentation.ui.menu.MenuItem
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-
 @Composable
 fun EnrolledAuthenticatorItem(
     title: String,
@@ -119,5 +118,3 @@ fun EnrolledAuthenticatorItem(
         }
     }
 }
-
-

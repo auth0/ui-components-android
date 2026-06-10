@@ -79,19 +79,24 @@ object Auth0Theme {
     )
 
     val colors: Auth0Color
-        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.colors
+        @Composable @ReadOnlyComposable
+        get() = LocalAuth0Theme.current.colors
 
     val typography: Auth0Typography
-        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.typography
+        @Composable @ReadOnlyComposable
+        get() = LocalAuth0Theme.current.typography
 
     val shapes: Auth0Shapes
-        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.shapes
+        @Composable @ReadOnlyComposable
+        get() = LocalAuth0Theme.current.shapes
 
     val dimensions: Auth0Dimensions
-        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.dimensions
+        @Composable @ReadOnlyComposable
+        get() = LocalAuth0Theme.current.dimensions
 
     val sizes: Auth0Sizes
-        @Composable @ReadOnlyComposable get() = LocalAuth0Theme.current.sizes
+        @Composable @ReadOnlyComposable
+        get() = LocalAuth0Theme.current.sizes
 }
 
 /**
@@ -230,7 +235,7 @@ private fun Auth0Typography.toMaterial3Typography(): Typography {
     return Typography(
         displayLarge = this.displayLarge,
         displayMedium = this.displayMedium,
-        displaySmall = this.display,  // Auth0's "display" -> Material3's displaySmall
+        displaySmall = this.display, // Auth0's "display" -> Material3's displaySmall
         headlineLarge = this.titleLarge,
         headlineMedium = this.title,
         bodyMedium = this.body,
