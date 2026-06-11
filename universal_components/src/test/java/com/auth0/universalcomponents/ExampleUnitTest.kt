@@ -1,6 +1,6 @@
 package com.auth0.universalcomponents
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**

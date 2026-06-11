@@ -40,9 +40,11 @@ data class Auth0Typography(
 
     // Other styles
 
-    /** Helper text for hints, validation messages, and supplementary information. Inter Regular 13sp / 18sp line height / 0.2sp tracking. */
+    /** Helper text for hints, validation messages, and supplementary information.
+     * Inter Regular 13sp / 18sp line height / 0.2sp tracking. */
     val helper: TextStyle,
-    /** Overline text for tags, categories, and small annotations. Inter Regular 11sp / 16sp line height / 0.77sp tracking. */
+    /** Overline text for tags, categories, and small annotations.
+     * Inter Regular 11sp / 16sp line height / 0.77sp tracking. */
     val overline: TextStyle,
 ) {
     companion object {

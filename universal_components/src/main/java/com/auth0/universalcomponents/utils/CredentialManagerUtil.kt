@@ -15,6 +15,6 @@ suspend fun createCredential(
     val request = CreatePublicKeyCredentialRequest(authParamsJson)
     val response = credentialsManager.createCredential(context, request)
     val publicKeyResponse = response as? CreatePublicKeyCredentialResponse
-        ?: throw IllegalStateException("Unexpected credential response type: ${response::class.java.name}")
+        ?: error("Unexpected credential response type: ${response::class.java.name}")
     return publicKeyResponse.registrationResponseJson
 }
