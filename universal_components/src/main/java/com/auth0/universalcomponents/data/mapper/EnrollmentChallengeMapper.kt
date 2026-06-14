@@ -24,14 +24,14 @@ import com.auth0.android.result.TotpEnrollmentChallenge as SdkTotpEnrollmentChal
  * This decouples the UI components from SDK types for better flexibility.
  */
 
-fun SdkMfaEnrollmentChallenge.toDomainModel(): MfaEnrollmentChallenge {
+internal fun SdkMfaEnrollmentChallenge.toDomainModel(): MfaEnrollmentChallenge {
     return MfaEnrollmentChallenge(
         id = this.id,
         authSession = this.authSession
     )
 }
 
-fun SdkTotpEnrollmentChallenge.toDomainModel(): TotpEnrollmentChallenge {
+internal fun SdkTotpEnrollmentChallenge.toDomainModel(): TotpEnrollmentChallenge {
     return TotpEnrollmentChallenge(
         id = this.id,
         authSession = this.authSession,
@@ -40,7 +40,7 @@ fun SdkTotpEnrollmentChallenge.toDomainModel(): TotpEnrollmentChallenge {
     )
 }
 
-fun SdkRecoveryCodeEnrollmentChallenge.toDomainModel(): RecoveryCodeEnrollmentChallenge {
+internal fun SdkRecoveryCodeEnrollmentChallenge.toDomainModel(): RecoveryCodeEnrollmentChallenge {
     return RecoveryCodeEnrollmentChallenge(
         id = this.id,
         authSession = this.authSession,
@@ -48,7 +48,7 @@ fun SdkRecoveryCodeEnrollmentChallenge.toDomainModel(): RecoveryCodeEnrollmentCh
     )
 }
 
-fun SdkPasskeyEnrollmentChallenge.toDomainModel(): PasskeyEnrollmentChallenge {
+internal fun SdkPasskeyEnrollmentChallenge.toDomainModel(): PasskeyEnrollmentChallenge {
     return PasskeyEnrollmentChallenge(
         authenticationMethodId = this.authenticationMethodId,
         authSession = this.authSession,
@@ -56,7 +56,7 @@ fun SdkPasskeyEnrollmentChallenge.toDomainModel(): PasskeyEnrollmentChallenge {
     )
 }
 
-fun SdkAuthParamsPublicKey.toDomainModel(): AuthnParamsPublicKey {
+internal fun SdkAuthParamsPublicKey.toDomainModel(): AuthnParamsPublicKey {
     return AuthnParamsPublicKey(
         authenticatorSelection = AuthenticatorSelection(
             residentKey = this.authenticatorSelection.residentKey,
@@ -82,7 +82,7 @@ fun SdkAuthParamsPublicKey.toDomainModel(): AuthnParamsPublicKey {
     )
 }
 
-fun SdkPasskeyAuthenticationMethod.toDomainModel(): PasskeyAuthenticationMethod {
+internal fun SdkPasskeyAuthenticationMethod.toDomainModel(): PasskeyAuthenticationMethod {
     return PasskeyAuthenticationMethod(
         id = this.id,
         type = this.type,
@@ -95,7 +95,7 @@ fun SdkPasskeyAuthenticationMethod.toDomainModel(): PasskeyAuthenticationMethod 
 /**
  * Reverse mapper to convert domain model back to SDK type for API calls
  */
-fun AuthnParamsPublicKey.toSdkModel(): SdkAuthParamsPublicKey {
+internal fun AuthnParamsPublicKey.toSdkModel(): SdkAuthParamsPublicKey {
     return com.auth0.android.result.AuthnParamsPublicKey(
         authenticatorSelection = com.auth0.android.result.AuthenticatorSelection(
             residentKey = this.authenticatorSelection.residentKey,
@@ -124,7 +124,7 @@ fun AuthnParamsPublicKey.toSdkModel(): SdkAuthParamsPublicKey {
 /**
  * Reverse mapper to convert domain PublicKeyCredentials to SDK type for API calls
  */
-fun PublicKeyCredentials.toSdkModel(): SdkPublicKeyCredentials {
+internal fun PublicKeyCredentials.toSdkModel(): SdkPublicKeyCredentials {
     return SdkPublicKeyCredentials(
         authenticatorAttachment = this.authenticatorAttachment,
         clientExtensionResults = com.auth0.android.request.ClientExtensionResults(

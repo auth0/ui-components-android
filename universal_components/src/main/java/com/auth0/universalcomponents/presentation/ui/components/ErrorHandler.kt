@@ -18,7 +18,7 @@ import com.auth0.universalcomponents.presentation.mfaRecoveryHandler
 import com.auth0.universalcomponents.presentation.ui.UiError
 
 @Composable
-fun ErrorHandler(
+internal fun ErrorHandler(
     uiError: UiError,
     modifier: Modifier = Modifier,
     shouldRetry: Boolean = false

@@ -6,7 +6,7 @@ import com.auth0.universalcomponents.presentation.ui.components.ErrorScreen
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.PhoneEnrollmentScreen
 
 @Composable
-fun AuthenticatorEnrollmentScreen(
+internal fun AuthenticatorEnrollmentScreen(
     authenticatorType: AuthenticatorType,
     onContinue: (String, String, String?) -> Unit,
     onBackClick: () -> Unit,

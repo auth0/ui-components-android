@@ -9,7 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.android.sample.ui.components.SampleTopBar
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 @Composable
@@ -19,7 +19,7 @@ fun FavoritesScreen(onBack: () -> Unit) {
 
     Scaffold(
         topBar = {
-            TopBar(title = "Favorites", onBackClick = onBack)
+            SampleTopBar(title = "Favorites", onBackClick = onBack)
         },
         containerColor = colors.backgroundLayerBase
     ) { padding ->

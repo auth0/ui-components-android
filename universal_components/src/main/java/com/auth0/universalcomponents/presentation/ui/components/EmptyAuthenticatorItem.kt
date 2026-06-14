@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 @Composable
-fun EmptyAuthenticatorItem(
+internal fun EmptyAuthenticatorItem(
     modifier: Modifier = Modifier,
     emptyMessage: String
 ) {

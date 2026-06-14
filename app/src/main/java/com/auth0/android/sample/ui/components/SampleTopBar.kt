@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.presentation.ui.components
+package com.auth0.android.sample.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -22,7 +22,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun TopBar(
+fun SampleTopBar(
     title: String,
     modifier: Modifier = Modifier,
     topBarColor: Color = Color.Unspecified,
@@ -60,7 +60,6 @@ internal fun TopBar(
                 }
             },
             actions = {
-                // Show trailing icon if provided
                 if (trailingIcon != null) {
                     IconButton(onClick = trailingIconClick) {
                         Icon(

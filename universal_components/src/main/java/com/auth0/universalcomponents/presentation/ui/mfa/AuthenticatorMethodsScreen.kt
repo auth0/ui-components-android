@@ -22,8 +22,8 @@ import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.presentation.ui.components.ErrorHandler
 import com.auth0.universalcomponents.presentation.ui.components.TopBar
-import com.auth0.universalcomponents.presentation.ui.mfa.authenticator_methods.PrimaryAuthenticatorListScreen
-import com.auth0.universalcomponents.presentation.ui.mfa.authenticator_methods.SecondaryAuthenticatorListScreen
+import com.auth0.universalcomponents.presentation.ui.mfa.authenticatormethods.PrimaryAuthenticatorListScreen
+import com.auth0.universalcomponents.presentation.ui.mfa.authenticatormethods.SecondaryAuthenticatorListScreen
 import com.auth0.universalcomponents.presentation.ui.passkeys.PasskeyEvent
 import com.auth0.universalcomponents.presentation.ui.passkeys.PasskeyUiState
 import com.auth0.universalcomponents.presentation.ui.passkeys.PasskeyViewModel
@@ -36,7 +36,7 @@ import com.auth0.universalcomponents.utils.createCredential
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AuthenticatorMethodsScreen(
+internal fun AuthenticatorMethodsScreen(
     authenticatorMethodViewModel: AuthenticatorMethodsViewModel = viewModel(
         factory = UniversalComponentsModule.provideAuthenticatorMethodViewModelFactory()
     ),

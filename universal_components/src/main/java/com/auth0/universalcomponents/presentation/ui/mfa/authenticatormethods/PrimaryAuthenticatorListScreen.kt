@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.presentation.ui.mfa.authenticator_methods
+package com.auth0.universalcomponents.presentation.ui.mfa.authenticatormethods
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
@@ -37,7 +37,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * Displays the passkey onboarding card and sign-in methods available to the user.
  */
 @Composable
-fun PrimaryAuthenticatorListScreen(
+internal fun PrimaryAuthenticatorListScreen(
     primaryAuthenticatorUiData: List<PrimaryAuthenticatorUiData>,
     modifier: Modifier = Modifier,
     onAddPasskeyClick: () -> Unit = {},

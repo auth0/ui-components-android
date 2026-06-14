@@ -56,7 +56,7 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RecoveryCodeEnrollmentScreen(
+internal fun RecoveryCodeEnrollmentScreen(
     authenticatorType: AuthenticatorType = AuthenticatorType.RECOVERY_CODE,
     viewModel: EnrollmentViewModel = viewModel(
         factory = UniversalComponentsModule.provideEnrollmentViewModelFactory(authenticatorType)

@@ -36,7 +36,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * Displays information about passkeys and allows users to enable passkey authentication.
  */
 @Composable
-fun PasskeyEnableScreen(
+internal fun PasskeyEnableScreen(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onEnableClick: () -> Unit = {}

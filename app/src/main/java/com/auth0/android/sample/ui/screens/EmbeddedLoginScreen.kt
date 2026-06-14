@@ -40,7 +40,7 @@ import com.auth0.android.sample.ui.components.Auth0LogoHeader
 import com.auth0.android.sample.ui.components.OrDivider
 import com.auth0.android.sample.ui.theme.auth0ScreenBackground
 import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
-import com.auth0.universalcomponents.presentation.ui.components.GradientButton
+import com.auth0.android.sample.ui.components.SampleGradientButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -222,7 +222,7 @@ fun EmbeddedLoginScreen(
         Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
         // Continue button
-        GradientButton(
+        SampleGradientButton(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(sizes.buttonHeight),

@@ -16,8 +16,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.auth0.universalcomponents.presentation.ui.components.GradientButton
-import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.android.sample.ui.components.SampleGradientButton
+import com.auth0.android.sample.ui.components.SampleTopBar
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -48,7 +48,7 @@ fun UpdateFullNameScreen(
 
     Scaffold(
         topBar = {
-            TopBar(title = "", showBackNavigation = true, onBackClick = onBack)
+            SampleTopBar(title = "", showBackNavigation = true, onBackClick = onBack)
         },
         containerColor = colors.backgroundLayerBase
     ) { padding ->
@@ -114,7 +114,7 @@ fun UpdateFullNameScreen(
 
             Spacer(modifier = Modifier.height(dimensions.spacingXl))
 
-            GradientButton(
+            SampleGradientButton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(sizes.buttonHeight),
