@@ -23,6 +23,7 @@ configure(project(':universal_components')) {
     detekt {
         buildUponDefaultConfig = true
         parallel = true
+        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
         source.setFrom(files('src/main/java', 'src/main/kotlin', 'src/test/java', 'src/test/kotlin'))
     }
 
