@@ -49,7 +49,8 @@ public fun AuthenticatorSettingsComponent(
 
     Auth0Theme(configuration = themeConfiguration) {
         AuthenticatorSettingsNavigationHost(
-            navController
+            navController = navController,
+            modifier = modifier
         )
     }
 }

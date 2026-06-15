@@ -8,7 +8,7 @@ import com.auth0.universalcomponents.BuildConfig
 /**
  * Provider class that creates and provides instances of MyAccount from the Auth0 Android SDK.
  */
-class MyAccountProvider() {
+class MyAccountProvider {
 
     /**
      * Creates and returns a MyAccountAPIClient instance configured with the current access token.

@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.presentation.ui.mfa
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -70,6 +71,7 @@ import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentUiState
 import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.google.zxing.BarcodeFormat
+import com.google.zxing.WriterException
 import com.google.zxing.qrcode.QRCodeWriter
 
 @Composable
@@ -529,22 +531,33 @@ private fun generateQRCode(
     return try {
         val writer = QRCodeWriter()
         val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size)
-        val width = bitMatrix.width
-        val height = bitMatrix.height
-        val bitmap = createBitmap(width, height)
-
-        for (x in 0 until width) {
-            for (y in 0 until height) {
-                bitmap[x, y] = if (bitMatrix[x, y]) {
-                    qrCodeColor.toArgb()
-                } else {
-                    qrBackgroundColor.toArgb()
-                }
-            }
-        }
-        bitmap
-    } catch (e: Exception) {
-        e.printStackTrace()
+        createQRBitmap(bitMatrix, qrCodeColor, qrBackgroundColor)
+    } catch (e: WriterException) {
+        Log.e("TAG", "Failed to generate QR code", e)
         null
     }
+}
+
+/**
+ * Creates a bitmap from a QR code bit matrix with specified colors.
+ */
+private fun createQRBitmap(
+    bitMatrix: com.google.zxing.common.BitMatrix,
+    qrCodeColor: Color,
+    qrBackgroundColor: Color
+): Bitmap {
+    val width = bitMatrix.width
+    val height = bitMatrix.height
+    val bitmap = createBitmap(width, height)
+
+    for (x in 0 until width) {
+        for (y in 0 until height) {
+            bitmap[x, y] = if (bitMatrix[x, y]) {
+                qrCodeColor.toArgb()
+            } else {
+                qrBackgroundColor.toArgb()
+            }
+        }
+    }
+    return bitmap
 }

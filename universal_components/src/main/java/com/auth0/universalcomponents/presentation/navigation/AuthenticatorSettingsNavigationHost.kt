@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.presentation.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -15,10 +16,12 @@ import com.auth0.universalcomponents.presentation.ui.passkeys.PasskeyEnableScree
 @Composable
 internal fun AuthenticatorSettingsNavigationHost(
     navController: NavHostController,
+    modifier: Modifier = Modifier,
 ) {
     NavHost(
         navController = navController,
-        startDestination = AuthenticatorRoute.AuthenticatorMethodList
+        startDestination = AuthenticatorRoute.AuthenticatorMethodList,
+        modifier = modifier
     ) {
         composable<AuthenticatorRoute.AuthenticatorMethodList> {
             AuthenticatorMethodsScreen(

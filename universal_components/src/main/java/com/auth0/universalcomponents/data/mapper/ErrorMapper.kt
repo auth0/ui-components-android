@@ -8,6 +8,8 @@ import com.auth0.universalcomponents.domain.error.Auth0Error
 
 internal object ErrorMapper {
 
+    private const val HTTP_STATUS_SERVER_ERROR = 500
+
     /**
      * Maps any exception to an Auth0Error
      * Handles AuthenticationException, MyAccountException, and other exceptions
@@ -150,7 +152,7 @@ internal object ErrorMapper {
                 )
             }
 
-            exception.statusCode >= 500 -> Auth0Error.ServerError(
+            exception.statusCode >= HTTP_STATUS_SERVER_ERROR -> Auth0Error.ServerError(
                 message = "Server error, please try again later",
                 statusCode = exception.statusCode,
                 cause = exception

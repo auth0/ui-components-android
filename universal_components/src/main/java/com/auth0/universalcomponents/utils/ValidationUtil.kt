@@ -8,6 +8,8 @@ import android.util.Patterns
  */
 object ValidationUtil {
 
+    private const val MIN_PHONE_NUMBER_LENGTH = 6
+
     /**
      * Validates if an email address is in a valid format
      * Uses Android's built-in email pattern matcher
@@ -27,7 +29,7 @@ object ValidationUtil {
      */
     fun isValidPhoneNumber(phoneNumber: String): Boolean {
         val digitsOnly = phoneNumber.replace(Regex("[^0-9]"), "")
-        return digitsOnly.length >= 6
+        return digitsOnly.length >= MIN_PHONE_NUMBER_LENGTH
     }
 
     /**

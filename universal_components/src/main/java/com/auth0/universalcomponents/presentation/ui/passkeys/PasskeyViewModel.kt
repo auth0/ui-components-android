@@ -97,7 +97,7 @@ class PasskeyViewModel(
                 _uiState.update {
                     PasskeyUiState.EnrollingPasskey
                 }
-                val result = myAccountRepository.verifyPasskey(
+                myAccountRepository.verifyPasskey(
                     publicKeyCredentials,
                     challenge,
                     SCOPE

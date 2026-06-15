@@ -11,6 +11,8 @@ import kotlin.coroutines.cancellation.CancellationException
  * @throws [CancellationException] if the coroutine is cancelled
  * @throws [com.auth0.universalcomponents.domain.error.Auth0Error]
  */
+// Intentionally catches all throwables to map them to Auth0Error; CancellationException is rethrown first.
+@Suppress("TooGenericExceptionCaught")
 internal suspend inline fun <reified T> withErrorMapping(
     scope: String? = null,
     execute: suspend () -> T

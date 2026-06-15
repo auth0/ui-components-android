@@ -18,11 +18,11 @@ public fun SnackBar(
 
     SnackbarHost(
         hostState = snackbarHostState,
-        modifier = Modifier
+        modifier = modifier
             .padding(sizes.padding)
     )
 
-    LaunchedEffect(Unit) {
-        snackbarHostState.showSnackbar("Copied to clipboard")
+    LaunchedEffect(message) {
+        snackbarHostState.showSnackbar(message)
     }
 }
