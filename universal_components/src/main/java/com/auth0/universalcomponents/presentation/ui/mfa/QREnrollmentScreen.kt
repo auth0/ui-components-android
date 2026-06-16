@@ -75,7 +75,7 @@ import com.google.zxing.WriterException
 import com.google.zxing.qrcode.QRCodeWriter
 
 @Composable
-fun QREnrollmentScreen(
+internal fun QREnrollmentScreen(
     authenticatorType: AuthenticatorType,
     modifier: Modifier = Modifier,
     viewModel: EnrollmentViewModel = viewModel(

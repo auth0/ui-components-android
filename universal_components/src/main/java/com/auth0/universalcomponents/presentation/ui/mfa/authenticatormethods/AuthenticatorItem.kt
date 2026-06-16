@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.presentation.ui.mfa.authenticator_methods
+package com.auth0.universalcomponents.presentation.ui.mfa.authenticatormethods
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -26,7 +26,7 @@ import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 @Composable
-fun AuthenticatorItem(
+internal fun AuthenticatorItem(
     title: String,
     leadingIcon: Painter,
     showActiveTag: Boolean = false,

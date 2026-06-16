@@ -61,7 +61,7 @@ import com.auth0.universalcomponents.utils.ValidationUtil
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PhoneEnrollmentScreen(
+internal fun PhoneEnrollmentScreen(
     authenticatorType: AuthenticatorType,
     viewModel: EnrollmentViewModel = viewModel(
         factory = UniversalComponentsModule.provideEnrollmentViewModelFactory(authenticatorType)

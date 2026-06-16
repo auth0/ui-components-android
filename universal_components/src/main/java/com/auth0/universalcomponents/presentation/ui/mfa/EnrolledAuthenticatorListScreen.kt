@@ -50,7 +50,7 @@ import com.auth0.universalcomponents.utils.createCredential
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EnrolledAuthenticatorListScreen(
+internal fun EnrolledAuthenticatorListScreen(
     authenticatorType: AuthenticatorType,
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
@@ -170,7 +170,7 @@ fun EnrolledAuthenticatorListScreen(
  * Supports both single item and list views
  */
 @Composable
-fun AuthenticatorListContent(
+internal fun AuthenticatorListContent(
     authenticatorType: String,
     authenticators: List<EnrolledAuthenticationMethod>,
     onDeleteAuthenticator: (EnrolledAuthenticationMethod) -> Unit,

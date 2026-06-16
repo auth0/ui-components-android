@@ -30,10 +30,8 @@ formatting:
     active: true
   NoWildcardImports:
     active: true
-  # authenticator_methods package is public API; renaming would break consumers.
   PackageName:
     active: true
-    excludes: [ '**/mfa/authenticator_methods/**' ]
 
 complexity:
   active: true
@@ -69,11 +67,8 @@ naming:
   TopLevelPropertyNaming:
     active: true
     constantPattern: '[A-Z][_A-Z0-9]*'
-  # The authenticator_methods package is part of the published public API.
-  # Renaming it to drop the underscore would be a breaking change for consumers.
   PackageNaming:
     active: true
-    excludes: [ '**/mfa/authenticator_methods/**' ]
 
 style:
   active: true

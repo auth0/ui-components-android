@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.presentation.ui.mfa.authenticator_methods
+package com.auth0.universalcomponents.presentation.ui.mfa.authenticatormethods
 
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
@@ -19,7 +19,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * Screen displaying the list of enabled authenticators
  */
 @Composable
-fun SecondaryAuthenticatorListScreen(
+internal fun SecondaryAuthenticatorListScreen(
     secondaryAuthenticatorUiData: List<SecondaryAuthenticatorUiData>,
     onAuthenticatorItemClick: (SecondaryAuthenticatorUiData) -> Unit
 ) {

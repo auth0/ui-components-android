@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.presentation.ui.components
+package com.auth0.android.sample.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonElevation
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 @Composable
-internal fun GradientButton(
+fun SampleGradientButton(
     modifier: Modifier = Modifier,
     gradient: Brush = Brush.verticalGradient(
         colors = listOf(
@@ -74,7 +75,7 @@ internal fun GradientButton(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (isLoading) {
-                    CircularLoader(
+                    CircularProgressIndicator(
                         modifier = Modifier.size(16.dp),
                         color = Color.White.copy(alpha = 0.75f),
                         strokeWidth = 2.dp

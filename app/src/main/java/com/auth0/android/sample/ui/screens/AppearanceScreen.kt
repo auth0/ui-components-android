@@ -21,8 +21,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
-import com.auth0.universalcomponents.presentation.ui.components.GradientButton
-import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.android.sample.ui.components.SampleGradientButton
+import com.auth0.android.sample.ui.components.SampleTopBar
 import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
 import com.auth0.universalcomponents.theme.Auth0Theme
 
@@ -60,7 +60,7 @@ fun AppearanceScreen(
 
     Scaffold(
         topBar = {
-            TopBar(title = "", showBackNavigation = true, onBackClick = onBack)
+            SampleTopBar(title = "", showBackNavigation = true, onBackClick = onBack)
         },
         containerColor = colors.backgroundLayerBase
     ) { padding ->
@@ -137,7 +137,7 @@ fun AppearanceScreen(
 
             Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
-            GradientButton(
+            SampleGradientButton(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(sizes.buttonHeight),

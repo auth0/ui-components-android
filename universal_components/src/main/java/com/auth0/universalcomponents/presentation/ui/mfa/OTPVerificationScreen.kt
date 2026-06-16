@@ -60,7 +60,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun OTPVerificationScreen(
+internal fun OTPVerificationScreen(
     authenticatorType: AuthenticatorType,
     authenticationId: String,
     authSession: String,

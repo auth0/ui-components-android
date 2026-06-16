@@ -28,7 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.android.sample.ui.components.SampleTopBar
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -61,7 +61,7 @@ fun ProfileScreen(
 
     Scaffold(
         topBar = {
-            TopBar(title = "", showBackNavigation = true, onBackClick = onBack)
+            SampleTopBar(title = "", showBackNavigation = true, onBackClick = onBack)
         },
         containerColor = colors.backgroundLayerBase
     ) { padding ->

@@ -28,7 +28,7 @@ import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 @Composable
-fun ErrorScreen(
+internal fun ErrorScreen(
     modifier: Modifier = Modifier,
     mainErrorMessage: String,
     description: String = stringResource(R.string.unable_to_process_contact),
@@ -94,7 +94,7 @@ fun ErrorScreen(
 }
 
 @Composable
-fun MessageWithLink(
+internal fun MessageWithLink(
     message: String,
     clickableLinkText: String? = null,
     clickableLink: String = "https://auth0.com/contact-us"

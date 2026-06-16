@@ -33,7 +33,7 @@ import com.auth0.universalcomponents.presentation.ui.menu.MenuItem
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 @Composable
-fun EnrolledAuthenticatorItem(
+internal fun EnrolledAuthenticatorItem(
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
