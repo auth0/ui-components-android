@@ -1,9 +1,9 @@
 package com.auth0.universalcomponents.data
 
-import android.util.Log
 import androidx.annotation.VisibleForTesting
 import com.auth0.android.result.APICredentials
 import com.auth0.universalcomponents.Auth0UniversalComponents
+import com.auth0.universalcomponents.utils.logging.Logger
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -51,12 +51,12 @@ class TokenManager private constructor() {
         val cachedCredentials = tokenMap[cacheKey(audience, scope)]
         if (cachedCredentials != null) {
             if (!willTokenExpire(cachedCredentials.expiresAt.time)) {
-                Log.d(TAG, "Returning cached token for audience: $audience, scope: $scope")
+                Logger.d(TAG, "Returning cached token for audience: $audience, scope: $scope")
                 return cachedCredentials.accessToken
             }
         }
 
-        Log.d(TAG, "Fetching new token from provider for audience: $audience, scope: $scope")
+        Logger.d(TAG, "Fetching new token from provider for audience: $audience, scope: $scope")
         val credentials = tokenProvider.fetchApiCredentials(audience, scope)
 
         // Saving the same token for scenario where we request multiple scopes together
@@ -79,7 +79,7 @@ class TokenManager private constructor() {
         val splitScope = scope.split(" ")
         if (splitScope.size > 1) {
             splitScope.forEach {
-                Log.d(TAG, "token:$it ")
+                Logger.d(TAG, "Caching token for scope: $it")
                 tokenMap[cacheKey(audience, it)] = credentials
             }
         }

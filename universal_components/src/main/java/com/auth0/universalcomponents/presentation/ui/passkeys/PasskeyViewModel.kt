@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.presentation.ui.passkeys
 
-import android.util.Log
 import androidx.credentials.exceptions.CreateCredentialCancellationException
 import androidx.credentials.exceptions.CreateCredentialException
 import androidx.credentials.exceptions.CreateCredentialInterruptedException
@@ -12,6 +11,7 @@ import com.auth0.universalcomponents.domain.error.Auth0Error
 import com.auth0.universalcomponents.domain.model.PublicKeyCredentials
 import com.auth0.universalcomponents.domain.repository.MyAccountRepository
 import com.auth0.universalcomponents.presentation.ui.UiError
+import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -161,7 +161,7 @@ class PasskeyViewModel(
             }
 
             else -> {
-                Log.w(TAG, "Unexpected exception type ${exception::class.java.name}")
+                Logger.w(TAG, "Unexpected exception type ${exception::class.java.name}")
                 Auth0Error.PasskeyError(
                     "An error occurred when creating a passkey: ${exception.message ?: "Unknown error"}",
                     exception,

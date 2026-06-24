@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.presentation.ui.mfa
 
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -44,6 +43,7 @@ import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentUiState
 import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.utils.ValidationUtil
+import com.auth0.universalcomponents.utils.logging.Logger
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,7 +80,7 @@ internal fun EmailEnrollmentScreen(
             }
 
             is EnrollmentEvent.VerificationSuccess -> {
-                Log.d("EmailEnrollmentScreen", "$event not handled ")
+                Logger.d("EmailEnrollmentScreen", "$event not handled ")
             }
         }
     }

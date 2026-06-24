@@ -1,7 +1,6 @@
 package com.auth0.universalcomponents.presentation.ui.mfa
 
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -70,9 +69,12 @@ import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentEvent
 import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentUiState
 import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.utils.logging.Logger
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.WriterException
 import com.google.zxing.qrcode.QRCodeWriter
+
+private const val TAG = "QREnrollmentScreen"
 
 @Composable
 internal fun QREnrollmentScreen(
@@ -533,7 +535,7 @@ private fun generateQRCode(
         val bitMatrix = writer.encode(content, BarcodeFormat.QR_CODE, size, size)
         createQRBitmap(bitMatrix, qrCodeColor, qrBackgroundColor)
     } catch (e: WriterException) {
-        Log.e("TAG", "Failed to generate QR code", e)
+        Logger.e(TAG, "Failed to generate QR code", e)
         null
     }
 }

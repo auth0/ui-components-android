@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.presentation.ui.mfa
 
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -51,6 +50,7 @@ import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentEvent
 import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentUiState
 import com.auth0.universalcomponents.presentation.viewmodel.EnrollmentViewModel
 import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
@@ -88,7 +88,7 @@ internal fun RecoveryCodeEnrollmentScreen(
                     event.authenticationMethod.id,
                     event.authenticationMethod.type
                 )
-                Log.d("EmailEnrollmentScreen", "$event not handled ")
+                Logger.d("RecoveryCodeEnrollmentScreen", "$event not handled ")
             }
         }
     }
