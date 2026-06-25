@@ -26,52 +26,38 @@ class LoggerTest {
 
     @After
     fun tearDown() {
-        Logger.setEnabled(false)
         unmockkStatic(Log::class)
     }
 
     @Test
-    fun `d - when disabled - does not call Log`() {
-        Logger.setEnabled(false)
-        Logger.d(tag, message)
-        verify(exactly = 0) { Log.d(any(), any()) }
-    }
-
-    @Test
-    fun `d - when enabled - delegates to Log`() {
-        Logger.setEnabled(true)
+    fun `d - delegates to Log`() {
         Logger.d(tag, message)
         verify(exactly = 1) { Log.d(tag, message) }
     }
 
     @Test
-    fun `e - when enabled - delegates to Log with throwable`() {
-        Logger.setEnabled(true)
+    fun `i - delegates to Log`() {
+        Logger.i(tag, message)
+        verify(exactly = 1) { Log.i(tag, message) }
+    }
+
+    @Test
+    fun `v - delegates to Log`() {
+        Logger.v(tag, message)
+        verify(exactly = 1) { Log.v(tag, message) }
+    }
+
+    @Test
+    fun `w - delegates to Log with throwable`() {
+        val throwable = RuntimeException("boom")
+        Logger.w(tag, message, throwable)
+        verify(exactly = 1) { Log.w(tag, message, throwable) }
+    }
+
+    @Test
+    fun `e - delegates to Log with throwable`() {
         val throwable = RuntimeException("boom")
         Logger.e(tag, message, throwable)
         verify(exactly = 1) { Log.e(tag, message, throwable) }
-    }
-
-    @Test
-    fun `e - when disabled - does not call Log`() {
-        Logger.setEnabled(false)
-        Logger.e(tag, message, RuntimeException("boom"))
-        verify(exactly = 0) { Log.e(any(), any(), any()) }
-    }
-
-    @Test
-    fun `w - when enabled - delegates to Log`() {
-        Logger.setEnabled(true)
-        Logger.w(tag, message)
-        verify(exactly = 1) { Log.w(tag, message, null) }
-    }
-
-    @Test
-    fun `i and v - when enabled - delegate to Log`() {
-        Logger.setEnabled(true)
-        Logger.i(tag, message)
-        Logger.v(tag, message)
-        verify(exactly = 1) { Log.i(tag, message) }
-        verify(exactly = 1) { Log.v(tag, message) }
     }
 }

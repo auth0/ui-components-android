@@ -88,7 +88,7 @@ internal fun RecoveryCodeEnrollmentScreen(
                     event.authenticationMethod.id,
                     event.authenticationMethod.type
                 )
-                Logger.d("RecoveryCodeEnrollmentScreen", "$event not handled ")
+                Logger.d("RecoveryCodeEnrollmentScreen", "${event::class.simpleName} not handled")
             }
         }
     }

@@ -22,3 +22,12 @@
     **[] $VALUES;
     public *;
 }
+
+# --- Strip SDK internal logging from minified consumer builds ----------------
+-assumenosideeffects class com.auth0.universalcomponents.utils.logging.Logger {
+    void d$*(...);
+    void i$*(...);
+    void v$*(...);
+    void w$*(...);
+    void e$*(...);
+}

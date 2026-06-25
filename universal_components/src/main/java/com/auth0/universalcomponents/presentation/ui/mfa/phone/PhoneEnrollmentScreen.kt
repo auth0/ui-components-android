@@ -90,7 +90,7 @@ internal fun PhoneEnrollmentScreen(
             }
 
             is EnrollmentEvent.VerificationSuccess -> {
-                Logger.d("PhoneEnrollmentScreen", "$event not handled ")
+                Logger.d("PhoneEnrollmentScreen", "${event::class.simpleName} not handled")
             }
         }
     }
