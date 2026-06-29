@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.presentation.viewmodel
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.AuthenticationMethod
@@ -15,6 +14,7 @@ import com.auth0.universalcomponents.domain.usecase.EnrollAuthenticatorUseCase
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.presentation.ui.UiError
+import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,7 +84,7 @@ class EnrollmentViewModel(
             }
 
             else -> {
-                Log.d(TAG, "No need to fetch the data during initialization")
+                Logger.d(TAG, "No need to fetch the data during initialization")
             }
         }
     }
@@ -99,7 +99,7 @@ class EnrollmentViewModel(
             }
             enrollAuthenticatorUseCase(authenticatorType, input)
                 .onSuccess { enrollmentResult ->
-                    Log.d(TAG, "Enrollment initiated successfully")
+                    Logger.d(TAG, "Enrollment initiated successfully")
 
                     val (authMethodId, authSession) = when (enrollmentResult) {
                         is EnrollmentResult.RecoveryCodeEnrollment ->
@@ -146,7 +146,7 @@ class EnrollmentViewModel(
             _uiState.update {
                 it.copy(verifyingAuthenticator = true)
             }
-            Log.d(TAG, "Verifying with OTP")
+            Logger.d(TAG, "Verifying with OTP")
 
             val input = VerificationInput.WithOtp(
                 authenticationMethodId = authenticationMethodId,
@@ -156,7 +156,7 @@ class EnrollmentViewModel(
 
             verifyAuthenticatorUseCase(input)
                 .onSuccess { authenticationMethod ->
-                    Log.d(TAG, "Verification successful")
+                    Logger.d(TAG, "Verification successful")
 
                     _uiState.update {
                         EnrollmentUiState()
@@ -164,7 +164,7 @@ class EnrollmentViewModel(
                     eventChannel.send(EnrollmentEvent.VerificationSuccess(authenticationMethod))
                 }
                 .onError { error ->
-                    Log.e(TAG, "Verification failed", error.cause)
+                    Logger.e(TAG, "Verification failed : ${error.message}")
                     when (error) {
                         is Auth0Error.InvalidOTP -> {
                             _uiState.update {
@@ -206,7 +206,7 @@ class EnrollmentViewModel(
             _uiState.update {
                 EnrollmentUiState(verifyingAuthenticator = true)
             }
-            Log.d(TAG, "Verifying without OTP")
+            Logger.d(TAG, "Verifying without OTP")
 
             val input = VerificationInput.WithoutOtp(
                 authenticationMethodId = authenticationMethodId,
@@ -215,14 +215,14 @@ class EnrollmentViewModel(
 
             verifyAuthenticatorUseCase(input)
                 .onSuccess { authenticationMethod ->
-                    Log.d(TAG, "Verification successful")
+                    Logger.d(TAG, "Verification successful")
                     _uiState.update {
                         EnrollmentUiState()
                     }
                     eventChannel.send(EnrollmentEvent.VerificationSuccess(authenticationMethod))
                 }
                 .onError { error ->
-                    Log.e(TAG, "Verification failed", error.cause)
+                    Logger.e(TAG, "Verification failed : ${error.message}")
                     _uiState.update {
                         EnrollmentUiState(
                             uiError = UiError(
@@ -239,11 +239,11 @@ class EnrollmentViewModel(
         viewModelScope.launch {
             getUserInfoUseCase()
                 .onSuccess { userInfo ->
-                    Log.d(TAG, "Email prefill succeeded")
+                    Logger.d(TAG, "Email prefill succeeded")
                     _uiState.update { it.copy(prefillEmail = userInfo.email.orEmpty()) }
                 }
                 .onError { error ->
-                    Log.w(TAG, "Could not prefill email: ${error.message}")
+                    Logger.w(TAG, "Could not prefill email: ${error.message}")
                 }
         }
     }

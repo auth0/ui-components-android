@@ -1,10 +1,10 @@
 package com.auth0.universalcomponents
 
 import android.content.Context
-import android.util.Log
 import androidx.credentials.CredentialManager
 import com.auth0.android.Auth0
 import com.auth0.universalcomponents.token.TokenProvider
+import com.auth0.universalcomponents.utils.logging.Logger
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -23,6 +23,8 @@ data class PasskeyConfiguration(
 )
 
 public object Auth0UniversalComponents {
+
+    private const val TAG = "Auth0UniversalComponents"
 
     private var initialized = AtomicBoolean(false)
     private lateinit var _context: Context
@@ -69,7 +71,7 @@ public object Auth0UniversalComponents {
         passkeyConfiguration: PasskeyConfiguration = PasskeyConfiguration()
     ) {
         if (initialized.get()) {
-            Log.d("Auth0UniversalComponents", "Auth0UniversalComponents is already initialized.")
+            Logger.d(TAG, "Auth0UniversalComponents is already initialized.")
             return
         }
         _context = context.applicationContext
