@@ -164,7 +164,7 @@ class EnrollmentViewModel(
                     eventChannel.send(EnrollmentEvent.VerificationSuccess(authenticationMethod))
                 }
                 .onError { error ->
-                    Logger.e(TAG, "Verification failed", error.cause)
+                    Logger.e(TAG, "Verification failed : ${error.message}")
                     when (error) {
                         is Auth0Error.InvalidOTP -> {
                             _uiState.update {
@@ -222,7 +222,7 @@ class EnrollmentViewModel(
                     eventChannel.send(EnrollmentEvent.VerificationSuccess(authenticationMethod))
                 }
                 .onError { error ->
-                    Logger.e(TAG, "Verification failed", error.cause)
+                    Logger.e(TAG, "Verification failed : ${error.message}")
                     _uiState.update {
                         EnrollmentUiState(
                             uiError = UiError(

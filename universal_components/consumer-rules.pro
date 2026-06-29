@@ -23,11 +23,12 @@
     public *;
 }
 
-# --- Strip SDK internal logging from minified consumer builds ----------------
+# --- Strip verbose SDK logging from minified consumer builds -----------------
+# Errors (e) and warnings (w) are intentionally kept so field failures stay
+# diagnosable in release builds. These three have no default args, so a single
+# void d(...) matches every overload — no $default synthetic to worry about.
 -assumenosideeffects class com.auth0.universalcomponents.utils.logging.Logger {
-    void d$*(...);
-    void i$*(...);
-    void v$*(...);
-    void w$*(...);
-    void e$*(...);
+    void d(...);
+    void i(...);
+    void v(...);
 }
