@@ -41,6 +41,7 @@ import com.auth0.android.sample.ui.components.OrDivider
 import com.auth0.android.sample.ui.theme.auth0ScreenBackground
 import com.auth0.android.sample.ui.theme.isAuth0DarkTheme
 import com.auth0.android.sample.ui.components.SampleGradientButton
+import com.auth0.android.sample.ui.util.rememberDebouncedOnClick
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -82,7 +83,8 @@ fun EmbeddedLoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = onBack) {
+            val debouncedOnBack = rememberDebouncedOnClick(onClick = onBack)
+            IconButton(onClick = debouncedOnBack) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",

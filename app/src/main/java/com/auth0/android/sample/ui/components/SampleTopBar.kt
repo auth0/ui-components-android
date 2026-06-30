@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
+import com.auth0.android.sample.ui.util.rememberDebouncedOnClick
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,7 +51,8 @@ fun SampleTopBar(
             },
             navigationIcon = {
                 if (showBackNavigation) {
-                    IconButton(onClick = onBackClick) {
+                    val debouncedOnBackClick = rememberDebouncedOnClick(onClick = onBackClick)
+                    IconButton(onClick = debouncedOnBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Navigate back",
