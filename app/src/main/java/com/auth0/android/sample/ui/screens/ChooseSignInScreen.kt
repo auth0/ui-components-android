@@ -98,22 +98,22 @@ fun ChooseSignInScreen(
                 Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
                 FactorCard(
+                    title = "Hosted Login",
+                    description = "Easy to setup, works instantly",
+                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_hosted_login),
+                    isSelected = selectedOption == LoginOption.Hosted,
+                    onClick = { selectedOption = LoginOption.Hosted }
+                )
+
+                Spacer(modifier = Modifier.height(dimensions.spacingMd))
+
+                FactorCard(
                     title = "Embedded Login",
                     description = "Total brand control and low user frictions",
                     icon = painterResource(com.auth0.android.sample.R.drawable.ic_embedded_login),
                     isSelected = selectedOption == LoginOption.Embedded,
                     enabled = false,
                     onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
-                )
-
-                Spacer(modifier = Modifier.height(dimensions.spacingMd))
-
-                FactorCard(
-                    title = "Hosted Login",
-                    description = "Easy to setup, works instantly",
-                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_hosted_login),
-                    isSelected = selectedOption == LoginOption.Hosted,
-                    onClick = { selectedOption = LoginOption.Hosted }
                 )
 
                 Spacer(modifier = Modifier.height(dimensions.spacingLg))
