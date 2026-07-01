@@ -1,5 +1,14 @@
 # Change Log
 
+## [Unreleased]
+
+Added
+
+- **Skeleton shimmer loading** — `AuthenticatorMethodsScreen` and
+  `EnrolledAuthenticatorListScreen` now show animated, theme-aware skeleton placeholders
+  while data loads, replacing the previous spinner. Supports light/dark mode and honours
+  the system "remove animations" setting.
+
 ## [1.0.0-beta.0](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.0) (2026-06-01)
 
 Auth0UniversalComponents Android — Beta Release

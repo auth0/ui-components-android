@@ -6,6 +6,7 @@
     <string name="copy_as_code">Copy as Code</string>
     <string name="active_label">Active</string>
     <string name="remove">Remove</string>
+    <string name="loading">Loading</string>
 
     <!-- Phone Enrollment -->
     <string name="add_phone_sms_otp">Add Phone for SMS OTP</string>
