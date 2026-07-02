@@ -14,17 +14,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 private val AuthMethodCardHeight = 70.dp
-private val EnrolledCardHeight = 84.dp
-private val EnrolledCardPadding = 20.dp
 private val AuthMethodTitleWidth = 140.dp
-private val EnrolledTitleWidth = 180.dp
-private val EnrolledSubtitleWidth = 120.dp
 
 /**
  * Repeats a skeleton [row] [count] times. Intentionally does NOT shimmer itself — apply
@@ -83,90 +78,3 @@ internal fun AuthMethodCardSkeleton() = SkeletonCard(
     Spacer(Modifier.weight(1f))
     SkeletonBox(Modifier.size(Auth0Theme.sizes.iconMedium), shape = Auth0Theme.shapes.small)
 }
-
-/** Mirrors EnrolledAuthenticatorItem: title + "created on" line + trailing menu glyph. */
-@Composable
-internal fun EnrolledAuthenticatorCardSkeleton() = SkeletonCard(
-    height = EnrolledCardHeight,
-    contentPadding = EnrolledCardPadding,
-    verticalAlignment = Alignment.Top,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(Auth0Theme.dimensions.spacingXxs)) {
-        SkeletonLine(width = EnrolledTitleWidth)
-        SkeletonLine(width = EnrolledSubtitleWidth)
-    }
-    Spacer(Modifier.weight(1f))
-    SkeletonBox(Modifier.size(Auth0Theme.sizes.iconMedium), shape = Auth0Theme.shapes.small)
-}
-
-// region Previews
-
-@Preview(name = "Auth method skeleton · light", showBackground = true)
-@Composable
-private fun AuthMethodSkeletonLightPreview() {
-    Auth0Theme(darkTheme = false) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Auth0Theme.sizes.padding)
-                .shimmer(),
-        ) {
-            SkeletonLine(width = EnrolledTitleWidth, modifier = Modifier.height(22.dp))
-            Spacer(Modifier.height(Auth0Theme.dimensions.spacingMd))
-            SkeletonList(count = 3) { AuthMethodCardSkeleton() }
-        }
-    }
-}
-
-@Preview(name = "Auth method skeleton · dark", showBackground = true)
-@Composable
-private fun AuthMethodSkeletonDarkPreview() {
-    Auth0Theme(darkTheme = true) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Auth0Theme.sizes.padding)
-                .shimmer(),
-        ) {
-            SkeletonLine(width = EnrolledTitleWidth, modifier = Modifier.height(22.dp))
-            Spacer(Modifier.height(Auth0Theme.dimensions.spacingMd))
-            SkeletonList(count = 3) { AuthMethodCardSkeleton() }
-        }
-    }
-}
-
-@Preview(name = "Enrolled skeleton · light", showBackground = true)
-@Composable
-private fun EnrolledSkeletonLightPreview() {
-    Auth0Theme(darkTheme = false) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Auth0Theme.sizes.padding)
-                .shimmer(),
-        ) {
-            SkeletonList(count = 3, spacing = Auth0Theme.dimensions.spacingSm) {
-                EnrolledAuthenticatorCardSkeleton()
-            }
-        }
-    }
-}
-
-@Preview(name = "Enrolled skeleton · dark", showBackground = true)
-@Composable
-private fun EnrolledSkeletonDarkPreview() {
-    Auth0Theme(darkTheme = true) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(Auth0Theme.sizes.padding)
-                .shimmer(),
-        ) {
-            SkeletonList(count = 3, spacing = Auth0Theme.dimensions.spacingSm) {
-                EnrolledAuthenticatorCardSkeleton()
-            }
-        }
-    }
-}
-
-// endregion

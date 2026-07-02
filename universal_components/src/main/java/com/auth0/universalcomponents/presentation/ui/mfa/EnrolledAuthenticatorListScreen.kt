@@ -22,9 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
@@ -36,10 +33,6 @@ import com.auth0.universalcomponents.presentation.ui.components.EmptyAuthenticat
 import com.auth0.universalcomponents.presentation.ui.components.EnrolledAuthenticatorItem
 import com.auth0.universalcomponents.presentation.ui.components.ErrorHandler
 import com.auth0.universalcomponents.presentation.ui.components.TopBar
-import com.auth0.universalcomponents.presentation.ui.components.skeleton.EnrolledAuthenticatorCardSkeleton
-import com.auth0.universalcomponents.presentation.ui.components.skeleton.SkeletonLine
-import com.auth0.universalcomponents.presentation.ui.components.skeleton.SkeletonList
-import com.auth0.universalcomponents.presentation.ui.components.skeleton.shimmer
 import com.auth0.universalcomponents.presentation.ui.menu.MenuAction
 import com.auth0.universalcomponents.presentation.ui.menu.MenuItem
 import com.auth0.universalcomponents.presentation.ui.passkeys.PasskeyEvent
