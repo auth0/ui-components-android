@@ -35,7 +35,7 @@ jobs:
         uses: ./.github/actions/get-version
 
       - name: Run RL Scanner
-        uses: auth0/devsecops-tooling/.github/actions/rl-scan@main
+        uses: auth0/devsecops-tooling/.github/actions/rl-scan@e29f26478db18ff0bcbe4bc447a8fbd54fbeec9e # pin@main 2026-06-09
         with:
           artifact-name: "universal-components-android"
           artifact-path: "${{ github.workspace }}/universal_components/build/outputs/aar/universal_components-release.aar"
