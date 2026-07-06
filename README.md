@@ -22,7 +22,6 @@ This library provides ready-to-use UI components for multi-factor authentication
 - 💬 **SMS OTP** - Phone number verification via one-time codes
 - 📧 **Email OTP** - Email-based verification
 - 🔑 **Recovery Codes** - Backup authentication codes for account recovery
-- ✨ **Skeleton shimmer loading** - Card screens show animated, theme-aware skeleton placeholders while data loads (light/dark mode, honours the system animation setting)
 
 All components are built on top of the [Auth0 Android SDK](https://github.com/auth0/Auth0.Android) and integrate with Auth0's My Account APIs.
 
