@@ -3,7 +3,9 @@ package com.auth0.universalcomponents.presentation.ui.mfa
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,6 +17,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
@@ -22,6 +27,10 @@ import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.presentation.ui.components.ErrorHandler
 import com.auth0.universalcomponents.presentation.ui.components.TopBar
+import com.auth0.universalcomponents.presentation.ui.components.skeleton.AuthMethodCardSkeleton
+import com.auth0.universalcomponents.presentation.ui.components.skeleton.SkeletonLine
+import com.auth0.universalcomponents.presentation.ui.components.skeleton.SkeletonList
+import com.auth0.universalcomponents.presentation.ui.components.skeleton.shimmer
 import com.auth0.universalcomponents.presentation.ui.mfa.authenticatormethods.PrimaryAuthenticatorListScreen
 import com.auth0.universalcomponents.presentation.ui.mfa.authenticatormethods.SecondaryAuthenticatorListScreen
 import com.auth0.universalcomponents.presentation.ui.passkeys.PasskeyEvent
@@ -106,11 +115,19 @@ internal fun AuthenticatorMethodsScreen(
                     }
 
                     AuthenticatorUiState.Loading -> {
-                        Box(
-                            Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                        // Skeleton mirrors the loaded layout → no layout shift when data arrives.
+                        // One shimmer on the container = one synchronized sweep over header + cards.
+                        val loadingDescription = stringResource(R.string.loading)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(vertical = dimensions.spacingMd)
+                                .shimmer()
+                                .semantics { contentDescription = loadingDescription },
                         ) {
-                            CircularLoader()
+                            SkeletonLine(width = 180.dp, modifier = Modifier.height(22.dp))
+                            Spacer(Modifier.height(dimensions.spacingMd))
+                            SkeletonList(count = 5) { AuthMethodCardSkeleton() }
                         }
                     }
 
