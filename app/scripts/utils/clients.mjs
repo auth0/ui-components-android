@@ -3,9 +3,78 @@ import ora from "ora"
 
 import { auth0ApiCall } from "./auth0-api.mjs"
 import { ChangeAction, createChangeItem } from "./change-plan.mjs"
+import {
+  extractMissingScope,
+  isPermissionError,
+  recordManualAction,
+} from "./manual-actions.mjs"
 
 // Constants
 export const CLIENT_NAME = "Android Universal Components Demo"
+
+/**
+ * Build the allowed callback / logout URLs for the native Android client.
+ *
+ * Auth0.Android's WebAuthProvider builds its redirect URL from the app package
+ * name and the configured scheme (`.withScheme(...)`, mirrored by the
+ * `auth0Scheme` manifest placeholder that drives RedirectActivity). Both forms
+ * below are registered so login/logout resolve whether the app uses the custom
+ * scheme (the default for the sample app) or Android App Links over HTTPS:
+ *   - HTTPS App Link:  https://{domain}/android/{packageName}/callback
+ *   - Custom scheme:   {scheme}://{domain}/android/{packageName}/callback
+ *
+ * @param {string} domain - Auth0 tenant domain
+ * @param {string} packageName - Android application id (package name)
+ * @param {string} scheme - Custom callback scheme (the sample app uses "demo")
+ * @returns {string[]} Redirect URLs (used for both callbacks and logout URLs)
+ */
+export function buildRedirectUrls(domain, packageName, scheme) {
+  return [
+    `https://${domain}/android/${packageName}/callback`,
+    `${scheme}://${domain}/android/${packageName}/callback`,
+  ]
+}
+
+/**
+ * Detect a stale Android callback URL: any
+ * `<scheme>://{domain}/android/{packageName}/callback` whose scheme is neither
+ * `https` nor the configured scheme. These are leftovers from earlier runs
+ * (e.g. an old scheme) and should be removed so the client ends up with exactly
+ * the two correct redirect URLs.
+ *
+ * @param {string} url - An existing callback/logout URL
+ * @param {string} domain - Auth0 tenant domain
+ * @param {string} packageName - Android application id (package name)
+ * @param {string} scheme - The configured callback scheme
+ * @returns {boolean} True if the URL is a stale Android callback for this app
+ */
+function isStaleAndroidCallback(url, domain, packageName, scheme) {
+  const suffix = `://${domain}/android/${packageName}/callback`
+  if (!url.endsWith(suffix)) return false
+  const urlScheme = url.slice(0, url.length - suffix.length)
+  return urlScheme !== "https" && urlScheme !== scheme
+}
+
+/**
+ * Reconcile an existing URL list to the desired end state: drop any stale
+ * Android callback URLs for this app, preserve everything else, and ensure both
+ * desired redirect URLs are present (de-duplicated, order-stable).
+ *
+ * @param {string[]} existing - Current callback/logout URLs on the client
+ * @param {string[]} desired - The two correct redirect URLs
+ * @param {string} domain - Auth0 tenant domain
+ * @param {string} packageName - Android application id (package name)
+ * @param {string} scheme - The configured callback scheme
+ * @returns {string[]} The reconciled URL list
+ */
+function reconcileRedirectUrls(existing, desired, domain, packageName, scheme) {
+  const kept = existing.filter(
+    (url) =>
+      !isStaleAndroidCallback(url, domain, packageName, scheme) &&
+      !desired.includes(url)
+  )
+  return [...kept, ...desired]
+}
 
 // ============================================================================
 // CHECK FUNCTIONS
@@ -18,7 +87,13 @@ export async function checkDashboardClientChanges(
   myAccountApiScopes
 ) {
   const { packageName, scheme } = androidConfig
-  const callbackUrl = `${scheme}://${domain}/android/${packageName}/callback`
+
+  // Auth0.Android's WebAuthProvider builds its redirect URL from the app package
+  // name and the configured scheme. The two supported forms are the
+  // custom-scheme callback ({scheme}://…) and the HTTPS App-Link callback.
+  // Register BOTH as allowed callback and logout URLs so login works whether or
+  // not Android App Links are configured.
+  const redirectUrls = buildRedirectUrls(domain, packageName, scheme)
 
   const existingClient = existingClients.find(
     (c) => c.name === CLIENT_NAME && c.app_type === "native"
@@ -28,13 +103,36 @@ export async function checkDashboardClientChanges(
     return createChangeItem(ChangeAction.CREATE, {
       resource: "Native Client",
       name: CLIENT_NAME,
-      callbackUrl,
+      redirectUrls,
     })
   }
 
-  // Check if callback URL needs updating
+  // Reconcile callback and logout URLs to the desired end state: add the two
+  // correct redirects and strip stale Android callbacks (e.g. an old scheme),
+  // while preserving any unrelated URLs already on the client.
   const existingCallbacks = existingClient.callbacks || []
-  const hasCorrectCallback = existingCallbacks.includes(callbackUrl)
+  const existingLogoutUrls = existingClient.allowed_logout_urls || []
+  const desiredCallbacks = reconcileRedirectUrls(
+    existingCallbacks,
+    redirectUrls,
+    domain,
+    packageName,
+    scheme
+  )
+  const desiredLogoutUrls = reconcileRedirectUrls(
+    existingLogoutUrls,
+    redirectUrls,
+    domain,
+    packageName,
+    scheme
+  )
+
+  // Order-independent comparison so both additions and removals are detected.
+  const sameSet = (a, b) =>
+    a.length === b.length &&
+    a.slice().sort().toString() === b.slice().sort().toString()
+  const callbacksNeedUpdate = !sameSet(existingCallbacks, desiredCallbacks)
+  const logoutUrlsNeedUpdate = !sameSet(existingLogoutUrls, desiredLogoutUrls)
 
   // Check if My Account API refresh token policy exists with correct scopes
   const hasMyAccountPolicy = existingClient.refresh_token?.policies?.some(
@@ -46,22 +144,30 @@ export async function checkDashboardClientChanges(
 
   const refreshTokenPoliciesNeedUpdate = !hasMyAccountPolicy
 
-  if (!hasCorrectCallback || refreshTokenPoliciesNeedUpdate) {
+  if (
+    callbacksNeedUpdate ||
+    logoutUrlsNeedUpdate ||
+    refreshTokenPoliciesNeedUpdate
+  ) {
     const updates = {}
-    if (!hasCorrectCallback) {
-      updates.callbacks = [...existingCallbacks, callbackUrl]
+    if (callbacksNeedUpdate) {
+      updates.callbacks = desiredCallbacks
+    }
+    if (logoutUrlsNeedUpdate) {
+      updates.allowedLogoutUrls = desiredLogoutUrls
     }
     updates.refreshTokenNeedsUpdate = refreshTokenPoliciesNeedUpdate
 
     const changes = []
-    if (!hasCorrectCallback) changes.push("Update callback URL")
+    if (callbacksNeedUpdate) changes.push("Update callback URLs")
+    if (logoutUrlsNeedUpdate) changes.push("Update logout URLs")
     if (refreshTokenPoliciesNeedUpdate) changes.push("Update refresh token policies")
 
     return createChangeItem(ChangeAction.UPDATE, {
       resource: "Native Client",
       name: CLIENT_NAME,
       existing: existingClient,
-      callbackUrl,
+      redirectUrls,
       updates,
       summary: changes.join(", "),
     })
@@ -106,8 +212,8 @@ export async function applyDashboardClientChanges(
         app_type: "native",
         oidc_conformant: true,
         is_first_party: true,
-        callbacks: [changePlan.callbackUrl],
-        allowed_logout_urls: [changePlan.callbackUrl],
+        callbacks: changePlan.redirectUrls,
+        allowed_logout_urls: changePlan.redirectUrls,
         grant_types: ["authorization_code", "refresh_token"],
         token_endpoint_auth_method: "none",
         jwt_configuration: {
@@ -142,7 +248,24 @@ export async function applyDashboardClientChanges(
       spinner.succeed(`Created Native Client: ${CLIENT_NAME}`)
       return client
     } catch (e) {
-      spinner.fail(`Failed to create Native Client`)
+      // The native client is the anchor for everything downstream (client
+      // grant, connection enablement, strings.xml). If we lack create:clients
+      // we cannot continue meaningfully, so surface a clear manual action and
+      // re-throw rather than pretending success.
+      if (isPermissionError(e)) {
+        const scope = extractMissingScope(e) || "create:clients"
+        spinner.fail(`Cannot create Native Client — M2M app lacks scope: ${scope}`)
+        recordManualAction({
+          resource: `Native Client: ${CLIENT_NAME}`,
+          scope,
+          reason:
+            "The native client is required for the sample app to authenticate; the rest of the bootstrap depends on it.",
+          manualStep:
+            "Grant create:clients to the M2M app and re-run, OR create a Native application manually in the Dashboard.",
+        })
+      } else {
+        spinner.fail(`Failed to create Native Client`)
+      }
       throw e
     }
   }
@@ -158,6 +281,10 @@ export async function applyDashboardClientChanges(
 
       if (updates.callbacks) {
         updateData.callbacks = updates.callbacks
+      }
+
+      if (updates.allowedLogoutUrls) {
+        updateData.allowed_logout_urls = updates.allowedLogoutUrls
       }
 
       if (updates.refreshTokenNeedsUpdate) {
@@ -212,6 +339,24 @@ export async function applyDashboardClientChanges(
       spinner.succeed(`Updated Native Client: ${CLIENT_NAME}`)
       return client
     } catch (e) {
+      // A missing scope (e.g. update:clients on the M2M app) should not abort
+      // the whole bootstrap. Record it as a manual action and continue with the
+      // existing client so the rest of the setup still runs.
+      if (isPermissionError(e)) {
+        const scope = extractMissingScope(e) || "update:clients"
+        spinner.warn(
+          `Skipped updating Native Client — M2M app lacks scope: ${scope}`
+        )
+        recordManualAction({
+          resource: `Native Client: ${CLIENT_NAME}`,
+          scope,
+          reason:
+            "The native client's callback/logout URLs (and My Account refresh-token policy) must be set for the app's login/logout redirects to resolve.",
+          manualStep:
+            "Grant update:clients to the M2M app and re-run, OR Dashboard → Applications → <app> → Settings → set Allowed Callback URLs and Allowed Logout URLs to the two Android redirect URLs.",
+        })
+        return changePlan.existing
+      }
       spinner.fail(`Failed to update Native Client`)
       throw e
     }
@@ -329,5 +474,3 @@ export async function applyMyAccountClientGrantChanges(
     }
   }
 }
-
-
