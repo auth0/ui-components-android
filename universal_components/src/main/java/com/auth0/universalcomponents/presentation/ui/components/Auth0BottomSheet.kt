@@ -19,6 +19,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,10 +28,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.theme.Auth0Theme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Auth0BottomSheet(
+internal fun Auth0BottomSheet(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     showCloseButton: Boolean = true,
@@ -40,6 +42,7 @@ fun Auth0BottomSheet(
 ) {
     val colors = Auth0Theme.colors
     val dimensions = Auth0Theme.dimensions
+    val scope = rememberCoroutineScope()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -53,7 +56,11 @@ fun Auth0BottomSheet(
     ) {
         if (showCloseButton) {
             CloseButton(
-                onClick = onDismiss,
+                onClick = {
+                    scope.launch { sheetState.hide() }.invokeOnCompletion {
+                        if (!sheetState.isVisible) onDismiss()
+                    }
+                },
                 modifier = Modifier.padding(
                     start = dimensions.spacingMd,
                     bottom = dimensions.spacingXs,
@@ -65,7 +72,7 @@ fun Auth0BottomSheet(
             .fillMaxWidth()
             .then(if (scrollable) Modifier.verticalScroll(rememberScrollState()) else Modifier)
             .padding(horizontal = dimensions.spacingLg)
-            .padding(bottom = dimensions.spacingXxl)
+            .padding(bottom = dimensions.spacingXl)
 
         Column(
             modifier = contentModifier,
@@ -94,7 +101,6 @@ private fun CloseButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-
     val colors = Auth0Theme.colors
 
     Box(
