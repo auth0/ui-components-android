@@ -18,13 +18,17 @@ const CLI_TIMEOUT = 15000
 // likely to be missing on an M2M app and to silently block setup. They are
 // highlighted in the pre-login summary so you know why they are requested.
 //
-// NOTE: Organization-only scopes (create:organization_*) are intentionally
-// omitted — the Android sample app configures the My Account feature only.
+// NOTE: Organization-only scopes (create:organization_*) and role scopes
+// (*:roles) are intentionally omitted — the Android sample app configures the
+// My Account feature only, and the admin role is always SKIP (System-API scopes
+// cannot be attached to a role). Connection/user-attribute *profile* scopes are
+// likewise omitted; those resources are not created by this bootstrap.
+//
+// This array is the single source of truth for the requested scopes: the
+// pre-login summary, the `--help` details, AND the copy-paste manual-login
+// command are all derived from it, so the README/manual instructions can never
+// drift out of sync with what the script actually requests.
 const BOOTSTRAP_SCOPE_METADATA = [
-  { scope: "read:connection_profiles", reason: "Read connection profiles" },
-  { scope: "create:connection_profiles", reason: "Create the connection profile" },
-  { scope: "read:user_attribute_profiles", reason: "Read user attribute profiles" },
-  { scope: "create:user_attribute_profiles", reason: "Create the user attribute profile" },
   { scope: "read:client_grants", reason: "Read existing client grants" },
   { scope: "create:client_grants", reason: "Grant the app access to the My Account API" },
   {
@@ -94,7 +98,20 @@ export function printScopeUsageDetails() {
     const marker = important ? "★" : " "
     console.log(`  ${marker} ${scope.padEnd(30)} ${reason}`)
   }
-  console.log("")
+  console.log(
+    "\nTo authenticate manually beforehand, run this exact command (kept in sync\nwith the list above):\n"
+  )
+  console.log(`  ${buildManualLoginCommand()}\n`)
+}
+
+/**
+ * Build the exact `auth0 login --scopes "..."` command a user can run to
+ * authenticate manually. Generated from BOOTSTRAP_SCOPES so it can never drift
+ * from the scopes the script actually requests.
+ * @returns {string}
+ */
+export function buildManualLoginCommand() {
+  return `auth0 login --scopes "${BOOTSTRAP_SCOPES.join(",")}"`
 }
 
 /**

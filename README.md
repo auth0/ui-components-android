@@ -257,10 +257,17 @@ Use the bootstrap script to automatically create all required Auth0 resources an
 - [Node.js 20+](https://nodejs.org/)
 - [Auth0 CLI](https://github.com/auth0/auth0-cli)
 
-1. **Login to Auth0 CLI** with the required scopes:
+1. **(Optional) Login to Auth0 CLI beforehand.** The bootstrap script validates
+   your session and logs you in automatically if needed, so this step is
+   optional. If you prefer to authenticate manually first, run the script's
+   `--help` to get the exact, always-up-to-date `auth0 login --scopes "…"`
+   command (it is generated from the scopes the script requests, so it can never
+   drift):
    ```bash
-   auth0 login --scopes "create:client_grants,update:client_grants,delete:client_grants,create:connections,create:resource_servers,create:roles,create:users,read:client_keys,read:client_grants,read:clients,read:connections,read:resource_servers,read:roles,update:clients,update:connections,read:connection_profiles,create:connection_profiles,update:connection_profiles,create:user_attribute_profiles,update:user_attribute_profiles,read:user_attribute_profiles,update:resource_servers,update:roles,update:tenant_settings,update:prompts"
-   auth0 tenants list  # verify your tenant shows Active
+   cd app/scripts
+   npm install
+   npm run auth0:bootstrap -- --help   # prints the manual login command + scope rationale
+   auth0 tenants list                  # verify your tenant shows Active
    ```
 
 2. **Run the bootstrap script:**
@@ -272,9 +279,16 @@ Use the bootstrap script to automatically create all required Auth0 resources an
 
    This will:
    - Create a Native application configured for the Android sample app
-   - Enable the My Account API and create a Client Grant with MFA scopes
-   - Create a database connection and admin role
-   - Configure tenant settings for MFA
+     (Allowed Callback + Logout URLs for both the `https://…/android/…/callback`
+     and `{scheme}://…/android/…/callback` forms)
+   - Enable the My Account API and create a Client Grant with the MFA scopes
+   - Create a database connection with the **passkey** authentication method
+     enabled (progressive enrollment) so the Passkey option appears in Universal
+     Login
+   - Enable the WebAuthn MFA factors — `webauthn-platform` (device biometrics)
+     and `webauthn-roaming` (security keys)
+   - Configure tenant settings (MFA customization) and turn on the
+     identifier-first prompt
    - Update `strings.xml` with the generated credentials
 
 #### Option 2: Manual Setup
