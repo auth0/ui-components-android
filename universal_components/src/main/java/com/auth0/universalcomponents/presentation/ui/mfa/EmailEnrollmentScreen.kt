@@ -276,16 +276,20 @@ private fun EmailTextField(
                 .background(backgroundColor)
                 .padding(sizes.padding),
             decorationBox = { innerTextField ->
-                if (email.isEmpty()) {
-                    Text(
-                        text = stringResource(R.string.email_placeholder),
-                        style = typography.title.copy(
-                            color = colors.textBold.copy(alpha = 0.54f),
-                            textAlign = TextAlign.Start
+                Box(
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    if (email.isEmpty()) {
+                        Text(
+                            text = stringResource(R.string.email_placeholder),
+                            style = typography.title.copy(
+                                color = colors.textBold.copy(alpha = 0.54f),
+                                textAlign = TextAlign.Start
+                            )
                         )
-                    )
+                    }
+                    innerTextField()
                 }
-                innerTextField()
             }
         )
     }

@@ -79,7 +79,7 @@ object UiUtils {
             )
 
             else -> ScreenTextContent(
-                topBarTitle = "Add and Authenticator",
+                topBarTitle = "Add an Authenticator",
                 primaryText = "Enter the 6-digit code",
                 description = "From your Authenticator App"
             )
