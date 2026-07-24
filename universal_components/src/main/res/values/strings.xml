@@ -47,7 +47,7 @@
     <!-- QR Enrollment -->
     <string name="authenticator">Authenticator</string>
     <string name="push_notification">Push Notification</string>
-    <string name="add_authenticator">Add and Authenticator</string>
+    <string name="add_authenticator">Add an Authenticator</string>
     <string name="qr_instructions_totp">Use your Authenticator App (like Google Authenticator or Auth0 Guardian) to scan this QR code, or simply copy the code and paste it manually to register your device.</string>
     <string name="qr_instructions_push">Use the Auth0 Guardian App to scan this QR code, or simply copy the code and paste it manually to register your device for push notifications.</string>
     <string name="qr_instructions_generic">Scan this QR code with your authenticator app or copy the code manually.</string>

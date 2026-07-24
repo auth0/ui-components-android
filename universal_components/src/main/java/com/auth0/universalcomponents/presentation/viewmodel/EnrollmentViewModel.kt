@@ -198,6 +198,12 @@ class EnrollmentViewModel(
         }
     }
 
+    fun clearOtpError() {
+        if (_uiState.value.otpError) {
+            _uiState.update { it.copy(otpError = false) }
+        }
+    }
+
     fun verifyWithoutOtp(
         authenticationMethodId: String,
         authSession: String

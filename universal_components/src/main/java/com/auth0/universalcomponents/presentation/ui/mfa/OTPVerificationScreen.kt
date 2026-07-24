@@ -164,6 +164,7 @@ internal fun OTPVerificationScreen(
                             isError = false
                             errorMessage = ""
                         }
+                        viewModel.clearOtpError()
                     }
                 },
                 focusRequester = focusRequester
