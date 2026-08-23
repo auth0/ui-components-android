@@ -816,7 +816,6 @@ export function validateAndroidProject() {
   }).start()
 
   const projectRoot = path.resolve(process.cwd(), "..", "..")
-  const buildGradlePath = path.join(projectRoot, "app", "build.gradle")
   const stringsXmlPath = path.join(
     projectRoot,
     "app",
@@ -827,14 +826,23 @@ export function validateAndroidProject() {
     "strings.xml"
   )
 
-  // Check build.gradle exists
-  if (!fs.existsSync(buildGradlePath)) {
-    spinner.fail("Could not find app/build.gradle")
+  // The sample app is on the Groovy DSL, but a fork may have converted the module
+  // to the Kotlin DSL. Probe both file names so the bootstrap does not fail over a
+  // build-script dialect it can otherwise read.
+  const buildGradlePath = ["build.gradle", "build.gradle.kts"]
+    .map((fileName) => path.join(projectRoot, "app", fileName))
+    .find((candidate) => fs.existsSync(candidate))
+
+  // Check the module's build script exists
+  if (!buildGradlePath) {
+    spinner.fail("Could not find app/build.gradle or app/build.gradle.kts")
     console.error(
       "\n❌ This script must be run from the app/scripts/ directory inside the Android project."
     )
     process.exit(1)
   }
+
+  const buildFileName = path.basename(buildGradlePath)
 
   // Check strings.xml exists
   if (!fs.existsSync(stringsXmlPath)) {
@@ -842,22 +850,67 @@ export function validateAndroidProject() {
     process.exit(1)
   }
 
-  // Extract applicationId (falls back to namespace) from build.gradle. This is
-  // the package name Auth0.Android embeds in its redirect URL.
+  // Extract applicationId (falls back to namespace) from the module's build
+  // script. This is the package name Auth0.Android embeds in its redirect URL.
   const buildGradleContent = fs.readFileSync(buildGradlePath, "utf-8")
+
+  // Drop `//` line comments (same in both DSLs) before matching, so a
+  // commented-out applicationId left over from an earlier edit is not picked up
+  // ahead of the real one.
+  const buildScript = buildGradleContent
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("//"))
+    .join("\n")
+
+  // Accept both DSL spellings: `applicationId = "x"` (Kotlin DSL, and the
+  // assignment form of the Groovy DSL) and `applicationId "x"` (the Groovy
+  // space-call form) — hence the optional separator.
   const appIdMatch =
-    buildGradleContent.match(/applicationId\s*[=:]\s*["']([^"']+)["']/) ||
-    buildGradleContent.match(/namespace\s*[=:]\s*["']([^"']+)["']/)
+    buildScript.match(/applicationId\s*[=:]?\s*["']([^"']+)["']/) ||
+    buildScript.match(/namespace\s*[=:]?\s*["']([^"']+)["']/)
 
   if (!appIdMatch) {
     spinner.fail(
-      "Could not extract applicationId/namespace from app/build.gradle"
+      `Could not extract applicationId/namespace from app/${buildFileName}`
     )
     process.exit(1)
   }
 
   const packageName = appIdMatch[1]
-  spinner.succeed(`Validated Android project (package: ${packageName})`)
+  spinner.succeed(
+    `Validated Android project (package: ${packageName}, app/${buildFileName})`
+  )
+
+  // The OAuth redirect only reaches the app if RedirectActivity is merged in with
+  // the auth0Domain / auth0Scheme manifest placeholders. Their syntax differs per
+  // DSL — Groovy `manifestPlaceholders = [auth0Domain: ...]` versus Kotlin
+  // `manifestPlaceholders["auth0Domain"] = ...` — so look for the placeholder
+  // names rather than the surrounding form. This warns instead of failing: the
+  // placeholders may legitimately live in a convention plugin or another build
+  // script, and strings.xml is still worth writing either way.
+  const missingPlaceholders = ["auth0Domain", "auth0Scheme"].filter(
+    (placeholder) => !buildScript.includes(placeholder)
+  )
+
+  if (missingPlaceholders.length > 0) {
+    console.log(
+      `\n⚠️  No ${missingPlaceholders.join(" / ")} manifest placeholder found in app/${buildFileName}.`
+    )
+    console.log(
+      "   Without both placeholders the login redirect cannot reach the app, even"
+    )
+    console.log(
+      "   though the rest of the bootstrap (and the Gradle build) will succeed."
+    )
+    console.log(`   Add them to android.defaultConfig — ${
+      buildFileName.endsWith(".kts")
+        ? 'manifestPlaceholders["auth0Domain"] = "@string/com_auth0_domain"'
+        : 'manifestPlaceholders = [auth0Domain: "@string/com_auth0_domain", ...]'
+    }`)
+    console.log(
+      "   — or ignore this if they are set in a convention plugin.\n"
+    )
+  }
 
   return { packageName, stringsXmlPath }
 }

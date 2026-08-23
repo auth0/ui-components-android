@@ -2,6 +2,8 @@
 import {
   applyDashboardClientChanges,
   applyMyAccountClientGrantChanges,
+  DEFAULT_CLIENT_NAME,
+  setClientName,
 } from "./utils/clients.mjs"
 import { applyDatabaseConnectionChanges } from "./utils/connections.mjs"
 import {
@@ -10,7 +12,7 @@ import {
   displayChangePlan,
 } from "./utils/discovery.mjs"
 import { writeStringsFile } from "./utils/strings-writer.mjs"
-import { confirmWithUser } from "./utils/helpers.mjs"
+import { confirmWithUser, promptWithUser } from "./utils/helpers.mjs"
 import { getManualActions } from "./utils/manual-actions.mjs"
 import {
   applyMyAccountResourceServerChanges,
@@ -45,7 +47,9 @@ async function main() {
   const args = process.argv.slice(2)
 
   if (args.includes("--help") || args.includes("-h")) {
-    console.log("Usage: npm run auth0:bootstrap <tenant-domain> [--yes]")
+    console.log(
+      "Usage: npm run auth0:bootstrap <tenant-domain> [--yes] [--client-name=<name>]"
+    )
     console.log("\nArguments:")
     console.log(
       "  tenant-domain  Required. The Auth0 tenant domain to configure."
@@ -59,6 +63,20 @@ async function main() {
       "                 Auto-enabled when M2M credentials are set and stdin is"
     )
     console.log("                 not a TTY (headless/CI). Env: AUTH0_BOOTSTRAP_YES=1")
+    console.log("  --client-name=<name>")
+    console.log(
+      "                 Name of the native Auth0 application. Interactive runs"
+    )
+    console.log(
+      `                 are prompted for it; the default is "${DEFAULT_CLIENT_NAME}".`
+    )
+    console.log("                 Env: AUTH0_CLIENT_NAME")
+    console.log(
+      "                 The name is the lookup key on re-runs: reusing a name"
+    )
+    console.log(
+      "                 updates that application, a new name creates a new one."
+    )
     console.log("\nExample:")
     console.log("  npm run auth0:bootstrap my-tenant.us.auth0.com")
     console.log("\nPrerequisites:")
@@ -100,6 +118,12 @@ async function main() {
     flags.includes("-y") ||
     process.env.AUTH0_BOOTSTRAP_YES === "1"
 
+  // Whether this run may prompt at all: --yes, or a non-interactive M2M run (no
+  // TTY), means every prompt — the client name and the apply confirmation — must
+  // fall back to its default instead of blocking.
+  const autoConfirm =
+    yesFlag || (hasMachineCredentials(tenantName) && !process.stdin.isTTY)
+
   // Consistent step numbering across the run. TOTAL is the count of top-level
   // steps below; bump it if you add/remove one.
   const TOTAL_STEPS = 5
@@ -120,10 +144,13 @@ async function main() {
   // the strings.xml value must both be "demo" for the OAuth redirect to reach it.
   const scheme = "demo"
   androidConfig.scheme = scheme
+  // Resolve the native application's name before discovery: it is the key used
+  // to find an existing app, so the change plan depends on it.
+  setClientName(await resolveClientName(flags, autoConfirm))
 
   // Step 2: Discovery
   step("🔍", "Resource Discovery")
-  const resources = await discoverExistingResources(domain)
+  const resources = await discoverExistingResources()
   validateMyAccountScopes(resources, domain)
 
   // Step 3: Build Change Plan
@@ -174,11 +201,8 @@ async function main() {
     process.exit(0)
   }
 
-  // User Confirmation. Skip the prompt when --yes is set, or automatically in a
+  // User Confirmation. Skipped when --yes is set, or automatically in a
   // non-interactive M2M run (no TTY) so the "standalone/CI" path doesn't hang.
-  const autoConfirm =
-    yesFlag || (hasMachineCredentials(tenantName) && !process.stdin.isTTY)
-
   if (autoConfirm) {
     console.log(
       `\n▶️  Proceeding with ${countByAction(ChangeAction.CREATE)} create, ` +
@@ -231,7 +255,7 @@ async function main() {
 
   // 4e. Database Connection
   console.log("Configuring Database Connection...")
-  const connection = await applyDatabaseConnectionChanges(
+  await applyDatabaseConnectionChanges(
     plan.connection,
     dashboardClient.client_id
   )
@@ -275,6 +299,84 @@ async function main() {
   reportManualActions()
 
   printNextSteps()
+}
+
+/**
+ * Reject client names the Management API would reject, before spending a
+ * round-trip on them. Auth0 requires a non-empty name without `<` or `>`.
+ *
+ * @param {string} name - Candidate client name (already trimmed)
+ * @returns {string | null} An error message, or null when the name is valid
+ */
+function validateClientName(name) {
+  if (!name) return "Name cannot be empty."
+  if (/[<>]/.test(name)) return "Name cannot contain < or >."
+  return null
+}
+
+/**
+ * Decide what to name the native Auth0 application for this run.
+ *
+ * Precedence: `--client-name=<name>` → `AUTH0_CLIENT_NAME` → interactive prompt
+ * (defaulting to DEFAULT_CLIENT_NAME) → the default itself when the run cannot
+ * prompt (--yes, or a headless M2M run).
+ *
+ * The interactive path loops until the user accepts a valid name, so a typo does
+ * not silently create a stray application in the tenant.
+ *
+ * @param {string[]} flags - CLI flags from argv
+ * @param {boolean} autoConfirm - True when the run must not prompt
+ * @returns {Promise<string>} The client name to use
+ */
+async function resolveClientName(flags, autoConfirm) {
+  const prefix = "--client-name="
+  const flagValue = flags
+    .find((f) => f.startsWith(prefix))
+    ?.slice(prefix.length)
+    .trim()
+  const preset = flagValue || process.env.AUTH0_CLIENT_NAME?.trim()
+
+  if (preset) {
+    const error = validateClientName(preset)
+    if (error) {
+      throw new Error(
+        `Invalid client name "${preset}" (--client-name / AUTH0_CLIENT_NAME): ${error}`
+      )
+    }
+    console.log(`✅ Native application name: ${preset}`)
+    return preset
+  }
+
+  // Also covers a TTY-less run without M2M credentials: there is nobody to
+  // answer the prompt, so take the default rather than looping on empty input.
+  if (autoConfirm || !process.stdin.isTTY) {
+    console.log(`✅ Native application name: ${DEFAULT_CLIENT_NAME} (default)`)
+    return DEFAULT_CLIENT_NAME
+  }
+
+  console.log(
+    "\n🏷️  Name of the native Auth0 application to create or update.\n" +
+      "   Reusing a name updates that application; a new name creates a new one.\n" +
+      "   Press Enter to accept the default."
+  )
+
+  for (;;) {
+    const answer = await promptWithUser(
+      "   Application name",
+      DEFAULT_CLIENT_NAME
+    )
+
+    const error = validateClientName(answer)
+    if (error) {
+      console.log(`   ⚠️  ${error}`)
+      continue
+    }
+
+    if (await confirmWithUser(`   Use "${answer}" as the application name?`)) {
+      return answer
+    }
+    console.log("   No problem — enter a different name.")
+  }
 }
 
 /**

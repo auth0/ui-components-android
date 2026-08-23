@@ -26,7 +26,7 @@ const CLI_TIMEOUT = 30000
 // Resource Discovery
 // ============================================================================
 
-export async function discoverExistingResources(domain) {
+export async function discoverExistingResources() {
   const spinner = ora({
     text: `Discovering existing resources in tenant`,
   }).start()
@@ -140,7 +140,7 @@ export async function buildChangePlan(resources, domain, androidConfig) {
   )
 
   // Connection
-  plan.connection = checkDatabaseConnectionChanges(
+  plan.connection = await checkDatabaseConnectionChanges(
     resources.connections,
     dashboardClientId
   )

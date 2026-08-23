@@ -1,7 +1,6 @@
 import { $ } from "execa"
 import ora from "ora"
 
-import { auth0ApiCall } from "./auth0-api.mjs"
 import { ChangeAction, createChangeItem } from "./change-plan.mjs"
 
 // The exact set of My Account API scopes the sample app requests at runtime.

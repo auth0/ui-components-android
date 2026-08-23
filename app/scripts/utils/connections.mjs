@@ -1,4 +1,3 @@
-import { $ } from "execa"
 import ora from "ora"
 
 import { auth0ApiCall } from "./auth0-api.mjs"
@@ -28,11 +27,59 @@ const PASSKEY_CONNECTION_OPTIONS = {
   },
 }
 
+/**
+ * Read every client id enabled on a connection, draining the `next` cursor.
+ *
+ * @param {string} connectionId
+ * @returns {Promise<string[]|null>} Client ids, or null if the list could not be
+ *   read (e.g. a missing scope) — null means "unknown", not "none enabled".
+ */
+async function fetchConnectionEnabledClients(connectionId) {
+  const clientIds = []
+  let cursor = null
+
+  do {
+    // URLSearchParams rather than manual interpolation: the cursor is an opaque
+    // token containing characters that need escaping in a query value.
+    const query = cursor ? `?${new URLSearchParams({ from: cursor })}` : ""
+
+    const result = await auth0ApiCall(
+      "get",
+      `connections/${connectionId}/clients${query}`
+    )
+
+    // auth0ApiCall returns null instead of throwing when a scope is missing.
+    if (!result) return null
+
+    for (const client of result.clients || []) clientIds.push(client.client_id)
+    // `next` is omitted on the final page, which is what ends the loop.
+    cursor = result.next || null
+  } while (cursor)
+
+  return clientIds
+}
+
+/**
+ * Enable a client on a connection via the clients sub-resource. Additive — every
+ * other enabled client keeps its current state.
+ *
+ * Succeeds with 204 No Content, so there is no response body to inspect; the
+ * caller verifies by re-reading the sub-resource.
+ *
+ * @param {string} connectionId
+ * @param {string} clientId
+ */
+async function enableClientOnConnection(connectionId, clientId) {
+  await auth0ApiCall("patch", `connections/${connectionId}/clients`, [
+    { client_id: clientId, status: true },
+  ])
+}
+
 // ============================================================================
 // CHECK FUNCTIONS
 // ============================================================================
 
-export function checkDatabaseConnectionChanges(
+export async function checkDatabaseConnectionChanges(
   existingConnections,
   dashboardClientId
 ) {
@@ -40,21 +87,17 @@ export function checkDatabaseConnectionChanges(
     (c) => c.name === DEFAULT_CONNECTION_NAME
   )
 
-  const desiredEnabledClients = [dashboardClientId]
-
   if (!existing) {
     return createChangeItem(ChangeAction.CREATE, {
       resource: "Database Connection",
       name: DEFAULT_CONNECTION_NAME,
-      enabledClients: desiredEnabledClients,
     })
   }
 
-  // Check if we need to add any missing enabled clients
-  const existingEnabledClients = existing.enabled_clients || []
-  const missingClients = desiredEnabledClients.filter(
-    (clientId) => !existingEnabledClients.includes(clientId)
-  )
+  const enabledClients = await fetchConnectionEnabledClients(existing.id)
+
+  const clientNeedsEnabling =
+    enabledClients === null || !enabledClients.includes(dashboardClientId)
 
   // Check whether passkeys are enabled on the connection. If not, the sample
   // app's Passkeys UI component has nothing to surface in Universal Login.
@@ -62,8 +105,8 @@ export function checkDatabaseConnectionChanges(
     existing.options?.authentication_methods?.passkey?.enabled === true
 
   const changes = []
-  if (missingClients.length > 0) {
-    changes.push(`Add ${missingClients.length} enabled client(s)`)
+  if (clientNeedsEnabling) {
+    changes.push("Enable the native app on the connection")
   }
   if (!passkeyEnabled) {
     changes.push("Enable passkey authentication method")
@@ -74,10 +117,11 @@ export function checkDatabaseConnectionChanges(
       resource: "Database Connection",
       name: DEFAULT_CONNECTION_NAME,
       existing,
-      updates: {
-        missingClients,
-        enablePasskey: !passkeyEnabled,
-      },
+      // Only enablePasskey is carried forward. Whether the app needs enabling is
+      // deliberately NOT recorded here — the apply phase re-resolves it against
+      // the live sub-resource, because this check may have run against the
+      // TO_BE_CREATED placeholder rather than a real client id.
+      updates: { enablePasskey: !passkeyEnabled },
       summary: changes.join(", "),
     })
   }
@@ -115,20 +159,30 @@ export async function applyDatabaseConnectionChanges(
         strategy: "auth0",
         name: DEFAULT_CONNECTION_NAME,
         display_name: "Universal-Components",
-        enabled_clients: [dashboardClientId],
         options: PASSKEY_CONNECTION_OPTIONS,
       }
 
-      const createArgs = [
-        "api",
+      const connection = await auth0ApiCall(
         "post",
         "connections",
-        "--data",
-        JSON.stringify(connectionData),
-      ]
+        connectionData
+      )
+      if (!connection?.id) {
+        throw new Error(
+          "Create returned no connection id (the identity may lack create:connections)"
+        )
+      }
 
-      const { stdout } = await $`auth0 ${createArgs}`
-      const connection = JSON.parse(stdout)
+      await enableClientOnConnection(connection.id, dashboardClientId)
+
+      const enabled = await fetchConnectionEnabledClients(connection.id)
+      if (enabled !== null && !enabled.includes(dashboardClientId)) {
+        spinner.warn(
+          `Created ${DEFAULT_CONNECTION_NAME} but could not enable the native app on it`
+        )
+        recordManualActionForClient()
+        return connection
+      }
 
       spinner.succeed(`Created Database Connection: ${DEFAULT_CONNECTION_NAME}`)
       return connection
@@ -145,63 +199,73 @@ export async function applyDatabaseConnectionChanges(
 
     try {
       const { existing, updates } = changePlan
-      const existingEnabledClients = existing.enabled_clients || []
 
-      // Use the actual client IDs instead of the ones from the change plan
-      const clientsToAdd = []
-      if (!existingEnabledClients.includes(dashboardClientId)) {
-        clientsToAdd.push(dashboardClientId)
-      }
+      // Re-resolve enablement against the live sub-resource using the REAL
+      // client id. The change plan may have been built against the
+      // TO_BE_CREATED placeholder, so its verdict cannot be trusted here.
+      const enabledClients = await fetchConnectionEnabledClients(existing.id)
+      const needsClient =
+        enabledClients === null || !enabledClients.includes(dashboardClientId)
 
-      // Build the patch: enable the client and/or turn on the passkey method.
-      const patchData = {}
+      // Only the `options` half still goes to the connection object itself.
+      // Merge with the existing options so unrelated settings (password policy,
+      // attributes, MFA) are preserved.
+      const existingOptions = existing.options || {}
+      const optionsPatch = updates?.enablePasskey
+        ? {
+            ...existingOptions,
+            authentication_methods: {
+              ...(existingOptions.authentication_methods || {}),
+              password: { enabled: true },
+              passkey: { enabled: true },
+            },
+            passkey_options: {
+              ...PASSKEY_CONNECTION_OPTIONS.passkey_options,
+              ...(existingOptions.passkey_options || {}),
+            },
+          }
+        : null
 
-      if (clientsToAdd.length > 0) {
-        patchData.enabled_clients = [...existingEnabledClients, ...clientsToAdd]
-      }
-
-      if (updates?.enablePasskey) {
-        // Merge with existing options so we don't clobber other settings.
-        const existingOptions = existing.options || {}
-        patchData.options = {
-          ...existingOptions,
-          authentication_methods: {
-            ...(existingOptions.authentication_methods || {}),
-            password: { enabled: true },
-            passkey: { enabled: true },
-          },
-          passkey_options: {
-            ...PASSKEY_CONNECTION_OPTIONS.passkey_options,
-            ...(existingOptions.passkey_options || {}),
-          },
-        }
-      }
-
-      if (Object.keys(patchData).length === 0) {
-        spinner.succeed(`${DEFAULT_CONNECTION_NAME} connection is already up to date`)
+      if (!needsClient && !optionsPatch) {
+        spinner.succeed(
+          `${DEFAULT_CONNECTION_NAME} connection is already up to date`
+        )
         return existing
       }
 
-      await auth0ApiCall("patch", `connections/${existing.id}`, patchData)
+      if (needsClient) {
+        await enableClientOnConnection(existing.id, dashboardClientId)
+      }
+
+      if (optionsPatch) {
+        await auth0ApiCall("patch", `connections/${existing.id}`, {
+          options: optionsPatch,
+        })
+      }
 
       // auth0ApiCall swallows missing-scope errors (returns null instead of
-      // throwing), so a "success" here is not proof the change landed. Re-read
-      // the connection and verify the intended state actually applied; if not,
-      // treat it as a manual action rather than reporting a false success.
+      // throwing), and the clients PATCH returns an empty 204 either way, so a
+      // "success" above is not proof the change landed. Re-read both resources
+      // and verify the intended state actually applied; if not, treat it as a
+      // manual action rather than reporting a false success.
       const updated =
         (await auth0ApiCall("get", `connections/${existing.id}`)) || existing
+      const enabledAfter = needsClient
+        ? await fetchConnectionEnabledClients(existing.id)
+        : enabledClients
 
       const clientApplied =
-        !patchData.enabled_clients ||
-        (updated.enabled_clients || []).includes(dashboardClientId)
+        !needsClient ||
+        enabledAfter === null ||
+        enabledAfter.includes(dashboardClientId)
       const passkeyApplied =
-        !patchData.options ||
+        !optionsPatch ||
         updated.options?.authentication_methods?.passkey?.enabled === true
 
       if (clientApplied && passkeyApplied) {
         const applied = []
-        if (patchData.enabled_clients) applied.push(`${clientsToAdd.length} client(s)`)
-        if (patchData.options) applied.push("passkey method")
+        if (needsClient) applied.push("native app enabled")
+        if (optionsPatch) applied.push("passkey method")
         spinner.succeed(
           `Updated ${DEFAULT_CONNECTION_NAME} connection (${applied.join(", ")})`
         )
@@ -210,20 +274,11 @@ export async function applyDatabaseConnectionChanges(
 
       spinner.warn(`Could not fully update ${DEFAULT_CONNECTION_NAME} connection`)
 
-      if (!clientApplied) {
-        recordManualAction({
-          resource: `Connection: ${DEFAULT_CONNECTION_NAME} (enable app)`,
-          scope: "update:connections",
-          reason:
-            "The native app must be an enabled client of this database connection for username/password login to work.",
-          manualStep:
-            "Dashboard → Authentication → Database → Applications → enable the app, OR grant update:connections and re-run.",
-        })
-      }
+      if (!clientApplied) recordManualActionForClient()
       if (!passkeyApplied) {
         // Writing the connection `options` object (which is where the passkey
-        // authentication method lives) requires update:connections_options —
-        // a scope distinct from update:connections. When it is missing the CLI
+        // authentication method lives) requires update:connections_options — a
+        // scope distinct from update:connections. When it is missing the CLI
         // reports an empty "lacks scope: ." because it cannot render the newer
         // scope name, so we name it explicitly here.
         recordManualAction({
@@ -235,6 +290,7 @@ export async function applyDatabaseConnectionChanges(
             "Grant update:connections_options to the M2M app and re-run, OR Dashboard → Authentication → Database → <connection> → Authentication Methods → toggle Passkey on.",
         })
       }
+
       return updated
     } catch (e) {
       if (isPermissionError(e)) {
@@ -256,4 +312,18 @@ export async function applyDatabaseConnectionChanges(
       throw e
     }
   }
+}
+
+// Recorded from both the create and update paths: enabling the app is a separate
+// call from creating/patching the connection, so either path can land the
+// connection but miss the enablement.
+function recordManualActionForClient() {
+  recordManualAction({
+    resource: `Connection: ${DEFAULT_CONNECTION_NAME} (enable app)`,
+    scope: "update:connections",
+    reason:
+      "The native app must be an enabled client of this database connection for username/password login to work.",
+    manualStep:
+      "Dashboard → Authentication → Database → Applications → enable the app, OR grant update:connections and re-run.",
+  })
 }

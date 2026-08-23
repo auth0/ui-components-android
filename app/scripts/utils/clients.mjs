@@ -10,7 +10,30 @@ import {
 } from "./manual-actions.mjs"
 
 // Constants
-export const CLIENT_NAME = "Android Universal Components Demo"
+
+// The native client's name doubles as the lookup key on every re-run: the
+// bootstrap finds (and updates) the application whose name matches exactly, so a
+// different name creates a separate application. It is resolved once at startup
+// — from --client-name=, the AUTH0_CLIENT_NAME env var, or an interactive prompt
+// — and stored here so every check/apply step in this module reads one value.
+export const DEFAULT_CLIENT_NAME = "Android Universal Components Demo"
+
+let clientName = DEFAULT_CLIENT_NAME
+
+/**
+ * Set the native client name used for the rest of this run.
+ * @param {string} name - Client name (already trimmed and validated)
+ */
+export function setClientName(name) {
+  clientName = name
+}
+
+/**
+ * @returns {string} The native client name for this run.
+ */
+export function getClientName() {
+  return clientName
+}
 
 /**
  * Build the allowed callback / logout URLs for the native Android client.
@@ -96,13 +119,13 @@ export async function checkDashboardClientChanges(
   const redirectUrls = buildRedirectUrls(domain, packageName, scheme)
 
   const existingClient = existingClients.find(
-    (c) => c.name === CLIENT_NAME && c.app_type === "native"
+    (c) => c.name === getClientName() && c.app_type === "native"
   )
 
   if (!existingClient) {
     return createChangeItem(ChangeAction.CREATE, {
       resource: "Native Client",
-      name: CLIENT_NAME,
+      name: getClientName(),
       redirectUrls,
     })
   }
@@ -165,7 +188,7 @@ export async function checkDashboardClientChanges(
 
     return createChangeItem(ChangeAction.UPDATE, {
       resource: "Native Client",
-      name: CLIENT_NAME,
+      name: getClientName(),
       existing: existingClient,
       redirectUrls,
       updates,
@@ -175,7 +198,7 @@ export async function checkDashboardClientChanges(
 
   return createChangeItem(ChangeAction.SKIP, {
     resource: "Native Client",
-    name: CLIENT_NAME,
+    name: getClientName(),
     existing: existingClient,
   })
 }
@@ -199,12 +222,12 @@ export async function applyDashboardClientChanges(
 
   if (changePlan.action === ChangeAction.CREATE) {
     const spinner = ora({
-      text: `Creating Native Client: ${CLIENT_NAME}`,
+      text: `Creating Native Client: ${getClientName()}`,
     }).start()
 
     try {
       const clientData = {
-        name: CLIENT_NAME,
+        name: getClientName(),
         description:
           "Native client for Auth0 Android Universal Components sample app",
         app_type: "native",
@@ -243,7 +266,7 @@ export async function applyDashboardClientChanges(
       const { stdout } = await $`auth0 ${createClientArgs}`
       const client = JSON.parse(stdout)
 
-      spinner.succeed(`Created Native Client: ${CLIENT_NAME}`)
+      spinner.succeed(`Created Native Client: ${getClientName()}`)
       return client
     } catch (e) {
       // The native client is the anchor for everything downstream (client
@@ -254,7 +277,7 @@ export async function applyDashboardClientChanges(
         const scope = extractMissingScope(e) || "create:clients"
         spinner.fail(`Cannot create Native Client — M2M app lacks scope: ${scope}`)
         recordManualAction({
-          resource: `Native Client: ${CLIENT_NAME}`,
+          resource: `Native Client: ${getClientName()}`,
           scope,
           reason:
             "The native client is required for the sample app to authenticate; the rest of the bootstrap depends on it.",
@@ -270,7 +293,7 @@ export async function applyDashboardClientChanges(
 
   if (changePlan.action === ChangeAction.UPDATE) {
     const spinner = ora({
-      text: `Updating Native Client: ${CLIENT_NAME}`,
+      text: `Updating Native Client: ${getClientName()}`,
     }).start()
 
     try {
@@ -334,7 +357,7 @@ export async function applyDashboardClientChanges(
       const { stdout } = await $`auth0 ${getArgs}`
       const client = JSON.parse(stdout)
 
-      spinner.succeed(`Updated Native Client: ${CLIENT_NAME}`)
+      spinner.succeed(`Updated Native Client: ${getClientName()}`)
       return client
     } catch (e) {
       // A missing scope (e.g. update:clients on the M2M app) should not abort
@@ -346,7 +369,7 @@ export async function applyDashboardClientChanges(
           `Skipped updating Native Client — M2M app lacks scope: ${scope}`
         )
         recordManualAction({
-          resource: `Native Client: ${CLIENT_NAME}`,
+          resource: `Native Client: ${getClientName()}`,
           scope,
           reason:
             "The native client's callback/logout URLs (and My Account refresh-token policy) must be set for the app's login/logout redirects to resolve.",
@@ -424,7 +447,7 @@ export async function applyMyAccountClientGrantChanges(
 
   if (changePlan.action === ChangeAction.CREATE) {
     const spinner = ora({
-      text: `Creating ${CLIENT_NAME} client grants for My Account API`,
+      text: `Creating ${getClientName()} client grants for My Account API`,
     }).start()
 
     try {
@@ -443,7 +466,7 @@ export async function applyMyAccountClientGrantChanges(
       spinner.succeed(`Created My Account API Client Grant`)
     } catch (e) {
       spinner.fail(
-        `Failed to create the ${CLIENT_NAME} client grants for My Account API`
+        `Failed to create the ${getClientName()} client grants for My Account API`
       )
       throw e
     }
