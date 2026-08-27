@@ -4,10 +4,13 @@
   "scripts": {
     "auth0:bootstrap": "node bootstrap.mjs"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@inquirer/prompts": "^8.1.0",
-    "execa": "latest",
+    "execa": "^9.6.1",
     "inquirer": "^13.1.0",
-    "ora": "latest"
+    "ora": "^9.3.0"
   }
 }
