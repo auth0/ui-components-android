@@ -31,10 +31,15 @@ internal fun SdkMfaEnrollmentChallenge.toDomainModel(): MfaEnrollmentChallenge {
     )
 }
 
+/**
+ * SDK 5 made `id`/`authSession` nullable because `/mfa/associate` omits them. My Account
+ * enrollment always returns both, so a missing value is a malformed response; `withErrorMapping`
+ * surfaces the thrown exception as [com.auth0.universalcomponents.domain.error.Auth0Error.Unknown].
+ */
 internal fun SdkTotpEnrollmentChallenge.toDomainModel(): TotpEnrollmentChallenge {
     return TotpEnrollmentChallenge(
-        id = this.id,
-        authSession = this.authSession,
+        id = requireNotNull(this.id) { "TOTP enrollment response is missing id" },
+        authSession = requireNotNull(this.authSession) { "TOTP enrollment response is missing auth_session" },
         barcodeUri = this.barcodeUri,
         manualInputCode = this.manualInputCode
     )

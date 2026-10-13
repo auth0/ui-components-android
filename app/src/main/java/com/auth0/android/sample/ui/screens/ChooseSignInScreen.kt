@@ -1,6 +1,5 @@
 package com.auth0.android.sample.ui.screens
 
-import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,7 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import com.auth0.android.sample.ui.components.Auth0LogoHeader
@@ -46,7 +44,7 @@ private enum class LoginOption { Embedded, Hosted }
  * Pre-login screen for choosing the sign-in method.
  *
  * Cards are selectable — tapping a card sets the selection state. The Continue button
- * navigates to the chosen flow. Hosted Login is selected by default so the button is
+ * navigates to the chosen flow. Embedded Login is selected by default so the button is
  * enabled immediately on load.
  *
  * @param onEmbeddedLogin Navigate to embedded login
@@ -60,8 +58,7 @@ fun ChooseSignInScreen(
     onSettings: () -> Unit = {},
     isLoading: Boolean = false
 ) {
-    var selectedOption by remember { mutableStateOf<LoginOption?>(LoginOption.Hosted) }
-    val context = LocalContext.current
+    var selectedOption by remember { mutableStateOf<LoginOption?>(LoginOption.Embedded) }
     val typography = Auth0Theme.typography
     val dimensions = Auth0Theme.dimensions
     val shapes = Auth0Theme.shapes
@@ -98,22 +95,21 @@ fun ChooseSignInScreen(
                 Spacer(modifier = Modifier.height(dimensions.spacingLg))
 
                 FactorCard(
-                    title = "Hosted Login",
-                    description = "Easy to setup, works instantly",
-                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_hosted_login),
-                    isSelected = selectedOption == LoginOption.Hosted,
-                    onClick = { selectedOption = LoginOption.Hosted }
+                    title = "Embedded Login",
+                    description = "Total brand control and low user frictions",
+                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_embedded_login),
+                    isSelected = selectedOption == LoginOption.Embedded,
+                    onClick = { selectedOption = LoginOption.Embedded }
                 )
 
                 Spacer(modifier = Modifier.height(dimensions.spacingMd))
 
                 FactorCard(
-                    title = "Embedded Login",
-                    description = "Total brand control and low user frictions",
-                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_embedded_login),
-                    isSelected = selectedOption == LoginOption.Embedded,
-                    enabled = false,
-                    onClick = { Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show() }
+                    title = "Hosted Login",
+                    description = "Easy to setup, works instantly",
+                    icon = painterResource(com.auth0.android.sample.R.drawable.ic_hosted_login),
+                    isSelected = selectedOption == LoginOption.Hosted,
+                    onClick = { selectedOption = LoginOption.Hosted }
                 )
 
                 Spacer(modifier = Modifier.height(dimensions.spacingLg))
