@@ -1,18 +1,10 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthFailure
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthFailureException
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthOutcome
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedAuthRequestFailed
-import com.auth0.universalcomponents.feature.embedded.domain.model.FailureMessage
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginEvent
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginException
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginStep
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaChallenge
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.repository.AuthInteracting
+import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -25,6 +17,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -37,7 +30,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginFlowViewModelTest {
 
-    private lateinit var interactor: AuthInteracting
+    private lateinit var repository: EmbeddedLoginRepository
     private lateinit var viewModel: LoginFlowViewModel
 
     private val testDispatcher = StandardTestDispatcher()
@@ -45,10 +38,10 @@ class LoginFlowViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
-        interactor = mockk()
-        coEvery { interactor.discover() } returns listOf(LoginOption.EmailOtp)
-        coEvery { interactor.startOtp(any()) } returns Unit
-        viewModel = LoginFlowViewModel(interactor)
+        repository = mockk()
+        coEvery { repository.discover() } returns listOf(LoginOption.EmailOtp)
+        coEvery { repository.startEmailOtp(any()) } returns Unit
+        viewModel = LoginFlowViewModel(repository)
     }
 
     @After
@@ -74,7 +67,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `start - nothing usable offered - shows no methods`() = runTest {
-        coEvery { interactor.discover() } returns listOf(LoginOption.Unsupported("identify_phone"))
+        coEvery { repository.discover() } returns listOf(LoginOption.Unsupported("identify_phone"))
 
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
@@ -89,43 +82,31 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { interactor.discover() }
+        coVerify(exactly = 1) { repository.discover() }
     }
 
     @Test
-    fun `start - fails with a message - shows that message`() = runTest {
-        val message = FailureMessage.Local(R.string.embedded_login_error_network)
-        coEvery { interactor.discover() } throws EmbeddedAuthRequestFailed(message)
+    fun `start - fails - shows that error full-screen`() = runTest {
+        coEvery { repository.discover() } throws EmbeddedLoginException(EmbeddedLoginError.Network)
 
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.Failed(message))
-    }
-
-    @Test
-    fun `start - unexpected error - shows the generic text, never the exception's`() = runTest {
-        coEvery { interactor.discover() } throws IllegalStateException("debug output")
-
-        viewModel.send(LoginEvent.Start)
-        advanceUntilIdle()
-
-        assertThat(viewModel.step.value)
-            .isEqualTo(LoginStep.Failed(FailureMessage.Local(R.string.embedded_login_error_generic)))
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.Failed(EmbeddedLoginError.Network))
     }
 
     @Test
     fun `retry - after discovery failed - discovers again`() = runTest {
-        coEvery { interactor.discover() } throws EmbeddedAuthRequestFailed(null)
+        coEvery { repository.discover() } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        coEvery { interactor.discover() } returns listOf(LoginOption.EmailOtp)
+        coEvery { repository.discover() } returns listOf(LoginOption.EmailOtp)
         viewModel.send(LoginEvent.Retry)
         advanceUntilIdle()
 
         assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier())
-        coVerify(exactly = 2) { interactor.discover() }
+        coVerify(exactly = 2) { repository.discover() }
     }
 
     // endregion
@@ -133,32 +114,35 @@ class LoginFlowViewModelTest {
     // region email
 
     @Test
-    fun `submit email - code sent - asks for the code sent to that email`() = runTest {
+    fun `submit email - while sending - stays on email with Continue spinning`() = runTest {
         startAtEmail()
+        val sent = CompletableDeferred<Unit>()
+        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { sent.await() }
 
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
-        advanceUntilIdle()
+        runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
-        coVerify(exactly = 1) { interactor.startOtp(EMAIL) }
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL, isSubmitting = true))
+        sent.complete(Unit)
+        advanceUntilIdle()
     }
 
     @Test
-    fun `submit email - code not sent - stays on email with the error and the typed email`() = runTest {
+    fun `submit email - code sent - asks for the code, with the resend countdown started`() = runTest {
         startAtEmail()
-        coEvery { interactor.startOtp(EMAIL) } throws AuthFailureException(AuthFailure.CODE_NOT_SENT)
 
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
-        advanceUntilIdle()
+        runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
-        assertThat(viewModel.inputError.value).isEqualTo(AuthFailure.CODE_NOT_SENT)
+        assertThat(viewModel.step.value)
+            .isEqualTo(LoginStep.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS))
+        coVerify(exactly = 1) { repository.startEmailOtp(EMAIL) }
     }
 
     @Test
     fun `submit email - fails for good - retry returns to email with the typed email`() = runTest {
         startAtEmail()
-        coEvery { interactor.startOtp(EMAIL) } throws EmbeddedAuthRequestFailed(null)
+        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         advanceUntilIdle()
         assertThat(viewModel.step.value).isInstanceOf(LoginStep.Failed::class.java)
@@ -169,6 +153,16 @@ class LoginFlowViewModelTest {
         assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
+    @Test
+    fun `submit email - not on the email step - is ignored`() = runTest {
+        startAtCode()
+
+        viewModel.send(LoginEvent.SubmitIdentifier(OTHER_EMAIL))
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.startEmailOtp(OTHER_EMAIL) }
+    }
+
     // endregion
 
     // region code
@@ -177,7 +171,7 @@ class LoginFlowViewModelTest {
     fun `submit code - accepted - signs in and hands over the credentials`() = runTest {
         startAtCode()
         val credentials = mockk<Credentials>()
-        coEvery { interactor.verifyOtp(CODE) } returns AuthOutcome.Authenticated(credentials)
+        coEvery { repository.verifyOtp(CODE) } returns credentials
         val received = mutableListOf<Credentials>()
         val job = launch { viewModel.authenticated.toList(received) }
 
@@ -190,21 +184,38 @@ class LoginFlowViewModelTest {
     }
 
     @Test
-    fun `submit code - wrong code - stays on the code step with the error`() = runTest {
+    fun `submit code - wrong code - stays on the code step with the error, the countdown going on`() = runTest {
+        startAtCodeCountingDown()
+        advanceTimeBy(10 * ONE_SECOND_MILLIS)
+        runCurrent()
+        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.InvalidCode)
+
+        viewModel.send(LoginEvent.SubmitOtp(CODE))
+        runCurrent()
+
+        assertThat(viewModel.step.value).isEqualTo(
+            LoginStep.CollectOtpCode(EMAIL, error = EmbeddedLoginError.InvalidCode, resendSecondsLeft = 50),
+        )
+    }
+
+    @Test
+    fun `submit code - too many wrong codes - shows it full-screen, not under the field`() = runTest {
         startAtCode()
-        coEvery { interactor.verifyOtp(CODE) } throws AuthFailureException(AuthFailure.INVALID_CODE)
+        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.TooManyWrongCodes)
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
-        assertThat(viewModel.inputError.value).isEqualTo(AuthFailure.INVALID_CODE)
+        val step = viewModel.step.value
+        assertThat(step).isInstanceOf(LoginStep.Failed::class.java)
+        assertThat((step as LoginStep.Failed).error).isEqualTo(EmbeddedLoginError.TooManyWrongCodes)
     }
 
     @Test
     fun `submit code - fails but the session survives - retry returns to the code step`() = runTest {
         startAtCode()
-        coEvery { interactor.verifyOtp(CODE) } throws EmbeddedAuthRequestFailed(null, canRetryStep = true)
+        coEvery { repository.verifyOtp(CODE) } throws
+            EmbeddedLoginException(EmbeddedLoginError.Network, canRetryStep = true)
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -217,7 +228,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit code - fails and the session is gone - retry returns to email with the email kept`() = runTest {
         startAtCode()
-        coEvery { interactor.verifyOtp(CODE) } throws EmbeddedAuthRequestFailed(null, canRetryStep = false)
+        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -228,65 +239,44 @@ class LoginFlowViewModelTest {
     }
 
     @Test
-    fun `submit code - code expired - stays on the code step with the expired error`() = runTest {
-        startAtCode()
-        coEvery { interactor.verifyOtp(CODE) } throws AuthFailureException(AuthFailure.CODE_EXPIRED)
+    fun `submit code - code expired - shows the expired error and opens resend at once`() = runTest {
+        startAtCodeCountingDown()
+        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.CodeExpired)
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
-        advanceUntilIdle()
+        runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
-        assertThat(viewModel.inputError.value).isEqualTo(AuthFailure.CODE_EXPIRED)
+        assertThat(viewModel.step.value)
+            .isEqualTo(LoginStep.CollectOtpCode(EMAIL, error = EmbeddedLoginError.CodeExpired))
+    }
+
+    @Test
+    fun `submit code - while verifying - stays on the code step with Verify spinning`() = runTest {
+        startAtCode()
+        val answer = CompletableDeferred<Credentials>()
+        coEvery { repository.verifyOtp(CODE) } coAnswers { answer.await() }
+
+        viewModel.send(LoginEvent.SubmitOtp(CODE))
+        runCurrent()
+
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isSubmitting = true))
+        answer.complete(mockk())
+        advanceUntilIdle()
     }
 
     @Test
     fun `submit code - tapped twice while verifying - verifies once`() = runTest {
         startAtCode()
-        val answer = CompletableDeferred<AuthOutcome>()
-        coEvery { interactor.verifyOtp(CODE) } coAnswers { answer.await() }
+        val answer = CompletableDeferred<Credentials>()
+        coEvery { repository.verifyOtp(CODE) } coAnswers { answer.await() }
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
         viewModel.send(LoginEvent.SubmitOtp(CODE))
-        answer.complete(AuthOutcome.Authenticated(mockk()))
+        answer.complete(mockk())
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { interactor.verifyOtp(CODE) }
-    }
-
-    @Test
-    fun `submit code - step-up needed - asks for the step-up code, which is verified with its factor`() = runTest {
-        startAtCode()
-        val challenge = MfaChallenge(MfaFactor.OTP)
-        coEvery { interactor.verifyOtp(CODE) } returns AuthOutcome.MfaRequired(challenge)
-        coEvery { interactor.verifyMfa(MFA_CODE, MfaFactor.OTP) } returns AuthOutcome.Authenticated(mockk())
-
-        viewModel.send(LoginEvent.SubmitOtp(CODE))
-        advanceUntilIdle()
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.StepUpMfa(challenge))
-
-        viewModel.send(LoginEvent.SubmitMfa(MFA_CODE))
-        advanceUntilIdle()
-
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.Authenticated)
-        coVerify(exactly = 1) { interactor.verifyMfa(MFA_CODE, MfaFactor.OTP) }
-    }
-
-    @Test
-    fun `submit step-up code - wrong code - stays on the step-up with the error`() = runTest {
-        startAtCode()
-        val challenge = MfaChallenge(MfaFactor.EMAIL, "j***@example.com")
-        coEvery { interactor.verifyOtp(CODE) } returns AuthOutcome.MfaRequired(challenge)
-        coEvery { interactor.verifyMfa(MFA_CODE, MfaFactor.EMAIL) } throws
-            AuthFailureException(AuthFailure.INVALID_CODE)
-        viewModel.send(LoginEvent.SubmitOtp(CODE))
-        advanceUntilIdle()
-
-        viewModel.send(LoginEvent.SubmitMfa(MFA_CODE))
-        advanceUntilIdle()
-
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.StepUpMfa(challenge))
-        assertThat(viewModel.inputError.value).isEqualTo(AuthFailure.INVALID_CODE)
+        coVerify(exactly = 1) { repository.verifyOtp(CODE) }
     }
 
     // endregion
@@ -294,45 +284,89 @@ class LoginFlowViewModelTest {
     // region resend
 
     @Test
-    fun `resend - while sending - keeps the code step instead of loading`() = runTest {
+    fun `resend - while sending - keeps the code step with only the resend row busy`() = runTest {
         startAtCode()
         val sent = CompletableDeferred<Unit>()
-        coEvery { interactor.startOtp(EMAIL) } coAnswers { sent.await() }
+        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { sent.await() }
 
-        viewModel.resend()
+        viewModel.send(LoginEvent.Resend)
         runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
-        assertThat(viewModel.isResending.value).isTrue()
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isResending = true))
 
         sent.complete(Unit)
         advanceUntilIdle()
 
-        assertThat(viewModel.isResending.value).isFalse()
-        coVerify(exactly = 2) { interactor.startOtp(EMAIL) }
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
+        coVerify(exactly = 2) { repository.startEmailOtp(EMAIL) }
     }
 
     @Test
-    fun `resend - fails - isResending is cleared`() = runTest {
+    fun `resend - fails for good - shows it full-screen, retry returns to email`() = runTest {
         startAtCode()
-        coEvery { interactor.startOtp(EMAIL) } throws EmbeddedAuthRequestFailed(null)
+        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
 
-        viewModel.resend()
+        viewModel.send(LoginEvent.Resend)
         advanceUntilIdle()
 
-        assertThat(viewModel.isResending.value).isFalse()
+        assertThat(viewModel.step.value)
+            .isEqualTo(LoginStep.Failed(EmbeddedLoginError.Unknown, retryTo = LoginStep.CollectOtpIdentifier(EMAIL)))
     }
 
     @Test
-    fun `resend - code not sent - stays on the code step with the error`() = runTest {
+    fun `resend - code sent - restarts the countdown`() = runTest {
         startAtCode()
-        coEvery { interactor.startOtp(EMAIL) } throws AuthFailureException(AuthFailure.CODE_NOT_SENT)
 
-        viewModel.resend()
-        advanceUntilIdle()
+        viewModel.send(LoginEvent.Resend)
+        runCurrent()
+
+        assertThat(viewModel.step.value)
+            .isEqualTo(LoginStep.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS))
+    }
+
+    @Test
+    fun `resend - during the countdown - is ignored`() = runTest {
+        startAtCodeCountingDown()
+
+        viewModel.send(LoginEvent.Resend)
+        runCurrent()
+
+        coVerify(exactly = 1) { repository.startEmailOtp(EMAIL) }
+    }
+
+    // endregion
+
+    // region countdown
+
+    @Test
+    fun `countdown - a second passes - takes one off`() = runTest {
+        startAtCodeCountingDown()
+
+        advanceTimeBy(ONE_SECOND_MILLIS)
+        runCurrent()
+
+        assertThat(viewModel.step.value)
+            .isEqualTo(LoginStep.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS - 1))
+    }
+
+    @Test
+    fun `countdown - the full wait passes - opens resend`() = runTest {
+        startAtCodeCountingDown()
+
+        advanceTimeBy(COOLDOWN_SECONDS * ONE_SECOND_MILLIS)
+        runCurrent()
 
         assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
-        assertThat(viewModel.inputError.value).isEqualTo(AuthFailure.CODE_NOT_SENT)
+    }
+
+    @Test
+    fun `countdown - back to email while it runs - leaves email as it is`() = runTest {
+        startAtCodeCountingDown()
+
+        viewModel.goBack()
+        advanceUntilIdle()
+
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     // endregion
@@ -342,7 +376,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `start - after signing in - begins a new flow`() = runTest {
         startAtCode()
-        coEvery { interactor.verifyOtp(CODE) } returns AuthOutcome.Authenticated(mockk())
+        coEvery { repository.verifyOtp(CODE) } returns mockk()
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -350,7 +384,7 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier())
-        coVerify(exactly = 2) { interactor.discover() }
+        coVerify(exactly = 2) { repository.discover() }
     }
 
     @Test
@@ -361,7 +395,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        coVerify(exactly = 2) { interactor.discover() }
+        coVerify(exactly = 2) { repository.discover() }
     }
 
     // endregion
@@ -377,29 +411,29 @@ class LoginFlowViewModelTest {
     }
 
     @Test
-    fun `back - on the code step - clears the inline error`() = runTest {
+    fun `back - on the code step - drops the inline error`() = runTest {
         startAtCode()
-        coEvery { interactor.verifyOtp(CODE) } throws AuthFailureException(AuthFailure.INVALID_CODE)
+        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.InvalidCode)
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
         viewModel.goBack()
 
-        assertThat(viewModel.inputError.value).isNull()
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     @Test
     fun `back - while verifying - stays in the flow`() = runTest {
         startAtCode()
-        val answer = CompletableDeferred<AuthOutcome>()
-        coEvery { interactor.verifyOtp(CODE) } coAnswers { answer.await() }
+        val answer = CompletableDeferred<Credentials>()
+        coEvery { repository.verifyOtp(CODE) } coAnswers { answer.await() }
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
 
         assertThat(viewModel.goBack()).isTrue()
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.Loading)
+        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isSubmitting = true))
 
-        answer.complete(AuthOutcome.Authenticated(mockk()))
+        answer.complete(mockk())
         advanceUntilIdle()
 
         assertThat(viewModel.step.value).isEqualTo(LoginStep.Authenticated)
@@ -419,15 +453,25 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
     }
 
+    /** On the code step with the resend countdown already run out. */
     private fun TestScope.startAtCode() {
         startAtEmail()
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         advanceUntilIdle()
     }
 
+    /** On the code step with the resend countdown just started. */
+    private fun TestScope.startAtCodeCountingDown() {
+        startAtEmail()
+        viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
+        runCurrent()
+    }
+
     private companion object {
         const val EMAIL = "jane@example.com"
+        const val OTHER_EMAIL = "john@example.com"
         const val CODE = "123456"
-        const val MFA_CODE = "654321"
+        const val COOLDOWN_SECONDS = 60
+        const val ONE_SECOND_MILLIS = 1_000L
     }
 }

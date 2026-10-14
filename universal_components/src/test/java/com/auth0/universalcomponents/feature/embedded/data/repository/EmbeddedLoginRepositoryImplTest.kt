@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.data
+package com.auth0.universalcomponents.feature.embedded.data.repository
 
 import com.auth0.android.Auth0Exception
 import com.auth0.android.embedded.EmbeddedAuthClient
@@ -11,16 +11,10 @@ import com.auth0.android.embedded.authorize.OtpChannel
 import com.auth0.android.embedded.authorize.OtpType
 import com.auth0.android.request.Request
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.data.FakeRequestImpl
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthFailure
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthFailureException
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthOutcome
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedAuthRequestFailed
-import com.auth0.universalcomponents.feature.embedded.domain.model.FailureMessage
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginException
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaChallenge
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -30,16 +24,17 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import kotlin.coroutines.cancellation.CancellationException
 
-class Auth0EmbeddedAuthInteractorTest {
+class EmbeddedLoginRepositoryImplTest {
 
     private lateinit var client: EmbeddedAuthClient
-    private lateinit var interactor: Auth0EmbeddedAuthInteractor
+    private lateinit var repository: EmbeddedLoginRepositoryImpl
 
     @Before
     fun setup() {
         client = mockk()
-        interactor = Auth0EmbeddedAuthInteractor(client, CONNECTION)
+        repository = EmbeddedLoginRepositoryImpl(client, CONNECTION)
         every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.IdentifyEmail)
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 0))
         every { client.challengeEmail(any()) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL))
@@ -53,19 +48,16 @@ class Auth0EmbeddedAuthInteractorTest {
     // region discover
 
     @Test
-    fun `discover - blank connection - fails with the missing-connection text and calls nothing`() = runTest {
-        val failure = failureOf<EmbeddedAuthRequestFailed> {
-            Auth0EmbeddedAuthInteractor(client, " ").discover()
-        }
+    fun `discover - blank connection - fails with connection missing and calls nothing`() = runTest {
+        val failure = failureOf { EmbeddedLoginRepositoryImpl(client, " ").discover() }
 
-        assertThat(failure.displayMessage)
-            .isEqualTo(FailureMessage.Local(R.string.embedded_login_error_connection_missing))
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.ConnectionMissing)
         verify(exactly = 0) { client.authorize(any(), any(), any(), any()) }
     }
 
     @Test
     fun `discover - email offered - returns an email code option`() = runTest {
-        assertThat(interactor.discover()).containsExactly(LoginOption.EmailOtp)
+        assertThat(repository.discover()).containsExactly(LoginOption.EmailOtp)
     }
 
     @Test
@@ -73,72 +65,72 @@ class Auth0EmbeddedAuthInteractorTest {
         every { client.authorize(CONNECTION, any(), any(), any()) } returns
             step(verifyOtp(OtpChannel.EMAIL, null))
 
-        assertThat(interactor.discover()).containsExactly(LoginOption.EmailOtp)
+        assertThat(repository.discover()).containsExactly(LoginOption.EmailOtp)
     }
 
     @Test
     fun `discover - unsupported method offered - returns it as unsupported`() = runTest {
         every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.IdentifyPhone)
 
-        assertThat(interactor.discover())
+        assertThat(repository.discover())
             .containsExactly(LoginOption.Unsupported(NextAction.IdentifyPhone.capability.value))
     }
 
     @Test
-    fun `discover - network error - fails with the network text`() = runTest {
+    fun `discover - network error - fails with network`() = runTest {
         every { client.authorize(CONNECTION, any(), any(), any()) } returns failingWith(EmbeddedAuthError.Network)
 
-        val failure = failureOf<EmbeddedAuthRequestFailed> { interactor.discover() }
+        val failure = failureOf { repository.discover() }
 
-        assertThat(failure.displayMessage).isEqualTo(FailureMessage.Local(R.string.embedded_login_error_network))
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.Network)
     }
 
     // endregion
 
-    // region startOtp
+    // region startEmailOtp
 
     @Test
-    fun `startOtp - right after discover - reuses that session`() = runTest {
-        interactor.discover()
-        interactor.startOtp(EMAIL)
+    fun `startEmailOtp - right after discover - reuses that session`() = runTest {
+        repository.discover()
+        repository.startEmailOtp(EMAIL)
 
         verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
     }
 
     @Test
-    fun `startOtp - resend - opens a new session first`() = runTest {
-        interactor.discover()
-        interactor.startOtp(EMAIL)
-        interactor.startOtp(EMAIL)
+    fun `startEmailOtp - resend - opens a new session first`() = runTest {
+        repository.discover()
+        repository.startEmailOtp(EMAIL)
+        repository.startEmailOtp(EMAIL)
 
         verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
     }
 
     @Test
-    fun `startOtp - email challenge offered - asks the server to send the code`() = runTest {
+    fun `startEmailOtp - email challenge offered - asks the server to send the code`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 2))
 
-        interactor.startOtp(EMAIL)
+        repository.startEmailOtp(EMAIL)
 
         verify(exactly = 1) { client.challengeEmail(2) }
     }
 
     @Test
-    fun `startOtp - code already sent - doesn't send another`() = runTest {
+    fun `startEmailOtp - code already sent - doesn't send another`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL))
 
-        interactor.startOtp(EMAIL)
+        repository.startEmailOtp(EMAIL)
 
         verify(exactly = 0) { client.challengeEmail(any()) }
     }
 
     @Test
-    fun `startOtp - no way to send a code - fails with code not sent`() = runTest {
+    fun `startEmailOtp - no way to send a code - carries on without saying so`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.IdentifyPhone)
 
-        val failure = failureOf<AuthFailureException> { interactor.startOtp(EMAIL) }
+        repository.startEmailOtp(EMAIL)
 
-        assertThat(failure.failure).isEqualTo(AuthFailure.CODE_NOT_SENT)
+        verify(exactly = 0) { client.challengeEmail(any()) }
     }
 
     // endregion
@@ -150,7 +142,7 @@ class Auth0EmbeddedAuthInteractorTest {
         val credentials = mockk<Credentials>()
         every { client.verifyOtp(CODE, OtpType.OOB) } returns FakeRequestImpl(response = credentials)
 
-        assertThat(interactor.verifyOtp(CODE)).isEqualTo(AuthOutcome.Authenticated(credentials))
+        assertThat(repository.verifyOtp(CODE)).isEqualTo(credentials)
     }
 
     @Test
@@ -158,103 +150,78 @@ class Auth0EmbeddedAuthInteractorTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns
             step(verifyOtp(OtpChannel.EMAIL, EMAIL), reason = Reason.INVALID_CODE)
 
-        val failure = failureOf<AuthFailureException> { interactor.verifyOtp(CODE) }
+        val failure = failureOf { repository.verifyOtp(CODE) }
 
-        assertThat(failure.failure).isEqualTo(AuthFailure.INVALID_CODE)
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidCode)
     }
 
     @Test
-    fun `verifyOtp - invalid identifier or code - fails with invalid code, not a step-up`() = runTest {
+    fun `verifyOtp - invalid identifier or code - fails with invalid code, not as another step`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns
             step(verifyOtp(OtpChannel.EMAIL, EMAIL), reason = Reason.INVALID_IDENTIFIER_OR_CODE)
 
-        val failure = failureOf<AuthFailureException> { interactor.verifyOtp(CODE) }
+        val failure = failureOf { repository.verifyOtp(CODE) }
 
-        assertThat(failure.failure).isEqualTo(AuthFailure.INVALID_CODE)
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidCode)
     }
 
     @Test
-    fun `verifyOtp - code expired - fails inline with code expired`() = runTest {
+    fun `verifyOtp - code expired - fails with code expired`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(EmbeddedAuthError.ChallengeExpired)
 
-        val failure = failureOf<AuthFailureException> { interactor.verifyOtp(CODE) }
+        val failure = failureOf { repository.verifyOtp(CODE) }
 
-        assertThat(failure.failure).isEqualTo(AuthFailure.CODE_EXPIRED)
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.CodeExpired)
     }
 
     @Test
-    fun `verifyOtp - authenticator step-up - returns an authenticator challenge`() = runTest {
-        every { client.verifyOtp(CODE, OtpType.OOB) } returns step(verifyOtp(OtpChannel.TOTP, null))
+    fun `verifyOtp - server asks for another step - fails for good as unsupported`() = runTest {
+        listOf(
+            verifyOtp(OtpChannel.TOTP, null),
+            verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
+            verifyOtp(OtpChannel.SMS, null),
+        ).forEach { nextAction ->
+            every { client.verifyOtp(CODE, OtpType.OOB) } returns step(nextAction)
 
-        assertThat(interactor.verifyOtp(CODE))
-            .isEqualTo(AuthOutcome.MfaRequired(MfaChallenge(MfaFactor.OTP, null)))
-    }
+            val failure = failureOf { repository.verifyOtp(CODE) }
 
-    @Test
-    fun `verifyOtp - email step-up - returns an email challenge with its destination`() = runTest {
-        every { client.verifyOtp(CODE, OtpType.OOB) } returns step(verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL))
-
-        assertThat(interactor.verifyOtp(CODE))
-            .isEqualTo(AuthOutcome.MfaRequired(MfaChallenge(MfaFactor.EMAIL, MASKED_EMAIL)))
-    }
-
-    @Test
-    fun `verifyOtp - only an unsupported step-up - fails for good`() = runTest {
-        every { client.verifyOtp(CODE, OtpType.OOB) } returns step(verifyOtp(OtpChannel.SMS, null))
-
-        failureOf<EmbeddedAuthRequestFailed> { interactor.verifyOtp(CODE) }
-    }
-
-    @Test
-    fun `verifyMfa - authenticator code - verifies as TOTP`() = runTest {
-        every { client.verifyOtp(CODE, OtpType.TOTP) } returns FakeRequestImpl(response = mockk<Credentials>())
-
-        interactor.verifyMfa(CODE, MfaFactor.OTP)
-
-        verify(exactly = 1) { client.verifyOtp(CODE, OtpType.TOTP) }
-    }
-
-    @Test
-    fun `verifyMfa - email code - verifies as OOB`() = runTest {
-        every { client.verifyOtp(CODE, OtpType.OOB) } returns FakeRequestImpl(response = mockk<Credentials>())
-
-        interactor.verifyMfa(CODE, MfaFactor.EMAIL)
-
-        verify(exactly = 1) { client.verifyOtp(CODE, OtpType.OOB) }
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.ExtraStepUnsupported)
+            assertThat(failure.canRetryStep).isFalse()
+        }
     }
 
     // endregion
 
-    // region error text
+    // region errors
 
     @Test
-    fun `error text - known errors - use our own words`() = runTest {
+    fun `errors - known SDK errors - named in our terms, never with the SDK's text`() = runTest {
         val expected = mapOf(
-            EmbeddedAuthError.TooManyWrongOtpAttempts to R.string.embedded_login_error_too_many_wrong_codes,
-            EmbeddedAuthError.TooManyAttempts to R.string.embedded_login_error_too_many_attempts,
-            EmbeddedAuthError.TooManyLogins to R.string.embedded_login_error_too_many_logins,
+            EmbeddedAuthError.TooManyWrongOtpAttempts to EmbeddedLoginError.TooManyWrongCodes,
+            EmbeddedAuthError.TooManyAttempts to EmbeddedLoginError.TooManyAttempts,
+            EmbeddedAuthError.TooManyLogins to EmbeddedLoginError.TooManyLogins,
         )
-        expected.forEach { (error, textRes) ->
-            every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(error, description = "raw_token")
+        expected.forEach { (sdkError, loginError) ->
+            every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(sdkError, description = "raw_token")
 
-            val failure = failureOf<EmbeddedAuthRequestFailed> { interactor.verifyOtp(CODE) }
+            val failure = failureOf { repository.verifyOtp(CODE) }
 
-            assertThat(failure.displayMessage).isEqualTo(FailureMessage.Local(textRes))
+            assertThat(failure.error).isEqualTo(loginError)
         }
     }
 
     @Test
-    fun `error text - other server error - uses the server's description`() = runTest {
+    fun `errors - other server error - keeps the server's description`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns
             failingWith(EmbeddedAuthError.AccessDenied, description = "Your account is blocked.")
 
-        val failure = failureOf<EmbeddedAuthRequestFailed> { interactor.verifyOtp(CODE) }
+        val failure = failureOf { repository.verifyOtp(CODE) }
 
-        assertThat(failure.displayMessage).isEqualTo(FailureMessage.Server("Your account is blocked."))
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.Server("Your account is blocked."))
     }
 
     @Test
-    fun `error text - no usable server text - leaves it to the generic message`() = runTest {
+    fun `errors - no usable server text - fails as unknown`() = runTest {
         listOf<Request<Credentials, EmbeddedAuthException>>(
             failingWith(EmbeddedAuthError.Unknown, code = Auth0Exception.NON_JSON_ERROR, description = "debug text"),
             failingWith(EmbeddedAuthError.Unknown, code = Auth0Exception.EMPTY_BODY_ERROR, description = "debug text"),
@@ -262,10 +229,39 @@ class Auth0EmbeddedAuthInteractorTest {
         ).forEach { request ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns request
 
-            val failure = failureOf<EmbeddedAuthRequestFailed> { interactor.verifyOtp(CODE) }
+            val failure = failureOf { repository.verifyOtp(CODE) }
 
-            assertThat(failure.displayMessage).isNull()
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.Unknown)
         }
+    }
+
+    @Test
+    fun `errors - SDK error - keeps it as the cause, for the stack trace`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns failingWith(EmbeddedAuthError.Network)
+
+        val failure = failureOf { repository.discover() }
+
+        assertThat(failure.cause).isInstanceOf(EmbeddedAuthException::class.java)
+    }
+
+    @Test
+    fun `errors - unexpected exception - fails as unknown, keeping it as the cause`() = runTest {
+        val unexpected = IllegalStateException("debug output")
+        every { client.authorize(CONNECTION, any(), any(), any()) } throws unexpected
+
+        val failure = failureOf { repository.discover() }
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.Unknown)
+        assertThat(failure.cause).isSameInstanceAs(unexpected)
+    }
+
+    @Test
+    fun `errors - cancelled - lets the cancellation through as it is`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } throws CancellationException()
+
+        val error = runCatching { repository.discover() }.exceptionOrNull()
+
+        assertThat(error).isInstanceOf(CancellationException::class.java)
     }
 
     // endregion
@@ -280,7 +276,7 @@ class Auth0EmbeddedAuthInteractorTest {
         ).forEach { request ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns request
 
-            val failure = failureOf<EmbeddedAuthRequestFailed> { interactor.verifyOtp(CODE) }
+            val failure = failureOf { repository.verifyOtp(CODE) }
 
             assertThat(failure.canRetryStep).isTrue()
         }
@@ -291,7 +287,7 @@ class Auth0EmbeddedAuthInteractorTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns
             failingWith(EmbeddedAuthError.TooManyWrongOtpAttempts, statusCode = 403)
 
-        val failure = failureOf<EmbeddedAuthRequestFailed> { interactor.verifyOtp(CODE) }
+        val failure = failureOf { repository.verifyOtp(CODE) }
 
         assertThat(failure.canRetryStep).isFalse()
     }
@@ -333,10 +329,11 @@ class Auth0EmbeddedAuthInteractorTest {
         T::class.java.getConstructor(*args.map { it.first }.toTypedArray())
             .newInstance(*args.map { it.second }.toTypedArray())
 
-    private suspend inline fun <reified T : Throwable> failureOf(block: suspend () -> Unit): T {
+    /** Every failure leaves the repository as an [EmbeddedLoginException]. */
+    private suspend fun failureOf(block: suspend () -> Unit): EmbeddedLoginException {
         val error = runCatching { block() }.exceptionOrNull()
-        assertThat(error).isInstanceOf(T::class.java)
-        return error as T
+        assertThat(error).isInstanceOf(EmbeddedLoginException::class.java)
+        return error as EmbeddedLoginException
     }
 
     private companion object {

@@ -90,6 +90,12 @@ sealed class Auth0Error(
         override val cause: Throwable
     ) : Auth0Error(message, cause)
 
+    // A response missing a value it always carries
+    data class MalformedResponse(
+        override val message: String = "Unexpected response from the server",
+        override val cause: Throwable
+    ) : Auth0Error(message, cause)
+
     // Passkey Related Errors
     data class PasskeyError(
         override val message: String = "Passkey error occurred",

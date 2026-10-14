@@ -6,39 +6,23 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.theme.Auth0Theme
-import kotlinx.coroutines.delay
 
-private const val RESEND_COOLDOWN_SECONDS = 60
-
-/** "Resend Code" with a cooldown that restarts each time [sendCount] changes; [skipCooldown] ends it early. */
+/** "Resend Code", or the wait left while [secondsLeft] counts down; the ViewModel owns the countdown. */
 @Composable
 internal fun LoginResendButton(
-    sendCount: Int,
+    secondsLeft: Int,
     isBusy: Boolean,
     onResend: () -> Unit,
     modifier: Modifier = Modifier,
-    skipCooldown: Boolean = false,
-    cooldownSeconds: Int = RESEND_COOLDOWN_SECONDS,
 ) {
-    var secondsLeft by rememberSaveable(sendCount) { mutableIntStateOf(cooldownSeconds) }
-    LaunchedEffect(sendCount) {
-        while (secondsLeft > 0) {
-            delay(1_000)
-            secondsLeft--
-        }
-    }
-    val isCoolingDown = secondsLeft > 0 && !skipCooldown
+    val isCoolingDown = secondsLeft > 0
     val enabled = !isCoolingDown && !isBusy
     val label = if (isCoolingDown) {
         stringResource(R.string.embedded_login_resend_in, secondsLeft)

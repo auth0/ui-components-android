@@ -8,6 +8,7 @@ SDK in your application.
 - [Initialization](#initialization)
 - [Using Universal Components](#using-universal-components)
 - [Theme Customization](#theme-customization)
+- [Embedded Login](#embedded-login)
 - [Support](#support)
 
 
@@ -306,6 +307,45 @@ fun MFASettingsScreen() {
     }
 }
 ```
+
+## Embedded Login
+
+> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.0` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP on the connection you pass in.
+
+### Display the Embedded Login Screen
+
+`EmbeddedLoginScreen` runs the full native sign-in flow inside your app: email entry, then the one-time code. This flow doesn't support MFA step-up yet: if the tenant asks for a second factor during embedded sign-in, it shows its error screen. The MFA enrollment components above are unaffected.
+
+It signs in with the `Auth0` account you passed to `Auth0UniversalComponents.initialize(...)`, so initialize the library first. On success it calls `onAuthenticated` with the credentials. It doesn't store them, so save them yourself:
+
+```kotlin
+@Composable
+fun LoginScreen(
+    credentialsManager: CredentialsManager,
+    onSignedIn: () -> Unit,
+    onBack: () -> Unit
+) {
+    EmbeddedLoginScreen(
+        connection = "Username-Password-Authentication",
+        onAuthenticated = { credentials ->
+            credentialsManager.saveCredentials(credentials)
+            onSignedIn()
+        },
+        onExit = onBack
+    )
+}
+```
+
+On code entry, Back returns to email entry. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
+
+### Flow Behaviour
+
+- **A wrong or expired code appears inline,** under the code field, and the user stays on code entry. After an expired code, **Resend** opens at once.
+- **Resend opens 60 seconds after each code is sent;** until then the button counts down.
+- **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email entry (with the email kept) if not. If the first load failed, it loads again.
+- **The flow never reveals whether an email has an account:** it moves on to code entry even when no code was sent.
+- **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen.
+- **If the connection doesn't offer Email OTP,** the flow shows a screen saying no sign-in methods are available.
 
 ## Support
 

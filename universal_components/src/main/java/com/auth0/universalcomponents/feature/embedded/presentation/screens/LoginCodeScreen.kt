@@ -3,7 +3,6 @@ package com.auth0.universalcomponents.feature.embedded.presentation.screens
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -20,10 +19,10 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Lo
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginStepLayout
 
 /**
- * Code entry, shared by the emailed code and the MFA step-up. Verify turns on once every digit is in.
+ * Entry for the emailed code. Verify turns on once every digit is in.
  * [errorMessage] hides once the user types again. A null [onEdit] or [onResend] hides that action.
  * [isResending] keeps Verify off without spinning it while a new code is on its way.
- * [canResendNow] skips the resend cooldown, for when the current code can no longer be used.
+ * [resendSecondsLeft] is the wait before Resend opens.
  */
 @Composable
 internal fun LoginCodeScreen(
@@ -35,14 +34,13 @@ internal fun LoginCodeScreen(
     digitCount: Int = CODE_LENGTH,
     isLoading: Boolean = false,
     isResending: Boolean = false,
-    canResendNow: Boolean = false,
+    resendSecondsLeft: Int = 0,
     errorMessage: String? = null,
     onEdit: (() -> Unit)? = null,
     onResend: (() -> Unit)? = null,
 ) {
     var code by rememberSaveable { mutableStateOf("") }
     var hideError by rememberSaveable { mutableStateOf(false) }
-    var sendCount by rememberSaveable { mutableIntStateOf(0) }
     LaunchedEffect(errorMessage) { if (errorMessage != null) hideError = false }
     val activeError = errorMessage.takeUnless { hideError }
 
@@ -80,13 +78,9 @@ internal fun LoginCodeScreen(
         secondaryAction = onResend?.let { resend ->
             {
                 LoginResendButton(
-                    sendCount = sendCount,
+                    secondsLeft = resendSecondsLeft,
                     isBusy = isLoading || isResending,
-                    skipCooldown = canResendNow,
-                    onResend = {
-                        sendCount++
-                        resend()
-                    },
+                    onResend = resend,
                 )
             }
         },

@@ -3,20 +3,14 @@ package com.auth0.universalcomponents.feature.embedded.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthFailure
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthFailureException
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthOutcome
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedAuthRequestFailed
-import com.auth0.universalcomponents.feature.embedded.domain.model.FailureMessage
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginEvent
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginException
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginStep
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaChallenge
-import com.auth0.universalcomponents.feature.embedded.domain.repository.AuthInteracting
-import kotlinx.coroutines.CancellationException
+import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
+import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,198 +18,166 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
-/** Drives the email-code flow: [LoginEvent]s in, [LoginStep]s out. */
-@Suppress("TooGenericExceptionCaught")
-internal class LoginFlowViewModel(private val interactor: AuthInteracting) : ViewModel() {
+/**
+ * Drives the email-code flow: [LoginEvent]s in, [LoginStep]s out. Each event counts only on the screen it belongs to.
+ * The repository throws only [EmbeddedLoginException], so that is all this catches.
+ */
+internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepository) : ViewModel() {
 
     private val _step = MutableStateFlow<LoginStep>(LoginStep.Loading)
     val step: StateFlow<LoginStep> = _step.asStateFlow()
 
-    /** A recoverable failure, shown under the field on the current screen. */
-    private val _inputError = MutableStateFlow<AuthFailure?>(null)
-    val inputError: StateFlow<AuthFailure?> = _inputError.asStateFlow()
-
-    /** A new code is being sent; only the resend row is busy, the Verify button is not. */
-    private val _isResending = MutableStateFlow(false)
-    val isResending: StateFlow<Boolean> = _isResending.asStateFlow()
-
     private val _authenticated = Channel<Credentials>(Channel.BUFFERED)
     val authenticated: Flow<Credentials> = _authenticated.receiveAsFlow()
 
-    // Outputs of earlier calls that later calls need.
-    private var isEmailOtpOffered = false
-    private var email: String? = null
-    private var challenge: MfaChallenge? = null
-
-    /** Where Retry returns to; null runs discovery again. */
-    private var retryStep: LoginStep? = null
-
-    private var started = false
-
-    /** The last flow signed in or was left; the next Start begins a new one instead of showing its end. */
-    private var ended = false
-    private var isSubmitting = false
+    /** False before the first Start, and again once the flow signed in or was left; the next Start begins anew. */
+    private var isRunning = false
     private var inFlight: Job? = null
+    private var countdown: Job? = null
 
     fun send(event: LoginEvent) {
+        val current = _step.value
         when (event) {
-            LoginEvent.Start -> {
-                // A Start mid-flow (after a rotation, say) keeps the user's place.
-                if (started && !ended) return
-                if (ended) startOver()
-                started = true
+            // A Start mid-flow (after a rotation, say) keeps the user's place.
+            LoginEvent.Start -> if (!isRunning) {
+                isRunning = true
                 launchStep { discover() }
             }
 
-            is LoginEvent.SubmitIdentifier -> launchStep { sendCode(event.email) }
-
-            is LoginEvent.SubmitOtp -> {
-                val email = email ?: return
-                launchStep { verify(LoginStep.CollectOtpCode(email)) { interactor.verifyOtp(event.code) } }
+            is LoginEvent.SubmitIdentifier -> if (current is LoginStep.CollectOtpIdentifier) {
+                launchStep { sendCode(event.email, isResend = false) }
             }
 
-            is LoginEvent.SubmitMfa -> {
-                val challenge = challenge ?: return
-                launchStep {
-                    verify(LoginStep.StepUpMfa(challenge)) { interactor.verifyMfa(event.code, challenge.factor) }
-                }
+            is LoginEvent.SubmitOtp -> if (current is LoginStep.CollectOtpCode) {
+                launchStep { verify(current.identifier, event.code) }
             }
 
-            LoginEvent.Retry -> launchStep { retry() }
+            LoginEvent.Resend -> if (current is LoginStep.CollectOtpCode && !current.isCountingDown) {
+                launchStep { sendCode(current.identifier, isResend = true) }
+            }
+
+            LoginEvent.Retry -> if (current is LoginStep.Failed) launchStep { retry(current) }
         }
-    }
-
-    /** Sends a new code to the same email. */
-    fun resend() {
-        val email = email ?: return
-        launchStep { sendCode(email, isResend = true) }
     }
 
     /** Code entry goes back to email entry (true); anywhere else leaves the flow (false). */
     fun goBack(): Boolean {
+        val current = _step.value
         // Stay put until the request in flight answers, rather than dropping it halfway.
-        if (isSubmitting) return true
-        _inputError.value = null
-        val current = _step.value as? LoginStep.CollectOtpCode
-        if (current == null) {
-            ended = true
-            return false
+        if (current.isBusy) return true
+        if (current is LoginStep.CollectOtpCode) {
+            _step.value = LoginStep.CollectOtpIdentifier(current.identifier)
+            return true
         }
-        _step.value = LoginStep.CollectOtpIdentifier(current.identifier)
-        return true
-    }
-
-    /** Forgets the ended flow; [discover] opens a new session, which drops the old one in the SDK. */
-    private fun startOver() {
-        ended = false
-        isEmailOtpOffered = false
-        email = null
-        challenge = null
-        retryStep = null
-        _inputError.value = null
-        _step.value = LoginStep.Loading
+        isRunning = false
+        return false
     }
 
     private suspend fun discover() {
         _step.value = LoginStep.Loading
-        try {
-            isEmailOtpOffered = LoginOption.EmailOtp in interactor.discover()
-            _step.value = if (isEmailOtpOffered) LoginStep.CollectOtpIdentifier() else LoginStep.NoMethodsAvailable
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            fail(e, returnTo = null)
-        }
-    }
-
-    private suspend fun sendCode(email: String, isResend: Boolean = false) {
-        if (!isEmailOtpOffered) return
-        _inputError.value = null
-        if (isResend) _isResending.value = true else _step.value = LoginStep.Loading
-        submitting {
-            try {
-                interactor.startOtp(email)
-                this.email = email
-                _step.value = LoginStep.CollectOtpCode(email)
-            } catch (e: AuthFailureException) {
-                // A failed resend stays on code entry, where Edit and Resend are both at hand.
-                _inputError.value = e.failure
-                _step.value = if (isResend) LoginStep.CollectOtpCode(email) else LoginStep.CollectOtpIdentifier(email)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                fail(e, returnTo = LoginStep.CollectOtpIdentifier(email))
-            } finally {
-                _isResending.value = false
-            }
+        _step.value = try {
+            val options = repository.discover()
+            if (LoginOption.EmailOtp in options) LoginStep.CollectOtpIdentifier() else LoginStep.NoMethodsAvailable
+        } catch (e: EmbeddedLoginException) {
+            failed(e, retryTo = null)
         }
     }
 
     /**
-     * Shared by the email code and the step-up: a rejected code stays on [codeStep] with an inline error.
-     * After a failure for good, Retry returns to [codeStep] only if the session survived, else to email entry.
+     * Each code sent restarts the resend countdown. The repository never says whether a code went out,
+     * so a failure here is one for good: Try again returns to email entry with the email kept.
      */
-    private suspend fun verify(codeStep: LoginStep, call: suspend () -> AuthOutcome) {
-        _inputError.value = null
-        _step.value = LoginStep.Loading
-        submitting {
-            try {
-                when (val outcome = call()) {
-                    is AuthOutcome.Authenticated -> {
-                        _step.value = LoginStep.Authenticated
-                        ended = true
-                        _authenticated.send(outcome.credentials)
-                    }
+    private suspend fun sendCode(email: String, isResend: Boolean) {
+        _step.value = if (isResend) {
+            LoginStep.CollectOtpCode(email, isResending = true)
+        } else {
+            LoginStep.CollectOtpIdentifier(email, isSubmitting = true)
+        }
+        try {
+            repository.startEmailOtp(email)
+            _step.value = LoginStep.CollectOtpCode(email, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
+            startResendCountdown()
+        } catch (e: EmbeddedLoginException) {
+            _step.value = failed(e, retryTo = LoginStep.CollectOtpIdentifier(email))
+        }
+    }
 
-                    is AuthOutcome.MfaRequired -> {
-                        challenge = outcome.challenge
-                        _step.value = LoginStep.StepUpMfa(outcome.challenge)
-                    }
-                }
-            } catch (e: AuthFailureException) {
-                _inputError.value = e.failure
-                _step.value = codeStep
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                // A code can only be retried while the session lives; otherwise a new code is needed.
-                val canRetryStep = (e as? EmbeddedAuthRequestFailed)?.canRetryStep == true
-                fail(e, returnTo = if (canRetryStep) codeStep else LoginStep.CollectOtpIdentifier(email.orEmpty()))
+    /**
+     * A wrong or expired code stays on code entry with the error under the field.
+     * After a failure for good, Try again returns to code entry only if the session survived, else to email entry.
+     */
+    private suspend fun verify(email: String, code: String) {
+        updateCodeStep { copy(error = null, isSubmitting = true) }
+        try {
+            val credentials = repository.verifyOtp(code)
+            _step.value = LoginStep.Authenticated
+            isRunning = false
+            _authenticated.send(credentials)
+        } catch (e: EmbeddedLoginException) {
+            when (e.error) {
+                EmbeddedLoginError.InvalidCode -> updateCodeStep { copy(error = e.error, isSubmitting = false) }
+
+                // That code can't be used any more, so a new one can be asked for at once.
+                EmbeddedLoginError.CodeExpired ->
+                    updateCodeStep { copy(error = e.error, isSubmitting = false, resendSecondsLeft = 0) }
+
+                else -> _step.value = failed(
+                    e,
+                    retryTo = if (e.canRetryStep) LoginStep.CollectOtpCode(email) else LoginStep.CollectOtpIdentifier(email),
+                )
             }
         }
     }
 
-    /** Shows the full-screen error; only our own error types carry text, so SDK debug output never shows. */
-    private fun fail(error: Exception, returnTo: LoginStep?) {
-        retryStep = returnTo
-        val message = (error as? EmbeddedAuthRequestFailed)?.displayMessage
-            ?: FailureMessage.Local(R.string.embedded_login_error_generic)
-        _step.value = LoginStep.Failed(message)
-    }
-
-    private suspend fun retry() {
-        if (_step.value !is LoginStep.Failed) return
-        val target = retryStep
-        if (target != null) {
-            retryStep = null
-            _step.value = target
-        } else {
-            discover()
+    /** Counts the resend wait down a second at a time; it stops at zero, or once code entry is left. */
+    private fun startResendCountdown() {
+        countdown?.cancel()
+        countdown = viewModelScope.launch {
+            while (_step.value.isCountingDown) {
+                delay(ONE_SECOND_MILLIS)
+                updateCodeStep { copy(resendSecondsLeft = (resendSecondsLeft - 1).coerceAtLeast(0)) }
+            }
         }
     }
 
-    private suspend fun submitting(block: suspend () -> Unit) {
-        isSubmitting = true
-        try {
-            block()
-        } finally {
-            isSubmitting = false
-        }
+    /** Changes code entry in place, so its countdown carries on; does nothing once that step is left. */
+    private inline fun updateCodeStep(change: LoginStep.CollectOtpCode.() -> LoginStep.CollectOtpCode) {
+        val current = _step.value as? LoginStep.CollectOtpCode ?: return
+        _step.value = current.change()
+    }
+
+    /** The full-screen error. Logged once here, with its cause, so a failure in a live app can be traced. */
+    private fun failed(e: EmbeddedLoginException, retryTo: LoginStep?): LoginStep {
+        Logger.e(TAG, "Login step failed", e)
+        return LoginStep.Failed(e.error, retryTo)
+    }
+
+    private suspend fun retry(failed: LoginStep.Failed) {
+        val target = failed.retryTo
+        if (target != null) _step.value = target else discover()
     }
 
     /** Runs one step at a time; a second tap while one is in flight is dropped. */
     private fun launchStep(block: suspend () -> Unit) {
         if (inFlight?.isActive == true) return
         inFlight = viewModelScope.launch { block() }
+    }
+
+    private companion object {
+        const val TAG = "LoginFlowViewModel"
+        const val RESEND_COOLDOWN_SECONDS = 60
+        const val ONE_SECOND_MILLIS = 1_000L
+
+        /** Resend is still waiting out its cooldown. */
+        val LoginStep.isCountingDown: Boolean
+            get() = this is LoginStep.CollectOtpCode && resendSecondsLeft > 0
+
+        /** A request for this screen is in flight. */
+        val LoginStep.isBusy: Boolean
+            get() = when (this) {
+                is LoginStep.CollectOtpIdentifier -> isSubmitting
+                is LoginStep.CollectOtpCode -> isSubmitting || isResending
+                else -> false
+            }
     }
 }

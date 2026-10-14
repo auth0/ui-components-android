@@ -19,7 +19,7 @@ import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMetho
 import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
-import com.auth0.universalcomponents.feature.embedded.data.Auth0EmbeddedAuthInteractor
+import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
 
 object UniversalComponentsModule {
@@ -61,8 +61,8 @@ object UniversalComponentsModule {
 
     internal fun provideLoginFlowViewModelFactory(connection: String): LoginFlowViewModelFactory {
         return LoginFlowViewModelFactory(
-            interactor = {
-                Auth0EmbeddedAuthInteractor(
+            repository = {
+                EmbeddedLoginRepositoryImpl(
                     client = EmbeddedAuthClient(Auth0UniversalComponents.account),
                     connection = connection,
                 )

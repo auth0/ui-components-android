@@ -3,11 +3,7 @@ package com.auth0.universalcomponents.feature.embedded.presentation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.feature.embedded.domain.model.AuthFailure
-import com.auth0.universalcomponents.feature.embedded.domain.model.FailureMessage
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginEvent
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginStep
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginErrorScreen
@@ -17,11 +13,7 @@ import com.auth0.universalcomponents.feature.embedded.presentation.screens.Login
 
 /** What a screen needs from the host, without knowing about the ViewModel. */
 internal class RenderContext(
-    val isSubmitting: Boolean,
-    val isResending: Boolean,
-    val inputError: AuthFailure?,
     val dispatch: (LoginEvent) -> Unit,
-    val resend: () -> Unit,
     val back: () -> Unit,
 )
 
@@ -30,15 +22,19 @@ internal sealed interface ScreenPlan {
 
     data object Loading : ScreenPlan
 
-    data class Identifier(val email: String) : ScreenPlan
+    data class Identifier(val email: String, val isSubmitting: Boolean = false) : ScreenPlan
 
-    data class OtpCode(val identifier: String) : ScreenPlan
-
-    data class MfaCode(val factor: MfaFactor, val destination: String?) : ScreenPlan
+    data class OtpCode(
+        val identifier: String,
+        val error: EmbeddedLoginError? = null,
+        val isSubmitting: Boolean = false,
+        val isResending: Boolean = false,
+        val resendSecondsLeft: Int = 0,
+    ) : ScreenPlan
 
     data object Authenticated : ScreenPlan
 
-    data class Failed(val message: FailureMessage) : ScreenPlan
+    data class Failed(val error: EmbeddedLoginError) : ScreenPlan
 
     data object NoMethods : ScreenPlan
 }
@@ -49,7 +45,6 @@ internal val ScreenPlan.transitionIdentity: String
         ScreenPlan.Loading -> "loading"
         is ScreenPlan.Identifier -> "identifier"
         is ScreenPlan.OtpCode -> "otpCode"
-        is ScreenPlan.MfaCode -> "mfaCode.$factor"
         ScreenPlan.Authenticated -> "authenticated"
         is ScreenPlan.Failed -> "failed"
         ScreenPlan.NoMethods -> "noMethods"
@@ -60,57 +55,52 @@ internal val ScreenPlan.navigationDepth: Int
     get() = when (this) {
         ScreenPlan.Loading -> 0
         is ScreenPlan.Identifier, ScreenPlan.NoMethods -> 1
-        is ScreenPlan.OtpCode, is ScreenPlan.MfaCode -> 2
+        is ScreenPlan.OtpCode -> 2
         ScreenPlan.Authenticated, is ScreenPlan.Failed -> 3
     }
 
 internal fun plan(step: LoginStep): ScreenPlan = when (step) {
     LoginStep.Loading -> ScreenPlan.Loading
-    is LoginStep.CollectOtpIdentifier -> ScreenPlan.Identifier(step.email)
-    is LoginStep.CollectOtpCode -> ScreenPlan.OtpCode(step.identifier)
-    is LoginStep.StepUpMfa -> ScreenPlan.MfaCode(step.challenge.factor, step.challenge.destination)
+    is LoginStep.CollectOtpIdentifier -> ScreenPlan.Identifier(step.email, step.isSubmitting)
+    is LoginStep.CollectOtpCode -> ScreenPlan.OtpCode(
+        identifier = step.identifier,
+        error = step.error,
+        isSubmitting = step.isSubmitting,
+        isResending = step.isResending,
+        resendSecondsLeft = step.resendSecondsLeft,
+    )
     LoginStep.Authenticated -> ScreenPlan.Authenticated
-    is LoginStep.Failed -> ScreenPlan.Failed(step.message)
+    is LoginStep.Failed -> ScreenPlan.Failed(step.error)
     LoginStep.NoMethodsAvailable -> ScreenPlan.NoMethods
 }
 
 /** Builds the screen for [plan]; input goes back through [context]. */
 @Composable
 internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
-    val errorMessage = context.inputError?.let { stringResource(it.messageRes) }
     when (plan) {
         ScreenPlan.Loading -> LoginLoadingScreen()
 
         is ScreenPlan.Identifier -> LoginEmailScreen(
             email = plan.email,
-            isLoading = context.isSubmitting,
-            errorMessage = errorMessage,
+            isLoading = plan.isSubmitting,
             onContinue = { context.dispatch(LoginEvent.SubmitIdentifier(it)) },
         )
 
         is ScreenPlan.OtpCode -> LoginCodeScreen(
             subtitle = stringResource(R.string.embedded_login_code_from, plan.identifier),
-            isLoading = context.isSubmitting,
-            isResending = context.isResending,
-            // No usable code is on its way, so waiting out the cooldown would gain nothing.
-            canResendNow = context.inputError == AuthFailure.CODE_EXPIRED || context.inputError == AuthFailure.CODE_NOT_SENT,
-            errorMessage = errorMessage,
+            isLoading = plan.isSubmitting,
+            isResending = plan.isResending,
+            resendSecondsLeft = plan.resendSecondsLeft,
+            errorMessage = plan.error?.text(),
             onVerify = { context.dispatch(LoginEvent.SubmitOtp(it)) },
             onEdit = context.back,
-            onResend = context.resend,
-        )
-
-        is ScreenPlan.MfaCode -> LoginCodeScreen(
-            subtitle = plan.factor.codeSourceHint(plan.destination),
-            isLoading = context.isSubmitting,
-            errorMessage = errorMessage,
-            onVerify = { context.dispatch(LoginEvent.SubmitMfa(it)) },
+            onResend = { context.dispatch(LoginEvent.Resend) },
         )
 
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 
         is ScreenPlan.Failed -> LoginErrorScreen(
-            message = plan.message.text(),
+            message = plan.error.text(),
             onRetry = { context.dispatch(LoginEvent.Retry) },
         )
 
@@ -118,16 +108,17 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
     }
 }
 
-/** Subtitle for the step-up code screen. */
+/** Our words for each error; the server's own when it explained one we don't know. */
 @Composable
-private fun MfaFactor.codeSourceHint(destination: String?): String = when {
-    !destination.isNullOrEmpty() -> stringResource(R.string.embedded_login_code_from, destination)
-    this == MfaFactor.OTP -> stringResource(R.string.embedded_login_code_from_authenticator)
-    else -> stringResource(R.string.embedded_login_code_from_email)
-}
-
-@Composable
-private fun FailureMessage.text(): String = when (this) {
-    is FailureMessage.Server -> text
-    is FailureMessage.Local -> stringResource(textRes)
+private fun EmbeddedLoginError.text(): String = when (this) {
+    EmbeddedLoginError.ConnectionMissing -> stringResource(R.string.embedded_login_error_connection_missing)
+    EmbeddedLoginError.Network -> stringResource(R.string.embedded_login_error_network)
+    EmbeddedLoginError.InvalidCode -> stringResource(R.string.embedded_login_error_invalid_code)
+    EmbeddedLoginError.CodeExpired -> stringResource(R.string.embedded_login_error_code_expired)
+    EmbeddedLoginError.TooManyWrongCodes -> stringResource(R.string.embedded_login_error_too_many_wrong_codes)
+    EmbeddedLoginError.TooManyAttempts -> stringResource(R.string.embedded_login_error_too_many_attempts)
+    EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
+    EmbeddedLoginError.ExtraStepUnsupported -> stringResource(R.string.embedded_login_error_extra_step_unsupported)
+    is EmbeddedLoginError.Server -> text
+    EmbeddedLoginError.Unknown -> stringResource(R.string.embedded_login_error_generic)
 }

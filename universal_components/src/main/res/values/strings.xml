@@ -115,8 +115,6 @@
     <string name="embedded_login_continue">Continue</string>
     <string name="embedded_login_code_title">Enter the 6-digit code</string>
     <string name="embedded_login_code_from">From %1$s</string>
-    <string name="embedded_login_code_from_authenticator">From your authenticator app</string>
-    <string name="embedded_login_code_from_email">From the code sent to your email</string>
     <string name="embedded_login_code_edit">Edit</string>
     <string name="embedded_login_code_label">One-Time Passcode</string>
     <string name="embedded_login_verify">Verify</string>
@@ -133,9 +131,9 @@
     <string name="embedded_login_error_connection_missing">No connection is configured to start sign-in with.</string>
     <string name="embedded_login_error_invalid_email">Please enter a valid email address.</string>
     <string name="embedded_login_error_invalid_code">Invalid Code. Please double check the code sent to your email.</string>
-    <string name="embedded_login_error_code_not_sent">We couldn\'t send your code. Please confirm the email address is correct and try again.</string>
     <string name="embedded_login_error_code_expired">Your code expired. Tap Resend Code to get a new one.</string>
     <string name="embedded_login_error_too_many_attempts">Too many attempts. Please try again later.</string>
     <string name="embedded_login_error_too_many_wrong_codes">Too many incorrect codes. Please try again later.</string>
     <string name="embedded_login_error_too_many_logins">Too many login attempts. Please try again later.</string>
+    <string name="embedded_login_error_extra_step_unsupported">This account needs an extra verification step that isn\'t supported yet.</string>
 </resources>
