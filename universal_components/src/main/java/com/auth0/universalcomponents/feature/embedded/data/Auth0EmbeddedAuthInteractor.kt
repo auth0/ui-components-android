@@ -72,6 +72,7 @@ internal class Auth0EmbeddedAuthInteractor(
         }
     }
 
+    @Suppress("ThrowsCount")
     private suspend fun verify(code: String, type: OtpType): AuthOutcome {
         try {
             return AuthOutcome.Authenticated(client.verifyOtp(code, type).await())
@@ -80,7 +81,7 @@ internal class Auth0EmbeddedAuthInteractor(
             val error = e.error as? EmbeddedAuthError.InsufficientAuthorization ?: throw e.toUserFacing()
             lastNextActions = error.nextActions
             // Checked first, so a code step shown again isn't mistaken for a step-up.
-            if (error.reason == Reason.INVALID_CODE || error.reason == Reason.INVALID_IDENTIFIER_OR_CODE) { //MMG
+            if (error.reason == Reason.INVALID_CODE || error.reason == Reason.INVALID_IDENTIFIER_OR_CODE) {
                 throw AuthFailureException(AuthFailure.INVALID_CODE)
             }
             val challenge = error.nextActions.firstNotNullOfOrNull { it.toChallenge() } ?: throw e.toUserFacing()
@@ -110,7 +111,7 @@ internal class Auth0EmbeddedAuthInteractor(
         /** Never the SDK's own text, which is debug output; ours for known errors, else the server's words. */
         fun EmbeddedAuthException.toUserFacing(): EmbeddedAuthRequestFailed {
             // The SDK keeps the session only for these; any other error ends it.
-            val canRetryStep = error == EmbeddedAuthError.Network || statusCode in 500..599
+            val canRetryStep = error == EmbeddedAuthError.Network || statusCode in SERVER_ERROR_STATUS
             val local = when (error) {
                 EmbeddedAuthError.Network -> R.string.embedded_login_error_network
                 EmbeddedAuthError.ChallengeExpired -> R.string.embedded_login_error_code_expired
@@ -123,6 +124,9 @@ internal class Auth0EmbeddedAuthInteractor(
             val fromServer = code !in SDK_ERROR_CODES && description.isNotBlank()
             return EmbeddedAuthRequestFailed(if (fromServer) FailureMessage.Server(description) else null, canRetryStep)
         }
+
+        /** HTTP 5xx: the server failed, not the request. */
+        val SERVER_ERROR_STATUS = 500..599
 
         /** Codes the SDK makes up when the server sent no usable error. */
         val SDK_ERROR_CODES = setOf(

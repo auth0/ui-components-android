@@ -300,7 +300,10 @@ class Auth0EmbeddedAuthInteractorTest {
 
     /** A step that answers "not finished yet, do one of [next]", the way every step before the last does. */
     private fun <T> step(vararg next: NextAction, reason: Reason = Reason.NONE): Request<T, EmbeddedAuthException> =
-        failingWith(EmbeddedAuthError.InsufficientAuthorization(next.toList(), reason), code = "insufficient_authorization")
+        failingWith(
+            EmbeddedAuthError.InsufficientAuthorization(next.toList(), reason),
+            code = "insufficient_authorization",
+        )
 
     private fun <T> failingWith(
         error: EmbeddedAuthError,

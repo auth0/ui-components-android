@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 /** Drives the email-code flow: [LoginEvent]s in, [LoginStep]s out. */
+@Suppress("TooGenericExceptionCaught")
 internal class LoginFlowViewModel(private val interactor: AuthInteracting) : ViewModel() {
 
     private val _step = MutableStateFlow<LoginStep>(LoginStep.Loading)
