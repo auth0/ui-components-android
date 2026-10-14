@@ -26,7 +26,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 
 /** A quiet wait: a small spinner that fades in. */
 @Composable
-fun LoginLoadingScreen(modifier: Modifier = Modifier) {
+internal fun LoginLoadingScreen(modifier: Modifier = Modifier) {
     var showLoader by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         showLoader = true
@@ -40,7 +40,7 @@ fun LoginLoadingScreen(modifier: Modifier = Modifier) {
 
 /** The flow stopped; "Try again" picks up from the last screen. An empty [message] shows a generic one. */
 @Composable
-fun LoginErrorScreen(
+internal fun LoginErrorScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     message: String = "",
@@ -56,13 +56,13 @@ fun LoginErrorScreen(
 
 /** Shown briefly before the app moves on. */
 @Composable
-fun LoginSuccessScreen(modifier: Modifier = Modifier) {
+internal fun LoginSuccessScreen(modifier: Modifier = Modifier) {
     LoginStatusScreen(title = stringResource(R.string.embedded_login_success_title), modifier = modifier)
 }
 
 /** The server offered nothing this flow can drive. A null [onBack] hides "Go back". */
 @Composable
-fun LoginNoMethodsScreen(
+internal fun LoginNoMethodsScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
 ) {

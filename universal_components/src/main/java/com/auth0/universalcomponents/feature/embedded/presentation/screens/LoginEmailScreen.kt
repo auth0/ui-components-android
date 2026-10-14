@@ -24,7 +24,7 @@ private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
  * [errorMessage] comes from the server and hides once the user edits the field.
  */
 @Composable
-fun LoginEmailScreen(
+internal fun LoginEmailScreen(
     onContinue: (String) -> Unit,
     modifier: Modifier = Modifier,
     title: String = stringResource(R.string.embedded_login_email_title),

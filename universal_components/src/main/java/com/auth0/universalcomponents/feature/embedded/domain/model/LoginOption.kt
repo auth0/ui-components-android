@@ -5,7 +5,7 @@ import com.auth0.android.result.Credentials
 /** A sign-in method the server offered. */
 internal sealed interface LoginOption {
 
-    data class EmailOtp(val connection: String) : LoginOption
+    data object EmailOtp : LoginOption
 
     /** Anything this flow can't drive yet; the ViewModel skips it. */
     data class Unsupported(val name: String) : LoginOption

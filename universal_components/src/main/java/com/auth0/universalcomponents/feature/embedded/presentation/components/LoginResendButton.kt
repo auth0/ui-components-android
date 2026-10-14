@@ -21,13 +21,14 @@ import kotlinx.coroutines.delay
 
 private const val RESEND_COOLDOWN_SECONDS = 60
 
-/** "Resend Code" with a cooldown that restarts each time [sendCount] changes. */
+/** "Resend Code" with a cooldown that restarts each time [sendCount] changes; [skipCooldown] ends it early. */
 @Composable
 internal fun LoginResendButton(
     sendCount: Int,
     isBusy: Boolean,
     onResend: () -> Unit,
     modifier: Modifier = Modifier,
+    skipCooldown: Boolean = false,
     cooldownSeconds: Int = RESEND_COOLDOWN_SECONDS,
 ) {
     var secondsLeft by rememberSaveable(sendCount) { mutableIntStateOf(cooldownSeconds) }
@@ -37,8 +38,9 @@ internal fun LoginResendButton(
             secondsLeft--
         }
     }
-    val enabled = secondsLeft == 0 && !isBusy
-    val label = if (secondsLeft > 0) {
+    val isCoolingDown = secondsLeft > 0 && !skipCooldown
+    val enabled = !isCoolingDown && !isBusy
+    val label = if (isCoolingDown) {
         stringResource(R.string.embedded_login_resend_in, secondsLeft)
     } else {
         stringResource(R.string.embedded_login_resend)

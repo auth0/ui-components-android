@@ -8,6 +8,7 @@ internal enum class AuthFailure(@StringRes val messageRes: Int) {
     TOO_MANY_ATTEMPTS(R.string.embedded_login_error_too_many_attempts),
     INVALID_CODE(R.string.embedded_login_error_invalid_code),
     CODE_NOT_SENT(R.string.embedded_login_error_code_not_sent),
+    CODE_EXPIRED(R.string.embedded_login_error_code_expired),
 }
 
 internal class AuthFailureException(val failure: AuthFailure) : Exception()
@@ -20,5 +21,11 @@ internal sealed interface FailureMessage {
     data class Local(@StringRes val textRes: Int) : FailureMessage
 }
 
-/** A step failed for good; [displayMessage] is null when there's nothing better than the generic text. */
-internal class EmbeddedAuthRequestFailed(val displayMessage: FailureMessage?) : Exception()
+/**
+ * A step failed for good; [displayMessage] is null when there's nothing better than the generic text.
+ * [canRetryStep] is true when the server still holds the session, so the same step can be tried again.
+ */
+internal class EmbeddedAuthRequestFailed(
+    val displayMessage: FailureMessage?,
+    val canRetryStep: Boolean = false,
+) : Exception()

@@ -12,7 +12,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 
 /** Places the Figma step slots: description, content, helper text, then the actions at the bottom or right below. */
 @Composable
-fun LoginStepLayout(
+internal fun LoginStepLayout(
     pageDescription: @Composable () -> Unit,
     content: @Composable () -> Unit,
     primaryAction: @Composable () -> Unit,

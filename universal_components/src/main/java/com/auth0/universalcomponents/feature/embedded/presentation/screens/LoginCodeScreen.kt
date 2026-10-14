@@ -23,9 +23,10 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Lo
  * Code entry, shared by the emailed code and the MFA step-up. Verify turns on once every digit is in.
  * [errorMessage] hides once the user types again. A null [onEdit] or [onResend] hides that action.
  * [isResending] keeps Verify off without spinning it while a new code is on its way.
+ * [canResendNow] skips the resend cooldown, for when the current code can no longer be used.
  */
 @Composable
-fun LoginCodeScreen(
+internal fun LoginCodeScreen(
     onVerify: (String) -> Unit,
     modifier: Modifier = Modifier,
     title: String = stringResource(R.string.embedded_login_code_title),
@@ -34,6 +35,7 @@ fun LoginCodeScreen(
     digitCount: Int = CODE_LENGTH,
     isLoading: Boolean = false,
     isResending: Boolean = false,
+    canResendNow: Boolean = false,
     errorMessage: String? = null,
     onEdit: (() -> Unit)? = null,
     onResend: (() -> Unit)? = null,
@@ -80,6 +82,7 @@ fun LoginCodeScreen(
                 LoginResendButton(
                     sendCount = sendCount,
                     isBusy = isLoading || isResending,
+                    skipCooldown = canResendNow,
                     onResend = {
                         sendCount++
                         resend()

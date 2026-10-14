@@ -11,7 +11,7 @@ internal interface AuthInteracting {
     suspend fun discover(): List<LoginOption>
 
     /** Sends a code to [email]; a resend or an edited email opens a new session first. */
-    suspend fun startOtp(connection: String, email: String)
+    suspend fun startOtp(email: String)
 
     /** Verifies the emailed code. */
     suspend fun verifyOtp(code: String): AuthOutcome

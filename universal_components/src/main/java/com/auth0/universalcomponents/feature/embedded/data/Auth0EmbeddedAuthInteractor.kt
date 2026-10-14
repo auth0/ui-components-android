@@ -20,8 +20,6 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaChallenge
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.repository.AuthInteracting
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
 
 /**
  * The only class that talks to the SDK: authorize → identify → challengeEmail → verifyOtp.
@@ -43,10 +41,10 @@ internal class Auth0EmbeddedAuthInteractor(
         }
         runStep(client.authorize(connection))
         hasFreshLoop = true
-        return lastNextActions.map { it.toOption(connection) }
+        return lastNextActions.map { it.toOption() }
     }
 
-    override suspend fun startOtp(connection: String, email: String) {
+    override suspend fun startOtp(email: String) {
         if (!hasFreshLoop) runStep(client.authorize(connection))
         hasFreshLoop = false
         lastNextActions = emptyList()
@@ -67,7 +65,7 @@ internal class Auth0EmbeddedAuthInteractor(
     /** Runs one step and keeps the next actions it answers with. */
     private suspend fun runStep(request: Request<Void?, EmbeddedAuthException>) {
         try {
-            withContext(NonCancellable) { request.await() }
+            request.await()
         } catch (e: EmbeddedAuthException) {
             val error = e.error as? EmbeddedAuthError.InsufficientAuthorization ?: throw e.toUserFacing()
             lastNextActions = error.nextActions
@@ -76,12 +74,13 @@ internal class Auth0EmbeddedAuthInteractor(
 
     private suspend fun verify(code: String, type: OtpType): AuthOutcome {
         try {
-            return AuthOutcome.Authenticated(withContext(NonCancellable) { client.verifyOtp(code, type).await() })
+            return AuthOutcome.Authenticated(client.verifyOtp(code, type).await())
         } catch (e: EmbeddedAuthException) {
+            if (e.error == EmbeddedAuthError.ChallengeExpired) throw AuthFailureException(AuthFailure.CODE_EXPIRED)
             val error = e.error as? EmbeddedAuthError.InsufficientAuthorization ?: throw e.toUserFacing()
             lastNextActions = error.nextActions
             // Checked first, so a code step shown again isn't mistaken for a step-up.
-            if (error.reason == Reason.INVALID_CODE || error.reason == Reason.INVALID_IDENTIFIER_OR_CODE) {
+            if (error.reason == Reason.INVALID_CODE || error.reason == Reason.INVALID_IDENTIFIER_OR_CODE) { //MMG
                 throw AuthFailureException(AuthFailure.INVALID_CODE)
             }
             val challenge = error.nextActions.firstNotNullOfOrNull { it.toChallenge() } ?: throw e.toUserFacing()
@@ -92,9 +91,9 @@ internal class Auth0EmbeddedAuthInteractor(
     private companion object {
 
         /** Maps a server action to a sign-in method. */
-        fun NextAction.toOption(connection: String): LoginOption = when {
-            this is NextAction.IdentifyEmail -> LoginOption.EmailOtp(connection)
-            this is NextAction.VerifyOtp && channel == OtpChannel.EMAIL -> LoginOption.EmailOtp(connection)
+        fun NextAction.toOption(): LoginOption = when {
+            this is NextAction.IdentifyEmail -> LoginOption.EmailOtp
+            this is NextAction.VerifyOtp && channel == OtpChannel.EMAIL -> LoginOption.EmailOtp
             else -> LoginOption.Unsupported(capability.value)
         }
 
@@ -110,6 +109,8 @@ internal class Auth0EmbeddedAuthInteractor(
 
         /** Never the SDK's own text, which is debug output; ours for known errors, else the server's words. */
         fun EmbeddedAuthException.toUserFacing(): EmbeddedAuthRequestFailed {
+            // The SDK keeps the session only for these; any other error ends it.
+            val canRetryStep = error == EmbeddedAuthError.Network || statusCode in 500..599
             val local = when (error) {
                 EmbeddedAuthError.Network -> R.string.embedded_login_error_network
                 EmbeddedAuthError.ChallengeExpired -> R.string.embedded_login_error_code_expired
@@ -118,9 +119,9 @@ internal class Auth0EmbeddedAuthInteractor(
                 EmbeddedAuthError.TooManyLogins -> R.string.embedded_login_error_too_many_logins
                 else -> null
             }
-            if (local != null) return EmbeddedAuthRequestFailed(FailureMessage.Local(local))
+            if (local != null) return EmbeddedAuthRequestFailed(FailureMessage.Local(local), canRetryStep)
             val fromServer = code !in SDK_ERROR_CODES && description.isNotBlank()
-            return EmbeddedAuthRequestFailed(if (fromServer) FailureMessage.Server(description) else null)
+            return EmbeddedAuthRequestFailed(if (fromServer) FailureMessage.Server(description) else null, canRetryStep)
         }
 
         /** Codes the SDK makes up when the server sent no usable error. */

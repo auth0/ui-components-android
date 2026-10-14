@@ -92,6 +92,8 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
             subtitle = stringResource(R.string.embedded_login_code_from, plan.identifier),
             isLoading = context.isSubmitting,
             isResending = context.isResending,
+            // No usable code is on its way, so waiting out the cooldown would gain nothing.
+            canResendNow = context.inputError == AuthFailure.CODE_EXPIRED || context.inputError == AuthFailure.CODE_NOT_SENT,
             errorMessage = errorMessage,
             onVerify = { context.dispatch(LoginEvent.SubmitOtp(it)) },
             onEdit = context.back,
