@@ -1,7 +1,142 @@
-import { $ } from "execa"
+import { $, execaSync } from "execa"
 import ora from "ora"
 import fs from "node:fs"
 import path from "node:path"
+
+import { auth0ApiCall, isSessionValid, isTokenCorrupted } from "./auth0-api.mjs"
+import { confirmWithUser } from "./helpers.mjs"
+import { MY_ACCOUNT_API_SCOPES } from "./resource-servers.mjs"
+
+// Timeout for CLI commands (15 seconds)
+const CLI_TIMEOUT = 15000
+
+// All scopes needed for the Android bootstrap operations.
+//
+// Each entry carries a one-line `reason` (surfaced in `--help` usage details)
+// and an `important` flag. "Important" scopes are the write permissions that
+// gate a user-visible feature or the self-grant capability — the ones most
+// likely to be missing on an M2M app and to silently block setup. They are
+// highlighted in the pre-login summary so you know why they are requested.
+//
+// NOTE: Organization-only scopes (create:organization_*) and role scopes
+// (*:roles) are intentionally omitted — the Android sample app configures the
+// My Account feature only, and the admin role is always SKIP (System-API scopes
+// cannot be attached to a role). Connection/user-attribute *profile* scopes are
+// likewise omitted; those resources are not created by this bootstrap.
+//
+// This array is the single source of truth for the requested scopes: the
+// pre-login summary, the `--help` details, AND the copy-paste manual-login
+// command are all derived from it, so the README/manual instructions can never
+// drift out of sync with what the script actually requests.
+const BOOTSTRAP_SCOPE_METADATA = [
+  { scope: "read:client_grants", reason: "Read existing client grants" },
+  { scope: "create:client_grants", reason: "Grant the app access to the My Account API" },
+  {
+    scope: "update:client_grants",
+    reason:
+      "Lets the M2M app grant itself any future scopes — without it, scope changes need the Dashboard (chicken-and-egg).",
+    important: true,
+  },
+  { scope: "read:connections", reason: "Read database connections" },
+  { scope: "create:connections", reason: "Create the database connection" },
+  {
+    scope: "update:connections",
+    reason: "Enable the native app as a client of the connection (username/password login).",
+    important: true,
+  },
+  { scope: "read:connections_options", reason: "Read connection options (auth methods)" },
+  {
+    scope: "update:connections_options",
+    reason: "Enable passkeys on the connection so the Passkey option shows in Universal Login.",
+    important: true,
+  },
+  { scope: "read:clients", reason: "Read existing applications" },
+  {
+    scope: "create:clients",
+    reason: "Create the native Android application the sample app authenticates with.",
+    important: true,
+  },
+  {
+    scope: "update:clients",
+    reason: "Set the app's callback + logout URLs so login/logout redirects resolve.",
+    important: true,
+  },
+  { scope: "read:resource_servers", reason: "Read existing APIs" },
+  { scope: "create:resource_servers", reason: "Register the My Account API resource server" },
+  { scope: "update:resource_servers", reason: "Keep the My Account API scopes in sync" },
+  {
+    scope: "update:tenant_settings",
+    reason: "Enable MFA customization in the post-login action for the MFA components.",
+    important: true,
+  },
+  {
+    scope: "update:prompts",
+    reason: "Turn on identifier-first login, required for the Passkey prompt.",
+    important: true,
+  },
+  { scope: "read:guardian_factors", reason: "Read enabled MFA factors" },
+  {
+    scope: "update:guardian_factors",
+    reason: "Enable WebAuthn MFA factors so the MFA components have something to enroll.",
+    important: true,
+  },
+]
+
+// Flat scope-name list for `auth0 login --scopes` and any join operations.
+const BOOTSTRAP_SCOPES = BOOTSTRAP_SCOPE_METADATA.map((s) => s.scope)
+
+/**
+ * Print the full per-scope rationale. Used by `--help` so a user who wants to
+ * know why each permission is requested can expand the usage details. Important
+ * scopes are marked with a star.
+ */
+export function printScopeUsageDetails() {
+  console.log(
+    `\nManagement API scopes requested at login (${BOOTSTRAP_SCOPES.length} total, ★ = key permission):\n`
+  )
+  for (const { scope, reason, important } of BOOTSTRAP_SCOPE_METADATA) {
+    const marker = important ? "★" : " "
+    console.log(`  ${marker} ${scope.padEnd(30)} ${reason}`)
+  }
+  console.log(
+    "\nTo authenticate manually beforehand, run this exact command (kept in sync\nwith the list above):\n"
+  )
+  console.log(`  ${buildManualLoginCommand()}\n`)
+}
+
+/**
+ * Build the exact `auth0 login --scopes "..."` command a user can run to
+ * authenticate manually. Generated from BOOTSTRAP_SCOPES so it can never drift
+ * from the scopes the script actually requests.
+ * @returns {string}
+ */
+export function buildManualLoginCommand() {
+  return `auth0 login --scopes "${BOOTSTRAP_SCOPES.join(",")}"`
+}
+
+/**
+ * Print a summary of the scopes the bootstrap will request, shown right before
+ * an interactive login prompts for consent. Important scopes are flagged with a
+ * one-line reason so you know why elevated permissions are being requested; the
+ * full per-scope rationale is available via `npm run auth0:bootstrap --help`.
+ */
+function printScopeSummary() {
+  const important = BOOTSTRAP_SCOPE_METADATA.filter((s) => s.important)
+
+  console.log(
+    `\n📋 This login requests ${BOOTSTRAP_SCOPES.length} Management API scopes to configure your tenant.`
+  )
+  console.log(
+    `   ${important.length} are key permissions that gate a user-visible feature or self-service setup:\n`
+  )
+  for (const { scope, reason } of important) {
+    console.log(`   • ${scope}`)
+    console.log(`       ↳ ${reason}`)
+  }
+  console.log(
+    "\n   Run with --help to see the reason for every requested scope.\n"
+  )
+}
 
 /**
  * Check Node.js version
@@ -24,7 +159,7 @@ export async function checkAuth0CLI() {
   }).start()
 
   try {
-    await $`auth0 --version`
+    await $({ timeout: CLI_TIMEOUT })`auth0 --version`
     cliCheck.succeed()
   } catch {
     cliCheck.fail(
@@ -35,7 +170,444 @@ export async function checkAuth0CLI() {
 }
 
 /**
- * Validate tenant configuration
+ * Read machine-to-machine (client-credentials) login parameters from the
+ * environment. When all three are present the script can authenticate the CLI
+ * non-interactively — no browser, no device code — which makes the bootstrap
+ * fully standalone (works in CI / headless shells) and sidesteps any tenant
+ * post-login Actions that only run on interactive logins.
+ *
+ * @param {string} domain - The tenant domain being configured (fallback for AUTH0_DOMAIN)
+ * @returns {{ domain: string, clientId: string, clientSecret: string } | null}
+ */
+/**
+ * Whether M2M client-credentials are configured (env or .env). Used by the
+ * bootstrap to decide if it can safely auto-confirm in a non-interactive run.
+ * @param {string} domain - The tenant domain being configured
+ * @returns {boolean}
+ */
+export function hasMachineCredentials(domain = null) {
+  return readMachineCredentials(domain) !== null
+}
+
+function readMachineCredentials(domain = null) {
+  // Merge process env with an optional .env file in the scripts directory.
+  // Shell `export`s often do not survive into `npm run` child processes, so a
+  // local .env is the reliable channel for non-interactive credentials.
+  const fileEnv = readDotEnvFile()
+
+  const clientId = (process.env.AUTH0_CLIENT_ID || fileEnv.AUTH0_CLIENT_ID)?.trim()
+  const clientSecret = (
+    process.env.AUTH0_CLIENT_SECRET || fileEnv.AUTH0_CLIENT_SECRET
+  )?.trim()
+  const envDomain =
+    (process.env.AUTH0_DOMAIN || fileEnv.AUTH0_DOMAIN)?.trim() || domain
+
+  if (clientId && clientSecret && envDomain) {
+    return { domain: envDomain, clientId, clientSecret }
+  }
+
+  return null
+}
+
+/**
+ * Read a minimal KEY=VALUE .env file from the scripts directory, if present.
+ * Only used to source M2M credentials; values already in process.env win.
+ * Supports optional surrounding quotes and ignores comments/blank lines.
+ * @returns {Record<string,string>}
+ */
+function readDotEnvFile() {
+  try {
+    const envPath = path.resolve(process.cwd(), ".env")
+    if (!fs.existsSync(envPath)) return {}
+
+    const out = {}
+    for (const rawLine of fs.readFileSync(envPath, "utf-8").split("\n")) {
+      const line = rawLine.trim()
+      if (!line || line.startsWith("#")) continue
+      const eq = line.indexOf("=")
+      if (eq === -1) continue
+      const key = line.slice(0, eq).trim()
+      let value = line.slice(eq + 1).trim()
+      // Strip a single pair of surrounding quotes.
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1)
+      }
+      out[key] = value
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Authenticate the Auth0 CLI using client credentials (machine-to-machine).
+ * This is non-interactive: it runs `auth0 login --no-input --domain ...
+ * --client-id ... --client-secret ...`. Requires an M2M application on the
+ * tenant that is authorized for the Auth0 Management API with the bootstrap
+ * scopes.
+ *
+ * @param {{ domain: string, clientId: string, clientSecret: string }} creds
+ * @returns {Promise<boolean>} True if login was successful
+ */
+async function runAuth0MachineLogin(creds) {
+  const spinner = ora({
+    text: `Authenticating with client credentials (${creds.domain})`,
+  }).start()
+
+  try {
+    const args = [
+      "login",
+      "--no-input",
+      "--domain",
+      creds.domain,
+      "--client-id",
+      creds.clientId,
+      "--client-secret",
+      creds.clientSecret,
+    ]
+
+    // Machine login is a quick token exchange; give it a generous timeout but
+    // it should return in a second or two. stdio is captured (not inherited)
+    // so the client secret is never echoed to the terminal.
+    await execaSync("auth0", args, { timeout: 30000 })
+    spinner.succeed(`Authenticated with client credentials (${creds.domain})`)
+    return true
+  } catch (e) {
+    spinner.fail("Client-credentials login failed")
+    if (e.timedOut) {
+      console.error("\n❌ Machine login timed out. Please try again.")
+    } else {
+      // The CLI prints the useful detail (bad client-id/secret/domain) on
+      // stderr; surface it without leaking the secret we passed in.
+      const detail = (e.stderr || e.shortMessage || e.message || "")
+        .split("\n")
+        .filter((l) => !l.includes(creds.clientSecret))
+        .join("\n")
+        .trim()
+      console.error(`\n❌ Login failed: ${detail}`)
+      console.error(
+        "   Verify AUTH0_CLIENT_ID / AUTH0_CLIENT_SECRET / AUTH0_DOMAIN belong"
+      )
+      console.error(
+        "   to an M2M app authorized for the Management API on this tenant.\n"
+      )
+    }
+    return false
+  }
+}
+
+/**
+ * Ensure the M2M app's Management API client grant holds every bootstrap scope,
+ * self-granting the missing ones when possible.
+ *
+ * The chicken-and-egg: an M2M app can only add scopes to a client grant (its
+ * own included) if its token already carries `update:client_grants`. Once that
+ * one scope is granted in the Dashboard, the app can grant itself all the
+ * others — so this closes the gap automatically on every subsequent run and no
+ * further Dashboard visits are needed.
+ *
+ * Because the CLI's cached access token predates the PATCH, the caller must
+ * re-authenticate afterwards for the new scopes to take effect — this function
+ * only performs the grant and reports whether one happened.
+ *
+ * @param {{ domain: string, clientId: string }} creds - M2M credentials
+ * @returns {Promise<boolean>} True if scopes were added (a re-login is needed)
+ */
+async function ensureManagementScopes(creds) {
+  const audience = `https://${creds.domain}/api/v2/`
+
+  // Find this app's Management API client grant.
+  let grants
+  try {
+    grants = await auth0ApiCall(
+      "get",
+      `client-grants?client_id=${encodeURIComponent(creds.clientId)}`
+    )
+  } catch {
+    // Reading grants itself needs read:client_grants; if we can't, stay silent
+    // and let the individual apply steps report their own missing scopes.
+    return false
+  }
+
+  const list = Array.isArray(grants) ? grants : grants?.client_grants || []
+  const grant = list
+    .filter((g) => g.audience === audience)
+    .sort((a, b) => (b.scope?.length || 0) - (a.scope?.length || 0))[0]
+
+  if (!grant) return false
+
+  const current = new Set(grant.scope || [])
+  const missing = BOOTSTRAP_SCOPES.filter((s) => !current.has(s))
+  if (missing.length === 0) return false
+
+  // We can only patch the grant if the token can write client grants.
+  if (!current.has("update:client_grants")) {
+    const spinner = ora({
+      text: "Checking M2M Management API scopes",
+    }).start()
+    spinner.warn(
+      `M2M app is missing ${missing.length} scope(s), including the self-grant ` +
+        `permission (update:client_grants) needed to add them automatically.`
+    )
+    console.log(
+      "\n   Grant update:client_grants once in the Dashboard and the script will\n" +
+        "   self-grant the rest on the next run. Missing scopes:\n"
+    )
+    for (const s of missing) console.log(`     • ${s}`)
+    console.log("")
+    return false
+  }
+
+  const spinner = ora({
+    text: `Self-granting ${missing.length} missing Management API scope(s)`,
+  }).start()
+
+  try {
+    const updatedScopes = [...(grant.scope || []), ...missing]
+    await auth0ApiCall("patch", `client-grants/${grant.id}`, {
+      scope: updatedScopes,
+    })
+
+    // Verify the grant actually holds the new scopes before claiming success.
+    const verify = await auth0ApiCall("get", `client-grants/${grant.id}`)
+    const now = new Set(verify?.scope || [])
+    const stillMissing = missing.filter((s) => !now.has(s))
+
+    if (stillMissing.length > 0) {
+      spinner.warn(
+        `Could not self-grant: ${stillMissing.join(", ")} — grant them manually.`
+      )
+      return false
+    }
+
+    spinner.succeed(
+      `Self-granted ${missing.length} scope(s): ${missing.join(", ")}`
+    )
+    return true
+  } catch (e) {
+    spinner.warn(`Could not self-grant missing scopes: ${e.message}`)
+    return false
+  }
+}
+
+/**
+ * Run Auth0 CLI login interactively with the required scopes
+ * @param {string} domain - Optional tenant domain to login to
+ * @returns {Promise<boolean>} True if login was successful
+ */
+async function runAuth0Login(domain = null) {
+  // Explain what is being requested before the browser consent screen appears.
+  printScopeSummary()
+
+  console.log("🔐 Starting Auth0 CLI login...\n")
+  console.log("   A browser window will open for authentication.")
+  console.log("   Please complete the login process.\n")
+
+  try {
+    // Build login args with required scopes
+    const scopesArg = BOOTSTRAP_SCOPES.join(",")
+    const args = ["login", "--scopes", scopesArg]
+
+    // Add domain if specified
+    if (domain) {
+      args.push("--domain", domain)
+    }
+
+    // Run login in interactive mode (no --no-input flag).
+    // Use stdio: 'inherit' to allow interactive browser-based login.
+    execaSync("auth0", args, {
+      stdio: "inherit",
+      timeout: 120000, // 2 minute timeout for login process
+    })
+    return true
+  } catch (e) {
+    if (e.timedOut) {
+      console.error("\n❌ Login timed out. Please try again.")
+    } else {
+      console.error(`\n❌ Login failed: ${e.message}`)
+    }
+    return false
+  }
+}
+
+/**
+ * Clear a corrupted CLI token by running `auth0 logout`. A malformed token can
+ * only be fixed by logging out first; a subsequent login then succeeds.
+ * @param {string} domain - Tenant to log out of (falls back to a plain logout)
+ * @returns {Promise<void>}
+ */
+async function clearCorruptedToken(domain = null) {
+  const spinner = ora({
+    text: `Clearing corrupted Auth0 CLI token`,
+  }).start()
+  try {
+    const args = domain ? ["logout", domain] : ["logout"]
+    execaSync("auth0", args, { timeout: CLI_TIMEOUT })
+    spinner.succeed("Cleared corrupted token — a fresh login is required")
+  } catch {
+    // A logout failure is non-fatal; the subsequent login attempt may still fix it.
+    spinner.warn("Could not run 'auth0 logout' automatically — continuing")
+  }
+}
+
+/**
+ * Validate the Auth0 CLI session and, if it is expired, restore it.
+ *
+ * Login strategy (in priority order):
+ *   1. If a valid session already exists, do nothing.
+ *   2. If the stored token is corrupted, clear it with `auth0 logout` first.
+ *   3. If M2M credentials are present (env or scripts/.env), authenticate
+ *      non-interactively via client credentials. This keeps the bootstrap
+ *      standalone (headless / CI) and avoids interactive-only post-login
+ *      Actions on the tenant.
+ *   4. Otherwise fall back to an interactive browser login (device code).
+ *
+ * @param {string} domain - Optional tenant domain (fallback for AUTH0_DOMAIN)
+ * @returns {Promise<void>}
+ */
+export async function validateAuth0Session(domain = null) {
+  const spinner = ora({
+    text: `Validating Auth0 CLI session`,
+  }).start()
+
+  // When M2M credentials are available for the requested domain, authenticate
+  // that specific tenant non-interactively regardless of whatever session may
+  // currently be active. A valid session for a *different* tenant must not let
+  // the run proceed against the wrong tenant, and re-authenticating is cheap.
+  const machineCreds = readMachineCredentials(domain)
+  if (machineCreds) {
+    spinner.info("Using M2M client-credentials login for the requested tenant")
+
+    // A corrupted token blocks even a fresh login until it is cleared.
+    if (await isTokenCorrupted()) {
+      console.log(
+        "\n⚠️  The stored Auth0 CLI token is corrupted; clearing it before re-login.\n"
+      )
+      await clearCorruptedToken(machineCreds.domain)
+    }
+
+    console.log(
+      "\n🔐 Authenticating with M2M client credentials (no browser required).\n"
+    )
+    const loginSuccess = await runAuth0MachineLogin(machineCreds)
+
+    if (loginSuccess) {
+      // A fresh login (or a prior logout) can leave a different tenant active.
+      // Make the requested tenant active so discovery targets the right one.
+      await switchToTenant(machineCreds.domain)
+
+      const postLoginValid = await isSessionValid()
+      if (postLoginValid) {
+        // If the app can self-grant, top up any missing bootstrap scopes now.
+        // The freshly issued token predates the grant change, so re-authenticate
+        // (and re-select the tenant) for the new scopes to take effect.
+        const grantedMore = await ensureManagementScopes(machineCreds)
+        if (grantedMore) {
+          console.log(
+            "\n🔄 Re-authenticating so the newly granted scopes take effect.\n"
+          )
+          if (await runAuth0MachineLogin(machineCreds)) {
+            await switchToTenant(machineCreds.domain)
+          }
+        }
+        console.log("\n✅ Successfully authenticated the Auth0 CLI\n")
+        return
+      }
+      console.error("\n❌ Session validation failed after machine login.")
+      console.error(
+        "   The M2M app may lack the required Management API scopes.\n"
+      )
+      process.exit(1)
+    }
+
+    // Machine login was attempted but failed — do not silently fall back to an
+    // interactive prompt in what is meant to be a non-interactive environment.
+    console.error(
+      "\n❌ Client-credentials login failed. Fix the credentials/scopes and retry,"
+    )
+    console.error(
+      "   or unset AUTH0_CLIENT_ID/SECRET to use interactive browser login.\n"
+    )
+    process.exit(1)
+  }
+
+  // No M2M credentials available — fall back to the interactive path. If a
+  // session is already valid, nothing to do (tenant matching is verified later
+  // in validateTenant).
+  const sessionValid = await isSessionValid()
+  if (sessionValid) {
+    spinner.succeed("Auth0 CLI session is valid")
+    return
+  }
+
+  spinner.warn("Auth0 CLI session appears to be expired or invalid")
+
+  // A corrupted token cannot be refreshed — clear it before an interactive login.
+  if (await isTokenCorrupted()) {
+    console.log(
+      "\n⚠️  The stored Auth0 CLI token is corrupted; clearing it before re-login.\n"
+    )
+    await clearCorruptedToken(domain)
+  }
+
+  const shouldLogin = await confirmWithUser(
+    "Would you like to login to Auth0 CLI now?"
+  )
+
+  if (!shouldLogin) {
+    console.error("\n❌ Cannot proceed without a valid Auth0 CLI session.")
+    console.error("   Please run 'auth0 login' manually and try again.\n")
+    process.exit(1)
+  }
+
+  const loginSuccess = await runAuth0Login(domain)
+
+  if (!loginSuccess) {
+    console.error("\n❌ Login was not successful. Please try again.\n")
+    process.exit(1)
+  }
+
+  // Verify the session is now valid
+  const postLoginValid = await isSessionValid()
+  if (!postLoginValid) {
+    console.error("\n❌ Session validation failed after login.")
+    console.error(
+      "   Please check your Auth0 CLI configuration and try again.\n"
+    )
+    process.exit(1)
+  }
+
+  console.log("\n✅ Successfully logged in to Auth0 CLI\n")
+}
+
+/**
+ * Switch to a different tenant using `auth0 tenants use`
+ * @param {string} tenantName - Tenant domain to switch to
+ * @returns {Promise<boolean>} True if the switch was successful
+ */
+async function switchToTenant(tenantName) {
+  const spinner = ora({
+    text: `Switching to tenant: ${tenantName}`,
+  }).start()
+
+  try {
+    await $({ timeout: CLI_TIMEOUT })`auth0 tenants use ${tenantName} --no-input`
+    spinner.succeed(`Switched to tenant: ${tenantName}`)
+    return true
+  } catch {
+    spinner.fail(`Failed to switch to tenant: ${tenantName}`)
+    return false
+  }
+}
+
+/**
+ * Validate tenant configuration. If the requested tenant does not match the
+ * active CLI tenant, the script offers to switch to it (or login to it) and
+ * then retries — instead of hard-failing.
  * @param {string} tenantName - Required tenant name from command line argument
  */
 export async function validateTenant(tenantName) {
@@ -55,33 +627,92 @@ export async function validateTenant(tenantName) {
   }).start()
 
   try {
-    const tenantSettingsArgs = ["tenants", "list", "--csv"]
-    const { stdout } = await $`auth0 ${tenantSettingsArgs}`
+    // Get current tenant from CLI
+    // NOTE: we output CSV here due to a bug in the Auth0 CLI that doesn't
+    // respect the --json flag: https://github.com/auth0/auth0-cli/pull/1002
+    const tenantSettingsArgs = ["tenants", "list", "--csv", "--no-input"]
+    const { stdout } = await $({ timeout: CLI_TIMEOUT })`auth0 ${tenantSettingsArgs}`
 
-    const cliDomain = stdout
+    // Parse all available tenants and find the active one
+    const tenantLines = stdout
       .split("\n")
       .slice(1)
+      .filter((line) => line.trim())
+    const availableTenants = tenantLines
+      .map((line) => line.split(",")[1]?.trim())
+      .filter(Boolean)
+
+    // Get the active tenant (marked with →)
+    const cliDomain = tenantLines
       .find((line) => line.includes("→"))
       ?.split(",")[1]
       ?.trim()
 
     if (!cliDomain) {
       spinner.fail("No active tenant found in Auth0 CLI")
-      console.error("\n❌ Please login to Auth0 CLI first:")
-      console.error("  1. Run: auth0 login")
-      console.error(
-        "  2. If you have multiple tenants, run: auth0 tenants use <tenant-domain>"
+      console.error("\n❌ No active tenant configured.")
+
+      const shouldLogin = await confirmWithUser(
+        `Would you like to login to ${tenantName}?`
       )
+
+      if (shouldLogin) {
+        const loginSuccess = await runAuth0Login(tenantName)
+        if (loginSuccess) {
+          // Retry tenant validation after login
+          return validateTenant(tenantName)
+        }
+      }
+
+      console.error("\n❌ Cannot proceed without an active tenant.")
+      console.error("   Please run 'auth0 login' and try again.\n")
       process.exit(1)
     }
 
+    // Verify the provided tenant name matches the CLI active tenant
     if (tenantName !== cliDomain) {
       spinner.fail("Tenant mismatch detected")
       console.error(`\n❌ Tenant mismatch:`)
-      console.error(`  Requested tenant: ${tenantName}`)
-      console.error(`  CLI is using:     ${cliDomain}`)
-      console.error("\nPlease ensure you're using the correct tenant:")
-      console.error(`  Run: auth0 tenants use ${tenantName}`)
+      console.error(`   Requested tenant: ${tenantName}`)
+      console.error(`   CLI is using:     ${cliDomain}`)
+
+      // Check if the requested tenant is in the list of available tenants
+      const tenantAvailable = availableTenants.includes(tenantName)
+
+      if (tenantAvailable) {
+        // Tenant exists, offer to switch
+        console.error(`\n   The tenant "${tenantName}" is available in your CLI.`)
+        const shouldSwitch = await confirmWithUser(
+          `Would you like to switch to ${tenantName}?`
+        )
+
+        if (shouldSwitch) {
+          const switchSuccess = await switchToTenant(tenantName)
+          if (switchSuccess) {
+            // Retry tenant validation after switching
+            return validateTenant(tenantName)
+          }
+        }
+      } else {
+        // Tenant not in list, offer to login
+        console.error(
+          `\n   The tenant "${tenantName}" is not in your CLI's tenant list.`
+        )
+        console.error(`   You may need to login to this tenant.`)
+        const shouldLogin = await confirmWithUser(
+          `Would you like to login to ${tenantName}?`
+        )
+
+        if (shouldLogin) {
+          const loginSuccess = await runAuth0Login(tenantName)
+          if (loginSuccess) {
+            // Retry tenant validation after login
+            return validateTenant(tenantName)
+          }
+        }
+      }
+
+      console.error("\n❌ Cannot proceed with mismatched tenant.")
       console.error(
         "\nThis is a safety measure to prevent accidentally configuring the wrong tenant."
       )
@@ -91,6 +722,29 @@ export async function validateTenant(tenantName) {
     spinner.succeed(`Validated tenant: ${cliDomain}`)
     return cliDomain
   } catch (e) {
+    // Handle timeout errors specifically
+    if (e.timedOut) {
+      spinner.fail("Auth0 CLI command timed out")
+      console.error("\n❌ The Auth0 CLI is not responding.")
+      console.error("   This usually means your session has expired.\n")
+
+      const shouldLogin = await confirmWithUser(
+        `Would you like to login to ${tenantName}?`
+      )
+
+      if (shouldLogin) {
+        const loginSuccess = await runAuth0Login(tenantName)
+        if (loginSuccess) {
+          // Retry tenant validation after login
+          return validateTenant(tenantName)
+        }
+      }
+
+      console.error("\n❌ Cannot proceed without a valid session.")
+      console.error("   Please run 'auth0 login' and try again.\n")
+      process.exit(1)
+    }
+
     spinner.fail("Failed to validate tenant")
     console.error(e)
     process.exit(1)
@@ -98,7 +752,62 @@ export async function validateTenant(tenantName) {
 }
 
 /**
- * Validate Android project structure and extract configuration
+ * Warn (softly) if the tenant's My Account API is missing MFA scopes required
+ * by the sample app. This is informational only — the bootstrap can still
+ * create/enable the My Account API, and the missing scopes typically require
+ * Auth0 support to enable on the tenant.
+ * @param {object} resources - Discovered resources from the tenant
+ * @param {string} domain - The tenant domain
+ */
+export function validateMyAccountScopes(resources, domain) {
+  const spinner = ora({
+    text: `Validating My Account API scopes`,
+  }).start()
+
+  const myAccountApi = resources.resourceServers.find(
+    (rs) => rs.identifier === `https://${domain}/me/`
+  )
+
+  // If the API doesn't exist yet, the bootstrap will create it — nothing to warn about.
+  if (!myAccountApi) {
+    spinner.info(
+      "My Account API not found — it will be created during bootstrap"
+    )
+    return
+  }
+
+  const availableScopes = myAccountApi.scopes?.map((s) => s.value) || []
+  const missingScopes = MY_ACCOUNT_API_SCOPES.filter(
+    (scope) => !availableScopes.includes(scope)
+  )
+
+  if (missingScopes.length > 0) {
+    spinner.warn("Some My Account API scopes are not available on this tenant")
+    console.log("")
+    console.log("⚠️  My Account API")
+    console.log(`   Missing scope(s):`)
+    missingScopes.forEach((scope) => console.log(`     - ${scope}`))
+    console.log(
+      "   Suggestion: Contact Auth0 support to enable these scopes on your tenant."
+    )
+    console.log(
+      "   The bootstrap will continue with the scopes that are available.\n"
+    )
+    return
+  }
+
+  spinner.succeed("My Account API scopes are available")
+}
+
+/**
+ * Validate Android project structure and extract configuration.
+ *
+ * The generated Auth0 config (domain, client id, callback scheme) is written
+ * into the runnable sample app module's strings.xml, which is where the
+ * Auth0.Android SDK reads `com_auth0_domain` / `com_auth0_client_id` at launch
+ * and where the `auth0Domain` / `auth0Scheme` manifest placeholders resolve
+ * from (driving RedirectActivity).
+ *
  * @returns {{ packageName: string, stringsXmlPath: string }}
  */
 export function validateAndroidProject() {
@@ -107,7 +816,6 @@ export function validateAndroidProject() {
   }).start()
 
   const projectRoot = path.resolve(process.cwd(), "..", "..")
-  const buildGradlePath = path.join(projectRoot, "app", "build.gradle")
   const stringsXmlPath = path.join(
     projectRoot,
     "app",
@@ -118,14 +826,23 @@ export function validateAndroidProject() {
     "strings.xml"
   )
 
-  // Check build.gradle exists
-  if (!fs.existsSync(buildGradlePath)) {
-    spinner.fail("Could not find app/build.gradle")
+  // The sample app is on the Groovy DSL, but a fork may have converted the module
+  // to the Kotlin DSL. Probe both file names so the bootstrap does not fail over a
+  // build-script dialect it can otherwise read.
+  const buildGradlePath = ["build.gradle", "build.gradle.kts"]
+    .map((fileName) => path.join(projectRoot, "app", fileName))
+    .find((candidate) => fs.existsSync(candidate))
+
+  // Check the module's build script exists
+  if (!buildGradlePath) {
+    spinner.fail("Could not find app/build.gradle or app/build.gradle.kts")
     console.error(
       "\n❌ This script must be run from the app/scripts/ directory inside the Android project."
     )
     process.exit(1)
   }
+
+  const buildFileName = path.basename(buildGradlePath)
 
   // Check strings.xml exists
   if (!fs.existsSync(stringsXmlPath)) {
@@ -133,21 +850,67 @@ export function validateAndroidProject() {
     process.exit(1)
   }
 
-  // Extract applicationId from build.gradle
+  // Extract applicationId (falls back to namespace) from the module's build
+  // script. This is the package name Auth0.Android embeds in its redirect URL.
   const buildGradleContent = fs.readFileSync(buildGradlePath, "utf-8")
-  const appIdMatch = buildGradleContent.match(
-    /applicationId\s*[=:]\s*["']([^"']+)["']/
-  )
+
+  // Drop `//` line comments (same in both DSLs) before matching, so a
+  // commented-out applicationId left over from an earlier edit is not picked up
+  // ahead of the real one.
+  const buildScript = buildGradleContent
+    .split("\n")
+    .filter((line) => !line.trim().startsWith("//"))
+    .join("\n")
+
+  // Accept both DSL spellings: `applicationId = "x"` (Kotlin DSL, and the
+  // assignment form of the Groovy DSL) and `applicationId "x"` (the Groovy
+  // space-call form) — hence the optional separator.
+  const appIdMatch =
+    buildScript.match(/applicationId\s*[=:]?\s*["']([^"']+)["']/) ||
+    buildScript.match(/namespace\s*[=:]?\s*["']([^"']+)["']/)
 
   if (!appIdMatch) {
-    spinner.fail("Could not extract applicationId from app/build.gradle")
+    spinner.fail(
+      `Could not extract applicationId/namespace from app/${buildFileName}`
+    )
     process.exit(1)
   }
 
   const packageName = appIdMatch[1]
   spinner.succeed(
-    `Validated Android project (package: ${packageName})`
+    `Validated Android project (package: ${packageName}, app/${buildFileName})`
   )
+
+  // The OAuth redirect only reaches the app if RedirectActivity is merged in with
+  // the auth0Domain / auth0Scheme manifest placeholders. Their syntax differs per
+  // DSL — Groovy `manifestPlaceholders = [auth0Domain: ...]` versus Kotlin
+  // `manifestPlaceholders["auth0Domain"] = ...` — so look for the placeholder
+  // names rather than the surrounding form. This warns instead of failing: the
+  // placeholders may legitimately live in a convention plugin or another build
+  // script, and strings.xml is still worth writing either way.
+  const missingPlaceholders = ["auth0Domain", "auth0Scheme"].filter(
+    (placeholder) => !buildScript.includes(placeholder)
+  )
+
+  if (missingPlaceholders.length > 0) {
+    console.log(
+      `\n⚠️  No ${missingPlaceholders.join(" / ")} manifest placeholder found in app/${buildFileName}.`
+    )
+    console.log(
+      "   Without both placeholders the login redirect cannot reach the app, even"
+    )
+    console.log(
+      "   though the rest of the bootstrap (and the Gradle build) will succeed."
+    )
+    console.log(`   Add them to android.defaultConfig — ${
+      buildFileName.endsWith(".kts")
+        ? 'manifestPlaceholders["auth0Domain"] = "@string/com_auth0_domain"'
+        : 'manifestPlaceholders = [auth0Domain: "@string/com_auth0_domain", ...]'
+    }`)
+    console.log(
+      "   — or ignore this if they are set in a convention plugin.\n"
+    )
+  }
 
   return { packageName, stringsXmlPath }
 }
