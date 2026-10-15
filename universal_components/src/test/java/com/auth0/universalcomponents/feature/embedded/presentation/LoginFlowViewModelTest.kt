@@ -54,7 +54,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `initialization - step starts as Loading`() = runTest {
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.Loading)
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Loading)
     }
 
     @Test
@@ -62,7 +62,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier())
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier())
     }
 
     @Test
@@ -72,7 +72,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.NoMethodsAvailable)
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.NoMethodsAvailable)
     }
 
     @Test
@@ -92,12 +92,12 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.Failed(EmbeddedLoginError.Network))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Failed(EmbeddedLoginError.Network))
     }
 
     @Test
     fun `retry - after discovery failed - discovers again`() = runTest {
-        coEvery { repository.discover() } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
+        coEvery { repository.discover() } throws EmbeddedLoginException(EmbeddedLoginError.Unknown("debug output"))
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
@@ -105,7 +105,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Retry)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier())
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier())
         coVerify(exactly = 2) { repository.discover() }
     }
 
@@ -122,7 +122,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL, isSubmitting = true))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL, isSubmitting = true))
         sent.complete(Unit)
         advanceUntilIdle()
     }
@@ -134,7 +134,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         runCurrent()
 
-        assertThat(viewModel.step.value)
+        assertThat(viewModel.loginStep.value)
             .isEqualTo(LoginStep.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS))
         coVerify(exactly = 1) { repository.startEmailOtp(EMAIL) }
     }
@@ -142,15 +142,15 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit email - fails for good - retry returns to email with the typed email`() = runTest {
         startAtEmail()
-        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
+        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown("debug output"))
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         advanceUntilIdle()
-        assertThat(viewModel.step.value).isInstanceOf(LoginStep.Failed::class.java)
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Failed::class.java)
 
         viewModel.send(LoginEvent.Retry)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     @Test
@@ -178,7 +178,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.Authenticated)
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Authenticated)
         assertThat(received).containsExactly(credentials)
         job.cancel()
     }
@@ -193,7 +193,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(
+        assertThat(viewModel.loginStep.value).isEqualTo(
             LoginStep.CollectOtpCode(EMAIL, error = EmbeddedLoginError.InvalidCode, resendSecondsLeft = 50),
         )
     }
@@ -206,7 +206,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
-        val step = viewModel.step.value
+        val step = viewModel.loginStep.value
         assertThat(step).isInstanceOf(LoginStep.Failed::class.java)
         assertThat((step as LoginStep.Failed).error).isEqualTo(EmbeddedLoginError.TooManyWrongCodes)
     }
@@ -222,20 +222,20 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Retry)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
     }
 
     @Test
     fun `submit code - fails and the session is gone - retry returns to email with the email kept`() = runTest {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
+        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown("debug output"))
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
         viewModel.send(LoginEvent.Retry)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     @Test
@@ -246,7 +246,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
 
-        assertThat(viewModel.step.value)
+        assertThat(viewModel.loginStep.value)
             .isEqualTo(LoginStep.CollectOtpCode(EMAIL, error = EmbeddedLoginError.CodeExpired))
     }
 
@@ -259,7 +259,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isSubmitting = true))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isSubmitting = true))
         answer.complete(mockk())
         advanceUntilIdle()
     }
@@ -292,25 +292,26 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Resend)
         runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isResending = true))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isResending = true))
 
         sent.complete(Unit)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
         coVerify(exactly = 2) { repository.startEmailOtp(EMAIL) }
     }
 
     @Test
     fun `resend - fails for good - shows it full-screen, retry returns to email`() = runTest {
         startAtCode()
-        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown)
+        val error = EmbeddedLoginError.Unknown("debug output")
+        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(error)
 
         viewModel.send(LoginEvent.Resend)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value)
-            .isEqualTo(LoginStep.Failed(EmbeddedLoginError.Unknown, retryTo = LoginStep.CollectOtpIdentifier(EMAIL)))
+        assertThat(viewModel.loginStep.value)
+            .isEqualTo(LoginStep.Failed(error, retryTo = LoginStep.CollectOtpIdentifier(EMAIL)))
     }
 
     @Test
@@ -320,7 +321,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Resend)
         runCurrent()
 
-        assertThat(viewModel.step.value)
+        assertThat(viewModel.loginStep.value)
             .isEqualTo(LoginStep.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS))
     }
 
@@ -345,7 +346,7 @@ class LoginFlowViewModelTest {
         advanceTimeBy(ONE_SECOND_MILLIS)
         runCurrent()
 
-        assertThat(viewModel.step.value)
+        assertThat(viewModel.loginStep.value)
             .isEqualTo(LoginStep.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS - 1))
     }
 
@@ -356,7 +357,7 @@ class LoginFlowViewModelTest {
         advanceTimeBy(COOLDOWN_SECONDS * ONE_SECOND_MILLIS)
         runCurrent()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL))
     }
 
     @Test
@@ -366,7 +367,7 @@ class LoginFlowViewModelTest {
         viewModel.goBack()
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     // endregion
@@ -383,7 +384,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier())
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier())
         coVerify(exactly = 2) { repository.discover() }
     }
 
@@ -407,7 +408,7 @@ class LoginFlowViewModelTest {
         startAtCode()
 
         assertThat(viewModel.goBack()).isTrue()
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     @Test
@@ -419,7 +420,7 @@ class LoginFlowViewModelTest {
 
         viewModel.goBack()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     @Test
@@ -431,12 +432,12 @@ class LoginFlowViewModelTest {
         runCurrent()
 
         assertThat(viewModel.goBack()).isTrue()
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isSubmitting = true))
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpCode(EMAIL, isSubmitting = true))
 
         answer.complete(mockk())
         advanceUntilIdle()
 
-        assertThat(viewModel.step.value).isEqualTo(LoginStep.Authenticated)
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Authenticated)
     }
 
     @Test

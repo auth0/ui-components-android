@@ -28,25 +28,24 @@ internal suspend fun <T> withLoginErrorMapping(execute: suspend () -> T): T {
 private fun Exception.asLoginException(): EmbeddedLoginException = when (this) {
     is EmbeddedLoginException -> this
     is EmbeddedAuthException -> toLoginException()
-    else -> EmbeddedLoginException(EmbeddedLoginError.Unknown, cause = this)
+    else -> EmbeddedLoginException(EmbeddedLoginError.Unknown(message ?: javaClass.name), cause = this)
 }
 
-/** A wrong code also answers "not finished yet"; only its reason tells it apart from a further step. */
-internal fun EmbeddedAuthException.toVerifyFailure(): EmbeddedLoginException {
-    val sdkError = error as? EmbeddedAuthError.InsufficientAuthorization ?: return toLoginException()
-    val loginError = if (sdkError.reason in INVALID_CODE_REASONS) {
-        EmbeddedLoginError.InvalidCode
-    } else {
-        EmbeddedLoginError.ExtraStepUnsupported
-    }
-    return EmbeddedLoginException(loginError, cause = this)
-}
-
-/** Names the SDK error in our terms. Never keeps the SDK's own text, which is debug output; only the server's. */
-internal fun EmbeddedAuthException.toLoginException(): EmbeddedLoginException {
+/**
+ * Names the SDK error in our terms. The SDK's own text is debug output, so only [EmbeddedLoginError.Unknown]
+ * keeps it, for the logs; the user sees only the server's.
+ */
+private fun EmbeddedAuthException.toLoginException(): EmbeddedLoginException {
     // The SDK keeps the session only for these; any other error ends it.
     val canRetryStep = error == EmbeddedAuthError.Network || statusCode in SERVER_ERROR_STATUS
-    val known = when (error) {
+    val known = when (val sdkError = error) {
+        // Only verifyOtp lets this through, as runStep reads it as the next step. A wrong code also
+        // answers "not finished yet"; only its reason tells it apart from a further step, such as MFA.
+        is EmbeddedAuthError.InsufficientAuthorization -> if (sdkError.reason in INVALID_CODE_REASONS) {
+            EmbeddedLoginError.InvalidCode
+        } else {
+            EmbeddedLoginError.ExtraStepUnsupported
+        }
         EmbeddedAuthError.Network -> EmbeddedLoginError.Network
         EmbeddedAuthError.ChallengeExpired -> EmbeddedLoginError.CodeExpired
         EmbeddedAuthError.TooManyWrongOtpAttempts -> EmbeddedLoginError.TooManyWrongCodes
@@ -55,7 +54,11 @@ internal fun EmbeddedAuthException.toLoginException(): EmbeddedLoginException {
         else -> null
     }
     val fromServer = code !in SDK_ERROR_CODES && description.isNotBlank()
-    val loginError = known ?: if (fromServer) EmbeddedLoginError.Server(description) else EmbeddedLoginError.Unknown
+    val loginError = known ?: if (fromServer) {
+        EmbeddedLoginError.Server(description)
+    } else {
+        EmbeddedLoginError.Unknown("$code: $description")
+    }
     return EmbeddedLoginException(loginError, canRetryStep, cause = this)
 }
 

@@ -125,11 +125,12 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `startEmailOtp - no way to send a code - carries on without saying so`() = runTest {
+    fun `startEmailOtp - no way to send a code - fails with code not sent`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.IdentifyPhone)
 
-        repository.startEmailOtp(EMAIL)
+        val failure = failureOf { repository.startEmailOtp(EMAIL) }
 
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.CodeNotSent)
         verify(exactly = 0) { client.challengeEmail(any()) }
     }
 
@@ -221,17 +222,19 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `errors - no usable server text - fails as unknown`() = runTest {
-        listOf<Request<Credentials, EmbeddedAuthException>>(
-            failingWith(EmbeddedAuthError.Unknown, code = Auth0Exception.NON_JSON_ERROR, description = "debug text"),
-            failingWith(EmbeddedAuthError.Unknown, code = Auth0Exception.EMPTY_BODY_ERROR, description = "debug text"),
-            failingWith(EmbeddedAuthError.AccessDenied, description = " "),
-        ).forEach { request ->
+    fun `errors - no usable server text - fails as unknown, keeping the SDK's code and text for the logs`() = runTest {
+        mapOf<Request<Credentials, EmbeddedAuthException>, String>(
+            failingWith<Credentials>(EmbeddedAuthError.Unknown, code = Auth0Exception.NON_JSON_ERROR, description = "debug text")
+                to "${Auth0Exception.NON_JSON_ERROR}: debug text",
+            failingWith<Credentials>(EmbeddedAuthError.Unknown, code = Auth0Exception.EMPTY_BODY_ERROR, description = "debug text")
+                to "${Auth0Exception.EMPTY_BODY_ERROR}: debug text",
+            failingWith<Credentials>(EmbeddedAuthError.AccessDenied, description = " ") to "access_denied:  ",
+        ).forEach { (request, message) ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns request
 
             val failure = failureOf { repository.verifyOtp(CODE) }
 
-            assertThat(failure.error).isEqualTo(EmbeddedLoginError.Unknown)
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.Unknown(message))
         }
     }
 
@@ -245,13 +248,14 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `errors - unexpected exception - fails as unknown, keeping it as the cause`() = runTest {
+    fun `errors - unexpected exception - fails as unknown, keeping it as the cause and its message`() = runTest {
         val unexpected = IllegalStateException("debug output")
         every { client.authorize(CONNECTION, any(), any(), any()) } throws unexpected
 
         val failure = failureOf { repository.discover() }
 
-        assertThat(failure.error).isEqualTo(EmbeddedLoginError.Unknown)
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.Unknown("debug output"))
+        assertThat(failure.message).contains("debug output")
         assertThat(failure.cause).isSameInstanceAs(unexpected)
     }
 

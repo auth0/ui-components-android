@@ -343,7 +343,7 @@ On code entry, Back returns to email entry. Anywhere else, Back calls `onExit`. 
 - **A wrong or expired code appears inline,** under the code field, and the user stays on code entry. After an expired code, **Resend** opens at once.
 - **Resend opens 60 seconds after each code is sent;** until then the button counts down.
 - **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email entry (with the email kept) if not. If the first load failed, it loads again.
-- **The flow never reveals whether an email has an account:** it moves on to code entry even when no code was sent.
+- **If no code can be sent to the email,** for example because the connection only offers another method for that user, the flow shows its error screen. **Try again** returns to email entry with the email kept.
 - **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen.
 - **If the connection doesn't offer Email OTP,** the flow shows a screen saying no sign-in methods are available.
 

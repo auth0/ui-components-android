@@ -130,6 +130,7 @@
     <string name="embedded_login_error_network">We couldn\'t reach the server. Check your internet connection and try again.</string>
     <string name="embedded_login_error_connection_missing">No connection is configured to start sign-in with.</string>
     <string name="embedded_login_error_invalid_email">Please enter a valid email address.</string>
+    <string name="embedded_login_error_code_not_sent">We couldn\'t send a code to this email. Check the address and try again.</string>
     <string name="embedded_login_error_invalid_code">Invalid Code. Please double check the code sent to your email.</string>
     <string name="embedded_login_error_code_expired">Your code expired. Tap Resend Code to get a new one.</string>
     <string name="embedded_login_error_too_many_attempts">Too many attempts. Please try again later.</string>

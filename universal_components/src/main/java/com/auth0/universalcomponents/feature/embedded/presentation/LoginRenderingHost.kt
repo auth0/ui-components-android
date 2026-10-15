@@ -34,7 +34,7 @@ internal fun LoginRenderingHost(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val step by viewModel.step.collectAsState()
+    val step by viewModel.loginStep.collectAsState()
     val currentOnAuthenticated by rememberUpdatedState(onAuthenticated)
     val currentOnExit by rememberUpdatedState(onExit)
 

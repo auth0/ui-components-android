@@ -33,7 +33,7 @@ import com.auth0.android.sample.ui.screens.ChooseSignInScreen
 import com.auth0.android.sample.ui.screens.DashboardDestination
 import com.auth0.android.sample.ui.screens.DashboardScreen
 import com.auth0.android.sample.ui.screens.DocsScreen
-import com.auth0.android.sample.ui.screens.EmbeddedLoginDemo
+import com.auth0.android.sample.ui.screens.EmbeddedLogin
 import com.auth0.android.sample.ui.screens.ExploreLoginScreen
 import com.auth0.android.sample.ui.screens.FavoritesScreen
 import com.auth0.android.sample.ui.screens.LoginSecurityScreen
@@ -212,7 +212,7 @@ fun SampleApp(
                 // Embedded login against the real /e/authorize API (email code). The library hands
                 // back the credentials and never stores them: save them the same way the hosted-login
                 // path does, load the profile, then land on the Dashboard.
-                EmbeddedLoginDemo(
+                EmbeddedLogin(
                     onBack = { navController.popBackStack() },
                     onAuthenticated = { credentials ->
                         credentialsManager.saveCredentials(credentials)

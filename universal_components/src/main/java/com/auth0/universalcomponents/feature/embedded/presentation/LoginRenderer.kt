@@ -113,6 +113,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
 private fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.ConnectionMissing -> stringResource(R.string.embedded_login_error_connection_missing)
     EmbeddedLoginError.Network -> stringResource(R.string.embedded_login_error_network)
+    EmbeddedLoginError.CodeNotSent -> stringResource(R.string.embedded_login_error_code_not_sent)
     EmbeddedLoginError.InvalidCode -> stringResource(R.string.embedded_login_error_invalid_code)
     EmbeddedLoginError.CodeExpired -> stringResource(R.string.embedded_login_error_code_expired)
     EmbeddedLoginError.TooManyWrongCodes -> stringResource(R.string.embedded_login_error_too_many_wrong_codes)
@@ -120,5 +121,5 @@ private fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
     EmbeddedLoginError.ExtraStepUnsupported -> stringResource(R.string.embedded_login_error_extra_step_unsupported)
     is EmbeddedLoginError.Server -> text
-    EmbeddedLoginError.Unknown -> stringResource(R.string.embedded_login_error_generic)
+    is EmbeddedLoginError.Unknown -> stringResource(R.string.embedded_login_error_generic)
 }

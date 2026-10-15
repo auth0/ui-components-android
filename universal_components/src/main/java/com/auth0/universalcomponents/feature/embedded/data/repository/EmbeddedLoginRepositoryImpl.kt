@@ -10,7 +10,6 @@ import com.auth0.android.embedded.authorize.OtpType
 import com.auth0.android.request.Request
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.data.mapper.toLoginOption
-import com.auth0.universalcomponents.feature.embedded.data.mapper.toVerifyFailure
 import com.auth0.universalcomponents.feature.embedded.data.mapper.withLoginErrorMapping
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginException
@@ -48,21 +47,22 @@ internal class EmbeddedLoginRepositoryImpl(
         val challenge = nextActions.firstNotNullOfOrNull { it as? NextAction.ChallengeEmail }
         when {
             challenge != null -> runStep(client.challengeEmail(challenge.index))
-            // Carry on as if a code went out, so the screen never tells whether the email has an account.
-            nextActions.none { it is NextAction.VerifyOtp && it.channel == OtpChannel.EMAIL } ->
+            // No code is on its way, so the code screen would wait for nothing.
+            nextActions.none { it is NextAction.VerifyOtp && it.channel == OtpChannel.EMAIL } -> {
                 Logger.w(TAG, "No email code was sent; the server offered ${nextActions.map { it.capability.value }}")
+                throw EmbeddedLoginException(EmbeddedLoginError.CodeNotSent)
+            }
         }
     }
 
     override suspend fun verifyOtp(code: String): Credentials = withLoginErrorMapping {
-        try {
-            client.verifyOtp(code, OtpType.OOB).await()
-        } catch (e: EmbeddedAuthException) {
-            throw e.toVerifyFailure()
-        }
+        client.verifyOtp(code, OtpType.OOB).await()
     }
 
-    /** Runs one step and keeps the next actions it answers with; any other failure is left to the caller to map. */
+    /**
+     * Runs one step and keeps the next actions it answers with. That answer arrives as an exception but isn't a failure;
+     * any other exception is left to [withLoginErrorMapping].
+     */
     private suspend fun runStep(request: Request<Void?, EmbeddedAuthException>) {
         try {
             request.await()

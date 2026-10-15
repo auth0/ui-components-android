@@ -6,7 +6,7 @@ import com.auth0.universalcomponents.feature.embedded.EmbeddedLoginScreen
 import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 
 @Composable
-fun EmbeddedLoginDemo(
+fun EmbeddedLogin(
     onBack: () -> Unit,
     onAuthenticated: (Credentials) -> Unit,
     themeConfiguration: Auth0ThemeConfiguration,

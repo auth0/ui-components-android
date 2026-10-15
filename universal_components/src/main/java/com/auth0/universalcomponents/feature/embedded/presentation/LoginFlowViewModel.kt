@@ -24,8 +24,8 @@ import kotlinx.coroutines.launch
  */
 internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepository) : ViewModel() {
 
-    private val _step = MutableStateFlow<LoginStep>(LoginStep.Loading)
-    val step: StateFlow<LoginStep> = _step.asStateFlow()
+    private val _loginStep = MutableStateFlow<LoginStep>(LoginStep.Loading)
+    val loginStep: StateFlow<LoginStep> = _loginStep.asStateFlow()
 
     private val _authenticated = Channel<Credentials>(Channel.BUFFERED)
     val authenticated: Flow<Credentials> = _authenticated.receiveAsFlow()
@@ -36,7 +36,7 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     private var countdown: Job? = null
 
     fun send(event: LoginEvent) {
-        val current = _step.value
+        val current = _loginStep.value
         when (event) {
             // A Start mid-flow (after a rotation, say) keeps the user's place.
             LoginEvent.Start -> if (!isRunning) {
@@ -62,11 +62,11 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
 
     /** Code entry goes back to email entry (true); anywhere else leaves the flow (false). */
     fun goBack(): Boolean {
-        val current = _step.value
+        val current = _loginStep.value
         // Stay put until the request in flight answers, rather than dropping it halfway.
         if (current.isBusy) return true
         if (current is LoginStep.CollectOtpCode) {
-            _step.value = LoginStep.CollectOtpIdentifier(current.identifier)
+            _loginStep.value = LoginStep.CollectOtpIdentifier(current.identifier)
             return true
         }
         isRunning = false
@@ -74,8 +74,8 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     }
 
     private suspend fun discover() {
-        _step.value = LoginStep.Loading
-        _step.value = try {
+        _loginStep.value = LoginStep.Loading
+        _loginStep.value = try {
             val options = repository.discover()
             if (LoginOption.EmailOtp in options) LoginStep.CollectOtpIdentifier() else LoginStep.NoMethodsAvailable
         } catch (e: EmbeddedLoginException) {
@@ -84,21 +84,21 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     }
 
     /**
-     * Each code sent restarts the resend countdown. The repository never says whether a code went out,
-     * so a failure here is one for good: Try again returns to email entry with the email kept.
+     * Each code sent restarts the resend countdown. A failure here, including no code going out,
+     * is one for good: Try again returns to email entry with the email kept.
      */
     private suspend fun sendCode(email: String, isResend: Boolean) {
-        _step.value = if (isResend) {
+        _loginStep.value = if (isResend) {
             LoginStep.CollectOtpCode(email, isResending = true)
         } else {
             LoginStep.CollectOtpIdentifier(email, isSubmitting = true)
         }
         try {
             repository.startEmailOtp(email)
-            _step.value = LoginStep.CollectOtpCode(email, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
+            _loginStep.value = LoginStep.CollectOtpCode(email, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
             startResendCountdown()
         } catch (e: EmbeddedLoginException) {
-            _step.value = failed(e, retryTo = LoginStep.CollectOtpIdentifier(email))
+            _loginStep.value = failed(e, retryTo = LoginStep.CollectOtpIdentifier(email))
         }
     }
 
@@ -110,7 +110,7 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
         updateCodeStep { copy(error = null, isSubmitting = true) }
         try {
             val credentials = repository.verifyOtp(code)
-            _step.value = LoginStep.Authenticated
+            _loginStep.value = LoginStep.Authenticated
             isRunning = false
             _authenticated.send(credentials)
         } catch (e: EmbeddedLoginException) {
@@ -121,7 +121,7 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
                 EmbeddedLoginError.CodeExpired ->
                     updateCodeStep { copy(error = e.error, isSubmitting = false, resendSecondsLeft = 0) }
 
-                else -> _step.value = failed(
+                else -> _loginStep.value = failed(
                     e,
                     retryTo = if (e.canRetryStep) LoginStep.CollectOtpCode(email) else LoginStep.CollectOtpIdentifier(email),
                 )
@@ -133,7 +133,7 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     private fun startResendCountdown() {
         countdown?.cancel()
         countdown = viewModelScope.launch {
-            while (_step.value.isCountingDown) {
+            while (_loginStep.value.isCountingDown) {
                 delay(ONE_SECOND_MILLIS)
                 updateCodeStep { copy(resendSecondsLeft = (resendSecondsLeft - 1).coerceAtLeast(0)) }
             }
@@ -142,8 +142,8 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
 
     /** Changes code entry in place, so its countdown carries on; does nothing once that step is left. */
     private inline fun updateCodeStep(change: LoginStep.CollectOtpCode.() -> LoginStep.CollectOtpCode) {
-        val current = _step.value as? LoginStep.CollectOtpCode ?: return
-        _step.value = current.change()
+        val current = _loginStep.value as? LoginStep.CollectOtpCode ?: return
+        _loginStep.value = current.change()
     }
 
     /** The full-screen error. Logged once here, with its cause, so a failure in a live app can be traced. */
@@ -154,7 +154,7 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
 
     private suspend fun retry(failed: LoginStep.Failed) {
         val target = failed.retryTo
-        if (target != null) _step.value = target else discover()
+        if (target != null) _loginStep.value = target else discover()
     }
 
     /** Runs one step at a time; a second tap while one is in flight is dropped. */
