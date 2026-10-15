@@ -44,6 +44,10 @@ class EnrollmentViewModelTest {
         enrollAuthenticatorUseCase = mockk(relaxed = true)
         verifyAuthenticatorUseCase = mockk(relaxed = true)
         getUserInfoUseCase = mockk(relaxed = true)
+        // A relaxed mock can't pick a concrete error for a Result, so the email prefill gets a real one.
+        coEvery { getUserInfoUseCase() } returns Result.Error(
+            Auth0Error.NetworkError(message = "Could not fetch credentials", cause = Exception("Network failure"))
+        )
     }
 
     @After

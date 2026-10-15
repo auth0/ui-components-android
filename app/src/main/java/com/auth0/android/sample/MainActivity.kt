@@ -2,7 +2,6 @@ package com.auth0.android.sample
 
 import android.os.Bundle
 import android.util.Log
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -14,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +33,7 @@ import com.auth0.android.sample.ui.screens.ChooseSignInScreen
 import com.auth0.android.sample.ui.screens.DashboardDestination
 import com.auth0.android.sample.ui.screens.DashboardScreen
 import com.auth0.android.sample.ui.screens.DocsScreen
-import com.auth0.android.sample.ui.screens.EmbeddedLoginScreen
+import com.auth0.android.sample.ui.screens.EmbeddedLogin
 import com.auth0.android.sample.ui.screens.ExploreLoginScreen
 import com.auth0.android.sample.ui.screens.FavoritesScreen
 import com.auth0.android.sample.ui.screens.LoginSecurityScreen
@@ -43,6 +43,8 @@ import com.auth0.android.sample.ui.screens.Settings
 import com.auth0.android.sample.ui.screens.TokensScreen
 import com.auth0.android.sample.ui.screens.UpdateFullNameScreen
 import com.auth0.android.sample.ui.theme.UniversalComponentsTheme
+import com.auth0.android.sample.ui.util.LoginMethod
+import com.auth0.android.sample.ui.util.LoginSession
 import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.sample.ui.viewmodels.AuthState
 import com.auth0.android.sample.ui.viewmodels.AuthViewModel
@@ -67,6 +69,10 @@ class MainActivity : ComponentActivity() {
 
     private val credentialsManager: CredentialsManager by lazy {
         CredentialsManager(authClient, SharedPreferencesStorage(this))
+    }
+
+    private val loginSession: LoginSession by lazy {
+        LoginSession(this)
     }
 
     private val audience: String by lazy {
@@ -102,6 +108,7 @@ class MainActivity : ComponentActivity() {
                         credentialsManager = credentialsManager,
                         webAuthProvider = webAuthProvider,
                         logoutBuilder = logoutBuilder,
+                        loginSession = loginSession,
                         authClient = authClient,
                         audience = audience
                     )
@@ -116,6 +123,7 @@ fun SampleApp(
     credentialsManager: CredentialsManager,
     webAuthProvider: WebAuthProvider.Builder,
     logoutBuilder: WebAuthProvider.LogoutBuilder,
+    loginSession: LoginSession,
     authClient: AuthenticationAPIClient,
     audience: String,
     authViewModel: AuthViewModel = viewModel(),
@@ -132,9 +140,11 @@ fun SampleApp(
         when (authState) {
             is AuthState.Authenticated -> {
                 credentialsManager.saveCredentials((authState as AuthState.Authenticated).credentials)
+                loginSession.record(LoginMethod.UNIVERSAL)
                 navController.navigate(AppRoute.Dashboard) {
                     popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
                 }
+                authViewModel.onAuthStateHandled()
             }
 
             is AuthState.Error -> {
@@ -142,6 +152,7 @@ fun SampleApp(
                 navController.navigate(AppRoute.ChooseSignIn) {
                     popUpTo(navController.graph.id) { inclusive = true }
                 }
+                authViewModel.onAuthStateHandled()
             }
 
             else -> {
@@ -150,14 +161,20 @@ fun SampleApp(
         }
     }
 
-    // Determine start destination based on existing credentials
-    val startDestination = if (credentialsManager.hasValidCredentials()) {
-        // Load profile from existing credentials on resume
-        authViewModel.loadProfileFromCredentials(credentialsManager)
-        AppRoute.Dashboard
-    } else {
-        AppRoute.ChooseSignIn
+    LaunchedEffect(Unit) {
+        authViewModel.loggedOut.collect {
+            navController.navigate(AppRoute.ChooseSignIn) {
+                popUpTo(navController.graph.id) { inclusive = true }
+            }
+        }
     }
+
+    // Decided once, so a recomposition can't re-pick the start screen or reload the profile.
+    val hasValidSession = rememberSaveable { credentialsManager.hasValidCredentials() }
+    LaunchedEffect(Unit) {
+        if (hasValidSession) authViewModel.loadProfileFromCredentials(credentialsManager)
+    }
+    val startDestination = if (hasValidSession) AppRoute.Dashboard else AppRoute.ChooseSignIn
 
     Auth0Theme(
         configuration = appliedTheme.configuration,
@@ -192,42 +209,21 @@ fun SampleApp(
             }
 
             composable<AppRoute.EmbeddedLogin> {
-                val context = LocalContext.current
-                val snackbarHostState = remember { SnackbarHostState() }
-
-                LaunchedEffect(Unit) {
-                    authViewModel.loginError.collect { message ->
-                        snackbarHostState.showSnackbar(message)
-                    }
-                }
-
-                Scaffold(
-                    snackbarHost = { SnackbarHost(snackbarHostState) },
-                    containerColor = androidx.compose.ui.graphics.Color.Transparent
-                ) { _ ->
-                    EmbeddedLoginScreen(
-                        onGoogleLogin = {
-                            Toast.makeText(context, "Coming soon", Toast.LENGTH_SHORT).show()
-                        },
-                        onContinueWithEmail = { email, password ->
-                            when {
-                                email.isBlank() -> authViewModel.sendLoginError("Email is required")
-                                !android.util.Patterns.EMAIL_ADDRESS.matcher(email)
-                                    .matches() -> authViewModel.sendLoginError("Enter a valid email address")
-
-                                password.isBlank() -> authViewModel.sendLoginError("Password is required")
-                                else -> authViewModel.loginWithPassword(
-                                    email,
-                                    password,
-                                    authClient,
-                                    audience
-                                )
-                            }
-                        },
-                        onOtherMethods = { navController.navigate(AppRoute.ExploreLogin) },
-                        onBack = { navController.popBackStack() }
-                    )
-                }
+                // Embedded login against the real /e/authorize API (email code). The library hands
+                // back the credentials and never stores them: save them the same way the hosted-login
+                // path does, load the profile, then land on the Dashboard.
+                EmbeddedLogin(
+                    onBack = { navController.popBackStack() },
+                    onAuthenticated = { credentials ->
+                        credentialsManager.saveCredentials(credentials)
+                        loginSession.record(LoginMethod.EMBEDDED)
+                        authViewModel.loadProfileFromCredentials(credentialsManager)
+                        navController.navigate(AppRoute.Dashboard) {
+                            popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
+                        }
+                    },
+                    themeConfiguration = appliedTheme.configuration,
+                )
             }
 
             composable<AppRoute.ExploreLogin> {
@@ -251,14 +247,13 @@ fun SampleApp(
                         }
                     },
                     onLogout = {
+                        // Navigation follows `loggedOut`, so a failed or cancelled logout stays here.
                         authViewModel.logout(
                             navController.context,
                             credentialsManager,
-                            logoutBuilder
+                            logoutBuilder,
+                            loginSession
                         )
-                        navController.navigate(AppRoute.ChooseSignIn) {
-                            popUpTo(navController.graph.id) { inclusive = true }
-                        }
                     }
                 )
             }

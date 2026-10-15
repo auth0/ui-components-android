@@ -9,6 +9,8 @@ import com.auth0.android.authentication.AuthenticationException
 import com.auth0.android.authentication.storage.CredentialsManager
 import com.auth0.android.provider.WebAuthProvider
 import com.auth0.android.result.Credentials
+import com.auth0.android.sample.ui.util.LoginMethod
+import com.auth0.android.sample.ui.util.LoginSession
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +44,9 @@ class AuthViewModel : ViewModel() {
 
     private val _loginError = Channel<String>(Channel.BUFFERED)
     val loginError = _loginError.receiveAsFlow()
+
+    private val _loggedOut = Channel<Unit>(Channel.BUFFERED)
+    val loggedOut = _loggedOut.receiveAsFlow()
 
     fun sendLoginError(message: String) {
         viewModelScope.launch {
@@ -97,22 +102,34 @@ class AuthViewModel : ViewModel() {
         }
     }
 
+    /** The login result was acted on; clears it so a new collector doesn't act on it again. */
+    fun onAuthStateHandled() {
+        _authState.value = AuthState.Idle
+    }
+
+    /** Embedded Login has no browser session, so it only clears local credentials. */
     fun logout(
         context: Context,
         credentialsManager: CredentialsManager,
-        logoutBuilder: WebAuthProvider.LogoutBuilder
+        logoutBuilder: WebAuthProvider.LogoutBuilder,
+        loginSession: LoginSession
     ) {
         viewModelScope.launch {
-            _authState.value = AuthState.Loading
-            try {
-                logoutBuilder.await(context)
-                credentialsManager.clearCredentials()
-                _userProfile.value = UserProfile()
-                _authState.value = AuthState.Idle
-            } catch (e: AuthenticationException) {
-                Log.e("TAG", "logout: ${e.stackTraceToString()}")
-                _authState.value = AuthState.Error(e.message ?: "Logout failed")
+            if (loginSession.method != LoginMethod.EMBEDDED) {
+                _authState.value = AuthState.Loading
+                try {
+                    logoutBuilder.await(context)
+                } catch (e: AuthenticationException) {
+                    Log.e("TAG", "logout: ${e.stackTraceToString()}")
+                    _authState.value = AuthState.Idle
+                    return@launch
+                }
             }
+            credentialsManager.clearCredentials()
+            loginSession.clear()
+            _userProfile.value = UserProfile()
+            _authState.value = AuthState.Idle
+            _loggedOut.send(Unit)
         }
     }
 

@@ -106,4 +106,35 @@
     <string name="navigate">Navigate</string>
     <string name="copy">Copy</string>
     <string name="search">Search</string>
+
+    <!-- Embedded login -->
+    <string name="embedded_login_title">Log in</string>
+    <string name="embedded_login_back">Back</string>
+    <string name="embedded_login_email_title">Enter your email to get started</string>
+    <string name="embedded_login_email_label">Email</string>
+    <string name="embedded_login_continue">Continue</string>
+    <string name="embedded_login_code_title">Enter the 6-digit code</string>
+    <string name="embedded_login_code_from">From %1$s</string>
+    <string name="embedded_login_code_edit">Edit</string>
+    <string name="embedded_login_code_label">One-Time Passcode</string>
+    <string name="embedded_login_verify">Verify</string>
+    <string name="embedded_login_resend">Resend Code</string>
+    <string name="embedded_login_resend_in">Resend in %1$d sec…</string>
+    <string name="embedded_login_success_title">You\'re signed in</string>
+    <string name="embedded_login_no_methods_title">No sign-in methods available</string>
+    <string name="embedded_login_no_methods_description">This tenant didn\'t return any sign-in options the app can present right now.</string>
+    <string name="embedded_login_go_back">Go back</string>
+    <string name="embedded_login_error_title">Sign in couldn\'t be completed.</string>
+    <string name="embedded_login_error_fallback">We are unable to process your request. Please try again in a few minutes.</string>
+    <string name="embedded_login_error_generic">Something went wrong. Please try again.</string>
+    <string name="embedded_login_error_network">We couldn\'t reach the server. Check your internet connection and try again.</string>
+    <string name="embedded_login_error_connection_missing">No connection is configured to start sign-in with.</string>
+    <string name="embedded_login_error_invalid_email">Please enter a valid email address.</string>
+    <string name="embedded_login_error_code_not_sent">We couldn\'t send a code to this email. Check the address and try again.</string>
+    <string name="embedded_login_error_invalid_code">Invalid Code. Please double check the code sent to your email.</string>
+    <string name="embedded_login_error_code_expired">Your code expired. Tap Resend Code to get a new one.</string>
+    <string name="embedded_login_error_too_many_attempts">Too many attempts. Please try again later.</string>
+    <string name="embedded_login_error_too_many_wrong_codes">Too many incorrect codes. Please try again later.</string>
+    <string name="embedded_login_error_too_many_logins">Too many login attempts. Please try again later.</string>
+    <string name="embedded_login_error_extra_step_unsupported">This account needs an extra verification step that isn\'t supported yet.</string>
 </resources>

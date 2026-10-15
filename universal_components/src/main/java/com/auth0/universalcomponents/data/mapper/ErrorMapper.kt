@@ -23,6 +23,7 @@ internal object ErrorMapper {
             is MyAccountException -> mapMyAccountException(exception)
             is CredentialsManagerException -> mapCredentialsManagerException(exception, scope)
             is NetworkErrorException -> Auth0Error.NetworkError(cause = exception)
+            is MalformedResponseException -> Auth0Error.MalformedResponse(cause = exception)
             else -> Auth0Error.Unknown(
                 message = exception.message ?: "Unknown error occurred",
                 cause = exception

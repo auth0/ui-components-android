@@ -1,19 +1,13 @@
 package com.auth0.universalcomponents.presentation.ui.mfa
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -27,20 +21,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.universalcomponents.R
@@ -49,6 +39,7 @@ import com.auth0.universalcomponents.domain.model.AuthenticatorType
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.presentation.ui.components.ErrorHandler
 import com.auth0.universalcomponents.presentation.ui.components.GradientButton
+import com.auth0.universalcomponents.presentation.ui.components.OTPInputField
 import com.auth0.universalcomponents.presentation.ui.components.TopBar
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 import com.auth0.universalcomponents.presentation.ui.utils.UiUtils
@@ -262,91 +253,6 @@ private fun LoadingScreen(state: EnrollmentUiState) {
 private fun ErrorScreen(state: EnrollmentUiState) {
     state.uiError?.let {
         ErrorHandler(it)
-    }
-}
-
-@Composable
-private fun OTPInputField(
-    value: String,
-    length: Int = 6,
-    isError: Boolean = false,
-    onValueChange: (String) -> Unit,
-    focusRequester: FocusRequester
-) {
-    val dimensions = Auth0Theme.dimensions
-
-    BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = Modifier
-            .fillMaxWidth()
-            .focusRequester(focusRequester),
-        decorationBox = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(dimensions.spacingXs)
-            ) {
-                repeat(length) { index ->
-                    OTPBox(
-                        value = value.getOrNull(index)?.toString() ?: "",
-                        isError = isError,
-                        isFocused = value.length == index,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-            }
-        },
-        textStyle = TextStyle(
-            fontSize = 0.sp,
-            color = Color.Transparent
-        )
-    )
-}
-
-@Composable
-private fun OTPBox(
-    modifier: Modifier = Modifier,
-    value: String,
-    isError: Boolean,
-    isFocused: Boolean = false
-) {
-    val colors = Auth0Theme.colors
-    val typography = Auth0Theme.typography
-    val shapes = Auth0Theme.shapes
-
-    val backgroundColor = when {
-        isError -> colors.backgroundError.copy(alpha = 0.1f)
-        else -> colors.backgroundLayerMedium
-    }
-
-    val borderColor = when {
-        isError -> colors.backgroundError
-        else -> colors.borderDefault
-    }
-
-    val borderWidth = if (isFocused) 3.dp else 1.dp
-
-    Box(
-        modifier = modifier
-            .aspectRatio(0.85f)
-            .background(
-                color = backgroundColor,
-                shape = shapes.medium
-            )
-            .border(
-                width = borderWidth,
-                color = borderColor,
-                shape = shapes.medium
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = value,
-            style = typography.titleLarge,
-            color = if (isError) colors.textOnError else colors.textBold,
-            textAlign = TextAlign.Center
-        )
     }
 }
 

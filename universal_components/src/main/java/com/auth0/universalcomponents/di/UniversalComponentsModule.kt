@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.di
 
+import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.universalcomponents.Auth0UniversalComponents
 import com.auth0.universalcomponents.data.MyAccountProvider
 import com.auth0.universalcomponents.data.TokenManager
@@ -18,6 +19,8 @@ import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMetho
 import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
+import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
+import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
 
 object UniversalComponentsModule {
 
@@ -53,6 +56,17 @@ object UniversalComponentsModule {
         return PasskeyViewModelFactory(
             repository = provideMyAccountRepository(),
             passkeyConfiguration = com.auth0.universalcomponents.Auth0UniversalComponents.passkeyConfiguration,
+        )
+    }
+
+    internal fun provideLoginFlowViewModelFactory(connection: String): LoginFlowViewModelFactory {
+        return LoginFlowViewModelFactory(
+            repository = {
+                EmbeddedLoginRepositoryImpl(
+                    client = EmbeddedAuthClient(Auth0UniversalComponents.account),
+                    connection = connection,
+                )
+            }
         )
     }
 

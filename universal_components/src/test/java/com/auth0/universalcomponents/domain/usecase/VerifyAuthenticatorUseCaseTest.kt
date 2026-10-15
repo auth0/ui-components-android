@@ -42,7 +42,7 @@ class VerifyAuthenticatorUseCaseTest {
         val input = VerificationInput.WithOtp(
             authenticationMethodId = "auth_method_123",
             otpCode = "123456",
-            authSession = TestData.totpEnrollmentChallenge.authSession
+            authSession = TestData.totpEnrollmentChallenge.authSession!!
         )
         val expectedAuthMethod = TestData.totpAuthMethod
 
@@ -50,7 +50,7 @@ class VerifyAuthenticatorUseCaseTest {
             repository.verifyOtp(
                 authenticationMethodId = "auth_method_123",
                 otpCode = "123456",
-                authSession = TestData.totpEnrollmentChallenge.authSession,
+                authSession = TestData.totpEnrollmentChallenge.authSession!!,
                 scope = requiredScope
             )
         } returns expectedAuthMethod
@@ -68,7 +68,7 @@ class VerifyAuthenticatorUseCaseTest {
             repository.verifyOtp(
                 authenticationMethodId = "auth_method_123",
                 otpCode = "123456",
-                authSession = TestData.totpEnrollmentChallenge.authSession,
+                authSession = TestData.totpEnrollmentChallenge.authSession!!,
                 scope = requiredScope
             )
         }

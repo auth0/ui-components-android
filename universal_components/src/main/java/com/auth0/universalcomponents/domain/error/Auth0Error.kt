@@ -7,7 +7,7 @@ package com.auth0.universalcomponents.domain.error
 sealed class Auth0Error(
     override val message: String,
     override val cause: Throwable
-) : Throwable(message, cause) {
+) : Throwable(message, cause), ResultError {
 
     data class AccessDenied(
         override val message: String = "Access denied",
@@ -87,6 +87,12 @@ sealed class Auth0Error(
     data class ServerError(
         override val message: String = "Server error occurred",
         val statusCode: Int,
+        override val cause: Throwable
+    ) : Auth0Error(message, cause)
+
+    // A response missing a value it always carries
+    data class MalformedResponse(
+        override val message: String = "Unexpected response from the server",
         override val cause: Throwable
     ) : Auth0Error(message, cause)
 

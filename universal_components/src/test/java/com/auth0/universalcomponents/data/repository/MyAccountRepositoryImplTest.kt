@@ -211,6 +211,26 @@ class MyAccountRepositoryImplTest {
     }
 
     @Test
+    fun `enrollTotp - response missing id - throws MalformedResponse`() {
+        val malformed = TotpEnrollmentChallenge(
+            id = null,
+            authSession = "totp_session_123",
+            barcodeUri = "otpauth://totp/...",
+            manualInputCode = "MANUAL_CODE_123"
+        )
+        every { myAccountClient.enrollTotp() } returns
+            FakeRequestImpl<TotpEnrollmentChallenge, MyAccountException>(response = malformed)
+
+        val exception = assertThrows(Auth0Error::class.java) {
+            runTest {
+                repository.enrollTotp("scope:authentication_methods")
+            }
+        }
+        assertThat(exception).isInstanceOf(Auth0Error.MalformedResponse::class.java)
+        assertThat(exception.cause).hasMessageThat().isEqualTo("TOTP enrollment response is missing id")
+    }
+
+    @Test
     fun `enrollPushNotification - valid access token - returns TotpEnrollmentChallenge`() =
         runTest {
             val scope = "scope:authentication_methods"
