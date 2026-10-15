@@ -7,7 +7,7 @@ package com.auth0.universalcomponents.domain.error
 sealed class Auth0Error(
     override val message: String,
     override val cause: Throwable
-) : Throwable(message, cause) {
+) : Throwable(message, cause), ResultError {
 
     data class AccessDenied(
         override val message: String = "Access denied",

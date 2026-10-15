@@ -1,5 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.domain.model
 
+import com.auth0.universalcomponents.domain.error.ResultError
+
 /** What went wrong in the login flow. It only names the problem; the presentation layer picks the words. */
 internal sealed interface EmbeddedLoginError {
 
@@ -34,12 +36,12 @@ internal sealed interface EmbeddedLoginError {
 }
 
 /**
- * The one failure the data layer throws. Its message names the [error], with what it carries.
+ * How a login step failed; the repository returns it inside a [com.auth0.universalcomponents.domain.network.Result].
  * [canRetryStep] is true when the server still holds the session, so the same step can be tried again.
- * [cause] is the original failure, kept for its stack trace; it's null only for the checks we make ourselves.
+ * [cause] is the original failure, kept for its stack trace; it's null for the checks we make ourselves.
  */
-internal class EmbeddedLoginException(
+internal data class LoginFailure(
     val error: EmbeddedLoginError,
     val canRetryStep: Boolean = false,
-    cause: Throwable? = null,
-) : Exception(error.toString(), cause)
+    val cause: Throwable? = null,
+) : ResultError

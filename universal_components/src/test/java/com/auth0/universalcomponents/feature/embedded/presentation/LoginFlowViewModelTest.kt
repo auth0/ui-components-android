@@ -1,8 +1,9 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.android.result.Credentials
+import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginException
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.google.common.truth.Truth.assertThat
@@ -39,8 +40,8 @@ class LoginFlowViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = mockk()
-        coEvery { repository.discover() } returns listOf(LoginOption.EmailOtp)
-        coEvery { repository.startEmailOtp(any()) } returns Unit
+        coEvery { repository.discover() } returns Result.Success(listOf(LoginOption.EmailOtp))
+        coEvery { repository.startEmailOtp(any()) } returns Result.Success(Unit)
         viewModel = LoginFlowViewModel(repository)
     }
 
@@ -67,7 +68,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `start - nothing usable offered - shows no methods`() = runTest {
-        coEvery { repository.discover() } returns listOf(LoginOption.Unsupported("identify_phone"))
+        coEvery { repository.discover() } returns Result.Success(listOf(LoginOption.Unsupported("identify_phone")))
 
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
@@ -87,7 +88,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `start - fails - shows that error full-screen`() = runTest {
-        coEvery { repository.discover() } throws EmbeddedLoginException(EmbeddedLoginError.Network)
+        coEvery { repository.discover() } returns failure(EmbeddedLoginError.Network)
 
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
@@ -97,11 +98,11 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `retry - after discovery failed - discovers again`() = runTest {
-        coEvery { repository.discover() } throws EmbeddedLoginException(EmbeddedLoginError.Unknown("debug output"))
+        coEvery { repository.discover() } returns failure(EmbeddedLoginError.Unknown("debug output"))
         viewModel.send(LoginEvent.Start)
         advanceUntilIdle()
 
-        coEvery { repository.discover() } returns listOf(LoginOption.EmailOtp)
+        coEvery { repository.discover() } returns Result.Success(listOf(LoginOption.EmailOtp))
         viewModel.send(LoginEvent.Retry)
         advanceUntilIdle()
 
@@ -117,7 +118,7 @@ class LoginFlowViewModelTest {
     fun `submit email - while sending - stays on email with Continue spinning`() = runTest {
         startAtEmail()
         val sent = CompletableDeferred<Unit>()
-        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { sent.await() }
+        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { Result.Success(sent.await()) }
 
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         runCurrent()
@@ -142,7 +143,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit email - fails for good - retry returns to email with the typed email`() = runTest {
         startAtEmail()
-        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown("debug output"))
+        coEvery { repository.startEmailOtp(EMAIL) } returns failure(EmbeddedLoginError.Unknown("debug output"))
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         advanceUntilIdle()
         assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Failed::class.java)
@@ -171,7 +172,7 @@ class LoginFlowViewModelTest {
     fun `submit code - accepted - signs in and hands over the credentials`() = runTest {
         startAtCode()
         val credentials = mockk<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } returns credentials
+        coEvery { repository.verifyOtp(CODE) } returns Result.Success(credentials)
         val received = mutableListOf<Credentials>()
         val job = launch { viewModel.authenticated.toList(received) }
 
@@ -188,7 +189,7 @@ class LoginFlowViewModelTest {
         startAtCodeCountingDown()
         advanceTimeBy(10 * ONE_SECOND_MILLIS)
         runCurrent()
-        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.InvalidCode)
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.InvalidCode)
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
@@ -201,7 +202,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit code - too many wrong codes - shows it full-screen, not under the field`() = runTest {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.TooManyWrongCodes)
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.TooManyWrongCodes)
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
@@ -214,8 +215,8 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit code - fails but the session survives - retry returns to the code step`() = runTest {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } throws
-            EmbeddedLoginException(EmbeddedLoginError.Network, canRetryStep = true)
+        coEvery { repository.verifyOtp(CODE) } returns
+            failure(EmbeddedLoginError.Network, canRetryStep = true)
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -228,7 +229,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit code - fails and the session is gone - retry returns to email with the email kept`() = runTest {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.Unknown("debug output"))
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.Unknown("debug output"))
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -241,7 +242,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit code - code expired - shows the expired error and opens resend at once`() = runTest {
         startAtCodeCountingDown()
-        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.CodeExpired)
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.CodeExpired)
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
@@ -254,7 +255,7 @@ class LoginFlowViewModelTest {
     fun `submit code - while verifying - stays on the code step with Verify spinning`() = runTest {
         startAtCode()
         val answer = CompletableDeferred<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } coAnswers { answer.await() }
+        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(answer.await()) }
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
@@ -268,7 +269,7 @@ class LoginFlowViewModelTest {
     fun `submit code - tapped twice while verifying - verifies once`() = runTest {
         startAtCode()
         val answer = CompletableDeferred<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } coAnswers { answer.await() }
+        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(answer.await()) }
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
@@ -287,7 +288,7 @@ class LoginFlowViewModelTest {
     fun `resend - while sending - keeps the code step with only the resend row busy`() = runTest {
         startAtCode()
         val sent = CompletableDeferred<Unit>()
-        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { sent.await() }
+        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { Result.Success(sent.await()) }
 
         viewModel.send(LoginEvent.Resend)
         runCurrent()
@@ -305,7 +306,7 @@ class LoginFlowViewModelTest {
     fun `resend - fails for good - shows it full-screen, retry returns to email`() = runTest {
         startAtCode()
         val error = EmbeddedLoginError.Unknown("debug output")
-        coEvery { repository.startEmailOtp(EMAIL) } throws EmbeddedLoginException(error)
+        coEvery { repository.startEmailOtp(EMAIL) } returns failure(error)
 
         viewModel.send(LoginEvent.Resend)
         advanceUntilIdle()
@@ -377,7 +378,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `start - after signing in - begins a new flow`() = runTest {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } returns mockk()
+        coEvery { repository.verifyOtp(CODE) } returns Result.Success(mockk())
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -414,7 +415,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `back - on the code step - drops the inline error`() = runTest {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } throws EmbeddedLoginException(EmbeddedLoginError.InvalidCode)
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.InvalidCode)
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -427,7 +428,7 @@ class LoginFlowViewModelTest {
     fun `back - while verifying - stays in the flow`() = runTest {
         startAtCode()
         val answer = CompletableDeferred<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } coAnswers { answer.await() }
+        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(answer.await()) }
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
 
@@ -467,6 +468,9 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
         runCurrent()
     }
+
+    private fun failure(error: EmbeddedLoginError, canRetryStep: Boolean = false): Result.Error<LoginFailure> =
+        Result.Error(LoginFailure(error, canRetryStep))
 
     private companion object {
         const val EMAIL = "jane@example.com"

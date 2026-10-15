@@ -3,8 +3,10 @@ package com.auth0.universalcomponents.feature.embedded.presentation
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.Credentials
+import com.auth0.universalcomponents.domain.network.onError
+import com.auth0.universalcomponents.domain.network.onSuccess
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginException
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -20,7 +22,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Drives the email-code flow: [LoginEvent]s in, [LoginStep]s out. Each event counts only on the screen it belongs to.
- * The repository throws only [EmbeddedLoginException], so that is all this catches.
+ * The repository returns each failure as a [LoginFailure], so nothing here is caught.
  */
 internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepository) : ViewModel() {
 
@@ -75,12 +77,12 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
 
     private suspend fun discover() {
         _loginStep.value = LoginStep.Loading
-        _loginStep.value = try {
-            val options = repository.discover()
-            if (LoginOption.EmailOtp in options) LoginStep.CollectOtpIdentifier() else LoginStep.NoMethodsAvailable
-        } catch (e: EmbeddedLoginException) {
-            failed(e, retryTo = null)
-        }
+        repository.discover()
+            .onSuccess { options ->
+                _loginStep.value =
+                    if (LoginOption.EmailOtp in options) LoginStep.CollectOtpIdentifier() else LoginStep.NoMethodsAvailable
+            }
+            .onError { failure -> _loginStep.value = failed(failure, retryTo = null) }
     }
 
     /**
@@ -93,13 +95,12 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
         } else {
             LoginStep.CollectOtpIdentifier(email, isSubmitting = true)
         }
-        try {
-            repository.startEmailOtp(email)
-            _loginStep.value = LoginStep.CollectOtpCode(email, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
-            startResendCountdown()
-        } catch (e: EmbeddedLoginException) {
-            _loginStep.value = failed(e, retryTo = LoginStep.CollectOtpIdentifier(email))
-        }
+        repository.startEmailOtp(email)
+            .onSuccess {
+                _loginStep.value = LoginStep.CollectOtpCode(email, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
+                startResendCountdown()
+            }
+            .onError { failure -> _loginStep.value = failed(failure, retryTo = LoginStep.CollectOtpIdentifier(email)) }
     }
 
     /**
@@ -108,25 +109,31 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
      */
     private suspend fun verify(email: String, code: String) {
         updateCodeStep { copy(error = null, isSubmitting = true) }
-        try {
-            val credentials = repository.verifyOtp(code)
-            _loginStep.value = LoginStep.Authenticated
-            isRunning = false
-            _authenticated.send(credentials)
-        } catch (e: EmbeddedLoginException) {
-            when (e.error) {
-                EmbeddedLoginError.InvalidCode -> updateCodeStep { copy(error = e.error, isSubmitting = false) }
-
-                // That code can't be used any more, so a new one can be asked for at once.
-                EmbeddedLoginError.CodeExpired ->
-                    updateCodeStep { copy(error = e.error, isSubmitting = false, resendSecondsLeft = 0) }
-
-                else -> _loginStep.value = failed(
-                    e,
-                    retryTo = if (e.canRetryStep) LoginStep.CollectOtpCode(email) else LoginStep.CollectOtpIdentifier(email),
-                )
+        repository.verifyOtp(code)
+            .onSuccess { credentials ->
+                _loginStep.value = LoginStep.Authenticated
+                isRunning = false
+                _authenticated.send(credentials)
             }
-        }
+            .onError { failure ->
+                when (failure.error) {
+                    EmbeddedLoginError.InvalidCode ->
+                        updateCodeStep { copy(error = failure.error, isSubmitting = false) }
+
+                    // That code can't be used any more, so a new one can be asked for at once.
+                    EmbeddedLoginError.CodeExpired ->
+                        updateCodeStep { copy(error = failure.error, isSubmitting = false, resendSecondsLeft = 0) }
+
+                    else -> _loginStep.value = failed(
+                        failure,
+                        retryTo = if (failure.canRetryStep) {
+                            LoginStep.CollectOtpCode(email)
+                        } else {
+                            LoginStep.CollectOtpIdentifier(email)
+                        },
+                    )
+                }
+            }
     }
 
     /** Counts the resend wait down a second at a time; it stops at zero, or once code entry is left. */
@@ -147,9 +154,9 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     }
 
     /** The full-screen error. Logged once here, with its cause, so a failure in a live app can be traced. */
-    private fun failed(e: EmbeddedLoginException, retryTo: LoginStep?): LoginStep {
-        Logger.e(TAG, "Login step failed", e)
-        return LoginStep.Failed(e.error, retryTo)
+    private fun failed(failure: LoginFailure, retryTo: LoginStep?): LoginStep {
+        Logger.e(TAG, "Login step failed: ${failure.error}", failure.cause)
+        return LoginStep.Failed(failure.error, retryTo)
     }
 
     private suspend fun retry(failed: LoginStep.Failed) {
