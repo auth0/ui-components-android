@@ -106,4 +106,8 @@
     <string name="navigate">Navigate</string>
     <string name="copy">Copy</string>
     <string name="search">Search</string>
+
+    <!-- Auth0 BottomSheet -->
+    <string name="close">Close</string>
+
 </resources>
