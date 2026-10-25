@@ -72,6 +72,8 @@ internal fun plan(step: LoginStep): ScreenPlan = when (step) {
     LoginStep.Authenticated -> ScreenPlan.Authenticated
     is LoginStep.Failed -> ScreenPlan.Failed(step.error)
     LoginStep.NoMethodsAvailable -> ScreenPlan.NoMethods
+    // The host hands this step to the MFA flow and never plans it; a quiet wait is the safe fallback.
+    is LoginStep.Mfa -> ScreenPlan.Loading
 }
 
 /** Builds the screen for [plan]; input goes back through [context]. */
@@ -110,7 +112,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
 
 /** Our words for each error; the server's own when it explained one we don't know. */
 @Composable
-private fun EmbeddedLoginError.text(): String = when (this) {
+internal fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.ConnectionMissing -> stringResource(R.string.embedded_login_error_connection_missing)
     EmbeddedLoginError.Network -> stringResource(R.string.embedded_login_error_network)
     EmbeddedLoginError.CodeNotSent -> stringResource(R.string.embedded_login_error_code_not_sent)
@@ -119,6 +121,8 @@ private fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.TooManyWrongCodes -> stringResource(R.string.embedded_login_error_too_many_wrong_codes)
     EmbeddedLoginError.TooManyAttempts -> stringResource(R.string.embedded_login_error_too_many_attempts)
     EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
+    EmbeddedLoginError.PushDenied -> stringResource(R.string.embedded_login_mfa_error_push_denied)
+    EmbeddedLoginError.NoEligibleFactors -> stringResource(R.string.embedded_login_mfa_error_no_factors)
     EmbeddedLoginError.ExtraStepUnsupported -> stringResource(R.string.embedded_login_error_extra_step_unsupported)
     is EmbeddedLoginError.Server -> text
     is EmbeddedLoginError.Unknown -> stringResource(R.string.embedded_login_error_generic)

@@ -5,10 +5,12 @@ import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
+import com.auth0.android.embedded.authorize.EmbeddedCapability
 import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
 import com.auth0.android.embedded.authorize.OtpType
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.request.Request
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
@@ -16,6 +18,8 @@ import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.VerifyOutcome
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -153,7 +157,7 @@ class EmbeddedLoginRepositoryImplTest {
         val credentials = mockk<Credentials>()
         every { client.verifyOtp(CODE, OtpType.OOB) } returns FakeRequestImpl(response = credentials)
 
-        assertThat(repository.verifyOtp(CODE)).isEqualTo(Result.Success(credentials))
+        assertThat(repository.verifyOtp(CODE)).isEqualTo(Result.Success(VerifyOutcome.SignedIn(credentials)))
     }
 
     @Test
@@ -186,11 +190,62 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
+    fun `verifyOtp - second factors offered - returns only the push devices, in order`() = runTest {
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
+            challengeEmail(at = 0),
+            sdkInstance<NextAction.ChallengePhone>(
+                Int::class.java to 1,
+                String::class.java to MASKED_PHONE,
+                List::class.java to listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE),
+            ),
+            sdkInstance<NextAction.ChallengePush>(Int::class.java to 2, String::class.java to DEVICE),
+            verifyOtp(OtpChannel.TOTP, null),
+            NextAction.VerifyRecoveryCode,
+            sdkInstance<NextAction.ChallengePush>(Int::class.java to 3, String::class.java to OTHER_DEVICE),
+        )
+
+        val outcome = repository.verifyOtp(CODE)
+
+        assertThat(outcome).isEqualTo(
+            Result.Success(
+                VerifyOutcome.MfaRequired(
+                    listOf(MfaFactor.Push(2, DEVICE), MfaFactor.Push(3, OTHER_DEVICE)),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `discover - asks only for the steps the screens can draw`() = runTest {
+        repository.discover()
+
+        verify {
+            client.authorize(
+                CONNECTION,
+                any(),
+                any(),
+                match {
+                    it == setOf(
+                        EmbeddedCapability.IDENTIFY_EMAIL,
+                        EmbeddedCapability.CHALLENGE_EMAIL,
+                        EmbeddedCapability.VERIFY_OTP,
+                        EmbeddedCapability.CHALLENGE_PUSH,
+                        EmbeddedCapability.VERIFY_OOB,
+                    )
+                },
+            )
+        }
+    }
+
+    @Test
     fun `verifyOtp - server asks for another step - fails for good as unsupported`() = runTest {
         listOf(
-            verifyOtp(OtpChannel.TOTP, null),
             verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
             verifyOtp(OtpChannel.SMS, null),
+            // Second factors other than push aren't supported yet.
+            verifyOtp(OtpChannel.TOTP, null),
+            NextAction.VerifyRecoveryCode,
+            challengeEmail(at = 0),
         ).forEach { nextAction ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns step(nextAction)
 
@@ -352,6 +407,9 @@ class EmbeddedLoginRepositoryImplTest {
         const val CONNECTION = "email"
         const val EMAIL = "jane@example.com"
         const val MASKED_EMAIL = "j***@example.com"
+        const val MASKED_PHONE = "+1***1234"
+        const val DEVICE = "Jane's phone"
+        const val OTHER_DEVICE = "Jane's tablet"
         const val CODE = "123456"
     }
 }

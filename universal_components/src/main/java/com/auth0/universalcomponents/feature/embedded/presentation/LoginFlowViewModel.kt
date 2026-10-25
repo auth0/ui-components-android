@@ -8,6 +8,7 @@ import com.auth0.universalcomponents.domain.network.onSuccess
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.domain.model.VerifyOutcome
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
@@ -36,6 +37,7 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     private var isRunning = false
     private var inFlight: Job? = null
     private var countdown: Job? = null
+    private var mfaAttempts = 0
 
     fun send(event: LoginEvent) {
         val current = _loginStep.value
@@ -59,6 +61,14 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
             }
 
             LoginEvent.Retry -> if (current is LoginStep.Failed) launchStep { retry(current) }
+
+            is LoginEvent.MfaSignedIn -> if (current is LoginStep.Mfa) {
+                viewModelScope.launch { signedIn(event.credentials) }
+            }
+
+            LoginEvent.LeaveMfa -> if (current is LoginStep.Mfa) {
+                _loginStep.value = LoginStep.CollectOtpIdentifier(current.email)
+            }
         }
     }
 
@@ -106,14 +116,20 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     /**
      * A wrong or expired code stays on code entry with the error under the field.
      * After a failure for good, Try again returns to code entry only if the session survived, else to email entry.
+     * A second factor hands over to the MFA flow, which carries on with the same session.
      */
     private suspend fun verify(email: String, code: String) {
         updateCodeStep { copy(error = null, isSubmitting = true) }
         repository.verifyOtp(code)
-            .onSuccess { credentials ->
-                _loginStep.value = LoginStep.Authenticated
-                isRunning = false
-                _authenticated.send(credentials)
+            .onSuccess { outcome ->
+                when (outcome) {
+                    is VerifyOutcome.SignedIn -> signedIn(outcome.credentials)
+                    is VerifyOutcome.MfaRequired -> _loginStep.value = LoginStep.Mfa(
+                        email = email,
+                        factors = outcome.factors,
+                        attempt = ++mfaAttempts,
+                    )
+                }
             }
             .onError { failure ->
                 when (failure.error) {
@@ -134,6 +150,12 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
                     )
                 }
             }
+    }
+
+    private suspend fun signedIn(credentials: Credentials) {
+        _loginStep.value = LoginStep.Authenticated
+        isRunning = false
+        _authenticated.send(credentials)
     }
 
     /** Counts the resend wait down a second at a time; it stops at zero, or once code entry is left. */

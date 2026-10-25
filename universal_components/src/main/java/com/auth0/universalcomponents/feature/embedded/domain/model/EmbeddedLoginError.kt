@@ -22,7 +22,13 @@ internal sealed interface EmbeddedLoginError {
 
     data object TooManyLogins : EmbeddedLoginError
 
-    /** The server asks for a further step, such as MFA, that isn't supported yet. */
+    /** The user turned down the push on their device. */
+    data object PushDenied : EmbeddedLoginError
+
+    /** The account has no second factor it can use here. */
+    data object NoEligibleFactors : EmbeddedLoginError
+
+    /** The server asks for a further step that these screens can't show. */
     data object ExtraStepUnsupported : EmbeddedLoginError
 
     /** Any other error the server explained; [text] is its own words. */

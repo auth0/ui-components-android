@@ -5,6 +5,8 @@ import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.VerifyOutcome
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
@@ -172,7 +174,7 @@ class LoginFlowViewModelTest {
     fun `submit code - accepted - signs in and hands over the credentials`() = runTest {
         startAtCode()
         val credentials = mockk<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } returns Result.Success(credentials)
+        coEvery { repository.verifyOtp(CODE) } returns Result.Success(VerifyOutcome.SignedIn(credentials))
         val received = mutableListOf<Credentials>()
         val job = launch { viewModel.authenticated.toList(received) }
 
@@ -182,6 +184,48 @@ class LoginFlowViewModelTest {
         assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Authenticated)
         assertThat(received).containsExactly(credentials)
         job.cancel()
+    }
+
+    @Test
+    fun `submit code - second factor needed - hands over to MFA with the offered factors`() = runTest {
+        startAtCode()
+        val factors = listOf(MfaFactor.Push(0, "Jane's phone"), MfaFactor.Push(1, "Jane's tablet"))
+        coEvery { repository.verifyOtp(CODE) } returns Result.Success(VerifyOutcome.MfaRequired(factors))
+
+        viewModel.send(LoginEvent.SubmitOtp(CODE))
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Mfa(EMAIL, factors, attempt = 1))
+    }
+
+    @Test
+    fun `mfa - signed in - signs in and hands over the credentials`() = runTest {
+        startAtMfa()
+        val credentials = mockk<Credentials>()
+        val received = mutableListOf<Credentials>()
+        val job = launch { viewModel.authenticated.toList(received) }
+
+        viewModel.send(LoginEvent.MfaSignedIn(credentials))
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Authenticated)
+        assertThat(received).containsExactly(credentials)
+        job.cancel()
+    }
+
+    @Test
+    fun `mfa - left - goes back to email entry with the email kept, and the next visit is a new one`() = runTest {
+        startAtMfa()
+
+        viewModel.send(LoginEvent.LeaveMfa)
+        advanceUntilIdle()
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+
+        viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
+        advanceUntilIdle()
+        viewModel.send(LoginEvent.SubmitOtp(CODE))
+        advanceUntilIdle()
+        assertThat((viewModel.loginStep.value as LoginStep.Mfa).attempt).isEqualTo(2)
     }
 
     @Test
@@ -255,7 +299,7 @@ class LoginFlowViewModelTest {
     fun `submit code - while verifying - stays on the code step with Verify spinning`() = runTest {
         startAtCode()
         val answer = CompletableDeferred<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(answer.await()) }
+        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(VerifyOutcome.SignedIn(answer.await())) }
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
@@ -269,7 +313,7 @@ class LoginFlowViewModelTest {
     fun `submit code - tapped twice while verifying - verifies once`() = runTest {
         startAtCode()
         val answer = CompletableDeferred<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(answer.await()) }
+        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(VerifyOutcome.SignedIn(answer.await())) }
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
@@ -378,7 +422,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `start - after signing in - begins a new flow`() = runTest {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } returns Result.Success(mockk())
+        coEvery { repository.verifyOtp(CODE) } returns Result.Success(VerifyOutcome.SignedIn(mockk()))
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
@@ -428,7 +472,7 @@ class LoginFlowViewModelTest {
     fun `back - while verifying - stays in the flow`() = runTest {
         startAtCode()
         val answer = CompletableDeferred<Credentials>()
-        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(answer.await()) }
+        coEvery { repository.verifyOtp(CODE) } coAnswers { Result.Success(VerifyOutcome.SignedIn(answer.await())) }
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         runCurrent()
 
@@ -456,6 +500,14 @@ class LoginFlowViewModelTest {
     }
 
     /** On the code step with the resend countdown already run out. */
+    private fun TestScope.startAtMfa() {
+        startAtCode()
+        coEvery { repository.verifyOtp(CODE) } returns
+            Result.Success(VerifyOutcome.MfaRequired(listOf(MfaFactor.Push(0, "Jane's phone"))))
+        viewModel.send(LoginEvent.SubmitOtp(CODE))
+        advanceUntilIdle()
+    }
+
     private fun TestScope.startAtCode() {
         startAtEmail()
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))

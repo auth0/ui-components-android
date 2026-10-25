@@ -2,7 +2,6 @@ package com.auth0.universalcomponents.feature.embedded.presentation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.tween
@@ -22,14 +21,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenFrame
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaFlowHost
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaViewModel
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 
 private const val TRANSITION_MILLIS = 280
 
-/** Draws the ViewModel's step, animates screen changes and owns the navigation bar. */
+/**
+ * Draws the ViewModel's step, animates screen changes and owns the navigation bar.
+ * On a second factor it hands the screen to the MFA flow, built by [mfaViewModel] on the same session.
+ */
 @Composable
 internal fun LoginRenderingHost(
     viewModel: LoginFlowViewModel,
+    mfaViewModel: @Composable (LoginStep.Mfa) -> MfaViewModel,
     onAuthenticated: (Credentials) -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -41,6 +46,17 @@ internal fun LoginRenderingHost(
     LaunchedEffect(viewModel) { viewModel.send(LoginEvent.Start) }
     ObserveAsEvents(viewModel.authenticated) { currentOnAuthenticated(it) }
 
+    val current = step
+    if (current is LoginStep.Mfa) {
+        MfaFlowHost(
+            viewModel = mfaViewModel(current),
+            onAuthenticated = { viewModel.send(LoginEvent.MfaSignedIn(it)) },
+            onRestart = { viewModel.send(LoginEvent.LeaveMfa) },
+            modifier = modifier,
+        )
+        return
+    }
+
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
     BackHandler(onBack = onBack)
 
@@ -48,9 +64,11 @@ internal fun LoginRenderingHost(
 
     LoginScreenFrame(onBack = onBack, modifier = modifier) {
         AnimatedContent(
-            targetState = plan(step),
+            targetState = plan(current),
             contentKey = { it.transitionIdentity },
-            transitionSpec = { pushTransition() },
+            transitionSpec = {
+                stepTransition(isForward = targetState.navigationDepth >= initialState.navigationDepth)
+            },
             modifier = Modifier.fillMaxSize(),
             label = "loginStep",
         ) { plan ->
@@ -60,8 +78,8 @@ internal fun LoginRenderingHost(
 }
 
 /** A deeper screen pushes in from the end; a shallower one pops back in from the start. */
-private fun AnimatedContentTransitionScope<ScreenPlan>.pushTransition(): ContentTransform {
-    val direction = if (targetState.navigationDepth >= initialState.navigationDepth) 1 else -1
+internal fun stepTransition(isForward: Boolean): ContentTransform {
+    val direction = if (isForward) 1 else -1
     val spec = tween<Float>(TRANSITION_MILLIS, easing = EaseInOut)
     val slide = tween<IntOffset>(TRANSITION_MILLIS, easing = EaseInOut)
     return (slideInHorizontally(slide) { direction * it } + fadeIn(spec)) togetherWith

@@ -20,7 +20,11 @@ import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUse
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
+import com.auth0.universalcomponents.feature.embedded.data.repository.MfaRepositoryImpl
+import com.auth0.universalcomponents.feature.embedded.di.EmbeddedAuthSession
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
+import com.auth0.universalcomponents.feature.embedded.di.MfaViewModelFactory
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 
 object UniversalComponentsModule {
 
@@ -59,15 +63,23 @@ object UniversalComponentsModule {
         )
     }
 
-    internal fun provideLoginFlowViewModelFactory(connection: String): LoginFlowViewModelFactory {
+    internal fun provideEmbeddedAuthSessionFactory(): EmbeddedAuthSession.Factory {
+        return EmbeddedAuthSession.Factory(client = { EmbeddedAuthClient(Auth0UniversalComponents.account) })
+    }
+
+    /** [client] must be the login flow's session client, shared with MFA. */
+    internal fun provideLoginFlowViewModelFactory(
+        connection: String,
+        client: EmbeddedAuthClient,
+    ): LoginFlowViewModelFactory {
         return LoginFlowViewModelFactory(
-            repository = {
-                EmbeddedLoginRepositoryImpl(
-                    client = EmbeddedAuthClient(Auth0UniversalComponents.account),
-                    connection = connection,
-                )
-            }
+            repository = { EmbeddedLoginRepositoryImpl(client = client, connection = connection) }
         )
+    }
+
+    /** [client] must be the one the first factor used: it holds the session MFA continues. */
+    internal fun provideMfaViewModelFactory(client: EmbeddedAuthClient, factors: List<MfaFactor>): MfaViewModelFactory {
+        return MfaViewModelFactory(factors = factors, repository = { MfaRepositoryImpl(client) })
     }
 
     // Use cases

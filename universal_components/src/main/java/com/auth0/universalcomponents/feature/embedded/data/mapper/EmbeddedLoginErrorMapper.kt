@@ -23,6 +23,8 @@ internal fun EmbeddedAuthException.toLoginFailure(): LoginFailure {
         EmbeddedAuthError.TooManyWrongOtpAttempts -> EmbeddedLoginError.TooManyWrongCodes
         EmbeddedAuthError.TooManyAttempts -> EmbeddedLoginError.TooManyAttempts
         EmbeddedAuthError.TooManyLogins -> EmbeddedLoginError.TooManyLogins
+        EmbeddedAuthError.AuthorizationRejected -> EmbeddedLoginError.PushDenied
+        EmbeddedAuthError.NoEligibleFactors -> EmbeddedLoginError.NoEligibleFactors
         else -> null
     }
     val fromServer = code !in SDK_ERROR_CODES && description.isNotBlank()
