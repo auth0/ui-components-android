@@ -40,6 +40,9 @@ internal class MfaViewModel(
     /** The wait between push checks, and the check itself. */
     private var pushCheckJob: Job? = null
 
+    /** The one-second wait before the resend countdown moves on. */
+    private var resendCountdownJob: Job? = null
+
     fun onIntent(intent: MfaIntent) = applyUpdate(MfaIntentHandler.handleIntent(_state.value, intent))
 
     private fun onServerResult(result: MfaResult) = applyUpdate(MfaIntentHandler.handleResult(_state.value, result))
@@ -47,13 +50,14 @@ internal class MfaViewModel(
     private fun applyUpdate(update: MfaUpdate) {
         _state.value = update.state
         update.effect?.let { _effects.trySend(it) }
-        update.command?.let(::runCommand)
+        update.commands.forEach(::runCommand)
     }
 
     private fun runCommand(command: MfaCommand) {
         when (command) {
             MfaCommand.StopPush -> pushCheckJob?.cancel()
             is MfaCommand.CheckPush -> schedulePushCheck(command.afterMs)
+            MfaCommand.CountDownResend -> countDownResend()
             is MfaCommand.SendPush -> viewModelScope.launch {
                 // The flow is one step at a time: a push check in flight must finish before the next step starts.
                 pushCheckJob?.cancelAndJoin()
@@ -83,6 +87,15 @@ internal class MfaViewModel(
         }
     }
 
+    /** Replaces any tick still waiting, so a new countdown never loses a second to an old one. */
+    private fun countDownResend() {
+        resendCountdownJob?.cancel()
+        resendCountdownJob = viewModelScope.launch {
+            delay(ONE_SECOND_MILLIS)
+            applyUpdate(MfaIntentHandler.handleSecondPassed(_state.value))
+        }
+    }
+
     /** A failure is logged once here, with its cause, so it can be traced in a live app. */
     private inline fun <T> Result<T, LoginFailure>.toMfaResult(onSuccess: (T) -> MfaResult): MfaResult = when (this) {
         is Result.Success -> onSuccess(data)
@@ -94,5 +107,6 @@ internal class MfaViewModel(
 
     private companion object {
         const val TAG = "MfaViewModel"
+        const val ONE_SECOND_MILLIS = 1_000L
     }
 }

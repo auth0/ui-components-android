@@ -137,12 +137,12 @@
     <string name="embedded_login_error_too_many_wrong_codes">Too many incorrect codes. Please try again later.</string>
     <string name="embedded_login_error_too_many_logins">Too many login attempts. Please try again later.</string>
     <string name="embedded_login_error_extra_step_unsupported">This account needs an extra verification step that isn\'t supported yet.</string>
-    <string name="embedded_login_mfa_list_title">Verify it\'s you</string>
-    <string name="embedded_login_mfa_list_subtitle">Log in with one of the following methods to verify your identity</string>
-    <string name="embedded_login_mfa_factor_push">Push notification to %1$s</string>
+    <string name="embedded_login_mfa_list_title">Choose a device</string>
+    <string name="embedded_login_mfa_list_subtitle">Where should we send the sign-in request?</string>
     <string name="embedded_login_mfa_push_title">Check your device</string>
-    <string name="embedded_login_mfa_push_subtitle">We sent a notification to %1$s. Approve it to continue.</string>
-    <string name="embedded_login_mfa_use_another_method">Use another method</string>
+    <string name="embedded_login_mfa_push_subtitle">We sent a sign-in request to %1$s. Approve it in the Guardian app to continue.</string>
+    <string name="embedded_login_mfa_waiting">Waiting for approval</string>
+    <string name="embedded_login_mfa_choose_another_device">Choose another device</string>
     <string name="embedded_login_mfa_error_expired">This request expired. Please sign in again.</string>
     <string name="embedded_login_mfa_error_push_denied">The notification was declined. Please sign in again.</string>
     <string name="embedded_login_mfa_error_no_factors">This account has no verification method that can be used here.</string>

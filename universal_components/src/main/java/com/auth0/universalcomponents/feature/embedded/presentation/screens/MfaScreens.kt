@@ -1,20 +1,23 @@
 package com.auth0.universalcomponents.feature.embedded.presentation.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginPrimaryButton
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenHeader
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginTextButton
@@ -22,7 +25,7 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Mf
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** "Verify it's you": every second factor the server offered, one row each. */
+/** "Choose a device": every second factor the server offered, one row each. */
 @Composable
 internal fun MfaFactorListScreen(
     factors: List<MfaFactor>,
@@ -51,49 +54,80 @@ internal fun MfaFactorListScreen(
 }
 
 /**
- * Waiting for the user to approve the push on their device. A null [onUseAnotherMethod] hides that action;
- * [isSending] keeps it off until the push is out.
+ * Waiting for the user to approve the push on their device. Resend opens once [resendSecondsLeft] reaches zero;
+ * a null [onChooseAnotherDevice] hides that action. [isSending] keeps both off until the push is out.
  */
 @Composable
 internal fun MfaPushScreen(
     deviceName: String,
+    resendSecondsLeft: Int,
+    onResend: () -> Unit,
     modifier: Modifier = Modifier,
     isSending: Boolean = false,
-    onUseAnotherMethod: (() -> Unit)? = null,
+    onChooseAnotherDevice: (() -> Unit)? = null,
 ) {
+    val dimensions = Auth0Theme.dimensions
     LoginStepLayout(
         modifier = modifier,
         pageDescription = {
             LoginScreenHeader(
                 title = stringResource(R.string.embedded_login_mfa_push_title),
                 subtitle = stringResource(R.string.embedded_login_mfa_push_subtitle, deviceName),
+                bottomSpacing = dimensions.spacingXxl + dimensions.spacingMd,
             )
         },
-        content = {
-            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularLoader(modifier = Modifier.size(Auth0Theme.sizes.iconLarge))
-            }
-        },
+        content = { MfaWaitingForApproval() },
         primaryAction = {
-            if (onUseAnotherMethod != null) {
-                LoginTextButton(
-                    title = stringResource(R.string.embedded_login_mfa_use_another_method),
-                    onClick = onUseAnotherMethod,
-                    enabled = !isSending,
+            Column(verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)) {
+                LoginPrimaryButton(
+                    title = if (resendSecondsLeft > 0) {
+                        stringResource(R.string.embedded_login_resend_in, resendSecondsLeft)
+                    } else {
+                        stringResource(R.string.embedded_login_resend)
+                    },
+                    onClick = onResend,
+                    enabled = !isSending && resendSecondsLeft == 0,
                 )
+                if (onChooseAnotherDevice != null) {
+                    LoginTextButton(
+                        title = stringResource(R.string.embedded_login_mfa_choose_another_device),
+                        onClick = onChooseAnotherDevice,
+                        enabled = !isSending,
+                    )
+                }
             }
         },
         pinActionsToBottom = false,
     )
 }
 
-/** Names the device, so two phones with push never look like the same row. */
+/** The spinner with "Waiting for approval", announced once to screen readers. */
 @Composable
+private fun MfaWaitingForApproval() {
+    val dimensions = Auth0Theme.dimensions
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = dimensions.spacingXl + dimensions.spacingXxs),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(dimensions.spacingSm),
+    ) {
+        CircularLoader(modifier = Modifier.size(dimensions.spacingXxl))
+        Text(
+            text = stringResource(R.string.embedded_login_mfa_waiting),
+            style = Auth0Theme.typography.body,
+            color = Auth0Theme.colors.textDefault,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        )
+    }
+}
+
+/** The device's own name, so two phones with push never look like the same row. */
 private fun MfaFactor.label(): String = when (this) {
-    is MfaFactor.Push -> stringResource(R.string.embedded_login_mfa_factor_push, deviceName)
+    is MfaFactor.Push -> deviceName
 }
 
 @Composable
 private fun MfaFactor.icon(): Painter = when (this) {
-    is MfaFactor.Push -> rememberVectorPainter(Icons.Outlined.NotificationsActive)
+    is MfaFactor.Push -> painterResource(R.drawable.ic_device)
 }

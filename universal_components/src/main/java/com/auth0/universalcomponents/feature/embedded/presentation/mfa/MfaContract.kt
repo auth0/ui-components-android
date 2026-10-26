@@ -25,12 +25,13 @@ internal sealed interface MfaStep {
 
     /**
      * Waiting on the user's device; checked again every [pollInMs]. [isSending] is true until the push is out,
-     * so the screen shows at once instead of a loader first.
+     * so the screen shows at once instead of a loader first. Resend opens once [resendSecondsLeft] reaches zero.
      */
     data class WaitForPush(
         val factor: MfaFactor.Push,
         val pollInMs: Long = 0,
         val isSending: Boolean = false,
+        val resendSecondsLeft: Int = 0,
     ) : MfaStep
 
     /** Try again sends [retry] again; when null, the sign-in starts over. */
@@ -49,6 +50,9 @@ internal sealed interface MfaIntent {
     data object Back : MfaIntent
 
     data object Retry : MfaIntent
+
+    /** Sends the push to the same device again. */
+    data object Resend : MfaIntent
 }
 
 /** What the server answered; only the ViewModel sends these. */
@@ -72,6 +76,9 @@ internal sealed interface MfaCommand {
 
     /** Stops checking the push; a check already in flight finishes first. */
     data object StopPush : MfaCommand
+
+    /** Waits one second, then counts the resend wait down by one. */
+    data object CountDownResend : MfaCommand
 }
 
 /** One-off outcomes for whoever hosts the MFA flow. */
@@ -83,9 +90,9 @@ internal sealed interface MfaEffect {
     data object Restart : MfaEffect
 }
 
-/** What one intent or result leads to. */
+/** What one intent or result leads to; [commands] run in order. */
 internal data class MfaUpdate(
     val state: MfaState,
-    val command: MfaCommand? = null,
+    val commands: List<MfaCommand> = emptyList(),
     val effect: MfaEffect? = null,
 )

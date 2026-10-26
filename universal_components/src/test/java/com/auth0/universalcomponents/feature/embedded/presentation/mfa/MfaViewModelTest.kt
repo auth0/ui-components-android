@@ -61,7 +61,7 @@ class MfaViewModelTest {
     fun `push sent - first check waits the server's interval`() = runTest {
         val viewModel = started(PHONE)
 
-        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.WaitForPush(PHONE, pollInMs = POLL))
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.WaitForPush(PHONE, POLL, resendSecondsLeft = COOLDOWN))
         waitFor(POLL - 1)
         coVerify(exactly = 0) { repository.checkPush() }
         waitFor(1)
@@ -77,7 +77,9 @@ class MfaViewModelTest {
         val viewModel = started(PHONE)
 
         waitFor(POLL)
-        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.WaitForPush(PHONE, pollInMs = SLOWER))
+        val secondsWaited = (POLL / ONE_SECOND).toInt()
+        assertThat(viewModel.state.value.step)
+            .isEqualTo(MfaStep.WaitForPush(PHONE, SLOWER, resendSecondsLeft = COOLDOWN - secondsWaited))
         waitFor(SLOWER - 1)
         coVerify(exactly = 1) { repository.checkPush() }
         waitFor(1)
@@ -106,6 +108,38 @@ class MfaViewModelTest {
 
         assertThat(viewModel.state.value.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network))
         coVerify(exactly = 0) { repository.checkPush() }
+    }
+
+    // endregion
+
+    // region resend
+
+    @Test
+    fun `resend - counts down a second at a time, then sends the push to the same device again`() = runTest {
+        var pushesSent = 0
+        coEvery { repository.sendPush(PHONE) } coAnswers {
+            pushesSent++
+            Result.Success(POLL)
+        }
+        // Still waiting until the resent push is checked, so the countdown has time to run out.
+        coEvery { repository.checkPush() } coAnswers {
+            Result.Success(if (pushesSent < 2) PushStatus.Pending(null) else PushStatus.Approved(mockk()))
+        }
+        val viewModel = started(PHONE)
+
+        waitFor(ONE_SECOND)
+        assertThat(viewModel.resendSecondsLeft()).isEqualTo(COOLDOWN - 1)
+        viewModel.onIntent(MfaIntent.Resend)
+        runCurrent()
+        assertThat(pushesSent).isEqualTo(1)
+
+        waitFor(ONE_SECOND * (COOLDOWN - 1))
+        assertThat(viewModel.resendSecondsLeft()).isEqualTo(0)
+        viewModel.onIntent(MfaIntent.Resend)
+        runCurrent()
+
+        assertThat(pushesSent).isEqualTo(2)
+        assertThat(viewModel.resendSecondsLeft()).isEqualTo(COOLDOWN)
     }
 
     // endregion
@@ -162,7 +196,8 @@ class MfaViewModelTest {
 
         coVerify(exactly = 1) { repository.sendPush(TABLET) }
         // The dropped answer from the old push doesn't touch the new one.
-        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.WaitForPush(TABLET, pollInMs = POLL))
+        assertThat(viewModel.state.value.step)
+            .isEqualTo(MfaStep.WaitForPush(TABLET, POLL, resendSecondsLeft = COOLDOWN))
     }
 
     // endregion
@@ -189,10 +224,15 @@ class MfaViewModelTest {
         runCurrent()
     }
 
+    private fun MfaViewModel.resendSecondsLeft(): Int =
+        (state.value.step as MfaStep.WaitForPush).resendSecondsLeft
+
     private companion object {
         val PHONE = MfaFactor.Push(0, "Jane's phone")
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
         const val POLL = 3_000L
         const val SLOWER = 5_000L
+        const val COOLDOWN = MfaIntentHandler.RESEND_COOLDOWN_SECONDS
+        const val ONE_SECOND = 1_000L
     }
 }

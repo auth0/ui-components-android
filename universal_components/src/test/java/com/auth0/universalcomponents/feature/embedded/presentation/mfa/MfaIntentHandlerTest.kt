@@ -17,7 +17,7 @@ class MfaIntentHandlerTest {
         val update = MfaIntentHandler.handleIntent(MfaState(listOf(PHONE)), MfaIntent.Start)
 
         assertThat(update.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, isSending = true))
-        assertThat(update.command).isEqualTo(MfaCommand.SendPush(PHONE))
+        assertThat(update.commands).containsExactly(MfaCommand.SendPush(PHONE))
     }
 
     @Test
@@ -25,7 +25,7 @@ class MfaIntentHandlerTest {
         val update = MfaIntentHandler.handleIntent(MfaState(listOf(PHONE, TABLET)), MfaIntent.Start)
 
         assertThat(update.state.step).isEqualTo(MfaStep.ChooseFactor)
-        assertThat(update.command).isNull()
+        assertThat(update.commands).isEmpty()
     }
 
     @Test
@@ -53,7 +53,7 @@ class MfaIntentHandlerTest {
         val selected = MfaIntentHandler.handleIntent(list, MfaIntent.SelectFactor(TABLET))
 
         assertThat(selected.state.step).isEqualTo(MfaStep.WaitForPush(TABLET, isSending = true))
-        assertThat(selected.command).isEqualTo(MfaCommand.SendPush(TABLET))
+        assertThat(selected.commands).containsExactly(MfaCommand.SendPush(TABLET))
         assertThat(MfaIntentHandler.handleIntent(selected.state, MfaIntent.Back)).isEqualTo(MfaUpdate(selected.state))
     }
 
@@ -65,10 +65,10 @@ class MfaIntentHandlerTest {
         val pending = MfaIntentHandler.handleResult(sent.state, MfaResult.PushPending(SLOWER))
         val pendingNoWait = MfaIntentHandler.handleResult(pending.state, MfaResult.PushPending(null))
 
-        assertThat(sent.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, POLL))
-        assertThat(sent.command).isEqualTo(MfaCommand.CheckPush(POLL))
-        assertThat(pending.command).isEqualTo(MfaCommand.CheckPush(SLOWER))
-        assertThat(pendingNoWait.command).isEqualTo(MfaCommand.CheckPush(SLOWER))
+        assertThat(sent.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, POLL, resendSecondsLeft = COOLDOWN))
+        assertThat(sent.commands).containsExactly(MfaCommand.CheckPush(POLL), MfaCommand.CountDownResend).inOrder()
+        assertThat(pending.commands).containsExactly(MfaCommand.CheckPush(SLOWER))
+        assertThat(pendingNoWait.commands).containsExactly(MfaCommand.CheckPush(SLOWER))
     }
 
     @Test
@@ -89,7 +89,7 @@ class MfaIntentHandlerTest {
         val update = MfaIntentHandler.handleIntent(waiting, MfaIntent.Back)
 
         assertThat(update.state.step).isEqualTo(MfaStep.ChooseFactor)
-        assertThat(update.command).isEqualTo(MfaCommand.StopPush)
+        assertThat(update.commands).containsExactly(MfaCommand.StopPush)
     }
 
     @Test
@@ -98,7 +98,7 @@ class MfaIntentHandlerTest {
 
         val update = MfaIntentHandler.handleIntent(waiting, MfaIntent.Back)
 
-        assertThat(update.command).isEqualTo(MfaCommand.StopPush)
+        assertThat(update.commands).containsExactly(MfaCommand.StopPush)
         assertThat(update.effect).isEqualTo(MfaEffect.Restart)
     }
 
@@ -106,7 +106,7 @@ class MfaIntentHandlerTest {
     fun `pending after the user left - stops`() {
         val list = MfaState(listOf(PHONE, TABLET), MfaStep.ChooseFactor, isStarted = true)
 
-        assertThat(MfaIntentHandler.handleResult(list, MfaResult.PushPending(POLL)).command).isNull()
+        assertThat(MfaIntentHandler.handleResult(list, MfaResult.PushPending(POLL)).commands).isEmpty()
     }
 
     @Test
@@ -130,7 +130,55 @@ class MfaIntentHandlerTest {
         val retried = MfaIntentHandler.handleIntent(failed.state, MfaIntent.Retry)
 
         assertThat(retried.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, isSending = true))
-        assertThat(retried.command).isEqualTo(MfaCommand.SendPush(PHONE))
+        assertThat(retried.commands).containsExactly(MfaCommand.SendPush(PHONE))
+    }
+
+    // endregion
+
+    // region resend
+
+    @Test
+    fun `resend - wait not over - does nothing`() {
+        val waiting = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, POLL, resendSecondsLeft = 1), isStarted = true)
+
+        assertThat(MfaIntentHandler.handleIntent(waiting, MfaIntent.Resend)).isEqualTo(MfaUpdate(waiting))
+    }
+
+    @Test
+    fun `resend - while the push is being sent - does nothing`() {
+        val sending = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, isSending = true), isStarted = true)
+
+        assertThat(MfaIntentHandler.handleIntent(sending, MfaIntent.Resend)).isEqualTo(MfaUpdate(sending))
+    }
+
+    @Test
+    fun `resend - wait over - sends the push to the same device again`() {
+        val waiting = MfaState(listOf(PHONE, TABLET), MfaStep.WaitForPush(TABLET, POLL), isStarted = true)
+
+        val update = MfaIntentHandler.handleIntent(waiting, MfaIntent.Resend)
+
+        assertThat(update.state.step).isEqualTo(MfaStep.WaitForPush(TABLET, isSending = true))
+        assertThat(update.commands).containsExactly(MfaCommand.SendPush(TABLET))
+    }
+
+    @Test
+    fun `second passed - counts down, and stops at zero`() {
+        val waiting = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, POLL, resendSecondsLeft = 2), isStarted = true)
+
+        val one = MfaIntentHandler.handleSecondPassed(waiting)
+        val zero = MfaIntentHandler.handleSecondPassed(one.state)
+
+        assertThat(one.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, POLL, resendSecondsLeft = 1))
+        assertThat(one.commands).containsExactly(MfaCommand.CountDownResend)
+        assertThat(zero.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, POLL, resendSecondsLeft = 0))
+        assertThat(zero.commands).isEmpty()
+    }
+
+    @Test
+    fun `second passed - after the push screen was left - stops`() {
+        val list = MfaState(listOf(PHONE, TABLET), MfaStep.ChooseFactor, isStarted = true)
+
+        assertThat(MfaIntentHandler.handleSecondPassed(list)).isEqualTo(MfaUpdate(list))
     }
 
     // endregion
@@ -153,5 +201,6 @@ class MfaIntentHandlerTest {
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
         const val POLL = 3_000L
         const val SLOWER = 5_000L
+        const val COOLDOWN = MfaIntentHandler.RESEND_COOLDOWN_SECONDS
     }
 }

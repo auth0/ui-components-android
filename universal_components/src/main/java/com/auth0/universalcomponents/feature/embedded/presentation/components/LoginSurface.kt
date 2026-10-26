@@ -16,7 +16,8 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-private val HAIRLINE = 1.dp
+/** The 1dp border of fields and cards. */
+internal val HAIRLINE = 1.dp
 
 private const val GLOW_ALPHA = 0.07f
 private const val GLOW_CENTER_Y = 0.85f

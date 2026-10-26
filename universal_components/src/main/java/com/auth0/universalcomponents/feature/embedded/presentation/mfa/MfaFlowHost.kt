@@ -75,8 +75,10 @@ private fun MfaStepScreen(step: MfaStep, factors: List<MfaFactor>, onIntent: (Mf
 
         is MfaStep.WaitForPush -> MfaPushScreen(
             deviceName = step.factor.deviceName,
+            resendSecondsLeft = step.resendSecondsLeft,
+            onResend = { onIntent(MfaIntent.Resend) },
             isSending = step.isSending,
-            onUseAnotherMethod = if (factors.size > 1) ({ onIntent(MfaIntent.Back) }) else null,
+            onChooseAnotherDevice = if (factors.size > 1) ({ onIntent(MfaIntent.Back) }) else null,
         )
 
         is MfaStep.Failed -> LoginErrorScreen(

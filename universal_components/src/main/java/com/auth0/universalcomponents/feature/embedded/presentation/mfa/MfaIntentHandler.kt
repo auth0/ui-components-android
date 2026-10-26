@@ -10,6 +10,9 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
  */
 internal object MfaIntentHandler {
 
+    /** The same wait as resending an emailed code. */
+    const val RESEND_COOLDOWN_SECONDS = 5
+
     fun handleIntent(state: MfaState, intent: MfaIntent): MfaUpdate {
         val step = state.step
         val unchanged = MfaUpdate(state)
@@ -25,6 +28,12 @@ internal object MfaIntentHandler {
             MfaIntent.Back -> goBack(state)
 
             MfaIntent.Retry -> if (step is MfaStep.Failed) retryFailedStep(state, step) else unchanged
+
+            MfaIntent.Resend -> if (step is MfaStep.WaitForPush && step.canResend) {
+                selectFactor(state, step.factor)
+            } else {
+                unchanged
+            }
         }
     }
 
@@ -32,10 +41,17 @@ internal object MfaIntentHandler {
         val step = state.step
         val unchanged = MfaUpdate(state)
         return when (result) {
+            // Every push sent, the first or a resend, starts the checks and the resend wait.
             is MfaResult.PushSent -> if (step is MfaStep.WaitForPush && step.isSending) {
                 MfaUpdate(
-                    state.withStep(step.copy(pollInMs = result.pollInMs, isSending = false)),
-                    MfaCommand.CheckPush(result.pollInMs),
+                    state.withStep(
+                        step.copy(
+                            pollInMs = result.pollInMs,
+                            isSending = false,
+                            resendSecondsLeft = RESEND_COOLDOWN_SECONDS,
+                        ),
+                    ),
+                    listOf(MfaCommand.CheckPush(result.pollInMs), MfaCommand.CountDownResend),
                 )
             } else {
                 unchanged
@@ -44,7 +60,7 @@ internal object MfaIntentHandler {
             // The user may have left the push screen since; then the check just stops.
             is MfaResult.PushPending -> if (step is MfaStep.WaitForPush && !step.isSending) {
                 val wait = result.pollInMs ?: step.pollInMs
-                MfaUpdate(state.withStep(step.copy(pollInMs = wait)), MfaCommand.CheckPush(wait))
+                MfaUpdate(state.withStep(step.copy(pollInMs = wait)), listOf(MfaCommand.CheckPush(wait)))
             } else {
                 unchanged
             }
@@ -58,6 +74,17 @@ internal object MfaIntentHandler {
         }
     }
 
+    /** One second of the resend wait has passed; it stops at zero, or once the push screen is left. */
+    fun handleSecondPassed(state: MfaState): MfaUpdate {
+        val step = state.step
+        if (step !is MfaStep.WaitForPush || step.isSending || step.resendSecondsLeft == 0) return MfaUpdate(state)
+        val left = step.resendSecondsLeft - 1
+        return MfaUpdate(
+            state.withStep(step.copy(resendSecondsLeft = left)),
+            if (left > 0) listOf(MfaCommand.CountDownResend) else emptyList(),
+        )
+    }
+
     /** One factor goes straight to it; several show the list first. */
     private fun showFirstStep(state: MfaState): MfaUpdate = when (state.factors.size) {
         0 -> MfaUpdate(state.withStep(MfaStep.Failed(EmbeddedLoginError.ExtraStepUnsupported)))
@@ -67,8 +94,10 @@ internal object MfaIntentHandler {
 
     /** The push screen shows at once, while the push is sent. */
     private fun selectFactor(state: MfaState, factor: MfaFactor): MfaUpdate = when (factor) {
-        is MfaFactor.Push ->
-            MfaUpdate(state.withStep(MfaStep.WaitForPush(factor, isSending = true)), MfaCommand.SendPush(factor))
+        is MfaFactor.Push -> MfaUpdate(
+            state.withStep(MfaStep.WaitForPush(factor, isSending = true)),
+            listOf(MfaCommand.SendPush(factor)),
+        )
     }
 
     /** Try again repeats the push only if the server kept the session; otherwise the sign-in starts over. */
@@ -87,14 +116,18 @@ internal object MfaIntentHandler {
     private fun goBack(state: MfaState): MfaUpdate = when (val step = state.step) {
         is MfaStep.WaitForPush -> when {
             step.isSending -> MfaUpdate(state)
-            state.factors.size > 1 -> MfaUpdate(state.withStep(MfaStep.ChooseFactor), MfaCommand.StopPush)
-            else -> MfaUpdate(state, MfaCommand.StopPush, MfaEffect.Restart)
+            state.factors.size > 1 -> MfaUpdate(state.withStep(MfaStep.ChooseFactor), listOf(MfaCommand.StopPush))
+            else -> MfaUpdate(state, listOf(MfaCommand.StopPush), MfaEffect.Restart)
         }
 
         MfaStep.ChooseFactor, is MfaStep.Failed -> MfaUpdate(state, effect = MfaEffect.Restart)
 
         MfaStep.Loading, MfaStep.Authenticated -> MfaUpdate(state)
     }
+
+    /** The push is out and its resend wait is over. */
+    private val MfaStep.WaitForPush.canResend: Boolean
+        get() = !isSending && resendSecondsLeft == 0
 
     private fun MfaState.withStep(step: MfaStep): MfaState = copy(step = step)
 }
