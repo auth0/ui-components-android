@@ -113,7 +113,8 @@ class MfaIntentHandlerTest {
     fun `denied - fails for good, and Try again starts the sign-in over`() {
         val waiting = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, POLL), isStarted = true)
 
-        val failed = MfaIntentHandler.handleResult(waiting, MfaResult.Failed(LoginFailure(EmbeddedLoginError.PushDenied)))
+        val denied = MfaResult.Failed(LoginFailure(EmbeddedLoginError.PushDenied))
+        val failed = MfaIntentHandler.handleResult(waiting, denied)
         val retried = MfaIntentHandler.handleIntent(failed.state, MfaIntent.Retry)
 
         assertThat(failed.state.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.PushDenied))

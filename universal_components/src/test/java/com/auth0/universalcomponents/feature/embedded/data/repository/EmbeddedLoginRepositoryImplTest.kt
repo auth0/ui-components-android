@@ -16,7 +16,6 @@ import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.model.VerifyOutcome
@@ -362,46 +361,11 @@ class EmbeddedLoginRepositoryImplTest {
 
     // endregion
 
-    /** A step that answers "not finished yet, do one of [next]", the way every step before the last does. */
-    private fun <T> step(vararg next: NextAction, reason: Reason = Reason.NONE): Request<T, EmbeddedAuthException> =
-        failingWith(
-            EmbeddedAuthError.InsufficientAuthorization(next.toList(), reason),
-            code = "insufficient_authorization",
-        )
-
-    private fun <T> failingWith(
-        error: EmbeddedAuthError,
-        code: String = "access_denied",
-        description: String = "",
-        statusCode: Int = 0,
-    ): Request<T, EmbeddedAuthException> {
-        val exception = sdkInstance<EmbeddedAuthException>(
-            String::class.java to code,
-            String::class.java to description,
-            Int::class.java to statusCode,
-            EmbeddedAuthError::class.java to error,
-            String::class.java to null,
-            Throwable::class.java to null,
-        )
-        return FakeRequestImpl(exception = exception)
-    }
-
     private fun challengeEmail(at: Int): NextAction.ChallengeEmail =
         sdkInstance(Int::class.java to at, String::class.java to EMAIL)
 
     private fun verifyOtp(channel: OtpChannel, destination: String?): NextAction.VerifyOtp =
         sdkInstance(OtpChannel::class.java to channel, String::class.java to destination)
-
-    /** The SDK's constructors are internal to Kotlin but public on the JVM, so tests build real instances. */
-    private inline fun <reified T> sdkInstance(vararg args: Pair<Class<*>, Any?>): T =
-        T::class.java.getConstructor(*args.map { it.first }.toTypedArray())
-            .newInstance(*args.map { it.second }.toTypedArray())
-
-    /** Every failure comes back from the repository as a [LoginFailure], never thrown. */
-    private fun Result<*, LoginFailure>.failure(): LoginFailure {
-        assertThat(this).isInstanceOf(Result.Error::class.java)
-        return (this as Result.Error).error
-    }
 
     private companion object {
         const val CONNECTION = "email"

@@ -19,7 +19,6 @@ junit4 = "4.13.2"
 credentials = "1.5.0"
 dokka = "2.0.0"
 detekt = "1.23.8"
-universal-components = "1.0.0-beta.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,7 +36,6 @@ androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose_material_icon = { group = "androidx.compose.material", name = "material-icons-extended" }
 auth0 = { module = "com.auth0.android:auth0", version.ref = "auth0" }
-universal-components ={ module = "com.auth0.universalcomponents:universal-components", version.ref = "universal-components" }
 compose-navigation = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation-compose" }
 viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
 androidx-runtime-android = { group = "androidx.compose.runtime", name = "runtime-android", version.ref = "runtimeAndroid" }

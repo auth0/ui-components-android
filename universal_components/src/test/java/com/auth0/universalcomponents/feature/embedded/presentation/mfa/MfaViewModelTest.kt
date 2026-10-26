@@ -1,0 +1,198 @@
+package com.auth0.universalcomponents.feature.embedded.presentation.mfa
+
+import com.auth0.android.result.Credentials
+import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
+import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
+import com.google.common.truth.Truth.assertThat
+import io.mockk.clearAllMocks
+import io.mockk.coEvery
+import io.mockk.coVerify
+import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+
+/**
+ * The push-check timing the SDK asks for: one step at a time, a check in flight is never cut off,
+ * and its answer is dropped once the user has left. Each wait is moved through by hand, so every
+ * test can check what happened just before and just after it.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class MfaViewModelTest {
+
+    private lateinit var repository: MfaRepository
+
+    private val testDispatcher = StandardTestDispatcher()
+
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        repository = mockk()
+        coEvery { repository.sendPush(any()) } returns Result.Success(POLL)
+        // Approve by default: runTest runs what is left at the end, and a push that stays pending is checked forever.
+        coEvery { repository.checkPush() } returns Result.Success(PushStatus.Approved(mockk()))
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+        clearAllMocks()
+    }
+
+    // region checking
+
+    @Test
+    fun `push sent - first check waits the server's interval`() = runTest {
+        val viewModel = started(PHONE)
+
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.WaitForPush(PHONE, pollInMs = POLL))
+        waitFor(POLL - 1)
+        coVerify(exactly = 0) { repository.checkPush() }
+        waitFor(1)
+        coVerify(exactly = 1) { repository.checkPush() }
+    }
+
+    @Test
+    fun `still pending - next check waits the new interval the server gave`() = runTest {
+        coEvery { repository.checkPush() } returnsMany listOf(
+            Result.Success(PushStatus.Pending(SLOWER)),
+            Result.Success(PushStatus.Approved(mockk())),
+        )
+        val viewModel = started(PHONE)
+
+        waitFor(POLL)
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.WaitForPush(PHONE, pollInMs = SLOWER))
+        waitFor(SLOWER - 1)
+        coVerify(exactly = 1) { repository.checkPush() }
+        waitFor(1)
+        coVerify(exactly = 2) { repository.checkPush() }
+    }
+
+    @Test
+    fun `approved - signs in and hands over the credentials`() = runTest {
+        val credentials = mockk<Credentials>()
+        coEvery { repository.checkPush() } returns Result.Success(PushStatus.Approved(credentials))
+        val viewModel = started(PHONE)
+        val effects = collectEffects(viewModel)
+
+        waitFor(POLL)
+
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.Authenticated)
+        assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+    }
+
+    @Test
+    fun `sending fails - shows the error and checks nothing`() = runTest {
+        coEvery { repository.sendPush(PHONE) } returns Result.Error(LoginFailure(EmbeddedLoginError.Network))
+        val viewModel = started(PHONE)
+
+        waitFor(POLL * 2)
+
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network))
+        coVerify(exactly = 0) { repository.checkPush() }
+    }
+
+    // endregion
+
+    // region leaving
+
+    @Test
+    fun `left during the wait - the check never runs`() = runTest {
+        val viewModel = started(PHONE, TABLET, select = PHONE)
+
+        viewModel.onIntent(MfaIntent.Back)
+        waitFor(POLL * 2)
+
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.ChooseFactor)
+        coVerify(exactly = 0) { repository.checkPush() }
+    }
+
+    @Test
+    fun `left while a check is in flight - the check finishes, and its answer is dropped`() = runTest {
+        val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
+        var checkFinished = false
+        coEvery { repository.checkPush() } coAnswers { answer.await().also { checkFinished = true } }
+        val viewModel = started(PHONE, TABLET, select = PHONE)
+        val effects = collectEffects(viewModel)
+        waitFor(POLL)
+
+        viewModel.onIntent(MfaIntent.Back)
+        runCurrent()
+        // An approval that lands after the user left must not sign them in.
+        answer.complete(Result.Success(PushStatus.Approved(mockk())))
+        runCurrent()
+
+        assertThat(checkFinished).isTrue()
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.ChooseFactor)
+        assertThat(effects).isEmpty()
+    }
+
+    @Test
+    fun `another device picked while a check is in flight - its push waits for that check to finish`() = runTest {
+        val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
+        // Only the old push's check is held; the new push's check then approves, so checking ends.
+        coEvery { repository.checkPush() } coAnswers { answer.await() } andThen
+            Result.Success(PushStatus.Approved(mockk()))
+        val viewModel = started(PHONE, TABLET, select = PHONE)
+        waitFor(POLL)
+
+        viewModel.onIntent(MfaIntent.Back)
+        viewModel.onIntent(MfaIntent.SelectFactor(TABLET))
+        runCurrent()
+        coVerify(exactly = 0) { repository.sendPush(TABLET) }
+
+        answer.complete(Result.Success(PushStatus.Pending(SLOWER)))
+        runCurrent()
+
+        coVerify(exactly = 1) { repository.sendPush(TABLET) }
+        // The dropped answer from the old push doesn't touch the new one.
+        assertThat(viewModel.state.value.step).isEqualTo(MfaStep.WaitForPush(TABLET, pollInMs = POLL))
+    }
+
+    // endregion
+
+    /** Starts MFA and lets the push for [select] go out; with one factor it's picked straight away. */
+    private fun TestScope.started(vararg factors: MfaFactor.Push, select: MfaFactor.Push? = null): MfaViewModel {
+        val viewModel = MfaViewModel(factors.toList(), repository)
+        viewModel.onIntent(MfaIntent.Start)
+        if (select != null) viewModel.onIntent(MfaIntent.SelectFactor(select))
+        runCurrent()
+        return viewModel
+    }
+
+    private fun TestScope.collectEffects(viewModel: MfaViewModel): List<MfaEffect> {
+        val effects = mutableListOf<MfaEffect>()
+        backgroundScope.launch(testDispatcher) { viewModel.effects.toList(effects) }
+        runCurrent()
+        return effects
+    }
+
+    /** Moves the clock and runs whatever became due, including work due exactly at the end. */
+    private fun TestScope.waitFor(millis: Long) {
+        advanceTimeBy(millis)
+        runCurrent()
+    }
+
+    private companion object {
+        val PHONE = MfaFactor.Push(0, "Jane's phone")
+        val TABLET = MfaFactor.Push(1, "Jane's tablet")
+        const val POLL = 3_000L
+        const val SLOWER = 5_000L
+    }
+}
