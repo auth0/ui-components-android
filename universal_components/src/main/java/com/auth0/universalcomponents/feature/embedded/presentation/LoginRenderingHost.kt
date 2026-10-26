@@ -19,7 +19,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.result.Credentials
+import com.auth0.universalcomponents.di.UniversalComponentsModule
+import com.auth0.universalcomponents.feature.embedded.di.EmbeddedAuthSession
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenFrame
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaFlowHost
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaViewModel
@@ -29,12 +32,13 @@ private const val TRANSITION_MILLIS = 280
 
 /**
  * Draws the ViewModel's step, animates screen changes and owns the navigation bar.
- * On a second factor it hands the screen to the MFA flow, built by [mfaViewModel] on the same session.
+ * On a second factor it hands the screen to the MFA flow, on the same [session] as the first factor.
  */
 @Composable
 internal fun LoginRenderingHost(
     viewModel: LoginFlowViewModel,
-    mfaViewModel: @Composable (LoginStep.Mfa) -> MfaViewModel,
+    session: EmbeddedAuthSession,
+    connection: String,
     onAuthenticated: (Credentials) -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -48,8 +52,13 @@ internal fun LoginRenderingHost(
 
     val current = step
     if (current is LoginStep.Mfa) {
+        // One MFA ViewModel per visit, so going back to email and through MFA again starts it fresh.
+        val mfaViewModel: MfaViewModel = viewModel(
+            key = "embedded-mfa:$connection:${current.attempt}",
+            factory = UniversalComponentsModule.provideMfaViewModelFactory(session.client, current.factors),
+        )
         MfaFlowHost(
-            viewModel = mfaViewModel(current),
+            viewModel = mfaViewModel,
             onAuthenticated = { viewModel.send(LoginEvent.MfaSignedIn(it)) },
             onRestart = { viewModel.send(LoginEvent.LeaveMfa) },
             modifier = modifier,

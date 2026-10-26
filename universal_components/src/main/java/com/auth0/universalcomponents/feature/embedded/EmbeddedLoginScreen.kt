@@ -8,7 +8,6 @@ import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.feature.embedded.di.EmbeddedAuthSession
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginFlowViewModel
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginRenderingHost
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaViewModel
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 
@@ -35,13 +34,8 @@ fun EmbeddedLoginScreen(
         )
         LoginRenderingHost(
             viewModel = loginViewModel,
-            mfaViewModel = { step ->
-                // One MFA ViewModel per visit, so going back to email and through MFA again starts it fresh.
-                viewModel<MfaViewModel>(
-                    key = "embedded-mfa:$connection:${step.attempt}",
-                    factory = UniversalComponentsModule.provideMfaViewModelFactory(session.client, step.factors),
-                )
-            },
+            session = session,
+            connection = connection,
             onAuthenticated = onAuthenticated,
             onExit = onExit,
             modifier = modifier,
