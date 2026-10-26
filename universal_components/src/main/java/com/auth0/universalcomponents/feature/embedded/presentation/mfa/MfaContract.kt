@@ -63,7 +63,7 @@ internal sealed interface MfaResult {
     data class Failed(val failure: LoginFailure) : MfaResult
 }
 
-/** Work the reducer asks the ViewModel to run. */
+/** Work [MfaIntentHandler] asks the ViewModel to run. */
 internal sealed interface MfaCommand {
 
     data class SendPush(val factor: MfaFactor.Push) : MfaCommand

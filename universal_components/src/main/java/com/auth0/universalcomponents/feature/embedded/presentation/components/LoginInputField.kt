@@ -12,19 +12,26 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** A single-line text field for the identifier; takes focus when it first appears. */
+/**
+ * A single-line text field for the identifier; takes focus when it first appears.
+ * The cursor starts at the end, so a pre-filled value (after Edit or Try again) is ready to edit.
+ */
 @Composable
 internal fun LoginInputField(
     value: String,
@@ -43,10 +50,22 @@ internal fun LoginInputField(
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     val focusManager = LocalFocusManager.current
+    // A plain String field would start the cursor at 0; keeping the selection here lets it start at the end.
+    var selection by remember { mutableStateOf(TextRange(value.length)) }
+    var composition by remember { mutableStateOf<TextRange?>(null) }
+    val fieldValue = TextFieldValue(
+        text = value,
+        selection = TextRange(selection.start.coerceAtMost(value.length), selection.end.coerceAtMost(value.length)),
+        composition = composition,
+    )
 
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = fieldValue,
+        onValueChange = { changed ->
+            selection = changed.selection
+            composition = changed.composition
+            if (changed.text != value) onValueChange(changed.text)
+        },
         enabled = enabled,
         singleLine = true,
         interactionSource = interactionSource,

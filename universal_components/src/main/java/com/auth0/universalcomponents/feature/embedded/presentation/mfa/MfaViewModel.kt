@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Holds the MFA state and runs the work [MfaReducer] asks for; it makes no decisions itself.
+ * Holds the MFA state and runs the work [MfaIntentHandler] asks for; it makes no decisions itself.
  * [MfaIntent]s come in, [MfaState] and one-off [MfaEffect]s go out.
  */
 internal class MfaViewModel(
@@ -38,26 +38,26 @@ internal class MfaViewModel(
     val effects: Flow<MfaEffect> = _effects.receiveAsFlow()
 
     /** The wait between push checks, and the check itself. */
-    private var pushCheck: Job? = null
+    private var pushCheckJob: Job? = null
 
-    fun onIntent(intent: MfaIntent) = accept(MfaReducer.reduce(_state.value, intent))
+    fun onIntent(intent: MfaIntent) = applyUpdate(MfaIntentHandler.handleIntent(_state.value, intent))
 
-    private fun onResult(result: MfaResult) = accept(MfaReducer.reduce(_state.value, result))
+    private fun onServerResult(result: MfaResult) = applyUpdate(MfaIntentHandler.handleResult(_state.value, result))
 
-    private fun accept(update: MfaUpdate) {
+    private fun applyUpdate(update: MfaUpdate) {
         _state.value = update.state
         update.effect?.let { _effects.trySend(it) }
-        update.command?.let(::run)
+        update.command?.let(::runCommand)
     }
 
-    private fun run(command: MfaCommand) {
+    private fun runCommand(command: MfaCommand) {
         when (command) {
-            MfaCommand.StopPush -> pushCheck?.cancel()
-            is MfaCommand.CheckPush -> checkPushAfter(command.afterMs)
+            MfaCommand.StopPush -> pushCheckJob?.cancel()
+            is MfaCommand.CheckPush -> schedulePushCheck(command.afterMs)
             is MfaCommand.SendPush -> viewModelScope.launch {
                 // The flow is one step at a time: a push check in flight must finish before the next step starts.
-                pushCheck?.cancelAndJoin()
-                onResult(repository.sendPush(command.factor).toResult { MfaResult.PushSent(it) })
+                pushCheckJob?.cancelAndJoin()
+                onServerResult(repository.sendPush(command.factor).toMfaResult { MfaResult.PushSent(it) })
             }
         }
     }
@@ -66,14 +66,14 @@ internal class MfaViewModel(
      * Waits, then checks once. Stopping cancels the wait at once, but lets a check already in flight finish,
      * so the SDK keeps the session that check returns; its answer is then dropped.
      */
-    private fun checkPushAfter(delayMs: Long) {
-        pushCheck?.cancel()
-        pushCheck = viewModelScope.launch {
+    private fun schedulePushCheck(delayMs: Long) {
+        pushCheckJob?.cancel()
+        pushCheckJob = viewModelScope.launch {
             delay(delayMs)
-            val checked = withContext(NonCancellable) { repository.checkPush() }
+            val checkResult = withContext(NonCancellable) { repository.checkPush() }
             ensureActive()
-            onResult(
-                checked.toResult { status ->
+            onServerResult(
+                checkResult.toMfaResult { status ->
                     when (status) {
                         is PushStatus.Approved -> MfaResult.SignedIn(status.credentials)
                         is PushStatus.Pending -> MfaResult.PushPending(status.retryInMs)
@@ -84,7 +84,7 @@ internal class MfaViewModel(
     }
 
     /** A failure is logged once here, with its cause, so it can be traced in a live app. */
-    private inline fun <T> Result<T, LoginFailure>.toResult(onSuccess: (T) -> MfaResult): MfaResult = when (this) {
+    private inline fun <T> Result<T, LoginFailure>.toMfaResult(onSuccess: (T) -> MfaResult): MfaResult = when (this) {
         is Result.Success -> onSuccess(data)
         is Result.Error -> {
             Logger.e(TAG, "MFA step failed: ${error.error}", error.cause)

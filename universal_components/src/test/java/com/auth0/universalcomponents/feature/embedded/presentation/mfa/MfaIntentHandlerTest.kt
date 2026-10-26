@@ -8,13 +8,13 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
 import org.junit.Test
 
-class MfaReducerTest {
+class MfaIntentHandlerTest {
 
     // region start
 
     @Test
     fun `start - one device - sends the push straight away, showing the push screen`() {
-        val update = MfaReducer.reduce(MfaState(listOf(PHONE)), MfaIntent.Start)
+        val update = MfaIntentHandler.handleIntent(MfaState(listOf(PHONE)), MfaIntent.Start)
 
         assertThat(update.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, isSending = true))
         assertThat(update.command).isEqualTo(MfaCommand.SendPush(PHONE))
@@ -22,7 +22,7 @@ class MfaReducerTest {
 
     @Test
     fun `start - several devices - shows the list`() {
-        val update = MfaReducer.reduce(MfaState(listOf(PHONE, TABLET)), MfaIntent.Start)
+        val update = MfaIntentHandler.handleIntent(MfaState(listOf(PHONE, TABLET)), MfaIntent.Start)
 
         assertThat(update.state.step).isEqualTo(MfaStep.ChooseFactor)
         assertThat(update.command).isNull()
@@ -32,12 +32,12 @@ class MfaReducerTest {
     fun `start - again after a rotation - keeps the user's place`() {
         val started = MfaState(listOf(PHONE, TABLET), MfaStep.WaitForPush(TABLET, POLL), isStarted = true)
 
-        assertThat(MfaReducer.reduce(started, MfaIntent.Start)).isEqualTo(MfaUpdate(started))
+        assertThat(MfaIntentHandler.handleIntent(started, MfaIntent.Start)).isEqualTo(MfaUpdate(started))
     }
 
     @Test
     fun `start - no factors - fails as unsupported`() {
-        val update = MfaReducer.reduce(MfaState(emptyList()), MfaIntent.Start)
+        val update = MfaIntentHandler.handleIntent(MfaState(emptyList()), MfaIntent.Start)
 
         assertThat(update.state.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.ExtraStepUnsupported))
     }
@@ -50,20 +50,20 @@ class MfaReducerTest {
     fun `select - a device from the list - sends its push, and Back waits while it's sent`() {
         val list = MfaState(listOf(PHONE, TABLET), MfaStep.ChooseFactor, isStarted = true)
 
-        val selected = MfaReducer.reduce(list, MfaIntent.SelectFactor(TABLET))
+        val selected = MfaIntentHandler.handleIntent(list, MfaIntent.SelectFactor(TABLET))
 
         assertThat(selected.state.step).isEqualTo(MfaStep.WaitForPush(TABLET, isSending = true))
         assertThat(selected.command).isEqualTo(MfaCommand.SendPush(TABLET))
-        assertThat(MfaReducer.reduce(selected.state, MfaIntent.Back)).isEqualTo(MfaUpdate(selected.state))
+        assertThat(MfaIntentHandler.handleIntent(selected.state, MfaIntent.Back)).isEqualTo(MfaUpdate(selected.state))
     }
 
     @Test
     fun `sent, then pending - checks again after the server's wait`() {
         val sending = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, isSending = true), isStarted = true)
 
-        val sent = MfaReducer.reduce(sending, MfaResult.PushSent(POLL))
-        val pending = MfaReducer.reduce(sent.state, MfaResult.PushPending(SLOWER))
-        val pendingNoWait = MfaReducer.reduce(pending.state, MfaResult.PushPending(null))
+        val sent = MfaIntentHandler.handleResult(sending, MfaResult.PushSent(POLL))
+        val pending = MfaIntentHandler.handleResult(sent.state, MfaResult.PushPending(SLOWER))
+        val pendingNoWait = MfaIntentHandler.handleResult(pending.state, MfaResult.PushPending(null))
 
         assertThat(sent.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, POLL))
         assertThat(sent.command).isEqualTo(MfaCommand.CheckPush(POLL))
@@ -76,7 +76,7 @@ class MfaReducerTest {
         val credentials = mockk<Credentials>()
         val waiting = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, POLL), isStarted = true)
 
-        val update = MfaReducer.reduce(waiting, MfaResult.SignedIn(credentials))
+        val update = MfaIntentHandler.handleResult(waiting, MfaResult.SignedIn(credentials))
 
         assertThat(update.state.step).isEqualTo(MfaStep.Authenticated)
         assertThat(update.effect).isEqualTo(MfaEffect.Authenticated(credentials))
@@ -86,7 +86,7 @@ class MfaReducerTest {
     fun `back with other devices - stops checking and shows the list`() {
         val waiting = MfaState(listOf(PHONE, TABLET), MfaStep.WaitForPush(PHONE, POLL), isStarted = true)
 
-        val update = MfaReducer.reduce(waiting, MfaIntent.Back)
+        val update = MfaIntentHandler.handleIntent(waiting, MfaIntent.Back)
 
         assertThat(update.state.step).isEqualTo(MfaStep.ChooseFactor)
         assertThat(update.command).isEqualTo(MfaCommand.StopPush)
@@ -96,7 +96,7 @@ class MfaReducerTest {
     fun `back with only one device - stops checking and starts the sign-in over`() {
         val waiting = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, POLL), isStarted = true)
 
-        val update = MfaReducer.reduce(waiting, MfaIntent.Back)
+        val update = MfaIntentHandler.handleIntent(waiting, MfaIntent.Back)
 
         assertThat(update.command).isEqualTo(MfaCommand.StopPush)
         assertThat(update.effect).isEqualTo(MfaEffect.Restart)
@@ -106,15 +106,15 @@ class MfaReducerTest {
     fun `pending after the user left - stops`() {
         val list = MfaState(listOf(PHONE, TABLET), MfaStep.ChooseFactor, isStarted = true)
 
-        assertThat(MfaReducer.reduce(list, MfaResult.PushPending(POLL)).command).isNull()
+        assertThat(MfaIntentHandler.handleResult(list, MfaResult.PushPending(POLL)).command).isNull()
     }
 
     @Test
     fun `denied - fails for good, and Try again starts the sign-in over`() {
         val waiting = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, POLL), isStarted = true)
 
-        val failed = MfaReducer.reduce(waiting, MfaResult.Failed(LoginFailure(EmbeddedLoginError.PushDenied)))
-        val retried = MfaReducer.reduce(failed.state, MfaIntent.Retry)
+        val failed = MfaIntentHandler.handleResult(waiting, MfaResult.Failed(LoginFailure(EmbeddedLoginError.PushDenied)))
+        val retried = MfaIntentHandler.handleIntent(failed.state, MfaIntent.Retry)
 
         assertThat(failed.state.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.PushDenied))
         assertThat(retried.effect).isEqualTo(MfaEffect.Restart)
@@ -125,8 +125,8 @@ class MfaReducerTest {
         val waiting = MfaState(listOf(PHONE), MfaStep.WaitForPush(PHONE, POLL), isStarted = true)
         val network = LoginFailure(EmbeddedLoginError.Network, canRetryStep = true)
 
-        val failed = MfaReducer.reduce(waiting, MfaResult.Failed(network))
-        val retried = MfaReducer.reduce(failed.state, MfaIntent.Retry)
+        val failed = MfaIntentHandler.handleResult(waiting, MfaResult.Failed(network))
+        val retried = MfaIntentHandler.handleIntent(failed.state, MfaIntent.Retry)
 
         assertThat(retried.state.step).isEqualTo(MfaStep.WaitForPush(PHONE, isSending = true))
         assertThat(retried.command).isEqualTo(MfaCommand.SendPush(PHONE))
@@ -141,8 +141,8 @@ class MfaReducerTest {
         val list = MfaState(listOf(PHONE, TABLET), MfaStep.ChooseFactor, isStarted = true)
         val failed = MfaState(listOf(PHONE), MfaStep.Failed(EmbeddedLoginError.PushDenied), isStarted = true)
 
-        assertThat(MfaReducer.reduce(list, MfaIntent.Back).effect).isEqualTo(MfaEffect.Restart)
-        assertThat(MfaReducer.reduce(failed, MfaIntent.Back).effect).isEqualTo(MfaEffect.Restart)
+        assertThat(MfaIntentHandler.handleIntent(list, MfaIntent.Back).effect).isEqualTo(MfaEffect.Restart)
+        assertThat(MfaIntentHandler.handleIntent(failed, MfaIntent.Back).effect).isEqualTo(MfaEffect.Restart)
     }
 
     // endregion
