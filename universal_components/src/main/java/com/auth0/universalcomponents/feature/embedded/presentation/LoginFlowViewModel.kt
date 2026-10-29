@@ -8,7 +8,6 @@ import com.auth0.universalcomponents.domain.network.onSuccess
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
-import com.auth0.universalcomponents.feature.embedded.domain.model.VerifyOutcome
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
@@ -121,18 +120,15 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     private suspend fun verify(email: String, code: String) {
         updateCodeStep { copy(error = null, isSubmitting = true) }
         repository.verifyOtp(code)
-            .onSuccess { outcome ->
-                when (outcome) {
-                    is VerifyOutcome.SignedIn -> signedIn(outcome.credentials)
-                    is VerifyOutcome.MfaRequired -> _loginStep.value = LoginStep.Mfa(
+            .onSuccess { credentials -> signedIn(credentials) }
+            .onError { failure ->
+                when (val error = failure.error) {
+                    is EmbeddedLoginError.MfaRequired -> _loginStep.value = LoginStep.Mfa(
                         email = email,
-                        factors = outcome.factors,
+                        factors = error.factors,
                         attempt = ++mfaAttempts,
                     )
-                }
-            }
-            .onError { failure ->
-                when (failure.error) {
+
                     EmbeddedLoginError.InvalidCode ->
                         updateCodeStep { copy(error = failure.error, isSubmitting = false) }
 

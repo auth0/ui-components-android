@@ -6,13 +6,13 @@ import com.auth0.universalcomponents.feature.embedded.domain.repository.Embedded
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginFlowViewModel
 
 internal class LoginFlowViewModelFactory(
-    private val repository: () -> EmbeddedLoginRepository,
+    private val repository: EmbeddedLoginRepository,
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         return when {
-            modelClass.isAssignableFrom(LoginFlowViewModel::class.java) -> LoginFlowViewModel(repository()) as T
+            modelClass.isAssignableFrom(LoginFlowViewModel::class.java) -> LoginFlowViewModel(repository) as T
 
             else -> throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }

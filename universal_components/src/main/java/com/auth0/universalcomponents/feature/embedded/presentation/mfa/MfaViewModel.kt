@@ -9,18 +9,14 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Holds the MFA state and runs the work [MfaIntentHandler] asks for; it makes no decisions itself.
@@ -58,24 +54,23 @@ internal class MfaViewModel(
             MfaCommand.StopPush -> pushCheckJob?.cancel()
             is MfaCommand.CheckPush -> schedulePushCheck(command.afterMs)
             MfaCommand.CountDownResend -> countDownResend()
+            // A check still in flight finishes first: the repository runs one SDK step at a time.
             is MfaCommand.SendPush -> viewModelScope.launch {
-                // The flow is one step at a time: a push check in flight must finish before the next step starts.
-                pushCheckJob?.cancelAndJoin()
+                pushCheckJob?.cancel()
                 onServerResult(repository.sendPush(command.factor).toMfaResult { MfaResult.PushSent(it) })
             }
         }
     }
 
     /**
-     * Waits, then checks once. Stopping cancels the wait at once, but lets a check already in flight finish,
-     * so the SDK keeps the session that check returns; its answer is then dropped.
+     * Waits, then checks once. Stopping cancels the wait at once; a check already in flight still finishes in the
+     * repository, so the SDK keeps the session it returns, but its answer never reaches this ViewModel.
      */
     private fun schedulePushCheck(delayMs: Long) {
         pushCheckJob?.cancel()
         pushCheckJob = viewModelScope.launch {
             delay(delayMs)
-            val checkResult = withContext(NonCancellable) { repository.checkPush() }
-            ensureActive()
+            val checkResult = repository.checkPush()
             onServerResult(
                 checkResult.toMfaResult { status ->
                     when (status) {

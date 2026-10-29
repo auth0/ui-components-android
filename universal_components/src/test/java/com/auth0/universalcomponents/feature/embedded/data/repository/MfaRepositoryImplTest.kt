@@ -28,7 +28,7 @@ class MfaRepositoryImplTest {
     @Before
     fun setup() {
         client = mockk()
-        repository = MfaRepositoryImpl(client)
+        repository = MfaRepositoryImpl(EmbeddedAuthSteps(client))
     }
 
     @After

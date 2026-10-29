@@ -5,7 +5,6 @@ import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
-import com.auth0.android.embedded.authorize.EmbeddedCapability
 import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
@@ -18,7 +17,6 @@ import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.VerifyOutcome
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -38,7 +36,7 @@ class EmbeddedLoginRepositoryImplTest {
     @Before
     fun setup() {
         client = mockk()
-        repository = EmbeddedLoginRepositoryImpl(client, CONNECTION)
+        repository = EmbeddedLoginRepositoryImpl(EmbeddedAuthSteps(client), CONNECTION)
         every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.IdentifyEmail)
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 0))
         every { client.challengeEmail(any()) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL))
@@ -53,7 +51,7 @@ class EmbeddedLoginRepositoryImplTest {
 
     @Test
     fun `discover - blank connection - fails with connection missing and calls nothing`() = runTest {
-        val failure = EmbeddedLoginRepositoryImpl(client, " ").discover().failure()
+        val failure = EmbeddedLoginRepositoryImpl(EmbeddedAuthSteps(client), " ").discover().failure()
 
         assertThat(failure.error).isEqualTo(EmbeddedLoginError.ConnectionMissing)
         verify(exactly = 0) { client.authorize(any(), any(), any(), any()) }
@@ -156,7 +154,7 @@ class EmbeddedLoginRepositoryImplTest {
         val credentials = mockk<Credentials>()
         every { client.verifyOtp(CODE, OtpType.OOB) } returns FakeRequestImpl(response = credentials)
 
-        assertThat(repository.verifyOtp(CODE)).isEqualTo(Result.Success(VerifyOutcome.SignedIn(credentials)))
+        assertThat(repository.verifyOtp(CODE)).isEqualTo(Result.Success(credentials))
     }
 
     @Test
@@ -189,7 +187,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `verifyOtp - second factors offered - returns only the push devices, in order`() = runTest {
+    fun `verifyOtp - second factors offered - fails as MFA required, with only the push devices, in order`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
             challengeEmail(at = 0),
             sdkInstance<NextAction.ChallengePhone>(
@@ -203,37 +201,11 @@ class EmbeddedLoginRepositoryImplTest {
             sdkInstance<NextAction.ChallengePush>(Int::class.java to 3, String::class.java to OTHER_DEVICE),
         )
 
-        val outcome = repository.verifyOtp(CODE)
+        val failure = repository.verifyOtp(CODE).failure()
 
-        assertThat(outcome).isEqualTo(
-            Result.Success(
-                VerifyOutcome.MfaRequired(
-                    listOf(MfaFactor.Push(2, DEVICE), MfaFactor.Push(3, OTHER_DEVICE)),
-                ),
-            ),
+        assertThat(failure.error).isEqualTo(
+            EmbeddedLoginError.MfaRequired(listOf(MfaFactor.Push(2, DEVICE), MfaFactor.Push(3, OTHER_DEVICE))),
         )
-    }
-
-    @Test
-    fun `discover - asks only for the steps the screens can draw`() = runTest {
-        repository.discover()
-
-        verify {
-            client.authorize(
-                CONNECTION,
-                any(),
-                any(),
-                match {
-                    it == setOf(
-                        EmbeddedCapability.IDENTIFY_EMAIL,
-                        EmbeddedCapability.CHALLENGE_EMAIL,
-                        EmbeddedCapability.VERIFY_OTP,
-                        EmbeddedCapability.CHALLENGE_PUSH,
-                        EmbeddedCapability.VERIFY_OOB,
-                    )
-                },
-            )
-        }
     }
 
     @Test

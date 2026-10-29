@@ -1,12 +1,13 @@
 package com.auth0.universalcomponents.feature.embedded.domain.repository
 
+import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.domain.network.EmptyResult
 import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
-import com.auth0.universalcomponents.feature.embedded.domain.model.VerifyOutcome
 
 /**
  * The only way the flow talks to Auth0. One instance per login flow, because the SDK keeps state.
@@ -21,10 +22,10 @@ internal interface EmbeddedLoginRepository {
     suspend fun startEmailOtp(email: String): EmptyResult<LoginFailure>
 
     /**
-     * Verifies a code the user received. A correct code either signs in or asks for a second factor;
-     * any other further step isn't supported and fails.
+     * Verifies a code the user received. A correct code signs in, or fails with [EmbeddedLoginError.MfaRequired]
+     * when the server wants a second factor; any other further step isn't supported and fails.
      */
-    suspend fun verifyOtp(code: String): Result<VerifyOutcome, LoginFailure>
+    suspend fun verifyOtp(code: String): Result<Credentials, LoginFailure>
 }
 
 /**

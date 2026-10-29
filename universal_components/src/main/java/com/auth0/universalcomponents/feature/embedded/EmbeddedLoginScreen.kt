@@ -30,7 +30,7 @@ fun EmbeddedLoginScreen(
         )
         val loginViewModel: LoginFlowViewModel = viewModel(
             key = "embedded-login:$connection",
-            factory = UniversalComponentsModule.provideLoginFlowViewModelFactory(connection, session.client),
+            factory = UniversalComponentsModule.provideLoginFlowViewModelFactory(connection, session.steps),
         )
         LoginRenderingHost(
             viewModel = loginViewModel,

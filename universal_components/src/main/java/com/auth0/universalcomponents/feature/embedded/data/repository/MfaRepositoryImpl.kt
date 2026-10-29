@@ -1,6 +1,5 @@
 package com.auth0.universalcomponents.feature.embedded.data.repository
 
-import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.universalcomponents.domain.network.Result
@@ -11,11 +10,11 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
 
-/** The second factor against the SDK. [client] must be the one the first factor used: it holds the session. */
-internal class MfaRepositoryImpl(private val client: EmbeddedAuthClient) : MfaRepository {
+/** The second factor against the SDK. [steps] must be the first factor's: its client holds the session MFA continues. */
+internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepository {
 
     override suspend fun sendPush(factor: MfaFactor.Push): Result<Long, LoginFailure> =
-        when (val sent = runStep { client.challengePush(factor.index) }) {
+        when (val sent = steps.run { challengePush(factor.index) }) {
             is StepAnswer.Next -> sent.pollDelay()?.let { Result.Success(it) }
                 ?: unexpected("The push was sent without a way to check it")
             is StepAnswer.Failed -> Result.Error(sent.failure)
@@ -23,10 +22,14 @@ internal class MfaRepositoryImpl(private val client: EmbeddedAuthClient) : MfaRe
         }
 
     override suspend fun checkPush(): Result<PushStatus, LoginFailure> =
-        when (val checked = runStep { client.verifyOob() }) {
+        when (val checked = steps.run { verifyOob() }) {
             is StepAnswer.Done -> Result.Success(PushStatus.Approved(checked.value))
+            // Not an error: the user just hasn't answered yet. Logged at debug level so the polling can be traced.
             is StepAnswer.Next -> if (checked.reason in PENDING_REASONS) {
-                Result.Success(PushStatus.Pending(checked.pollDelay()))
+                val wait = checked.pollDelay()
+                val next = wait?.let { "$it ms" } ?: "the same wait"
+                Logger.d(TAG, "Push not answered yet (${checked.reason}); next check in $next")
+                Result.Success(PushStatus.Pending(wait))
             } else {
                 furtherStep(checked)
             }
@@ -47,9 +50,9 @@ internal class MfaRepositoryImpl(private val client: EmbeddedAuthClient) : MfaRe
     }
 
     private companion object {
-        const val TAG = "MfaRepository"
+        private const val TAG = "MfaRepository"
 
         /** The push hasn't been answered yet, or we checked too soon. */
-        val PENDING_REASONS = setOf(Reason.AUTHORIZATION_PENDING, Reason.SLOW_DOWN)
+        private val PENDING_REASONS = setOf(Reason.AUTHORIZATION_PENDING, Reason.SLOW_DOWN)
     }
 }

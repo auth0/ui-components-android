@@ -157,47 +157,22 @@ class MfaViewModelTest {
         coVerify(exactly = 0) { repository.checkPush() }
     }
 
+    // That a check in flight still finishes, and that the next step waits for it, is EmbeddedAuthStepsTest's job.
     @Test
-    fun `left while a check is in flight - the check finishes, and its answer is dropped`() = runTest {
+    fun `left while a check is in flight - its answer never reaches the screen`() = runTest {
         val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
-        var checkFinished = false
-        coEvery { repository.checkPush() } coAnswers { answer.await().also { checkFinished = true } }
+        coEvery { repository.checkPush() } coAnswers { answer.await() }
         val viewModel = started(PHONE, TABLET, select = PHONE)
         val effects = collectEffects(viewModel)
         waitFor(POLL)
 
         viewModel.onIntent(MfaIntent.Back)
         runCurrent()
-        // An approval that lands after the user left must not sign them in.
         answer.complete(Result.Success(PushStatus.Approved(mockk())))
         runCurrent()
 
-        assertThat(checkFinished).isTrue()
         assertThat(viewModel.state.value.step).isEqualTo(MfaStep.ChooseFactor)
         assertThat(effects).isEmpty()
-    }
-
-    @Test
-    fun `another device picked while a check is in flight - its push waits for that check to finish`() = runTest {
-        val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
-        // Only the old push's check is held; the new push's check then approves, so checking ends.
-        coEvery { repository.checkPush() } coAnswers { answer.await() } andThen
-            Result.Success(PushStatus.Approved(mockk()))
-        val viewModel = started(PHONE, TABLET, select = PHONE)
-        waitFor(POLL)
-
-        viewModel.onIntent(MfaIntent.Back)
-        viewModel.onIntent(MfaIntent.SelectFactor(TABLET))
-        runCurrent()
-        coVerify(exactly = 0) { repository.sendPush(TABLET) }
-
-        answer.complete(Result.Success(PushStatus.Pending(SLOWER)))
-        runCurrent()
-
-        coVerify(exactly = 1) { repository.sendPush(TABLET) }
-        // The dropped answer from the old push doesn't touch the new one.
-        assertThat(viewModel.state.value.step)
-            .isEqualTo(MfaStep.WaitForPush(TABLET, POLL, resendSecondsLeft = COOLDOWN))
     }
 
     // endregion

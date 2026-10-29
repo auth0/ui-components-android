@@ -125,5 +125,7 @@ internal fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.NoEligibleFactors -> stringResource(R.string.embedded_login_mfa_error_no_factors)
     EmbeddedLoginError.ExtraStepUnsupported -> stringResource(R.string.embedded_login_error_extra_step_unsupported)
     is EmbeddedLoginError.Server -> text
+    // Handed over to MFA before any screen shows it; the generic text is only a safe fallback.
+    is EmbeddedLoginError.MfaRequired,
     is EmbeddedLoginError.Unknown -> stringResource(R.string.embedded_login_error_generic)
 }

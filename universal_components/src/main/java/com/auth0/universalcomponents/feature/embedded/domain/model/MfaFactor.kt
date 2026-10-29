@@ -12,14 +12,6 @@ internal sealed interface MfaFactor {
     data class Push(val index: Int, val deviceName: String) : MfaFactor
 }
 
-/** How a correct first-factor code ended: signed in, or the server wants a second factor. */
-internal sealed interface VerifyOutcome {
-
-    data class SignedIn(val credentials: Credentials) : VerifyOutcome
-
-    data class MfaRequired(val factors: List<MfaFactor>) : VerifyOutcome
-}
-
 /** Where a push approval stands after one check. */
 internal sealed interface PushStatus {
 

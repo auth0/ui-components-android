@@ -22,6 +22,12 @@ internal sealed interface EmbeddedLoginError {
 
     data object TooManyLogins : EmbeddedLoginError
 
+    /**
+     * The code was right, but the server wants a second factor first; [factors] are the ones it offered.
+     * The flow hands over to MFA, so this one never reaches the error screen.
+     */
+    data class MfaRequired(val factors: List<MfaFactor>) : EmbeddedLoginError
+
     /** The user turned down the push on their device. */
     data object PushDenied : EmbeddedLoginError
 

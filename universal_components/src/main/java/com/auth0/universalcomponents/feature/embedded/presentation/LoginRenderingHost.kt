@@ -55,7 +55,7 @@ internal fun LoginRenderingHost(
         // One MFA ViewModel per visit, so going back to email and through MFA again starts it fresh.
         val mfaViewModel: MfaViewModel = viewModel(
             key = "embedded-mfa:$connection:${current.attempt}",
-            factory = UniversalComponentsModule.provideMfaViewModelFactory(session.client, current.factors),
+            factory = UniversalComponentsModule.provideMfaViewModelFactory(session.steps, current.factors),
         )
         MfaFlowHost(
             viewModel = mfaViewModel,
