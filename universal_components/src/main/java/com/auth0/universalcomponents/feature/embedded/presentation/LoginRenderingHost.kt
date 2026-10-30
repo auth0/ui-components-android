@@ -2,7 +2,6 @@ package com.auth0.universalcomponents.feature.embedded.presentation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.tween
@@ -26,7 +25,10 @@ import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 
 private const val TRANSITION_MILLIS = 280
 
-/** Draws the ViewModel's step, animates screen changes and owns the navigation bar. */
+/**
+ * Draws the ViewModel's step, MFA included, animates screen changes and owns the navigation bar. It only draws:
+ * moving into and out of MFA is the ViewModel's, so nothing depends on a screen being on show.
+ */
 @Composable
 internal fun LoginRenderingHost(
     viewModel: LoginFlowViewModel,
@@ -50,7 +52,9 @@ internal fun LoginRenderingHost(
         AnimatedContent(
             targetState = plan(step),
             contentKey = { it.transitionIdentity },
-            transitionSpec = { pushTransition() },
+            transitionSpec = {
+                stepTransition(isForward = targetState.navigationDepth >= initialState.navigationDepth)
+            },
             modifier = Modifier.fillMaxSize(),
             label = "loginStep",
         ) { plan ->
@@ -60,8 +64,8 @@ internal fun LoginRenderingHost(
 }
 
 /** A deeper screen pushes in from the end; a shallower one pops back in from the start. */
-private fun AnimatedContentTransitionScope<ScreenPlan>.pushTransition(): ContentTransform {
-    val direction = if (targetState.navigationDepth >= initialState.navigationDepth) 1 else -1
+private fun stepTransition(isForward: Boolean): ContentTransform {
+    val direction = if (isForward) 1 else -1
     val spec = tween<Float>(TRANSITION_MILLIS, easing = EaseInOut)
     val slide = tween<IntOffset>(TRANSITION_MILLIS, easing = EaseInOut)
     return (slideInHorizontally(slide) { direction * it } + fadeIn(spec)) togetherWith

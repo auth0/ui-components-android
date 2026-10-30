@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaScreen
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaStep
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.transitionIdentity
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginErrorScreen
@@ -32,6 +35,9 @@ internal sealed interface ScreenPlan {
         val resendSecondsLeft: Int = 0,
     ) : ScreenPlan
 
+    /** A second factor; MFA draws its own [step]. */
+    data class Mfa(val step: MfaStep) : ScreenPlan
+
     data object Authenticated : ScreenPlan
 
     data class Failed(val error: EmbeddedLoginError) : ScreenPlan
@@ -45,6 +51,7 @@ internal val ScreenPlan.transitionIdentity: String
         ScreenPlan.Loading -> "loading"
         is ScreenPlan.Identifier -> "identifier"
         is ScreenPlan.OtpCode -> "otpCode"
+        is ScreenPlan.Mfa -> step.transitionIdentity
         ScreenPlan.Authenticated -> "authenticated"
         is ScreenPlan.Failed -> "failed"
         ScreenPlan.NoMethods -> "noMethods"
@@ -56,7 +63,12 @@ internal val ScreenPlan.navigationDepth: Int
         ScreenPlan.Loading -> 0
         is ScreenPlan.Identifier, ScreenPlan.NoMethods -> 1
         is ScreenPlan.OtpCode -> 2
-        ScreenPlan.Authenticated, is ScreenPlan.Failed -> 3
+        is ScreenPlan.Mfa -> when (step) {
+            is MfaStep.AuthenticatorList -> 3
+            is MfaStep.PushWaiting -> 4
+            is MfaStep.Failed -> 5
+        }
+        ScreenPlan.Authenticated, is ScreenPlan.Failed -> 5
     }
 
 internal fun plan(step: LoginStep): ScreenPlan = when (step) {
@@ -72,6 +84,7 @@ internal fun plan(step: LoginStep): ScreenPlan = when (step) {
     LoginStep.Authenticated -> ScreenPlan.Authenticated
     is LoginStep.Failed -> ScreenPlan.Failed(step.error)
     LoginStep.NoMethodsAvailable -> ScreenPlan.NoMethods
+    is LoginStep.Mfa -> ScreenPlan.Mfa(step.step)
 }
 
 /** Builds the screen for [plan]; input goes back through [context]. */
@@ -97,6 +110,8 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
             onResend = { context.dispatch(LoginEvent.Resend) },
         )
 
+        is ScreenPlan.Mfa -> MfaScreen(plan.step, onIntent = { context.dispatch(LoginEvent.Mfa(it)) })
+
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 
         is ScreenPlan.Failed -> LoginErrorScreen(
@@ -110,7 +125,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
 
 /** Our words for each error; the server's own when it explained one we don't know. */
 @Composable
-private fun EmbeddedLoginError.text(): String = when (this) {
+internal fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.ConnectionMissing -> stringResource(R.string.embedded_login_error_connection_missing)
     EmbeddedLoginError.Network -> stringResource(R.string.embedded_login_error_network)
     EmbeddedLoginError.CodeNotSent -> stringResource(R.string.embedded_login_error_code_not_sent)
@@ -119,7 +134,12 @@ private fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.TooManyWrongCodes -> stringResource(R.string.embedded_login_error_too_many_wrong_codes)
     EmbeddedLoginError.TooManyAttempts -> stringResource(R.string.embedded_login_error_too_many_attempts)
     EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
+    EmbeddedLoginError.SessionExpired -> stringResource(R.string.embedded_login_error_session_expired)
+    EmbeddedLoginError.PushDenied -> stringResource(R.string.embedded_login_mfa_error_push_denied)
+    EmbeddedLoginError.NoEligibleFactors -> stringResource(R.string.embedded_login_mfa_error_no_factors)
     EmbeddedLoginError.ExtraStepUnsupported -> stringResource(R.string.embedded_login_error_extra_step_unsupported)
     is EmbeddedLoginError.Server -> text
+    // Handed over to MFA before any screen shows it; the generic text is only a safe fallback.
+    is EmbeddedLoginError.MfaRequired,
     is EmbeddedLoginError.Unknown -> stringResource(R.string.embedded_login_error_generic)
 }

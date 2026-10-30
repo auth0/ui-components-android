@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.result.Credentials
@@ -11,8 +12,8 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 
 /**
- * Embedded login with an emailed code; the server decides which screen comes next.
- * [onAuthenticated] receives the credentials; storing them is up to the app.
+ * Embedded login with an emailed code, followed by MFA when the account needs it; the server decides
+ * which screen comes next. [onAuthenticated] receives the credentials; storing them is up to the app.
  */
 @Composable
 fun EmbeddedLoginScreen(
@@ -23,12 +24,11 @@ fun EmbeddedLoginScreen(
     themeConfiguration: Auth0ThemeConfiguration = Auth0ThemeConfiguration.Default,
 ) {
     Auth0Theme(configuration = themeConfiguration) {
-        val viewModel: LoginFlowViewModel = viewModel(
-            key = "embedded-login:$connection",
-            factory = UniversalComponentsModule.provideLoginFlowViewModelFactory(connection),
-        )
+        // Remembered so a recomposition doesn't build an SDK client that's never used.
+        val factory = remember(connection) { UniversalComponentsModule.provideLoginFlowViewModelFactory(connection) }
+        val loginViewModel: LoginFlowViewModel = viewModel(key = "embedded-login:$connection", factory = factory)
         LoginRenderingHost(
-            viewModel = viewModel,
+            viewModel = loginViewModel,
             onAuthenticated = onAuthenticated,
             onExit = onExit,
             modifier = modifier,

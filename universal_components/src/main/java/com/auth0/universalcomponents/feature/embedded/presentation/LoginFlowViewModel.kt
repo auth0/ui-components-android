@@ -8,7 +8,12 @@ import com.auth0.universalcomponents.domain.network.onSuccess
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
+import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEffect
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaIntent
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -22,9 +27,13 @@ import kotlinx.coroutines.launch
 
 /**
  * Drives the email-code flow: [LoginEvent]s in, [LoginStep]s out. Each event counts only on the screen it belongs to.
- * The repository returns each failure as a [LoginFailure], so nothing here is caught.
+ * A second factor runs in an [MfaEngine] owned here, so the hand-off and its end are plain calls on this ViewModel.
+ * The repositories return each failure as a [LoginFailure], so nothing here is caught.
  */
-internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepository) : ViewModel() {
+internal class LoginFlowViewModel(
+    private val repository: EmbeddedLoginRepository,
+    private val mfaRepository: MfaRepository,
+) : ViewModel() {
 
     private val _loginStep = MutableStateFlow<LoginStep>(LoginStep.Loading)
     val loginStep: StateFlow<LoginStep> = _loginStep.asStateFlow()
@@ -36,6 +45,9 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     private var isRunning = false
     private var inFlight: Job? = null
     private var countdown: Job? = null
+
+    /** The MFA run on show, while [LoginStep.Mfa] is. */
+    private var mfa: MfaEngine? = null
 
     fun send(event: LoginEvent) {
         val current = _loginStep.value
@@ -59,12 +71,18 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
             }
 
             LoginEvent.Retry -> if (current is LoginStep.Failed) launchStep { retry(current) }
+
+            is LoginEvent.Mfa -> if (current is LoginStep.Mfa) mfa?.onIntent(event.intent)
         }
     }
 
-    /** Code entry goes back to email entry (true); anywhere else leaves the flow (false). */
+    /** Code entry goes back to email entry, and MFA decides its own Back (true); anywhere else leaves (false). */
     fun goBack(): Boolean {
         val current = _loginStep.value
+        if (current is LoginStep.Mfa) {
+            mfa?.onIntent(MfaIntent.Back)
+            return true
+        }
         // Stay put until the request in flight answers, rather than dropping it halfway.
         if (current.isBusy) return true
         if (current is LoginStep.CollectOtpCode) {
@@ -106,17 +124,16 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
     /**
      * A wrong or expired code stays on code entry with the error under the field.
      * After a failure for good, Try again returns to code entry only if the session survived, else to email entry.
+     * A second factor hands over to the MFA flow, which carries on with the same session.
      */
     private suspend fun verify(email: String, code: String) {
         updateCodeStep { copy(error = null, isSubmitting = true) }
         repository.verifyOtp(code)
-            .onSuccess { credentials ->
-                _loginStep.value = LoginStep.Authenticated
-                isRunning = false
-                _authenticated.send(credentials)
-            }
+            .onSuccess { credentials -> signedIn(credentials) }
             .onError { failure ->
-                when (failure.error) {
+                when (val error = failure.error) {
+                    is EmbeddedLoginError.MfaRequired -> startMfa(email, error.factors)
+
                     EmbeddedLoginError.InvalidCode ->
                         updateCodeStep { copy(error = failure.error, isSubmitting = false) }
 
@@ -134,6 +151,36 @@ internal class LoginFlowViewModel(private val repository: EmbeddedLoginRepositor
                     )
                 }
             }
+    }
+
+    /**
+     * MFA runs in its own engine, owned here and stopped when it ends, so each visit starts fresh and nothing from an
+     * old one reaches the screen. Its steps are shown as [LoginStep.Mfa]; how it ends is decided here.
+     */
+    private fun startMfa(email: String, factors: List<MfaFactor>) {
+        mfa = MfaEngine(
+            factors = factors,
+            repository = mfaRepository,
+            hostScope = viewModelScope,
+            onStep = { _loginStep.value = LoginStep.Mfa(email, it) },
+            onEffect = { effect -> endMfa(email, effect) },
+        )
+    }
+
+    private fun endMfa(email: String, effect: MfaEffect) {
+        mfa?.stop()
+        mfa = null
+        when (effect) {
+            is MfaEffect.Authenticated -> viewModelScope.launch { signedIn(effect.credentials) }
+            // Email kept; the next code opens a new session.
+            MfaEffect.Restart -> _loginStep.value = LoginStep.CollectOtpIdentifier(email)
+        }
+    }
+
+    private suspend fun signedIn(credentials: Credentials) {
+        _loginStep.value = LoginStep.Authenticated
+        isRunning = false
+        _authenticated.send(credentials)
     }
 
     /** Counts the resend wait down a second at a time; it stops at zero, or once code entry is left. */
