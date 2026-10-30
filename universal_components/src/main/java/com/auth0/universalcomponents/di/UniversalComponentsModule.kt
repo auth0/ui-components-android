@@ -22,10 +22,7 @@ import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAuthSteps
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
 import com.auth0.universalcomponents.feature.embedded.data.repository.MfaRepositoryImpl
-import com.auth0.universalcomponents.feature.embedded.di.EmbeddedAuthSession
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
-import com.auth0.universalcomponents.feature.embedded.di.MfaViewModelFactory
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 
 object UniversalComponentsModule {
 
@@ -64,24 +61,16 @@ object UniversalComponentsModule {
         )
     }
 
-    internal fun provideEmbeddedAuthSessionFactory(): EmbeddedAuthSession.Factory {
-        val client = EmbeddedAuthClient(Auth0UniversalComponents.account)
-        return EmbeddedAuthSession.Factory(steps = EmbeddedAuthSteps(client))
-    }
-
-    /** [steps] must be the login flow's session, shared with MFA. */
-    internal fun provideLoginFlowViewModelFactory(
-        connection: String,
-        steps: EmbeddedAuthSteps,
-    ): LoginFlowViewModelFactory {
+    /**
+     * One SDK client per login flow: it keeps the session, so the first factor and MFA share it, through the same
+     * [EmbeddedAuthSteps] so only one step runs on it at a time.
+     */
+    internal fun provideLoginFlowViewModelFactory(connection: String): LoginFlowViewModelFactory {
+        val steps = EmbeddedAuthSteps(EmbeddedAuthClient(Auth0UniversalComponents.account))
         return LoginFlowViewModelFactory(
             repository = EmbeddedLoginRepositoryImpl(steps = steps, connection = connection),
+            mfaRepository = MfaRepositoryImpl(steps),
         )
-    }
-
-    /** [steps] must be the ones the first factor used: their client holds the session MFA continues. */
-    internal fun provideMfaViewModelFactory(steps: EmbeddedAuthSteps, factors: List<MfaFactor>): MfaViewModelFactory {
-        return MfaViewModelFactory(factors = factors, repository = MfaRepositoryImpl(steps))
     }
 
     // Use cases

@@ -6,7 +6,12 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLogin
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
+import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaIntent
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaStep
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.PushPhase
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -15,6 +20,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -33,6 +39,7 @@ import org.junit.Test
 class LoginFlowViewModelTest {
 
     private lateinit var repository: EmbeddedLoginRepository
+    private lateinit var mfaRepository: MfaRepository
     private lateinit var viewModel: LoginFlowViewModel
 
     private val testDispatcher = StandardTestDispatcher()
@@ -43,7 +50,11 @@ class LoginFlowViewModelTest {
         repository = mockk()
         coEvery { repository.discover() } returns Result.Success(listOf(LoginOption.EmailOtp))
         coEvery { repository.startEmailOtp(any()) } returns Result.Success(Unit)
-        viewModel = LoginFlowViewModel(repository)
+        mfaRepository = mockk()
+        coEvery { mfaRepository.sendPush(any()) } returns Result.Success(PUSH_POLL_MS)
+        // A push nobody answers, unless a test says otherwise, so MFA stays on screen.
+        coEvery { mfaRepository.checkPush() } coAnswers { awaitCancellation() }
+        viewModel = LoginFlowViewModel(repository, mfaRepository)
     }
 
     @After
@@ -188,24 +199,47 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit code - second factor needed - hands over to MFA with the offered factors`() = runTest {
         startAtCode()
-        val factors = listOf(MfaFactor.Push(0, "Jane's phone"), MfaFactor.Push(1, "Jane's tablet"))
-        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.MfaRequired(factors))
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.MfaRequired(listOf(PHONE, TABLET)))
 
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
-        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Mfa(EMAIL, factors, attempt = 1))
+        assertThat(viewModel.loginStep.value)
+            .isEqualTo(LoginStep.Mfa(EMAIL, MfaStep.AuthenticatorList(listOf(PHONE, TABLET))))
     }
 
     @Test
-    fun `mfa - signed in - signs in and hands over the credentials`() = runTest {
-        startAtMfa()
+    fun `mfa - taps - reach MFA, which shows its next step`() = runTest {
+        startAtMfa(PHONE, TABLET)
+
+        viewModel.send(LoginEvent.Mfa(MfaIntent.SelectFactor(TABLET)))
+        advanceUntilIdle()
+
+        val step = (viewModel.loginStep.value as LoginStep.Mfa).step
+        assertThat(step).isInstanceOf(MfaStep.PushWaiting::class.java)
+        assertThat((step as MfaStep.PushWaiting).factor).isEqualTo(TABLET)
+        coVerify(exactly = 1) { mfaRepository.sendPush(TABLET) }
+    }
+
+    @Test
+    fun `mfa - taps outside MFA - are ignored`() = runTest {
+        startAtCode()
+
+        viewModel.send(LoginEvent.Mfa(MfaIntent.SelectFactor(PHONE)))
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.CollectOtpCode::class.java)
+        coVerify(exactly = 0) { mfaRepository.sendPush(any()) }
+    }
+
+    @Test
+    fun `mfa - approved - signs in once and hands over the credentials`() = runTest {
         val credentials = mockk<Credentials>()
+        coEvery { mfaRepository.checkPush() } returns Result.Success(PushStatus.Approved(credentials))
         val received = mutableListOf<Credentials>()
         val job = launch { viewModel.authenticated.toList(received) }
 
-        viewModel.send(LoginEvent.MfaSignedIn(credentials))
-        advanceUntilIdle()
+        startAtMfa(PHONE)
 
         assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Authenticated)
         assertThat(received).containsExactly(credentials)
@@ -213,19 +247,25 @@ class LoginFlowViewModelTest {
     }
 
     @Test
-    fun `mfa - left - goes back to email entry with the email kept, and the next visit is a new one`() = runTest {
-        startAtMfa()
+    fun `mfa - Back with one device - goes back to email entry with the email kept, and the next visit is fresh`() =
+        runTest {
+            startAtMfa(PHONE)
 
-        viewModel.send(LoginEvent.LeaveMfa)
-        advanceUntilIdle()
-        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+            assertThat(viewModel.goBack()).isTrue()
+            advanceUntilIdle()
+            assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
 
-        viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
-        advanceUntilIdle()
-        viewModel.send(LoginEvent.SubmitOtp(CODE))
-        advanceUntilIdle()
-        assertThat((viewModel.loginStep.value as LoginStep.Mfa).attempt).isEqualTo(2)
-    }
+            viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
+            advanceUntilIdle()
+            viewModel.send(LoginEvent.SubmitOtp(CODE))
+            advanceUntilIdle()
+
+            // A fresh push, whose resend wait the test clock has already run out.
+            val step = (viewModel.loginStep.value as LoginStep.Mfa).step
+            val polling = PushPhase.Polling(PUSH_POLL_MS, resendSecondsLeft = 0)
+            assertThat(step).isEqualTo(MfaStep.PushWaiting(PHONE, polling, canChooseAnother = false))
+            coVerify(exactly = 2) { mfaRepository.sendPush(PHONE) }
+        }
 
     @Test
     fun `submit code - wrong code - stays on the code step with the error, the countdown going on`() = runTest {
@@ -498,15 +538,15 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
     }
 
-    /** On the code step with the resend countdown already run out. */
-    private fun TestScope.startAtMfa() {
+    /** On MFA with [factors] on offer, after a correct code. */
+    private fun TestScope.startAtMfa(vararg factors: MfaFactor) {
         startAtCode()
-        coEvery { repository.verifyOtp(CODE) } returns
-            failure(EmbeddedLoginError.MfaRequired(listOf(MfaFactor.Push(0, "Jane's phone"))))
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.MfaRequired(factors.toList()))
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
     }
 
+    /** On the code step with the resend countdown already run out. */
     private fun TestScope.startAtCode() {
         startAtEmail()
         viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
@@ -529,5 +569,8 @@ class LoginFlowViewModelTest {
         const val CODE = "123456"
         const val COOLDOWN_SECONDS = 60
         const val ONE_SECOND_MILLIS = 1_000L
+        const val PUSH_POLL_MS = 3_000L
+        val PHONE = MfaFactor.Push(0, "Jane's phone")
+        val TABLET = MfaFactor.Push(1, "Jane's tablet")
     }
 }

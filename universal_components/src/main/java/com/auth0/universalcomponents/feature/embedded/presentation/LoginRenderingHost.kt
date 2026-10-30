@@ -19,26 +19,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.di.UniversalComponentsModule
-import com.auth0.universalcomponents.feature.embedded.di.EmbeddedAuthSession
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenFrame
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaFlowHost
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaViewModel
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 
 private const val TRANSITION_MILLIS = 280
 
 /**
- * Draws the ViewModel's step, animates screen changes and owns the navigation bar.
- * On a second factor it hands the screen to the MFA flow, on the same [session] as the first factor.
+ * Draws the ViewModel's step, MFA included, animates screen changes and owns the navigation bar. It only draws:
+ * moving into and out of MFA is the ViewModel's, so nothing depends on a screen being on show.
  */
 @Composable
 internal fun LoginRenderingHost(
     viewModel: LoginFlowViewModel,
-    session: EmbeddedAuthSession,
-    connection: String,
     onAuthenticated: (Credentials) -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
@@ -50,22 +43,6 @@ internal fun LoginRenderingHost(
     LaunchedEffect(viewModel) { viewModel.send(LoginEvent.Start) }
     ObserveAsEvents(viewModel.authenticated) { currentOnAuthenticated(it) }
 
-    val current = step
-    if (current is LoginStep.Mfa) {
-        // One MFA ViewModel per visit, so going back to email and through MFA again starts it fresh.
-        val mfaViewModel: MfaViewModel = viewModel(
-            key = "embedded-mfa:$connection:${current.attempt}",
-            factory = UniversalComponentsModule.provideMfaViewModelFactory(session.steps, current.factors),
-        )
-        MfaFlowHost(
-            viewModel = mfaViewModel,
-            onAuthenticated = { viewModel.send(LoginEvent.MfaSignedIn(it)) },
-            onRestart = { viewModel.send(LoginEvent.LeaveMfa) },
-            modifier = modifier,
-        )
-        return
-    }
-
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
     BackHandler(onBack = onBack)
 
@@ -73,7 +50,7 @@ internal fun LoginRenderingHost(
 
     LoginScreenFrame(onBack = onBack, modifier = modifier) {
         AnimatedContent(
-            targetState = plan(current),
+            targetState = plan(step),
             contentKey = { it.transitionIdentity },
             transitionSpec = {
                 stepTransition(isForward = targetState.navigationDepth >= initialState.navigationDepth)
@@ -87,7 +64,7 @@ internal fun LoginRenderingHost(
 }
 
 /** A deeper screen pushes in from the end; a shallower one pops back in from the start. */
-internal fun stepTransition(isForward: Boolean): ContentTransform {
+private fun stepTransition(isForward: Boolean): ContentTransform {
     val direction = if (isForward) 1 else -1
     val spec = tween<Float>(TRANSITION_MILLIS, easing = EaseInOut)
     val slide = tween<IntOffset>(TRANSITION_MILLIS, easing = EaseInOut)

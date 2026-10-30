@@ -5,48 +5,51 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLogin
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 
-/**
- * The whole MFA flow in one value. [factors] is what the server offered; [step] is the screen on show.
- * [isStarted] keeps a second Start, after a rotation say, from starting over.
+/*
+ * The MFA flow is a loop: an input goes into [MfaReducer], which returns an [MfaUpdate]; [MfaEngine] shows the new
+ * step, runs the commands and hands the effect to whoever hosts MFA. Whatever a command returns comes back in as
+ * the next input.
+ *
+ *   inputs:  MfaIntent (the user did something) · MfaOutcome (the server answered) · a second passed
+ *   outputs: MfaStep (what to draw) · MfaCommand (work to run) · MfaEffect (MFA is over)
  */
-internal data class MfaState(
-    val factors: List<MfaFactor>,
-    val step: MfaStep = MfaStep.Loading,
-    val isStarted: Boolean = false,
-)
 
-/** One screen of the MFA flow, with everything it shows. */
+/** The MFA screen on show, with everything it draws; the steps are mutually exclusive, one per screen. */
 internal sealed interface MfaStep {
 
-    /** Before the flow starts. */
-    data object Loading : MfaStep
+    /** Every second factor the server offered, one row each. Shown only when there is more than one. */
+    data class AuthenticatorList(val factors: List<MfaFactor>) : MfaStep
 
-    data object ChooseFactor : MfaStep
-
-    /**
-     * Waiting on the user's device; checked again every [pollInMs]. [isSending] is true until the push is out,
-     * so the screen shows at once instead of a loader first. Resend opens once [resendSecondsLeft] reaches zero.
-     */
-    data class WaitForPush(
+    /** Waiting on the user's device. [canChooseAnother] is true when there are other factors to go back to. */
+    data class PushWaiting(
         val factor: MfaFactor.Push,
-        val pollInMs: Long = 0,
-        val isSending: Boolean = false,
-        val resendSecondsLeft: Int = 0,
+        val phase: PushPhase,
+        val canChooseAnother: Boolean,
     ) : MfaStep
 
-    /** Try again sends [retry] again; when null, the sign-in starts over. */
+    /** The flow stopped. Try again sends [retry] again; when null, the sign-in starts over. */
     data class Failed(val error: EmbeddedLoginError, val retry: MfaFactor? = null) : MfaStep
-
-    data object Authenticated : MfaStep
 }
 
-/** What the user did. */
-internal sealed interface MfaIntent {
+/** Where a push is: still going out, or out and being checked. Only one can be true at a time. */
+internal sealed interface PushPhase {
 
-    data object Start : MfaIntent
+    /** The screen shows at once, while the push is sent. */
+    data object Sending : PushPhase
+
+    /** Checked again every [everyMs]; Resend opens once [resendSecondsLeft] reaches zero. */
+    data class Polling(val everyMs: Long, val resendSecondsLeft: Int) : PushPhase
+}
+
+/** What the user did on an MFA screen. */
+internal sealed interface MfaIntent {
 
     data class SelectFactor(val factor: MfaFactor) : MfaIntent
 
+    /** "Choose another device": back to the list. Only offered when there is one. */
+    data object ChooseAnotherFactor : MfaIntent
+
+    /** System back or the top-bar arrow. */
     data object Back : MfaIntent
 
     data object Retry : MfaIntent
@@ -55,33 +58,44 @@ internal sealed interface MfaIntent {
     data object Resend : MfaIntent
 }
 
-/** What the server answered; only the ViewModel sends these. */
-internal sealed interface MfaResult {
+/**
+ * What the server answered to a command, in our terms rather than the SDK's; only [MfaEngine] creates these,
+ * from what the [com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository] returns.
+ */
+internal sealed interface MfaOutcome {
 
-    data class PushSent(val pollInMs: Long) : MfaResult
+    /** The push is out; check it after [pollInMs]. */
+    data class PushSent(val pollInMs: Long) : MfaOutcome
 
-    data class PushPending(val pollInMs: Long?) : MfaResult
+    /** Not approved yet; check again after [pollInMs], or after the same wait when null. */
+    data class PushPending(val pollInMs: Long?) : MfaOutcome
 
-    data class SignedIn(val credentials: Credentials) : MfaResult
+    data class SignedIn(val credentials: Credentials) : MfaOutcome
 
-    data class Failed(val failure: LoginFailure) : MfaResult
+    data class Failed(val failure: LoginFailure) : MfaOutcome
 }
 
-/** Work [MfaIntentHandler] asks the ViewModel to run. */
+/**
+ * Work [MfaReducer] asks [MfaEngine] to run, because the reducer itself never waits or calls the server.
+ * An intent is the input from the user; a command is the output for the engine.
+ */
 internal sealed interface MfaCommand {
 
     data class SendPush(val factor: MfaFactor.Push) : MfaCommand
 
     data class CheckPush(val afterMs: Long) : MfaCommand
 
-    /** Stops checking the push; a check already in flight finishes first. */
+    /** Stops checking the push. */
     data object StopPush : MfaCommand
 
     /** Waits one second, then counts the resend wait down by one. */
     data object CountDownResend : MfaCommand
 }
 
-/** One-off outcomes for whoever hosts the MFA flow. */
+/**
+ * How MFA ended, sent once to whoever hosts it. MFA never navigates: the host decides what each one means
+ * (embedded login signs in, or goes back to email entry).
+ */
 internal sealed interface MfaEffect {
 
     data class Authenticated(val credentials: Credentials) : MfaEffect
@@ -90,9 +104,9 @@ internal sealed interface MfaEffect {
     data object Restart : MfaEffect
 }
 
-/** What one intent or result leads to; [commands] run in order. */
+/** What [MfaReducer] returns for one input: the step to show, the [commands] to run in order, and maybe an effect. */
 internal data class MfaUpdate(
-    val state: MfaState,
+    val step: MfaStep,
     val commands: List<MfaCommand> = emptyList(),
     val effect: MfaEffect? = null,
 )

@@ -1,8 +1,8 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
-import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaIntent
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaStep
 
 /**
  * Where the login flow is, with everything its screen shows. The ViewModel moves between steps;
@@ -34,10 +34,10 @@ internal sealed interface LoginStep {
     ) : LoginStep
 
     /**
-     * The code was right and the server wants a second factor; the MFA flow takes over on the same session.
-     * [email] is kept for when MFA sends the user back. [attempt] tells one MFA visit from the next.
+     * The code was right and the server wants a second factor; MFA carries on with the same session and [step] is
+     * its screen. [email] is kept for when MFA sends the user back.
      */
-    data class Mfa(val email: String, val factors: List<MfaFactor>, val attempt: Int) : LoginStep
+    data class Mfa(val email: String, val step: MfaStep) : LoginStep
 
     data object Authenticated : LoginStep
 
@@ -60,9 +60,6 @@ internal sealed interface LoginEvent {
 
     data object Retry : LoginEvent
 
-    /** The MFA flow signed the user in. */
-    data class MfaSignedIn(val credentials: Credentials) : LoginEvent
-
-    /** The MFA flow can't go on; back to email entry, and the next code opens a new session. */
-    data object LeaveMfa : LoginEvent
+    /** A tap on an MFA screen, passed on to the MFA flow. */
+    data class Mfa(val intent: MfaIntent) : LoginEvent
 }
