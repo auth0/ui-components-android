@@ -6,6 +6,7 @@ import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.PushPolling
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -29,15 +30,17 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
                 val wait = checked.pollDelay()
                 val next = wait?.let { "$it ms" } ?: "the same wait"
                 Logger.d(TAG, "Push not answered yet (${checked.reason}); next check in $next")
-                Result.Success(PushStatus.Pending(wait))
+                Result.Success(PushStatus.Pending(wait, isSlowDown = checked.reason == Reason.SLOW_DOWN))
             } else {
                 furtherStep(checked)
             }
             is StepAnswer.Failed -> Result.Error(checked.failure)
         }
 
+    /** The server's wait before the next check, kept within [PushPolling]'s limits so a bad value can't flood it. */
     private fun StepAnswer.Next.pollDelay(): Long? =
         actions.firstNotNullOfOrNull { it as? NextAction.VerifyOob }?.pollInMs?.toLong()
+            ?.coerceIn(PushPolling.MIN_WAIT_MS, PushPolling.MAX_WAIT_MS)
 
     private fun furtherStep(answer: StepAnswer.Next): Result<Nothing, LoginFailure> {
         Logger.w(TAG, "The server asked for a further step: ${answer.actions.map { it.capability.value }}")

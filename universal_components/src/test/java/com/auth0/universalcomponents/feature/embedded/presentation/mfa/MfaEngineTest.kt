@@ -145,9 +145,10 @@ class MfaEngineTest {
         coVerify(exactly = 0) { repository.checkPush() }
     }
 
-    // That a check in flight still finishes, and that the next step waits for it, is EmbeddedAuthStepsTest's job.
+    // That the next SDK step waits for a check in flight is EmbeddedAuthStepsTest's job.
     @Test
-    fun `chose another device while a check is in flight - its answer never reaches the host`() = runTest {
+    fun `chose another device while a check is in flight - an approval it brings still signs in`() = runTest {
+        val credentials = mockk<Credentials>()
         val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
         coEvery { repository.checkPush() } coAnswers { answer.await() }
         val engine = started(PHONE, TABLET, select = PHONE)
@@ -155,11 +156,41 @@ class MfaEngineTest {
 
         engine.onIntent(MfaIntent.ChooseAnotherFactor)
         runCurrent()
-        answer.complete(Result.Success(PushStatus.Approved(mockk())))
+        answer.complete(Result.Success(PushStatus.Approved(credentials)))
         runCurrent()
+
+        assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+    }
+
+    @Test
+    fun `chose another device while a check is in flight - a pending answer it brings changes nothing`() = runTest {
+        val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
+        coEvery { repository.checkPush() } coAnswers { answer.await() }
+        val engine = started(PHONE, TABLET, select = PHONE)
+        waitFor(POLL)
+
+        engine.onIntent(MfaIntent.ChooseAnotherFactor)
+        runCurrent()
+        answer.complete(Result.Success(PushStatus.Pending(SLOWER)))
+        waitFor(SLOWER * 2)
 
         assertThat(engine.step).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
         assertThat(effects).isEmpty()
+        coVerify(exactly = 1) { repository.checkPush() }
+    }
+
+    @Test
+    fun `a check fails on the network - checks again quietly, with no second push`() = runTest {
+        val network = Result.Error(LoginFailure(EmbeddedLoginError.Network, canRetryStep = true))
+        coEvery { repository.checkPush() } returnsMany listOf(network, Result.Success(PushStatus.Pending(null)))
+        val engine = started(PHONE)
+
+        waitFor(POLL)
+        waitFor(POLL * 2)
+
+        assertThat(engine.step).isInstanceOf(MfaStep.PushWaiting::class.java)
+        coVerify(exactly = 2) { repository.checkPush() }
+        coVerify(exactly = 1) { repository.sendPush(PHONE) }
     }
 
     @Test

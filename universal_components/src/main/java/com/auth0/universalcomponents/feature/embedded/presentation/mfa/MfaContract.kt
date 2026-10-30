@@ -27,8 +27,18 @@ internal sealed interface MfaStep {
         val canChooseAnother: Boolean,
     ) : MfaStep
 
-    /** The flow stopped. Try again sends [retry] again; when null, the sign-in starts over. */
-    data class Failed(val error: EmbeddedLoginError, val retry: MfaFactor? = null) : MfaStep
+    /** The flow stopped. Try again does [retry]; when null, the sign-in starts over. */
+    data class Failed(val error: EmbeddedLoginError, val retry: MfaRetry? = null) : MfaStep
+}
+
+/** What Try again repeats: only the call that failed, and only while the server still holds the session. */
+internal sealed interface MfaRetry {
+
+    /** Sending failed: send the push to [factor] again. */
+    data class SendAgain(val factor: MfaFactor) : MfaRetry
+
+    /** A check failed after the push went out: go back to [waiting] and check again, without a second push. */
+    data class CheckAgain(val waiting: MfaStep.PushWaiting) : MfaRetry
 }
 
 /** Where a push is: still going out, or out and being checked. Only one can be true at a time. */
@@ -37,8 +47,11 @@ internal sealed interface PushPhase {
     /** The screen shows at once, while the push is sent. */
     data object Sending : PushPhase
 
-    /** Checked again every [everyMs]; Resend opens once [resendSecondsLeft] reaches zero. */
-    data class Polling(val everyMs: Long, val resendSecondsLeft: Int) : PushPhase
+    /**
+     * Checked again every [everyMs]; Resend opens once [resendSecondsLeft] reaches zero.
+     * [failedChecks] counts the checks in a row that hit a network or server error and were retried quietly.
+     */
+    data class Polling(val everyMs: Long, val resendSecondsLeft: Int, val failedChecks: Int = 0) : PushPhase
 }
 
 /** What the user did on an MFA screen. */
@@ -67,12 +80,19 @@ internal sealed interface MfaOutcome {
     /** The push is out; check it after [pollInMs]. */
     data class PushSent(val pollInMs: Long) : MfaOutcome
 
-    /** Not approved yet; check again after [pollInMs], or after the same wait when null. */
-    data class PushPending(val pollInMs: Long?) : MfaOutcome
+    /**
+     * Not approved yet; check again after [pollInMs], or after the same wait when null.
+     * [isSlowDown] means the server said we checked too soon.
+     */
+    data class PushPending(val pollInMs: Long?, val isSlowDown: Boolean = false) : MfaOutcome
 
     data class SignedIn(val credentials: Credentials) : MfaOutcome
 
-    data class Failed(val failure: LoginFailure) : MfaOutcome
+    /** The push couldn't be sent. */
+    data class SendFailed(val failure: LoginFailure) : MfaOutcome
+
+    /** A check on a push already sent failed. */
+    data class CheckFailed(val failure: LoginFailure) : MfaOutcome
 }
 
 /**

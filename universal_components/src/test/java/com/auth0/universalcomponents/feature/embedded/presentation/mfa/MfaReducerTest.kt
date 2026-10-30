@@ -4,6 +4,7 @@ import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.PushPolling
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
 import org.junit.Test
@@ -116,7 +117,7 @@ class MfaReducerTest {
 
     @Test
     fun `denied - fails for good, and Try again starts the sign-in over`() {
-        val denied = MfaOutcome.Failed(LoginFailure(EmbeddedLoginError.PushDenied))
+        val denied = MfaOutcome.CheckFailed(LoginFailure(EmbeddedLoginError.PushDenied))
 
         val failed = oneDevice.handleOutcome(polling(PHONE, canChooseAnother = false), denied)
         val retried = oneDevice.handleIntent(failed.step, MfaIntent.Retry)
@@ -126,14 +127,78 @@ class MfaReducerTest {
     }
 
     @Test
-    fun `network error - Try again sends the push again`() {
-        val network = MfaOutcome.Failed(LoginFailure(EmbeddedLoginError.Network, canRetryStep = true))
+    fun `sending fails on the network - Try again sends the push again`() {
+        val sending = MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false)
 
-        val failed = oneDevice.handleOutcome(polling(PHONE, canChooseAnother = false), network)
+        val failed = oneDevice.handleOutcome(sending, MfaOutcome.SendFailed(NETWORK))
         val retried = oneDevice.handleIntent(failed.step, MfaIntent.Retry)
 
-        assertThat(retried.step).isEqualTo(MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false))
+        assertThat(failed.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network, MfaRetry.SendAgain(PHONE)))
+        assertThat(retried.step).isEqualTo(sending)
         assertThat(retried.commands).containsExactly(MfaCommand.SendPush(PHONE))
+    }
+
+    @Test
+    fun `a check fails on the network - checks again quietly, waiting longer each time`() {
+        var step: MfaStep = polling(PHONE, everyMs = POLL, canChooseAnother = false)
+        val waits = (1..MfaReducer.QUIET_RETRIES).map {
+            val update = oneDevice.handleOutcome(step, MfaOutcome.CheckFailed(NETWORK))
+            step = update.step
+            assertThat(step).isInstanceOf(MfaStep.PushWaiting::class.java)
+            (update.commands.single() as MfaCommand.CheckPush).afterMs
+        }
+
+        assertThat(waits).containsExactly(POLL * 2, POLL * 4, POLL * 8).inOrder()
+    }
+
+    @Test
+    fun `a check keeps failing on the network - shows the error, and Try again checks again without a second push`() {
+        val waiting = polling(PHONE, resendSecondsLeft = 10, canChooseAnother = false)
+        val failing = MfaStep.PushWaiting(
+            PHONE,
+            PushPhase.Polling(POLL, resendSecondsLeft = 10, failedChecks = MfaReducer.QUIET_RETRIES),
+            canChooseAnother = false,
+        )
+
+        val failed = oneDevice.handleOutcome(failing, MfaOutcome.CheckFailed(NETWORK))
+        val retried = oneDevice.handleIntent(failed.step, MfaIntent.Retry)
+
+        assertThat(failed.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network, MfaRetry.CheckAgain(waiting)))
+        assertThat(retried.step).isEqualTo(waiting)
+        assertThat(retried.commands).containsExactly(MfaCommand.CheckPush(0), MfaCommand.CountDownResend).inOrder()
+    }
+
+    @Test
+    fun `an answer after a failed check - starts the quiet retries afresh`() {
+        val retried = MfaStep.PushWaiting(PHONE, PushPhase.Polling(POLL, 0, failedChecks = 2), canChooseAnother = false)
+
+        val pending = oneDevice.handleOutcome(retried, MfaOutcome.PushPending(POLL))
+
+        assertThat(pending.step).isEqualTo(polling(PHONE, canChooseAnother = false))
+    }
+
+    @Test
+    fun `slow down without a new wait - doubles the wait, up to a minute`() {
+        val slowDown = MfaOutcome.PushPending(pollInMs = null, isSlowDown = true)
+
+        val doubled = oneDevice.handleOutcome(polling(PHONE, everyMs = POLL, canChooseAnother = false), slowDown)
+        val capped = oneDevice.handleOutcome(polling(PHONE, everyMs = 50_000L, canChooseAnother = false), slowDown)
+
+        assertThat(doubled.commands).containsExactly(MfaCommand.CheckPush(POLL * 2))
+        assertThat(capped.commands).containsExactly(MfaCommand.CheckPush(PushPolling.MAX_WAIT_MS))
+    }
+
+    @Test
+    fun `answers that no longer fit the screen - are dropped, except an approval`() {
+        val credentials = mockk<Credentials>()
+        val sending = MfaStep.PushWaiting(TABLET, PushPhase.Sending, canChooseAnother = true)
+
+        assertThat(twoDevices.handleOutcome(LIST, MfaOutcome.CheckFailed(NETWORK))).isEqualTo(MfaUpdate(LIST))
+        assertThat(twoDevices.handleOutcome(sending, MfaOutcome.CheckFailed(NETWORK))).isEqualTo(MfaUpdate(sending))
+        assertThat(twoDevices.handleOutcome(LIST, MfaOutcome.SendFailed(NETWORK))).isEqualTo(MfaUpdate(LIST))
+        // The user did approve, on the device they moved away from: they're signed in.
+        assertThat(twoDevices.handleOutcome(LIST, MfaOutcome.SignedIn(credentials)).effect)
+            .isEqualTo(MfaEffect.Authenticated(credentials))
     }
 
     // endregion
@@ -208,5 +273,6 @@ class MfaReducerTest {
         const val POLL = 3_000L
         const val SLOWER = 5_000L
         const val COOLDOWN = MfaReducer.RESEND_COOLDOWN_SECONDS
+        val NETWORK = LoginFailure(EmbeddedLoginError.Network, canRetryStep = true)
     }
 }

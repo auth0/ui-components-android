@@ -134,6 +134,7 @@ internal fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.TooManyWrongCodes -> stringResource(R.string.embedded_login_error_too_many_wrong_codes)
     EmbeddedLoginError.TooManyAttempts -> stringResource(R.string.embedded_login_error_too_many_attempts)
     EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
+    EmbeddedLoginError.SessionExpired -> stringResource(R.string.embedded_login_error_session_expired)
     EmbeddedLoginError.PushDenied -> stringResource(R.string.embedded_login_mfa_error_push_denied)
     EmbeddedLoginError.NoEligibleFactors -> stringResource(R.string.embedded_login_mfa_error_no_factors)
     EmbeddedLoginError.ExtraStepUnsupported -> stringResource(R.string.embedded_login_error_extra_step_unsupported)

@@ -136,6 +136,7 @@
     <string name="embedded_login_error_too_many_attempts">Too many attempts. Please try again later.</string>
     <string name="embedded_login_error_too_many_wrong_codes">Too many incorrect codes. Please try again later.</string>
     <string name="embedded_login_error_too_many_logins">Too many login attempts. Please try again later.</string>
+    <string name="embedded_login_error_session_expired">Your sign-in session expired. Please sign in again.</string>
     <string name="embedded_login_error_extra_step_unsupported">This account needs an extra verification step that isn\'t supported yet.</string>
     <string name="embedded_login_mfa_list_title">Choose a device</string>
     <string name="embedded_login_mfa_list_subtitle">Where should we send the sign-in request?</string>

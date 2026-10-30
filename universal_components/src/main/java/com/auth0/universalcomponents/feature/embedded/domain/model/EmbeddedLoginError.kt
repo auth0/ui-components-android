@@ -28,6 +28,9 @@ internal sealed interface EmbeddedLoginError {
      */
     data class MfaRequired(val factors: List<MfaFactor>) : EmbeddedLoginError
 
+    /** The sign-in session ended or expired, so it has to start over; the server or SDK no longer knows it. */
+    data object SessionExpired : EmbeddedLoginError
+
     /** The user turned down the push on their device. */
     data object PushDenied : EmbeddedLoginError
 

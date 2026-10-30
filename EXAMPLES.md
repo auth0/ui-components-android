@@ -310,7 +310,7 @@ fun MFASettingsScreen() {
 
 ## Embedded Login
 
-> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.0` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP on the connection you pass in.
+> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.1` or later** (beta.0 has no MFA calls, so an app pinned to it fails once MFA starts), a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP on the connection you pass in.
 
 ### Display the Embedded Login Screen
 
@@ -336,7 +336,7 @@ fun LoginScreen(
 }
 ```
 
-On code entry, Back returns to email entry. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
+On code entry, Back returns to email entry; during MFA, Back works as described in [Multi-Factor Authentication](#multi-factor-authentication). Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
 
 ### Flow Behaviour
 
@@ -353,9 +353,11 @@ When the code is right but the account needs a second factor, the same screen ca
 
 - **Supported factor: push notification.** Other second factors aren't supported yet; if the tenant offers only those, the flow shows its error screen.
 - **With one push device,** the push is sent straight away. **With several,** the user picks one from a list, in the order the tenant offers them.
-- **While the push waits,** the screen checks with the server at the interval it asks for. **Resend Code** sends the push again after a 60-second wait. **Choose another device** returns to the list.
+- **While the push waits,** the screen checks with the server at the interval it asks for, between 1 and 60 seconds, and waits longer when the server asks it to slow down. **Resend Code** sends the push again after a 60-second wait. **Choose another device** returns to the list; if the user had already approved on the first device, they are signed in.
+- **If a check hits a network or server error,** it is retried quietly, up to three times with a longer wait each time. After that the error screen shows, and **Try again** checks the same push again rather than sending a new one.
 - **Back** returns from the push to the list. From the list, or when there's only one device, it returns to email entry with the email kept, and the next code starts a new sign-in.
-- **A declined push, an expired request, or an account with no usable factor** goes full screen. **Try again** starts the sign-in over, unless the failure was a network or server error, in which case it sends the push again.
+- **A declined push, an expired request or session, or an account with no usable factor** goes full screen, and **Try again** starts the sign-in over. If the push couldn't be sent because of a network or server error, **Try again** sends it again.
+- **The sign-in session lives in memory.** If Android ends the app while the user is approving the push, for example in the background, the flow starts again from email entry when the app reopens.
 
 ## Support
 

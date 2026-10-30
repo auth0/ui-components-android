@@ -9,6 +9,7 @@ import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.PushPolling
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
@@ -92,8 +93,18 @@ class MfaRepositoryImplTest {
         listOf(Reason.AUTHORIZATION_PENDING, Reason.SLOW_DOWN).forEach { reason ->
             every { client.verifyOob() } returns step(verifyOob(SLOWER_MS), reason = reason)
 
-            assertThat(repository.checkPush())
-                .isEqualTo(Result.Success(PushStatus.Pending(SLOWER_MS.toLong())))
+            assertThat(repository.checkPush()).isEqualTo(
+                Result.Success(PushStatus.Pending(SLOWER_MS.toLong(), isSlowDown = reason == Reason.SLOW_DOWN)),
+            )
+        }
+    }
+
+    @Test
+    fun `checkPush - a wait out of bounds - kept between a second and a minute`() = runTest {
+        mapOf(0 to PushPolling.MIN_WAIT_MS, 120_000 to PushPolling.MAX_WAIT_MS).forEach { (fromServer, used) ->
+            every { client.verifyOob() } returns step(verifyOob(fromServer), reason = Reason.AUTHORIZATION_PENDING)
+
+            assertThat(repository.checkPush()).isEqualTo(Result.Success(PushStatus.Pending(used)))
         }
     }
 
@@ -120,6 +131,9 @@ class MfaRepositoryImplTest {
             EmbeddedAuthError.AuthorizationRejected to EmbeddedLoginError.PushDenied,
             EmbeddedAuthError.ChallengeExpired to EmbeddedLoginError.CodeExpired,
             EmbeddedAuthError.NoEligibleFactors to EmbeddedLoginError.NoEligibleFactors,
+            // The session is gone, e.g. a late approval already finished it: never the SDK's developer text.
+            EmbeddedAuthError.NoActiveSession to EmbeddedLoginError.SessionExpired,
+            EmbeddedAuthError.SessionExpired to EmbeddedLoginError.SessionExpired,
         ).forEach { (sdkError, expected) ->
             every { client.verifyOob() } returns failingWith(sdkError, statusCode = 403)
 

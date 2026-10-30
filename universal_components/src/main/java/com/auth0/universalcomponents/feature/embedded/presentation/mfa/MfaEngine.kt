@@ -33,8 +33,8 @@ internal class MfaEngine(
     lateinit var step: MfaStep
         private set
 
-    /** The wait between push checks, and the check itself. */
-    private var pushCheckJob: Job? = null
+    /** The wait before the next push check. Only the wait: a check that has started is never cut off here. */
+    private var waitToCheck: Job? = null
 
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
@@ -64,34 +64,37 @@ internal class MfaEngine(
 
     private fun runCommand(command: MfaCommand) {
         when (command) {
-            MfaCommand.StopPush -> pushCheckJob?.cancel()
+            MfaCommand.StopPush -> waitToCheck?.cancel()
             is MfaCommand.CheckPush -> schedulePushCheck(command.afterMs)
             MfaCommand.CountDownResend -> countDownResend()
             // A check still in flight finishes first: the repository runs one SDK step at a time.
-            is MfaCommand.SendPush -> scope.launch {
-                pushCheckJob?.cancel()
-                onOutcome(repository.sendPush(command.factor).toOutcome { MfaOutcome.PushSent(it) })
+            is MfaCommand.SendPush -> {
+                waitToCheck?.cancel()
+                scope.launch {
+                    val sent = repository.sendPush(command.factor)
+                    onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
+                }
             }
         }
     }
 
     /**
-     * Waits, then checks once. Stopping cancels the wait at once; a check already in flight still finishes in the
-     * repository, so the SDK keeps the session it returns, but its answer never reaches the reducer.
+     * Waits, then checks once. Stopping cancels only the wait: a check that has started runs to the end and its
+     * answer still comes in, so an approval that lands after the user picked another device isn't lost. The
+     * reducer drops answers that no longer fit the screen. Only [stop] ends a check in flight.
      */
     private fun schedulePushCheck(delayMs: Long) {
-        pushCheckJob?.cancel()
-        pushCheckJob = scope.launch {
+        waitToCheck?.cancel()
+        waitToCheck = scope.launch {
             delay(delayMs)
-            val checked = repository.checkPush()
-            onOutcome(
-                checked.toOutcome { status ->
-                    when (status) {
-                        is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
-                        is PushStatus.Pending -> MfaOutcome.PushPending(status.retryInMs)
-                    }
-                },
-            )
+            scope.launch { onOutcome(checkPush()) }
+        }
+    }
+
+    private suspend fun checkPush(): MfaOutcome = repository.checkPush().toOutcome(MfaOutcome::CheckFailed) { status ->
+        when (status) {
+            is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
+            is PushStatus.Pending -> MfaOutcome.PushPending(status.retryInMs, status.isSlowDown)
         }
     }
 
@@ -105,11 +108,14 @@ internal class MfaEngine(
     }
 
     /** A failure is logged once here, with its cause, so it can be traced in a live app. */
-    private inline fun <T> Result<T, LoginFailure>.toOutcome(onSuccess: (T) -> MfaOutcome): MfaOutcome = when (this) {
+    private inline fun <T> Result<T, LoginFailure>.toOutcome(
+        onFailure: (LoginFailure) -> MfaOutcome,
+        onSuccess: (T) -> MfaOutcome,
+    ): MfaOutcome = when (this) {
         is Result.Success -> onSuccess(data)
         is Result.Error -> {
             Logger.e(TAG, "MFA step failed: ${error.error}", error.cause)
-            MfaOutcome.Failed(error)
+            onFailure(error)
         }
     }
 

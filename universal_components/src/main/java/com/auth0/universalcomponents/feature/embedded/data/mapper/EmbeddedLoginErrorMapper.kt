@@ -25,6 +25,8 @@ internal fun EmbeddedAuthException.toLoginFailure(): LoginFailure {
         EmbeddedAuthError.TooManyLogins -> EmbeddedLoginError.TooManyLogins
         EmbeddedAuthError.AuthorizationRejected -> EmbeddedLoginError.PushDenied
         EmbeddedAuthError.NoEligibleFactors -> EmbeddedLoginError.NoEligibleFactors
+        // The SDK's own text for these is developer advice ("Call authorize() first"), never for the user.
+        EmbeddedAuthError.NoActiveSession, EmbeddedAuthError.SessionExpired -> EmbeddedLoginError.SessionExpired
         else -> null
     }
     val fromServer = code !in SDK_ERROR_CODES && description.isNotBlank()
