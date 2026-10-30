@@ -1,0 +1,120 @@
+package com.auth0.universalcomponents.feature.embedded.presentation.mfa
+
+import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
+import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
+import com.auth0.universalcomponents.utils.logging.Logger
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/**
+ * One run of MFA: holds the step on show, runs the work [MfaReducer] asks for, and reports the end through
+ * [onEffect]. It makes no decisions itself and knows nothing about the first factor, so any host can own it:
+ * embedded login today, a standalone MFA component or step-up later. Its work runs in a child of [hostScope]
+ * that [stop] cancels, so the host ends MFA with one call.
+ */
+internal class MfaEngine(
+    factors: List<MfaFactor>,
+    private val repository: MfaRepository,
+    hostScope: CoroutineScope,
+    private val onStep: (MfaStep) -> Unit,
+    private val onEffect: (MfaEffect) -> Unit,
+) {
+
+    private val reducer = MfaReducer(factors)
+    private val job = SupervisorJob(hostScope.coroutineContext[Job])
+    private val scope = CoroutineScope(hostScope.coroutineContext + job)
+
+    lateinit var step: MfaStep
+        private set
+
+    /** The wait between push checks, and the check itself. */
+    private var pushCheckJob: Job? = null
+
+    /** The one-second wait before the resend countdown moves on. */
+    private var resendCountdownJob: Job? = null
+
+    init {
+        applyUpdate(reducer.start())
+    }
+
+    fun onIntent(intent: MfaIntent) = applyUpdate(reducer.handleIntent(step, intent))
+
+    /** Ends this run: nothing it started reaches the host any more. */
+    fun stop() = job.cancel()
+
+    private fun onOutcome(outcome: MfaOutcome) = applyUpdate(reducer.handleOutcome(step, outcome))
+
+    /** An effect means MFA is over, so the engine stops itself once it has told the host; no timer outlives it. */
+    private fun applyUpdate(update: MfaUpdate) {
+        if (!job.isActive) return
+        step = update.step
+        onStep(update.step)
+        update.commands.forEach(::runCommand)
+        update.effect?.let { effect ->
+            stop()
+            onEffect(effect)
+        }
+    }
+
+    private fun runCommand(command: MfaCommand) {
+        when (command) {
+            MfaCommand.StopPush -> pushCheckJob?.cancel()
+            is MfaCommand.CheckPush -> schedulePushCheck(command.afterMs)
+            MfaCommand.CountDownResend -> countDownResend()
+            // A check still in flight finishes first: the repository runs one SDK step at a time.
+            is MfaCommand.SendPush -> scope.launch {
+                pushCheckJob?.cancel()
+                onOutcome(repository.sendPush(command.factor).toOutcome { MfaOutcome.PushSent(it) })
+            }
+        }
+    }
+
+    /**
+     * Waits, then checks once. Stopping cancels the wait at once; a check already in flight still finishes in the
+     * repository, so the SDK keeps the session it returns, but its answer never reaches the reducer.
+     */
+    private fun schedulePushCheck(delayMs: Long) {
+        pushCheckJob?.cancel()
+        pushCheckJob = scope.launch {
+            delay(delayMs)
+            val checked = repository.checkPush()
+            onOutcome(
+                checked.toOutcome { status ->
+                    when (status) {
+                        is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
+                        is PushStatus.Pending -> MfaOutcome.PushPending(status.retryInMs)
+                    }
+                },
+            )
+        }
+    }
+
+    /** Replaces any tick still waiting, so a new countdown never loses a second to an old one. */
+    private fun countDownResend() {
+        resendCountdownJob?.cancel()
+        resendCountdownJob = scope.launch {
+            delay(ONE_SECOND_MILLIS)
+            applyUpdate(reducer.handleSecondPassed(step))
+        }
+    }
+
+    /** A failure is logged once here, with its cause, so it can be traced in a live app. */
+    private inline fun <T> Result<T, LoginFailure>.toOutcome(onSuccess: (T) -> MfaOutcome): MfaOutcome = when (this) {
+        is Result.Success -> onSuccess(data)
+        is Result.Error -> {
+            Logger.e(TAG, "MFA step failed: ${error.error}", error.cause)
+            MfaOutcome.Failed(error)
+        }
+    }
+
+    private companion object {
+        const val TAG = "MfaEngine"
+        const val ONE_SECOND_MILLIS = 1_000L
+    }
+}
