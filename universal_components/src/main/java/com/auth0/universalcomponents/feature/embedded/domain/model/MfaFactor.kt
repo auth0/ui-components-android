@@ -1,0 +1,27 @@
+package com.auth0.universalcomponents.feature.embedded.domain.model
+
+import com.auth0.android.result.Credentials
+
+/**
+ * A second way to prove who the user is, offered by the server once the first factor passed.
+ * Only push is supported for now; more factors are added here one at a time.
+ */
+internal sealed interface MfaFactor {
+
+    /** [index] is the server's handle for that device; [deviceName] is what the user called it. */
+    data class Push(val index: Int, val deviceName: String) : MfaFactor
+}
+
+/** Where a push approval stands after one check. */
+internal sealed interface PushStatus {
+
+    data class Approved(val credentials: Credentials) : PushStatus
+
+    /** Not answered yet; check again in [retryInMs]. */
+    data class Pending(val retryInMs: Long) : PushStatus
+}
+
+/** The wait between push checks when the server doesn't give one. The server always asks for 2 seconds. */
+internal object PushPolling {
+    const val DEFAULT_WAIT_MS = 2_000L
+}

@@ -9,13 +9,14 @@ import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
 import com.auth0.android.embedded.authorize.OtpType
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.request.Request
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -35,7 +36,7 @@ class EmbeddedLoginRepositoryImplTest {
     @Before
     fun setup() {
         client = mockk()
-        repository = EmbeddedLoginRepositoryImpl(client, CONNECTION)
+        repository = EmbeddedLoginRepositoryImpl(EmbeddedAuthSteps(client), CONNECTION)
         every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.IdentifyEmail)
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 0))
         every { client.challengeEmail(any()) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL))
@@ -50,7 +51,7 @@ class EmbeddedLoginRepositoryImplTest {
 
     @Test
     fun `discover - blank connection - fails with connection missing and calls nothing`() = runTest {
-        val failure = EmbeddedLoginRepositoryImpl(client, " ").discover().failure()
+        val failure = EmbeddedLoginRepositoryImpl(EmbeddedAuthSteps(client), " ").discover().failure()
 
         assertThat(failure.error).isEqualTo(EmbeddedLoginError.ConnectionMissing)
         verify(exactly = 0) { client.authorize(any(), any(), any(), any()) }
@@ -186,11 +187,36 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
+    fun `verifyOtp - second factors offered - fails as MFA required, with only the push devices, in order`() = runTest {
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
+            challengeEmail(at = 0),
+            sdkInstance<NextAction.ChallengePhone>(
+                Int::class.java to 1,
+                String::class.java to MASKED_PHONE,
+                List::class.java to listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE),
+            ),
+            sdkInstance<NextAction.ChallengePush>(Int::class.java to 2, String::class.java to DEVICE),
+            verifyOtp(OtpChannel.TOTP, null),
+            NextAction.VerifyRecoveryCode,
+            sdkInstance<NextAction.ChallengePush>(Int::class.java to 3, String::class.java to OTHER_DEVICE),
+        )
+
+        val failure = repository.verifyOtp(CODE).failure()
+
+        assertThat(failure.error).isEqualTo(
+            EmbeddedLoginError.MfaRequired(listOf(MfaFactor.Push(2, DEVICE), MfaFactor.Push(3, OTHER_DEVICE))),
+        )
+    }
+
+    @Test
     fun `verifyOtp - server asks for another step - fails for good as unsupported`() = runTest {
         listOf(
-            verifyOtp(OtpChannel.TOTP, null),
             verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
             verifyOtp(OtpChannel.SMS, null),
+            // Second factors other than push aren't supported yet.
+            verifyOtp(OtpChannel.TOTP, null),
+            NextAction.VerifyRecoveryCode,
+            challengeEmail(at = 0),
         ).forEach { nextAction ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns step(nextAction)
 
@@ -307,51 +333,19 @@ class EmbeddedLoginRepositoryImplTest {
 
     // endregion
 
-    /** A step that answers "not finished yet, do one of [next]", the way every step before the last does. */
-    private fun <T> step(vararg next: NextAction, reason: Reason = Reason.NONE): Request<T, EmbeddedAuthException> =
-        failingWith(
-            EmbeddedAuthError.InsufficientAuthorization(next.toList(), reason),
-            code = "insufficient_authorization",
-        )
-
-    private fun <T> failingWith(
-        error: EmbeddedAuthError,
-        code: String = "access_denied",
-        description: String = "",
-        statusCode: Int = 0,
-    ): Request<T, EmbeddedAuthException> {
-        val exception = sdkInstance<EmbeddedAuthException>(
-            String::class.java to code,
-            String::class.java to description,
-            Int::class.java to statusCode,
-            EmbeddedAuthError::class.java to error,
-            String::class.java to null,
-            Throwable::class.java to null,
-        )
-        return FakeRequestImpl(exception = exception)
-    }
-
     private fun challengeEmail(at: Int): NextAction.ChallengeEmail =
         sdkInstance(Int::class.java to at, String::class.java to EMAIL)
 
     private fun verifyOtp(channel: OtpChannel, destination: String?): NextAction.VerifyOtp =
         sdkInstance(OtpChannel::class.java to channel, String::class.java to destination)
 
-    /** The SDK's constructors are internal to Kotlin but public on the JVM, so tests build real instances. */
-    private inline fun <reified T> sdkInstance(vararg args: Pair<Class<*>, Any?>): T =
-        T::class.java.getConstructor(*args.map { it.first }.toTypedArray())
-            .newInstance(*args.map { it.second }.toTypedArray())
-
-    /** Every failure comes back from the repository as a [LoginFailure], never thrown. */
-    private fun Result<*, LoginFailure>.failure(): LoginFailure {
-        assertThat(this).isInstanceOf(Result.Error::class.java)
-        return (this as Result.Error).error
-    }
-
     private companion object {
         const val CONNECTION = "email"
         const val EMAIL = "jane@example.com"
         const val MASKED_EMAIL = "j***@example.com"
+        const val MASKED_PHONE = "+1***1234"
+        const val DEVICE = "Jane's phone"
+        const val OTHER_DEVICE = "Jane's tablet"
         const val CODE = "123456"
     }
 }

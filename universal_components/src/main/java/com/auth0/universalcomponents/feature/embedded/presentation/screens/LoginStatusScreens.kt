@@ -3,11 +3,15 @@ package com.auth0.universalcomponents.feature.embedded.presentation.screens
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -18,9 +22,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginPrimaryButton
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginStepLayout
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.theme.Auth0Theme
 
@@ -75,7 +80,10 @@ internal fun LoginNoMethodsScreen(
     )
 }
 
-/** A title and optional description, with an optional button at the bottom. */
+/**
+ * A title and optional description with an optional button right below, centred together on the screen.
+ * It scrolls when it doesn't fit, as in landscape with large text.
+ */
 @Composable
 private fun LoginStatusScreen(
     title: String,
@@ -86,21 +94,33 @@ private fun LoginStatusScreen(
 ) {
     val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
-    LoginStepLayout(
-        modifier = modifier,
-        pageDescription = {
-            Text(text = title, style = typography.titleLarge, color = colors.textBold)
-            Spacer(Modifier.height(Auth0Theme.dimensions.spacingXs))
-        },
-        content = {
+    val dimensions = Auth0Theme.dimensions
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(dimensions.spacingLg),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
+        ) {
+            Text(
+                text = title,
+                style = typography.titleLarge.copy(fontWeight = FontWeight.Normal),
+                color = colors.textBold,
+                textAlign = TextAlign.Center,
+            )
             if (description != null) {
-                Text(text = description, style = typography.body, color = colors.textDefault)
+                Text(
+                    text = description,
+                    style = typography.bodySmall,
+                    color = colors.textDefault,
+                    textAlign = TextAlign.Center,
+                )
             }
-        },
-        primaryAction = {
             if (actionTitle != null && onAction != null) {
                 LoginPrimaryButton(title = actionTitle, onClick = onAction)
             }
-        },
-    )
+        }
+    }
 }

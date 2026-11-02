@@ -12,9 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** The page title, with an optional subtitle and "Edit" action. */
+/** The page title, with an optional subtitle and "Edit" action. [bottomSpacing] overrides the gap to the content. */
 @Composable
 internal fun LoginScreenHeader(
     title: String,
@@ -22,6 +23,7 @@ internal fun LoginScreenHeader(
     subtitle: String? = null,
     editLabel: String? = null,
     onEdit: (() -> Unit)? = null,
+    bottomSpacing: Dp? = null,
 ) {
     val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
@@ -48,7 +50,7 @@ internal fun LoginScreenHeader(
                 }
             }
         }
-        val gap = if (subtitle == null) {
+        val gap = bottomSpacing ?: if (subtitle == null) {
             dimensions.spacingXl + dimensions.spacingXxs
         } else {
             dimensions.spacingXxl + dimensions.spacingXs
