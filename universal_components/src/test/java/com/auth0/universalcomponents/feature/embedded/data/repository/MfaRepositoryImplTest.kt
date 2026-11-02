@@ -78,55 +78,46 @@ class MfaRepositoryImplTest {
 
     // endregion
 
-    // region checkPush
+    // region checkPushStatus
 
     @Test
-    fun `checkPush - approved - returns the credentials`() = runTest {
+    fun `checkPushStatus - approved - returns the credentials`() = runTest {
         val credentials = mockk<Credentials>()
         every { client.verifyOob() } returns FakeRequestImpl(response = credentials)
 
-        assertThat(repository.checkPush()).isEqualTo(Result.Success(PushStatus.Approved(credentials)))
+        assertThat(repository.checkPushStatus()).isEqualTo(Result.Success(PushStatus.Approved(credentials)))
     }
 
     @Test
-    fun `checkPush - pending or slow down - still waiting, with the server's new wait`() = runTest {
+    fun `checkPushStatus - pending or slow down - still waiting, with the server's new wait`() = runTest {
         listOf(Reason.AUTHORIZATION_PENDING, Reason.SLOW_DOWN).forEach { reason ->
             every { client.verifyOob() } returns step(verifyOob(SLOWER_MS), reason = reason)
 
-            assertThat(repository.checkPush()).isEqualTo(
-                Result.Success(PushStatus.Pending(SLOWER_MS.toLong(), isSlowDown = reason == Reason.SLOW_DOWN)),
+            assertThat(repository.checkPushStatus()).isEqualTo(
+                Result.Success(PushStatus.Pending(SLOWER_MS.toLong())),
             )
         }
     }
 
     @Test
-    fun `checkPush - a wait out of bounds - kept between a second and a minute`() = runTest {
-        mapOf(0 to PushPolling.MIN_WAIT_MS, 120_000 to PushPolling.MAX_WAIT_MS).forEach { (fromServer, used) ->
-            every { client.verifyOob() } returns step(verifyOob(fromServer), reason = Reason.AUTHORIZATION_PENDING)
-
-            assertThat(repository.checkPush()).isEqualTo(Result.Success(PushStatus.Pending(used)))
-        }
-    }
-
-    @Test
-    fun `checkPush - pending without a wait - still waiting, keeping the last wait`() = runTest {
+    fun `checkPushStatus - pending without a wait - still waiting, after the default wait`() = runTest {
         every { client.verifyOob() } returns step(reason = Reason.AUTHORIZATION_PENDING)
 
-        assertThat(repository.checkPush()).isEqualTo(Result.Success(PushStatus.Pending(null)))
+        assertThat(repository.checkPushStatus()).isEqualTo(Result.Success(PushStatus.Pending(PushPolling.DEFAULT_WAIT_MS)))
     }
 
     @Test
-    fun `checkPush - server asks for another step - fails for good as unsupported`() = runTest {
+    fun `checkPushStatus - server asks for another step - fails for good as unsupported`() = runTest {
         every { client.verifyOob() } returns step(NextAction.VerifyRecoveryCode)
 
-        val failure = repository.checkPush().failure()
+        val failure = repository.checkPushStatus().failure()
 
         assertThat(failure.error).isEqualTo(EmbeddedLoginError.ExtraStepUnsupported)
         assertThat(failure.canRetryStep).isFalse()
     }
 
     @Test
-    fun `checkPush - declined or expired - named in our terms`() = runTest {
+    fun `checkPushStatus - declined or expired - named in our terms`() = runTest {
         mapOf(
             EmbeddedAuthError.AuthorizationRejected to EmbeddedLoginError.PushDenied,
             EmbeddedAuthError.ChallengeExpired to EmbeddedLoginError.CodeExpired,
@@ -137,7 +128,7 @@ class MfaRepositoryImplTest {
         ).forEach { (sdkError, expected) ->
             every { client.verifyOob() } returns failingWith(sdkError, statusCode = 403)
 
-            val failure = repository.checkPush().failure()
+            val failure = repository.checkPushStatus().failure()
 
             assertThat(failure.error).isEqualTo(expected)
             assertThat(failure.canRetryStep).isFalse()

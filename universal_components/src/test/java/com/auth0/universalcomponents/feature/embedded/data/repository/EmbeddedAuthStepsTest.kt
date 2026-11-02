@@ -54,7 +54,7 @@ class EmbeddedAuthStepsTest {
             step(NextAction.IdentifyEmail)
         }
 
-        launch { mfa.checkPush() }
+        launch { mfa.checkPushStatus() }
         runCurrent()
         // The user went back to email entry and tapped Continue straight away.
         launch { login.discover() }

@@ -80,11 +80,8 @@ internal sealed interface MfaOutcome {
     /** The push is out; check it after [pollInMs]. */
     data class PushSent(val pollInMs: Long) : MfaOutcome
 
-    /**
-     * Not approved yet; check again after [pollInMs], or after the same wait when null.
-     * [isSlowDown] means the server said we checked too soon.
-     */
-    data class PushPending(val pollInMs: Long?, val isSlowDown: Boolean = false) : MfaOutcome
+    /** Not approved yet; check again after [pollInMs]. */
+    data class PushPending(val pollInMs: Long) : MfaOutcome
 
     data class SignedIn(val credentials: Credentials) : MfaOutcome
 
@@ -103,10 +100,10 @@ internal sealed interface MfaCommand {
 
     data class SendPush(val factor: MfaFactor.Push) : MfaCommand
 
-    data class CheckPush(val afterMs: Long) : MfaCommand
+    data class CheckPushStatus(val afterMs: Long) : MfaCommand
 
-    /** Stops checking the push. */
-    data object StopPush : MfaCommand
+    /** Stops checking the push: no further check is scheduled; a check already running still finishes. */
+    data object StopPolling : MfaCommand
 
     /** Waits one second, then counts the resend wait down by one. */
     data object CountDownResend : MfaCommand

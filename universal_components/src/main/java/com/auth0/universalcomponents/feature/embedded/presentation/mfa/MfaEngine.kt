@@ -33,8 +33,8 @@ internal class MfaEngine(
     lateinit var step: MfaStep
         private set
 
-    /** The wait before the next push check. Only the wait: a check that has started is never cut off here. */
-    private var waitToCheck: Job? = null
+    /** The wait before the next push check; null once the check itself has started, so stopping never cuts it off. */
+    private var pollDelayJob: Job? = null
 
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
@@ -64,12 +64,12 @@ internal class MfaEngine(
 
     private fun runCommand(command: MfaCommand) {
         when (command) {
-            MfaCommand.StopPush -> waitToCheck?.cancel()
-            is MfaCommand.CheckPush -> schedulePushCheck(command.afterMs)
+            MfaCommand.StopPolling -> pollDelayJob?.cancel()
+            is MfaCommand.CheckPushStatus -> schedulePushCheck(command.afterMs)
             MfaCommand.CountDownResend -> countDownResend()
             // A check still in flight finishes first: the repository runs one SDK step at a time.
             is MfaCommand.SendPush -> {
-                waitToCheck?.cancel()
+                pollDelayJob?.cancel()
                 scope.launch {
                     val sent = repository.sendPush(command.factor)
                     onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
@@ -84,19 +84,22 @@ internal class MfaEngine(
      * reducer drops answers that no longer fit the screen. Only [stop] ends a check in flight.
      */
     private fun schedulePushCheck(delayMs: Long) {
-        waitToCheck?.cancel()
-        waitToCheck = scope.launch {
+        pollDelayJob?.cancel()
+        pollDelayJob = scope.launch {
             delay(delayMs)
-            scope.launch { onOutcome(checkPush()) }
+            // The wait is over; from here on only stop() can end the check.
+            pollDelayJob = null
+            onOutcome(checkPushStatus())
         }
     }
 
-    private suspend fun checkPush(): MfaOutcome = repository.checkPush().toOutcome(MfaOutcome::CheckFailed) { status ->
-        when (status) {
-            is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
-            is PushStatus.Pending -> MfaOutcome.PushPending(status.retryInMs, status.isSlowDown)
+    private suspend fun checkPushStatus(): MfaOutcome =
+        repository.checkPushStatus().toOutcome(MfaOutcome::CheckFailed) { status ->
+            when (status) {
+                is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
+                is PushStatus.Pending -> MfaOutcome.PushPending(status.retryInMs)
+            }
         }
-    }
 
     /** Replaces any tick still waiting, so a new countdown never loses a second to an old one. */
     private fun countDownResend() {

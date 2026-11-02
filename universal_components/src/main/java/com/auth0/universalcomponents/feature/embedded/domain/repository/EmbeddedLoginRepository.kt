@@ -34,9 +34,9 @@ internal interface EmbeddedLoginRepository {
  */
 internal interface MfaRepository {
 
-    /** Sends the push and returns how long to wait, in milliseconds, before the first [checkPush]. */
+    /** Sends the push and returns how long to wait, in milliseconds, before the first [checkPushStatus]. */
     suspend fun sendPush(factor: MfaFactor.Push): Result<Long, LoginFailure>
 
-    /** One check on the push; never call another step while this is in flight. */
-    suspend fun checkPush(): Result<PushStatus, LoginFailure>
+    /** Checks once whether the user has answered the push. */
+    suspend fun checkPushStatus(): Result<PushStatus, LoginFailure>
 }

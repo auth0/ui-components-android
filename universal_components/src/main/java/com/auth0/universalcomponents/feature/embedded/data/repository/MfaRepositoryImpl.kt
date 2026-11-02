@@ -16,31 +16,29 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
 
     override suspend fun sendPush(factor: MfaFactor.Push): Result<Long, LoginFailure> =
         when (val sent = steps.run { challengePush(factor.index) }) {
-            is StepAnswer.Next -> sent.pollDelay()?.let { Result.Success(it) }
+            is StepAnswer.Next -> sent.verifyOob()?.let { Result.Success(it.pollInMs.toLong()) }
                 ?: unexpected("The push was sent without a way to check it")
             is StepAnswer.Failed -> Result.Error(sent.failure)
             is StepAnswer.Done -> unexpected("Sending a push signed in")
         }
 
-    override suspend fun checkPush(): Result<PushStatus, LoginFailure> =
+    override suspend fun checkPushStatus(): Result<PushStatus, LoginFailure> =
         when (val checked = steps.run { verifyOob() }) {
             is StepAnswer.Done -> Result.Success(PushStatus.Approved(checked.value))
             // Not an error: the user just hasn't answered yet. Logged at debug level so the polling can be traced.
             is StepAnswer.Next -> if (checked.reason in PENDING_REASONS) {
-                val wait = checked.pollDelay()
-                val next = wait?.let { "$it ms" } ?: "the same wait"
-                Logger.d(TAG, "Push not answered yet (${checked.reason}); next check in $next")
-                Result.Success(PushStatus.Pending(wait, isSlowDown = checked.reason == Reason.SLOW_DOWN))
+                val wait = checked.verifyOob()?.pollInMs?.toLong() ?: PushPolling.DEFAULT_WAIT_MS
+                Logger.d(TAG, "Push not answered yet (${checked.reason}); next check in $wait ms")
+                Result.Success(PushStatus.Pending(wait))
             } else {
                 furtherStep(checked)
             }
             is StepAnswer.Failed -> Result.Error(checked.failure)
         }
 
-    /** The server's wait before the next check, kept within [PushPolling]'s limits so a bad value can't flood it. */
-    private fun StepAnswer.Next.pollDelay(): Long? =
-        actions.firstNotNullOfOrNull { it as? NextAction.VerifyOob }?.pollInMs?.toLong()
-            ?.coerceIn(PushPolling.MIN_WAIT_MS, PushPolling.MAX_WAIT_MS)
+    /** The "check the push" step the server offered, with the wait it wants before the next check. */
+    private fun StepAnswer.Next.verifyOob(): NextAction.VerifyOob? =
+        actions.firstNotNullOfOrNull { it as? NextAction.VerifyOob }
 
     private fun furtherStep(answer: StepAnswer.Next): Result<Nothing, LoginFailure> {
         Logger.w(TAG, "The server asked for a further step: ${answer.actions.map { it.capability.value }}")

@@ -155,25 +155,26 @@ internal class LoginFlowViewModel(
 
     /**
      * MFA runs in its own engine, owned here and stopped when it ends, so each visit starts fresh and nothing from an
-     * old one reaches the screen. Its steps are shown as [LoginStep.Mfa]; how it ends is decided here.
+     * old one reaches the screen. Its steps are shown as [LoginStep.Mfa]; how it ends is decided here. [identifier] is
+     * what the user typed for the first factor, kept here (not in the MFA state) to pre-fill it if MFA sends them back.
      */
-    private fun startMfa(email: String, factors: List<MfaFactor>) {
+    private fun startMfa(identifier: String, factors: List<MfaFactor>) {
         mfa = MfaEngine(
             factors = factors,
             repository = mfaRepository,
             hostScope = viewModelScope,
-            onStep = { _loginStep.value = LoginStep.Mfa(email, it) },
-            onEffect = { effect -> endMfa(email, effect) },
+            onStep = { _loginStep.value = LoginStep.Mfa(it) },
+            onEffect = { effect -> endMfa(identifier, effect) },
         )
     }
 
-    private fun endMfa(email: String, effect: MfaEffect) {
+    private fun endMfa(identifier: String, effect: MfaEffect) {
         mfa?.stop()
         mfa = null
         when (effect) {
             is MfaEffect.Authenticated -> viewModelScope.launch { signedIn(effect.credentials) }
-            // Email kept; the next code opens a new session.
-            MfaEffect.Restart -> _loginStep.value = LoginStep.CollectOtpIdentifier(email)
+            // What was typed is kept; the next code opens a new session.
+            MfaEffect.Restart -> _loginStep.value = LoginStep.CollectOtpIdentifier(identifier)
         }
     }
 

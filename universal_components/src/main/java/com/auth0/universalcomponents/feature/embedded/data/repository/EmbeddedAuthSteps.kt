@@ -14,12 +14,16 @@ import kotlinx.coroutines.withContext
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * The one SDK client of a sign-in, and the only way to call it. The client keeps the session, and every answer it
- * gets rewrites that session, so the SDK asks for one step at a time. Both the first factor and MFA run their steps
- * here, which is what makes the rule hold across them:
- * - a step waits until the one before it has answered;
- * - a step that has started always finishes, so the session stays right; a caller that has left just never gets
- *   the answer.
+ * Wraps the [EmbeddedAuthClient] of one sign-in. Every SDK call from the first-factor and MFA repositories goes
+ * through [run], which does two things:
+ *
+ * 1. **Runs one call at a time.** The client keeps the sign-in session inside itself and every answer changes it,
+ *    so two calls must never overlap. A call waits until the one before it has answered, and a call that has started
+ *    always finishes even if its caller has left, so the session is never left half-updated (that caller just
+ *    doesn't get the answer).
+ * 2. **Turns the SDK result into a [StepAnswer].** A successful result becomes [StepAnswer.Done]; "another step is
+ *    needed" (which the SDK throws as an exception) becomes [StepAnswer.Next]; anything else becomes
+ *    [StepAnswer.Failed].
  */
 internal class EmbeddedAuthSteps(private val client: EmbeddedAuthClient) {
 

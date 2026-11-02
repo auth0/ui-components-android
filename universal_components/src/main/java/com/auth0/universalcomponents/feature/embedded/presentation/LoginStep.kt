@@ -34,10 +34,10 @@ internal sealed interface LoginStep {
     ) : LoginStep
 
     /**
-     * The code was right and the server wants a second factor; MFA carries on with the same session and [step] is
-     * its screen. [email] is kept for when MFA sends the user back.
+     * The first factor passed and the server wants a second; MFA carries on with the same session and [step] is
+     * its screen.
      */
-    data class Mfa(val email: String, val step: MfaStep) : LoginStep
+    data class Mfa(val step: MfaStep) : LoginStep
 
     data object Authenticated : LoginStep
 

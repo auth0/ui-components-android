@@ -53,7 +53,7 @@ class LoginFlowViewModelTest {
         mfaRepository = mockk()
         coEvery { mfaRepository.sendPush(any()) } returns Result.Success(PUSH_POLL_MS)
         // A push nobody answers, unless a test says otherwise, so MFA stays on screen.
-        coEvery { mfaRepository.checkPush() } coAnswers { awaitCancellation() }
+        coEvery { mfaRepository.checkPushStatus() } coAnswers { awaitCancellation() }
         viewModel = LoginFlowViewModel(repository, mfaRepository)
     }
 
@@ -205,7 +205,7 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.loginStep.value)
-            .isEqualTo(LoginStep.Mfa(EMAIL, MfaStep.AuthenticatorList(listOf(PHONE, TABLET))))
+            .isEqualTo(LoginStep.Mfa(MfaStep.AuthenticatorList(listOf(PHONE, TABLET))))
     }
 
     @Test
@@ -235,7 +235,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `mfa - approved - signs in once and hands over the credentials`() = runTest {
         val credentials = mockk<Credentials>()
-        coEvery { mfaRepository.checkPush() } returns Result.Success(PushStatus.Approved(credentials))
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Success(PushStatus.Approved(credentials))
         val received = mutableListOf<Credentials>()
         val job = launch { viewModel.authenticated.toList(received) }
 

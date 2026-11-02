@@ -4,7 +4,6 @@ import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.PushPolling
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
 import org.junit.Test
@@ -57,12 +56,10 @@ class MfaReducerTest {
 
         val sent = oneDevice.handleOutcome(sending, MfaOutcome.PushSent(POLL))
         val pending = oneDevice.handleOutcome(sent.step, MfaOutcome.PushPending(SLOWER))
-        val pendingNoWait = oneDevice.handleOutcome(pending.step, MfaOutcome.PushPending(null))
 
         assertThat(sent.step).isEqualTo(polling(PHONE, POLL, COOLDOWN, canChooseAnother = false))
-        assertThat(sent.commands).containsExactly(MfaCommand.CheckPush(POLL), MfaCommand.CountDownResend).inOrder()
-        assertThat(pending.commands).containsExactly(MfaCommand.CheckPush(SLOWER))
-        assertThat(pendingNoWait.commands).containsExactly(MfaCommand.CheckPush(SLOWER))
+        assertThat(sent.commands).containsExactly(MfaCommand.CheckPushStatus(POLL), MfaCommand.CountDownResend).inOrder()
+        assertThat(pending.commands).containsExactly(MfaCommand.CheckPushStatus(SLOWER))
     }
 
     @Test
@@ -82,7 +79,7 @@ class MfaReducerTest {
         val update = twoDevices.handleIntent(polling(PHONE, canChooseAnother = true), MfaIntent.ChooseAnotherFactor)
 
         assertThat(update.step).isEqualTo(LIST)
-        assertThat(update.commands).containsExactly(MfaCommand.StopPush)
+        assertThat(update.commands).containsExactly(MfaCommand.StopPolling)
     }
 
     @Test
@@ -99,14 +96,14 @@ class MfaReducerTest {
         val update = twoDevices.handleIntent(polling(PHONE, canChooseAnother = true), MfaIntent.Back)
 
         assertThat(update.step).isEqualTo(LIST)
-        assertThat(update.commands).containsExactly(MfaCommand.StopPush)
+        assertThat(update.commands).containsExactly(MfaCommand.StopPolling)
     }
 
     @Test
     fun `back with only one device - stops checking and starts the sign-in over`() {
         val update = oneDevice.handleIntent(polling(PHONE, canChooseAnother = false), MfaIntent.Back)
 
-        assertThat(update.commands).containsExactly(MfaCommand.StopPush)
+        assertThat(update.commands).containsExactly(MfaCommand.StopPolling)
         assertThat(update.effect).isEqualTo(MfaEffect.Restart)
     }
 
@@ -145,7 +142,7 @@ class MfaReducerTest {
             val update = oneDevice.handleOutcome(step, MfaOutcome.CheckFailed(NETWORK))
             step = update.step
             assertThat(step).isInstanceOf(MfaStep.PushWaiting::class.java)
-            (update.commands.single() as MfaCommand.CheckPush).afterMs
+            (update.commands.single() as MfaCommand.CheckPushStatus).afterMs
         }
 
         assertThat(waits).containsExactly(POLL * 2, POLL * 4, POLL * 8).inOrder()
@@ -165,7 +162,7 @@ class MfaReducerTest {
 
         assertThat(failed.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network, MfaRetry.CheckAgain(waiting)))
         assertThat(retried.step).isEqualTo(waiting)
-        assertThat(retried.commands).containsExactly(MfaCommand.CheckPush(0), MfaCommand.CountDownResend).inOrder()
+        assertThat(retried.commands).containsExactly(MfaCommand.CheckPushStatus(0), MfaCommand.CountDownResend).inOrder()
     }
 
     @Test
@@ -175,17 +172,6 @@ class MfaReducerTest {
         val pending = oneDevice.handleOutcome(retried, MfaOutcome.PushPending(POLL))
 
         assertThat(pending.step).isEqualTo(polling(PHONE, canChooseAnother = false))
-    }
-
-    @Test
-    fun `slow down without a new wait - doubles the wait, up to a minute`() {
-        val slowDown = MfaOutcome.PushPending(pollInMs = null, isSlowDown = true)
-
-        val doubled = oneDevice.handleOutcome(polling(PHONE, everyMs = POLL, canChooseAnother = false), slowDown)
-        val capped = oneDevice.handleOutcome(polling(PHONE, everyMs = 50_000L, canChooseAnother = false), slowDown)
-
-        assertThat(doubled.commands).containsExactly(MfaCommand.CheckPush(POLL * 2))
-        assertThat(capped.commands).containsExactly(MfaCommand.CheckPush(PushPolling.MAX_WAIT_MS))
     }
 
     @Test

@@ -3,7 +3,6 @@ package com.auth0.universalcomponents.feature.embedded.presentation.mfa
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.PushPolling
 
 /**
  * Every MFA rule in one place: the step on show plus an input gives the next step, maybe with work to run and an
@@ -53,7 +52,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             is MfaOutcome.PushSent -> if (step is MfaStep.PushWaiting && step.phase == PushPhase.Sending) {
                 MfaUpdate(
                     step.copy(phase = PushPhase.Polling(outcome.pollInMs, RESEND_COOLDOWN_SECONDS)),
-                    listOf(MfaCommand.CheckPush(outcome.pollInMs), MfaCommand.CountDownResend),
+                    listOf(MfaCommand.CheckPushStatus(outcome.pollInMs), MfaCommand.CountDownResend),
                 )
             } else {
                 unchanged
@@ -63,10 +62,9 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             is MfaOutcome.PushPending -> {
                 val phase = (step as? MfaStep.PushWaiting)?.phase
                 if (step is MfaStep.PushWaiting && phase is PushPhase.Polling) {
-                    val wait = outcome.pollInMs ?: if (outcome.isSlowDown) phase.everyMs.backedOff(1) else phase.everyMs
                     MfaUpdate(
-                        step.copy(phase = phase.copy(everyMs = wait, failedChecks = 0)),
-                        listOf(MfaCommand.CheckPush(wait)),
+                        step.copy(phase = phase.copy(everyMs = outcome.pollInMs, failedChecks = 0)),
+                        listOf(MfaCommand.CheckPushStatus(outcome.pollInMs)),
                     )
                 } else {
                     unchanged
@@ -115,7 +113,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
         )
     }
 
-    private fun showList(): MfaUpdate = MfaUpdate(MfaStep.AuthenticatorList(factors), listOf(MfaCommand.StopPush))
+    private fun showList(): MfaUpdate = MfaUpdate(MfaStep.AuthenticatorList(factors), listOf(MfaCommand.StopPolling))
 
     /**
      * A network blip or server outage on a check keeps the session, so the push the user may already have approved
@@ -128,7 +126,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             val wait = phase.everyMs.backedOff(failedChecks)
             return MfaUpdate(
                 step.copy(phase = phase.copy(failedChecks = failedChecks)),
-                listOf(MfaCommand.CheckPush(wait)),
+                listOf(MfaCommand.CheckPushStatus(wait)),
             )
         }
         val retry = MfaRetry.CheckAgain(step.copy(phase = phase.copy(failedChecks = 0)))
@@ -145,11 +143,11 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     private fun checkAgain(waiting: MfaStep.PushWaiting): MfaUpdate {
         val resendLeft = (waiting.phase as? PushPhase.Polling)?.resendSecondsLeft ?: 0
         val countDown = if (resendLeft > 0) listOf(MfaCommand.CountDownResend) else emptyList()
-        return MfaUpdate(waiting, listOf(MfaCommand.CheckPush(0)) + countDown)
+        return MfaUpdate(waiting, listOf(MfaCommand.CheckPushStatus(0)) + countDown)
     }
 
-    /** Doubles the wait [times] times, but never past [PushPolling.MAX_WAIT_MS]. */
-    private fun Long.backedOff(times: Int): Long = (this shl times).coerceAtMost(PushPolling.MAX_WAIT_MS)
+    /** Doubles the wait [times] times. */
+    private fun Long.backedOff(times: Int): Long = this shl times
 
     /**
      * The server can't step back, so Back stays on our side: from the push to the list when there's a choice,
@@ -159,7 +157,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
         is MfaStep.PushWaiting -> when {
             !step.isOut -> MfaUpdate(step)
             step.canChooseAnother -> showList()
-            else -> MfaUpdate(step, listOf(MfaCommand.StopPush), MfaEffect.Restart)
+            else -> MfaUpdate(step, listOf(MfaCommand.StopPolling), MfaEffect.Restart)
         }
 
         is MfaStep.AuthenticatorList, is MfaStep.Failed -> MfaUpdate(step, effect = MfaEffect.Restart)

@@ -353,7 +353,7 @@ When the code is right but the account needs a second factor, the same screen ca
 
 - **Supported factor: push notification.** Other second factors aren't supported yet; if the tenant offers only those, the flow shows its error screen.
 - **With one push device,** the push is sent straight away. **With several,** the user picks one from a list, in the order the tenant offers them.
-- **While the push waits,** the screen checks with the server at the interval it asks for, between 1 and 60 seconds, and waits longer when the server asks it to slow down. **Resend Code** sends the push again after a 60-second wait. **Choose another device** returns to the list; if the user had already approved on the first device, they are signed in.
+- **While the push waits,** the screen checks with the server at the interval it asks for (2 seconds). **Resend Code** sends the push again after a 60-second wait. **Choose another device** returns to the list; if the user had already approved on the first device, they are signed in.
 - **If a check hits a network or server error,** it is retried quietly, up to three times with a longer wait each time. After that the error screen shows, and **Try again** checks the same push again rather than sending a new one.
 - **Back** returns from the push to the list. From the list, or when there's only one device, it returns to email entry with the email kept, and the next code starts a new sign-in.
 - **A declined push, an expired request or session, or an account with no usable factor** goes full screen, and **Try again** starts the sign-in over. If the push couldn't be sent because of a network or server error, **Try again** sends it again.

@@ -17,15 +17,11 @@ internal sealed interface PushStatus {
 
     data class Approved(val credentials: Credentials) : PushStatus
 
-    /**
-     * Not answered yet; check again in [retryInMs], or keep the last wait when null.
-     * [isSlowDown] means the server said we checked too soon.
-     */
-    data class Pending(val retryInMs: Long?, val isSlowDown: Boolean = false) : PushStatus
+    /** Not answered yet; check again in [retryInMs]. */
+    data class Pending(val retryInMs: Long) : PushStatus
 }
 
-/** How often a push may be checked, whatever the server asks: never back-to-back, never longer than a minute. */
+/** The wait between push checks when the server doesn't give one. The server always asks for 2 seconds. */
 internal object PushPolling {
-    const val MIN_WAIT_MS = 1_000L
-    const val MAX_WAIT_MS = 60_000L
+    const val DEFAULT_WAIT_MS = 2_000L
 }
