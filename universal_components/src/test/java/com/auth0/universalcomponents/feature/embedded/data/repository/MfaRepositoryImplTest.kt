@@ -103,7 +103,8 @@ class MfaRepositoryImplTest {
     fun `checkPushStatus - pending without a wait - still waiting, after the default wait`() = runTest {
         every { client.verifyOob() } returns step(reason = Reason.AUTHORIZATION_PENDING)
 
-        assertThat(repository.checkPushStatus()).isEqualTo(Result.Success(PushStatus.Pending(PushPolling.DEFAULT_WAIT_MS)))
+        assertThat(repository.checkPushStatus())
+            .isEqualTo(Result.Success(PushStatus.Pending(PushPolling.DEFAULT_WAIT_MS)))
     }
 
     @Test

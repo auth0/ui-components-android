@@ -58,7 +58,9 @@ class MfaReducerTest {
         val pending = oneDevice.handleOutcome(sent.step, MfaOutcome.PushPending(SLOWER))
 
         assertThat(sent.step).isEqualTo(polling(PHONE, POLL, COOLDOWN, canChooseAnother = false))
-        assertThat(sent.commands).containsExactly(MfaCommand.CheckPushStatus(POLL), MfaCommand.CountDownResend).inOrder()
+        assertThat(sent.commands)
+            .containsExactly(MfaCommand.CheckPushStatus(POLL), MfaCommand.CountDownResend)
+            .inOrder()
         assertThat(pending.commands).containsExactly(MfaCommand.CheckPushStatus(SLOWER))
     }
 
@@ -162,7 +164,9 @@ class MfaReducerTest {
 
         assertThat(failed.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network, MfaRetry.CheckAgain(waiting)))
         assertThat(retried.step).isEqualTo(waiting)
-        assertThat(retried.commands).containsExactly(MfaCommand.CheckPushStatus(0), MfaCommand.CountDownResend).inOrder()
+        assertThat(retried.commands)
+            .containsExactly(MfaCommand.CheckPushStatus(0), MfaCommand.CountDownResend)
+            .inOrder()
     }
 
     @Test
