@@ -5,6 +5,7 @@ import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
+import com.auth0.android.embedded.authorize.EmbeddedCapability
 import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
@@ -55,6 +56,26 @@ class EmbeddedLoginRepositoryImplTest {
 
         assertThat(failure.error).isEqualTo(EmbeddedLoginError.ConnectionMissing)
         verify(exactly = 0) { client.authorize(any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `discover - tells the server only what these screens can drive, as iOS does`() = runTest {
+        repository.discover()
+
+        verify {
+            client.authorize(
+                CONNECTION,
+                any(),
+                any(),
+                setOf(
+                    EmbeddedCapability.IDENTIFY_EMAIL,
+                    EmbeddedCapability.CHALLENGE_EMAIL,
+                    EmbeddedCapability.VERIFY_OTP,
+                    EmbeddedCapability.CHALLENGE_PUSH,
+                    EmbeddedCapability.VERIFY_OOB,
+                ),
+            )
+        }
     }
 
     @Test
@@ -209,7 +230,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `verifyOtp - server asks for another step - fails for good as unsupported`() = runTest {
+    fun `verifyOtp - only steps these screens can't drive - hands MFA no factors, so it says so`() = runTest {
         listOf(
             verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
             verifyOtp(OtpChannel.SMS, null),
@@ -222,9 +243,17 @@ class EmbeddedLoginRepositoryImplTest {
 
             val failure = repository.verifyOtp(CODE).failure()
 
-            assertThat(failure.error).isEqualTo(EmbeddedLoginError.ExtraStepUnsupported)
-            assertThat(failure.canRetryStep).isFalse()
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired(emptyList()))
         }
+    }
+
+    @Test
+    fun `verifyOtp - server says no factor is usable - hands MFA no factors, so it says so`() = runTest {
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(EmbeddedAuthError.NoEligibleFactors)
+
+        val failure = repository.verifyOtp(CODE).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired(emptyList()))
     }
 
     // endregion
@@ -271,6 +300,24 @@ class EmbeddedLoginRepositoryImplTest {
             val failure = repository.verifyOtp(CODE).failure()
 
             assertThat(failure.error).isEqualTo(EmbeddedLoginError.Unknown(message))
+        }
+    }
+
+    @Test
+    fun `errors - an error the SDK recognised - never shows the server's machine token`() = runTest {
+        listOf(
+            EmbeddedAuthError.NoEligibleFactors to "no_eligible_factors",
+            EmbeddedAuthError.AuthorizationRejected to "authorization_rejected",
+            EmbeddedAuthError.ConsentRequired to "consent_required",
+            EmbeddedAuthError.IpBlocked to "ip_blocked",
+            EmbeddedAuthError.InvalidRequest to "Missing parameter: connection",
+        ).forEach { (sdkError, description) ->
+            every { client.authorize(CONNECTION, any(), any(), any()) } returns
+                failingWith(sdkError, description = description)
+
+            val failure = repository.discover().failure()
+
+            assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
         }
     }
 

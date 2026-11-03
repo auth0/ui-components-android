@@ -344,19 +344,19 @@ On code entry, Back returns to email entry; during MFA, Back works as described 
 - **Resend opens 60 seconds after each code is sent;** until then the button counts down.
 - **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email entry (with the email kept) if not. If the first load failed, it loads again.
 - **If no code can be sent to the email,** for example because the connection only offers another method for that user, the flow shows its error screen. **Try again** returns to email entry with the email kept.
-- **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen.
+- **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen. (MFA is the exception: see below.)
 - **If the connection doesn't offer Email OTP,** the flow shows a screen saying no sign-in methods are available.
 
 ### Multi-Factor Authentication
 
 When the code is right but the account needs a second factor, the same screen carries on with MFA. Nothing extra is needed in your app; `onAuthenticated` is called once MFA passes.
 
-- **Supported factor: push notification.** Other second factors aren't supported yet; if the tenant offers only those, the flow shows its error screen.
-- **With one push device,** the push is sent straight away. **With several,** the user picks one from a list, in the order the tenant offers them.
-- **While the push waits,** the screen checks with the server at the interval it asks for (2 seconds). **Resend Code** sends the push again after a 60-second wait. **Choose another device** returns to the list; if the user had already approved on the first device, they are signed in.
-- **If a check hits a network or server error,** it is retried quietly, up to three times with a longer wait each time. After that the error screen shows, and **Try again** checks the same push again rather than sending a new one.
-- **Back** returns from the push to the list. From the list, or when there's only one device, it returns to email entry with the email kept, and the next code starts a new sign-in.
-- **A declined push, an expired request or session, or an account with no usable factor** goes full screen, and **Try again** starts the sign-in over. If the push couldn't be sent because of a network or server error, **Try again** sends it again.
+- **Supported factor: push notification.** The flow tells the server it can run the emailed code and push only. If none of the factors the tenant offers can be used, the flow shows a "Verification method not available" screen.
+- **With one push device,** the push is sent straight away, and its screen shows once it's out. **With several,** the user picks one from a list, in the order the tenant offers them; the row spins while its push is sent.
+- **While the push waits,** the screen checks with the server at the interval it asks for, kept between 1 and 60 seconds (2 seconds if it gives none), and 2 seconds slower each time the server says it checked too soon. **Resend notification** shows while the server allows another push, and opens after a 60-second wait. **Verify another way** returns to the list; if the user had already approved on the first device, they are signed in. The checks carry on while the app is in the background; a network failure there isn't held against the push, and when the user returns a waiting push is checked at once.
+- **When the sign-in policy needs another factor,** the list comes back headed "One more step", with the factors the server offers for that step. Even with just one factor the list shows, so the user sees why they're asked again. There's no limit on the number of steps: the server decides.
+- **If a check hits a network error,** it is retried quietly, up to three times. After that, or on any other error (a declined push, an expired request, an ended session, too many attempts), MFA ends on an error screen that says why, and **Start over** returns to email entry with the email kept.
+- **Back** returns from the push to the list. From the list, while a push is being sent, when there's only one device, or on the error screen, it returns to email entry with the email kept, and the next code starts a new sign-in. A push that has already left the app can't be recalled, so its notification may still reach the device after the user went back.
 - **The sign-in session lives in memory.** If Android ends the app while the user is approving the push, for example in the background, the flow starts again from email entry when the app reopens.
 
 ## Support

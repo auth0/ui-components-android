@@ -7,9 +7,8 @@ import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.PushPolling
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
@@ -40,40 +39,42 @@ class MfaRepositoryImplTest {
     // region sendPush
 
     @Test
-    fun `sendPush - sent - pushes to that device and returns the server's wait`() = runTest {
-        every { client.challengePush(PHONE.index) } returns step(verifyOob(POLL_MS))
+    fun `sendPush - sent - pushes to that device and returns the server's wait and resend offer`() = runTest {
+        every { client.challengePush(PHONE.index) } returns step(verifyOob(POLL_MS), challengePush())
 
-        assertThat(repository.sendPush(PHONE)).isEqualTo(Result.Success(POLL_MS.toLong()))
+        assertThat(repository.sendPush(PHONE))
+            .isEqualTo(Result.Success(PushStatus.Pending(POLL_MS.toLong(), canResend = true)))
 
         verify(exactly = 1) { client.challengePush(PHONE.index) }
     }
 
     @Test
-    fun `sendPush - no wait to check it with - fails as unknown`() = runTest {
+    fun `sendPush - the server doesn't offer another push - says resend isn't allowed`() = runTest {
+        every { client.challengePush(PHONE.index) } returns step(verifyOob(POLL_MS))
+
+        assertThat(repository.sendPush(PHONE))
+            .isEqualTo(Result.Success(PushStatus.Pending(POLL_MS.toLong(), canResend = false)))
+    }
+
+    @Test
+    fun `sendPush - no wait to check it with - fails as unexpected`() = runTest {
         every { client.challengePush(PHONE.index) } returns step(NextAction.VerifyRecoveryCode)
 
-        val failure = repository.sendPush(PHONE).failure()
-
-        assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
+        assertThat(repository.sendPush(PHONE).mfaError()).isEqualTo(MfaError.Unexpected())
     }
 
     @Test
-    fun `sendPush - signed in on send - fails as unknown`() = runTest {
+    fun `sendPush - signed in on send - fails as unexpected`() = runTest {
         every { client.challengePush(PHONE.index) } returns FakeRequestImpl(response = null)
 
-        val failure = repository.sendPush(PHONE).failure()
-
-        assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
+        assertThat(repository.sendPush(PHONE).mfaError()).isEqualTo(MfaError.Unexpected())
     }
 
     @Test
-    fun `sendPush - network error - fails with network, and the session survives`() = runTest {
+    fun `sendPush - network error - fails with network`() = runTest {
         every { client.challengePush(PHONE.index) } returns failingWith(EmbeddedAuthError.Network)
 
-        val failure = repository.sendPush(PHONE).failure()
-
-        assertThat(failure.error).isEqualTo(EmbeddedLoginError.Network)
-        assertThat(failure.canRetryStep).isTrue()
+        assertThat(repository.sendPush(PHONE).mfaError()).isInstanceOf(MfaError.Network::class.java)
     }
 
     // endregion
@@ -89,56 +90,126 @@ class MfaRepositoryImplTest {
     }
 
     @Test
-    fun `checkPushStatus - pending or slow down - still waiting, with the server's new wait`() = runTest {
-        listOf(Reason.AUTHORIZATION_PENDING, Reason.SLOW_DOWN).forEach { reason ->
-            every { client.verifyOob() } returns step(verifyOob(SLOWER_MS), reason = reason)
+    fun `checkPushStatus - pending - still waiting, with the server's new wait and resend offer`() = runTest {
+        every { client.verifyOob() } returns step(verifyOob(SLOWER_MS), reason = Reason.AUTHORIZATION_PENDING)
 
-            assertThat(repository.checkPushStatus()).isEqualTo(
-                Result.Success(PushStatus.Pending(SLOWER_MS.toLong())),
-            )
-        }
+        assertThat(repository.checkPushStatus())
+            .isEqualTo(Result.Success(PushStatus.Pending(SLOWER_MS.toLong(), canResend = false)))
     }
 
     @Test
-    fun `checkPushStatus - pending without a wait - still waiting, after the default wait`() = runTest {
+    fun `checkPushStatus - slow down - still waiting, marked as too soon`() = runTest {
+        every { client.verifyOob() } returns step(verifyOob(SLOWER_MS), challengePush(), reason = Reason.SLOW_DOWN)
+
+        assertThat(repository.checkPushStatus()).isEqualTo(
+            Result.Success(PushStatus.Pending(SLOWER_MS.toLong(), canResend = true, isSlowDown = true)),
+        )
+    }
+
+    @Test
+    fun `checkPushStatus - pending without a wait - leaves the wait to MFA`() = runTest {
         every { client.verifyOob() } returns step(reason = Reason.AUTHORIZATION_PENDING)
 
         assertThat(repository.checkPushStatus())
-            .isEqualTo(Result.Success(PushStatus.Pending(PushPolling.DEFAULT_WAIT_MS)))
+            .isEqualTo(Result.Success(PushStatus.Pending(retryInMs = null, canResend = false)))
     }
 
     @Test
-    fun `checkPushStatus - server asks for another step - fails for good as unsupported`() = runTest {
+    fun `checkPushStatus - no reason but the push can still be checked - is still pending, not another factor`() =
+        runTest {
+            every { client.verifyOob() } returns step(verifyOob(SLOWER_MS), reason = Reason.NONE)
+
+            assertThat(repository.checkPushStatus())
+                .isEqualTo(Result.Success(PushStatus.Pending(SLOWER_MS.toLong(), canResend = false)))
+        }
+
+    @Test
+    fun `checkPushStatus - approved, and the server asks for another factor - returns the next menu`() = runTest {
+        val tablet = challengePush(index = 1, name = "Jane's tablet")
+        every { client.verifyOob() } returns step(tablet, NextAction.VerifyRecoveryCode)
+
+        assertThat(repository.checkPushStatus())
+            .isEqualTo(Result.Success(PushStatus.AnotherFactor(listOf(MfaFactor.Push(1, "Jane's tablet")))))
+    }
+
+    @Test
+    fun `checkPushStatus - another factor with none usable here - returns an empty menu, MFA decides`() = runTest {
         every { client.verifyOob() } returns step(NextAction.VerifyRecoveryCode)
 
-        val failure = repository.checkPushStatus().failure()
-
-        assertThat(failure.error).isEqualTo(EmbeddedLoginError.ExtraStepUnsupported)
-        assertThat(failure.canRetryStep).isFalse()
+        assertThat(repository.checkPushStatus()).isEqualTo(Result.Success(PushStatus.AnotherFactor(emptyList())))
     }
 
     @Test
-    fun `checkPushStatus - declined or expired - named in our terms`() = runTest {
+    fun `checkPushStatus - answered as a wrong code - fails as unexpected`() = runTest {
+        every { client.verifyOob() } returns step(verifyOob(POLL_MS), reason = Reason.INVALID_CODE)
+
+        assertThat(repository.checkPushStatus().mfaError()).isEqualTo(MfaError.Unexpected())
+    }
+
+    @Test
+    fun `checkPushStatus - SDK errors - named as iOS names them`() = runTest {
         mapOf(
-            EmbeddedAuthError.AuthorizationRejected to EmbeddedLoginError.PushDenied,
-            EmbeddedAuthError.ChallengeExpired to EmbeddedLoginError.CodeExpired,
-            EmbeddedAuthError.NoEligibleFactors to EmbeddedLoginError.NoEligibleFactors,
+            EmbeddedAuthError.AuthorizationRejected to MfaError.Rejected::class.java,
+            EmbeddedAuthError.ChallengeExpired to MfaError.TokenExpired::class.java,
+            EmbeddedAuthError.NoEligibleFactors to MfaError.NoEligibleFactors::class.java,
             // The session is gone, e.g. a late approval already finished it: never the SDK's developer text.
-            EmbeddedAuthError.NoActiveSession to EmbeddedLoginError.SessionExpired,
-            EmbeddedAuthError.SessionExpired to EmbeddedLoginError.SessionExpired,
+            EmbeddedAuthError.NoActiveSession to MfaError.TokenInvalid::class.java,
+            EmbeddedAuthError.SessionExpired to MfaError.TokenInvalid::class.java,
+            EmbeddedAuthError.TooManyAttempts to MfaError.TooManyAttempts::class.java,
+            EmbeddedAuthError.TooManyLogins to MfaError.TooManyAttempts::class.java,
+            EmbeddedAuthError.TooManyWrongOtpAttempts to MfaError.TooManyAttempts::class.java,
+            EmbeddedAuthError.IpBlocked to MfaError.Unexpected::class.java,
+            EmbeddedAuthError.AccessDenied to MfaError.Unexpected::class.java,
         ).forEach { (sdkError, expected) ->
             every { client.verifyOob() } returns failingWith(sdkError, statusCode = 403)
 
-            val failure = repository.checkPushStatus().failure()
+            val error = repository.checkPushStatus().mfaError()
 
-            assertThat(failure.error).isEqualTo(expected)
-            assertThat(failure.canRetryStep).isFalse()
+            assertThat(error).isInstanceOf(expected)
+            assertThat(error.cause).isNotNull()
         }
+    }
+
+    @Test
+    fun `checkPushStatus - IP block, consent and the like - never show the server's machine token`() = runTest {
+        listOf(
+            EmbeddedAuthError.IpBlocked to "ip_blocked",
+            EmbeddedAuthError.ConsentRequired to "consent_required",
+            EmbeddedAuthError.InvalidRequest to "Missing parameter: auth_session",
+        ).forEach { (sdkError, description) ->
+            every { client.verifyOob() } returns failingWith(sdkError, description = description)
+
+            val error = repository.checkPushStatus().mfaError()
+
+            assertThat(error).isInstanceOf(MfaError.Unexpected::class.java)
+            assertThat((error as MfaError.Unexpected).serverMessage).isNull()
+        }
+    }
+
+    @Test
+    fun `checkPushStatus - an error the server explained - keeps its words for the screen`() = runTest {
+        every { client.verifyOob() } returns failingWith(
+            EmbeddedAuthError.AccessDenied,
+            code = "access_denied",
+            description = "Your account is blocked.",
+        )
+
+        val error = repository.checkPushStatus().mfaError()
+
+        assertThat((error as MfaError.Unexpected).serverMessage).isEqualTo("Your account is blocked.")
     }
 
     // endregion
 
     private fun verifyOob(pollInMs: Int): NextAction.VerifyOob = sdkInstance(Int::class.java to pollInMs)
+
+    private fun challengePush(index: Int = PHONE.index, name: String = PHONE.deviceName): NextAction.ChallengePush =
+        sdkInstance(Int::class.java to index, String::class.java to name)
+
+    private fun Result<*, MfaError>.mfaError(): MfaError {
+        assertThat(this).isInstanceOf(Result.Error::class.java)
+        return (this as Result.Error).error
+    }
 
     private companion object {
         val PHONE = MfaFactor.Push(2, "Jane's phone")

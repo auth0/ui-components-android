@@ -5,11 +5,13 @@ import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaIntent
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaRound
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaStep
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.PushPhase
 import com.google.common.truth.Truth.assertThat
@@ -51,7 +53,7 @@ class LoginFlowViewModelTest {
         coEvery { repository.discover() } returns Result.Success(listOf(LoginOption.EmailOtp))
         coEvery { repository.startEmailOtp(any()) } returns Result.Success(Unit)
         mfaRepository = mockk()
-        coEvery { mfaRepository.sendPush(any()) } returns Result.Success(PUSH_POLL_MS)
+        coEvery { mfaRepository.sendPush(any()) } returns Result.Success(PushStatus.Pending(PUSH_POLL_MS, canResend = true))
         // A push nobody answers, unless a test says otherwise, so MFA stays on screen.
         coEvery { mfaRepository.checkPushStatus() } coAnswers { awaitCancellation() }
         viewModel = LoginFlowViewModel(repository, mfaRepository)
@@ -205,7 +207,7 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Mfa::class.java)
-        assertThat(mfaStep()).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
+        assertThat(mfaStep()).isEqualTo(MfaStep.ChooseFactor(MfaRound(1, listOf(PHONE, TABLET))))
     }
 
     @Test
@@ -220,6 +222,18 @@ class LoginFlowViewModelTest {
         assertThat(step).isInstanceOf(MfaStep.PushWaiting::class.java)
         assertThat((step as MfaStep.PushWaiting).factor).isEqualTo(TABLET)
         coVerify(exactly = 1) { mfaRepository.sendPush(TABLET) }
+    }
+
+    @Test
+    fun `mfa - Start over tapped twice - leaves MFA once, and the second tap does not leave the login`() = runTest {
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(MfaError.Rejected(null))
+        startAtMfa(PHONE)
+        viewModel.send(LoginEvent.LeaveMfa)
+        viewModel.send(LoginEvent.LeaveMfa)
+
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        // Back from here would exit the login (false); had the second tap been Back, the screen would be gone.
+        assertThat(viewModel.goBack()).isFalse()
     }
 
     @Test
@@ -261,12 +275,44 @@ class LoginFlowViewModelTest {
             viewModel.send(LoginEvent.SubmitOtp(CODE))
             advanceUntilIdle()
 
-            // A fresh push, whose resend wait the test clock has already run out.
-            val step = mfaStep()
-            val polling = PushPhase.Polling(PUSH_POLL_MS, resendSecondsLeft = 0)
-            assertThat(step).isEqualTo(MfaStep.PushWaiting(PHONE, polling, canChooseAnother = false))
+            // A fresh push, whose resend wait the test clock has already run out, with its first check on its way.
+            assertThat(mfaStep()).isEqualTo(
+                MfaStep.PushWaiting(
+                    round = MfaRound(1, listOf(PHONE)),
+                    factor = PHONE,
+                    phase = PushPhase.Checking,
+                    everyMs = PUSH_POLL_MS,
+                    canResend = true,
+                    resendSecondsLeft = 0,
+                ),
+            )
             coVerify(exactly = 2) { mfaRepository.sendPush(PHONE) }
         }
+
+    @Test
+    fun `mfa - nothing usable - shows MFA's own screen saying so, and Start over returns to email entry`() =
+        runTest {
+            startAtMfa()
+
+            assertThat(mfaStep()).isEqualTo(MfaStep.Failed(MfaError.NoEligibleFactors()))
+            coVerify(exactly = 0) { mfaRepository.sendPush(any()) }
+
+            // "Start over" is the host's Back, since MFA itself has ended.
+            assertThat(viewModel.goBack()).isTrue()
+            assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        }
+
+    @Test
+    fun `mfa - ends with an error - its screen stays until Back, which starts over with the email kept`() = runTest {
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(MfaError.Rejected(null))
+        startAtMfa(PHONE)
+
+        assertThat(mfaStep()).isEqualTo(MfaStep.Failed(MfaError.Rejected(null)))
+        assertThat((viewModel.loginStep.value as LoginStep.Mfa).engine.isRunning).isFalse()
+
+        assertThat(viewModel.goBack()).isTrue()
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+    }
 
     @Test
     fun `submit code - wrong code - stays on the code step with the error, the countdown going on`() = runTest {

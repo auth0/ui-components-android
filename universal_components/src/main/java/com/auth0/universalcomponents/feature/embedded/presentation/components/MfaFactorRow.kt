@@ -20,13 +20,15 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 private const val LABEL_MAX_LINES = 2
 
 /**
  * One second factor in the list: its icon, its name and a chevron, on a bordered card; the whole card is the tap
- * target. It grows with large text instead of cutting the name off.
+ * target. It grows with large text instead of cutting the name off. While [isBusy] its challenge is going out, so a
+ * spinner takes the chevron's place; [enabled] is false while any row is busy.
  */
 @Composable
 internal fun MfaFactorRow(
@@ -34,6 +36,8 @@ internal fun MfaFactorRow(
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isBusy: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val colors = Auth0Theme.colors
     val dimensions = Auth0Theme.dimensions
@@ -46,7 +50,7 @@ internal fun MfaFactorRow(
             .clip(shape)
             .background(colors.backgroundLayerMedium)
             .border(HAIRLINE, colors.borderDefault, shape)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = dimensions.spacingMd + dimensions.spacingXxs, vertical = dimensions.spacingSm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
@@ -65,11 +69,15 @@ internal fun MfaFactorRow(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Icon(
-            painter = painterResource(R.drawable.ic_chevron_right),
-            contentDescription = null,
-            tint = colors.textBold,
-            modifier = Modifier.size(sizes.iconSmall),
-        )
+        if (isBusy) {
+            CircularLoader(modifier = Modifier.size(sizes.iconSmall))
+        } else {
+            Icon(
+                painter = painterResource(R.drawable.ic_chevron_right),
+                contentDescription = null,
+                tint = colors.textBold,
+                modifier = Modifier.size(sizes.iconSmall),
+            )
+        }
     }
 }

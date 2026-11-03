@@ -48,7 +48,7 @@ class LoginRendererTest {
     fun `plan - second factor - hands MFA its engine to draw from`() {
         val engine = mockk<MfaEngine>()
 
-        assertThat(plan(LoginStep.Mfa(engine))).isEqualTo(ScreenPlan.Mfa(engine))
+        assertThat(plan(LoginStep.Mfa(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine))
     }
 
     @Test

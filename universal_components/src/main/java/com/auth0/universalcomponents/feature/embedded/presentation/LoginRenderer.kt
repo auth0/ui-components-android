@@ -105,7 +105,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
             onResend = { context.dispatch(LoginEvent.Resend) },
         )
 
-        is ScreenPlan.Mfa -> MfaHost(plan.engine)
+        is ScreenPlan.Mfa -> MfaHost(plan.engine, onLeave = { context.dispatch(LoginEvent.LeaveMfa) })
 
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 
@@ -130,9 +130,6 @@ internal fun EmbeddedLoginError.text(): String = when (this) {
     EmbeddedLoginError.TooManyAttempts -> stringResource(R.string.embedded_login_error_too_many_attempts)
     EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
     EmbeddedLoginError.SessionExpired -> stringResource(R.string.embedded_login_error_session_expired)
-    EmbeddedLoginError.PushDenied -> stringResource(R.string.embedded_login_mfa_error_push_denied)
-    EmbeddedLoginError.NoEligibleFactors -> stringResource(R.string.embedded_login_mfa_error_no_factors)
-    EmbeddedLoginError.ExtraStepUnsupported -> stringResource(R.string.embedded_login_error_extra_step_unsupported)
     is EmbeddedLoginError.Server -> text
     // Handed over to MFA before any screen shows it; the generic text is only a safe fallback.
     is EmbeddedLoginError.MfaRequired,

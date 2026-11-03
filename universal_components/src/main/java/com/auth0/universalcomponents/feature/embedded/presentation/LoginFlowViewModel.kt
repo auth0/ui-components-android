@@ -68,14 +68,20 @@ internal class LoginFlowViewModel(
             }
 
             LoginEvent.Retry -> if (current is LoginStep.Failed) launchStep { retry(current) }
+
+            // Its own event, not Back: a second tap on the screen still sliding out must not leave the login.
+            LoginEvent.LeaveMfa -> if (current is LoginStep.Mfa) leaveMfa(current)
         }
     }
 
-    /** Code entry goes back to email entry, and MFA decides its own Back (true); anywhere else leaves (false). */
+    /**
+     * Code entry goes back to email entry, and MFA decides its own Back (true); anywhere else leaves (false). Once MFA
+     * has ended, its error screen is all that is left of it, so Back leaves it, as its "Start over" does.
+     */
     fun goBack(): Boolean {
         val current = _loginStep.value
         if (current is LoginStep.Mfa) {
-            current.engine.back()
+            if (current.engine.isRunning) current.engine.back() else leaveMfa(current)
             return true
         }
         // Stay put until the request in flight answers, rather than dropping it halfway.
@@ -151,8 +157,8 @@ internal class LoginFlowViewModel(
     /**
      * MFA runs in its own engine, a new one for each visit so nothing from an old one reaches the screen. It stops
      * itself when it ends. It is shown as [LoginStep.Mfa] and draws and takes its own taps, so all login sees is Back
-     * and how it ends, decided here. [identifier] is what the user typed for the first factor, kept here (not in the
-     * MFA state) to pre-fill it if MFA sends them back.
+     * and how it ends, decided here. [identifier] is what the user typed for the first factor, kept by login (not in
+     * the MFA state) to pre-fill it if the user starts over.
      */
     private fun startMfa(identifier: String, factors: List<MfaFactor>) {
         val engine = MfaEngine(
@@ -162,8 +168,14 @@ internal class LoginFlowViewModel(
             onEffect = { effect -> endMfa(identifier, effect) },
         )
         // Shown before it starts, so an end reached while starting replaces this step rather than being overwritten.
-        _loginStep.value = LoginStep.Mfa(engine)
+        _loginStep.value = LoginStep.Mfa(engine, identifier)
         engine.start()
+    }
+
+    /** Back to email entry with what was typed kept; the next code opens a new session. */
+    private fun leaveMfa(mfa: LoginStep.Mfa) {
+        mfa.engine.stop()
+        _loginStep.value = LoginStep.CollectOtpIdentifier(mfa.identifier)
     }
 
     private fun endMfa(identifier: String, effect: MfaEffect) {
@@ -171,6 +183,8 @@ internal class LoginFlowViewModel(
             is MfaEffect.Authenticated -> viewModelScope.launch { signedIn(effect.credentials) }
             // What was typed is kept; the next code opens a new session.
             MfaEffect.Restart -> _loginStep.value = LoginStep.CollectOtpIdentifier(identifier)
+            // Its error screen stays on show until the user starts over. The engine already logged the failure, once.
+            is MfaEffect.Failed -> Unit
         }
     }
 

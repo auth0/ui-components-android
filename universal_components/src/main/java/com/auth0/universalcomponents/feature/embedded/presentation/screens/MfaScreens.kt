@@ -25,27 +25,48 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Mf
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** "Choose a device": every second factor the server offered, one row each. */
+/**
+ * Every factor the round offers, one row each. From round 2 on, the server has asked for one more factor, so the
+ * header says so. While [sending]'s challenge goes out, its row is busy and no row can be tapped.
+ */
 @Composable
 internal fun MfaFactorListScreen(
     factors: List<MfaFactor>,
     onSelect: (MfaFactor) -> Unit,
     modifier: Modifier = Modifier,
+    isAdditionalRound: Boolean = false,
+    sending: MfaFactor? = null,
 ) {
     val dimensions = Auth0Theme.dimensions
+    val title = if (isAdditionalRound) {
+        R.string.embedded_login_mfa_list_title_additional
+    } else {
+        R.string.embedded_login_mfa_list_title
+    }
+    val subtitle = if (isAdditionalRound) {
+        R.string.embedded_login_mfa_list_subtitle_additional
+    } else {
+        R.string.embedded_login_mfa_list_subtitle
+    }
     LoginStepLayout(
         modifier = modifier,
         pageDescription = {
             LoginScreenHeader(
-                title = stringResource(R.string.embedded_login_mfa_list_title),
-                subtitle = stringResource(R.string.embedded_login_mfa_list_subtitle),
+                title = stringResource(title),
+                subtitle = stringResource(subtitle),
                 bottomSpacing = dimensions.spacingLg,
             )
         },
         content = {
             Column(verticalArrangement = Arrangement.spacedBy(dimensions.spacingXs)) {
                 factors.forEach { factor ->
-                    MfaFactorRow(icon = factor.icon(), label = factor.label(), onClick = { onSelect(factor) })
+                    MfaFactorRow(
+                        icon = factor.icon(),
+                        label = factor.label(),
+                        onClick = { onSelect(factor) },
+                        isBusy = factor == sending,
+                        enabled = sending == null,
+                    )
                 }
             }
         },
@@ -54,17 +75,20 @@ internal fun MfaFactorListScreen(
 }
 
 /**
- * Waiting for the user to approve the push on their device. Resend opens once [resendSecondsLeft] reaches zero;
- * a null [onChooseAnotherDevice] hides that action. [isSending] keeps both off until the push is out.
+ * Waiting for the user to approve the push on [deviceName], which may be blank. Resend shows only while
+ * [canResend] (the server allows another push) and opens once [resendSecondsLeft] reaches zero; while the push is
+ * being sent again it's gone, so it can't be tapped twice, and [isResending] keeps "Verify another way" off until the
+ * push is out. A null [onVerifyAnotherWay] hides that action.
  */
 @Composable
 internal fun MfaPushScreen(
     deviceName: String,
+    canResend: Boolean,
     resendSecondsLeft: Int,
     onResend: () -> Unit,
     modifier: Modifier = Modifier,
-    isSending: Boolean = false,
-    onChooseAnotherDevice: (() -> Unit)? = null,
+    isResending: Boolean = false,
+    onVerifyAnotherWay: (() -> Unit)? = null,
 ) {
     val dimensions = Auth0Theme.dimensions
     LoginStepLayout(
@@ -72,27 +96,33 @@ internal fun MfaPushScreen(
         pageDescription = {
             LoginScreenHeader(
                 title = stringResource(R.string.embedded_login_mfa_push_title),
-                subtitle = stringResource(R.string.embedded_login_mfa_push_subtitle, deviceName),
+                subtitle = if (deviceName.isBlank()) {
+                    stringResource(R.string.embedded_login_mfa_push_subtitle_unnamed)
+                } else {
+                    stringResource(R.string.embedded_login_mfa_push_subtitle, deviceName)
+                },
                 bottomSpacing = dimensions.spacingXxl + dimensions.spacingMd,
             )
         },
         content = { MfaWaitingForApproval() },
         primaryAction = {
             Column(verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)) {
-                LoginPrimaryButton(
-                    title = if (resendSecondsLeft > 0) {
-                        stringResource(R.string.embedded_login_resend_in, resendSecondsLeft)
-                    } else {
-                        stringResource(R.string.embedded_login_resend)
-                    },
-                    onClick = onResend,
-                    enabled = !isSending && resendSecondsLeft == 0,
-                )
-                if (onChooseAnotherDevice != null) {
+                if (canResend) {
+                    LoginPrimaryButton(
+                        title = if (resendSecondsLeft > 0) {
+                            stringResource(R.string.embedded_login_mfa_resend_in, resendSecondsLeft)
+                        } else {
+                            stringResource(R.string.embedded_login_mfa_resend)
+                        },
+                        onClick = onResend,
+                        enabled = resendSecondsLeft == 0,
+                    )
+                }
+                if (onVerifyAnotherWay != null) {
                     LoginTextButton(
-                        title = stringResource(R.string.embedded_login_mfa_choose_another_device),
-                        onClick = onChooseAnotherDevice,
-                        enabled = !isSending,
+                        title = stringResource(R.string.embedded_login_mfa_verify_another_way),
+                        onClick = onVerifyAnotherWay,
+                        enabled = !isResending,
                     )
                 }
             }
@@ -122,9 +152,10 @@ private fun MfaWaitingForApproval() {
     }
 }
 
-/** The device's own name, so two phones with push never look like the same row. */
+/** The device's own name, so two phones with push never look like the same row; the factor's name if it has none. */
+@Composable
 private fun MfaFactor.label(): String = when (this) {
-    is MfaFactor.Push -> deviceName
+    is MfaFactor.Push -> deviceName.ifBlank { stringResource(R.string.embedded_login_mfa_push_factor) }
 }
 
 @Composable

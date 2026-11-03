@@ -2,8 +2,7 @@ package com.auth0.universalcomponents.feature.embedded.presentation.mfa
 
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
@@ -39,8 +38,8 @@ class MfaEngineTest {
     @Before
     fun setup() {
         repository = mockk()
-        coEvery { repository.sendPush(any()) } returns Result.Success(POLL)
-        coEvery { repository.checkPushStatus() } returns Result.Success(PushStatus.Pending(POLL))
+        coEvery { repository.sendPush(any()) } returns Result.Success(PENDING)
+        coEvery { repository.checkPushStatus() } returns Result.Success(PENDING)
     }
 
     @After
@@ -51,11 +50,11 @@ class MfaEngineTest {
     // region checking
 
     @Test
-    fun `one device - the first screen is the push, sent straight away, with no Start needed`() = runTest {
+    fun `one device - the push goes out first, then its screen shows`() = runTest {
         val engine = started(PHONE)
 
-        assertThat(steps.first()).isEqualTo(MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false))
-        assertThat(engine.step.value).isEqualTo(polling(PHONE, POLL, COOLDOWN))
+        assertThat(steps.first()).isEqualTo(MfaStep.SendingChallenge(ONE, PHONE))
+        assertThat(engine.step.value).isEqualTo(waiting(ONE, PHONE))
         coVerify(exactly = 1) { repository.sendPush(PHONE) }
     }
 
@@ -71,12 +70,11 @@ class MfaEngineTest {
 
     @Test
     fun `still pending - next check waits the new interval the server gave`() = runTest {
-        coEvery { repository.checkPushStatus() } returns Result.Success(PushStatus.Pending(SLOWER))
+        coEvery { repository.checkPushStatus() } returns Result.Success(PushStatus.Pending(SLOWER, canResend = true))
         val engine = started(PHONE)
 
         waitFor(POLL)
-        val secondsWaited = (POLL / ONE_SECOND).toInt()
-        assertThat(engine.step.value).isEqualTo(polling(PHONE, SLOWER, COOLDOWN - secondsWaited))
+        assertThat((engine.step.value as MfaStep.PushWaiting).everyMs).isEqualTo(SLOWER)
         waitFor(SLOWER - 1)
         coVerify(exactly = 1) { repository.checkPushStatus() }
         waitFor(1)
@@ -99,14 +97,51 @@ class MfaEngineTest {
     }
 
     @Test
-    fun `sending fails - shows the error and checks nothing`() = runTest {
-        coEvery { repository.sendPush(PHONE) } returns Result.Error(LoginFailure(EmbeddedLoginError.Network))
+    fun `sending fails - ends MFA on its error screen, and checks nothing`() = runTest {
+        val error = MfaError.Network(null)
+        coEvery { repository.sendPush(PHONE) } returns Result.Error(error)
         val engine = started(PHONE)
 
         waitFor(POLL * 2)
 
-        assertThat(engine.step.value).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network))
+        assertThat(engine.step.value).isEqualTo(MfaStep.Failed(error))
+        assertThat(effects).containsExactly(MfaEffect.Failed(error))
+        assertThat(engine.isRunning).isFalse()
         coVerify(exactly = 0) { repository.checkPushStatus() }
+    }
+
+    @Test
+    fun `a check fails on the network - checks again quietly, with no second push`() = runTest {
+        val network = Result.Error(MfaError.Network(null))
+        coEvery { repository.checkPushStatus() } returnsMany listOf(network, Result.Success(PENDING))
+        val engine = started(PHONE)
+
+        waitFor(POLL)
+        waitFor(POLL)
+
+        assertThat(engine.step.value).isInstanceOf(MfaStep.PushWaiting::class.java)
+        coVerify(exactly = 2) { repository.checkPushStatus() }
+        coVerify(exactly = 1) { repository.sendPush(PHONE) }
+    }
+
+    @Test
+    fun `another factor - starts the next round with the server's menu`() = runTest {
+        coEvery { repository.checkPushStatus() } returns Result.Success(PushStatus.AnotherFactor(listOf(TABLET)))
+        val engine = started(PHONE)
+
+        waitFor(POLL)
+
+        // One factor in round 2: the list still comes back, headed "One more step"; its push goes out once picked.
+        val round2 = MfaRound(2, listOf(TABLET))
+        assertThat(engine.step.value).isEqualTo(MfaStep.ChooseFactor(round2))
+        coVerify(exactly = 0) { repository.sendPush(TABLET) }
+
+        engine.onIntent(MfaIntent.SelectFactor(TABLET))
+        runCurrent()
+
+        assertThat(steps).contains(MfaStep.SendingChallenge(round2, TABLET))
+        assertThat(engine.step.value).isEqualTo(waiting(round2, TABLET))
+        coVerify(exactly = 1) { repository.sendPush(TABLET) }
     }
 
     // endregion
@@ -132,6 +167,19 @@ class MfaEngineTest {
         assertThat(engine.resendSecondsLeft()).isEqualTo(COOLDOWN)
     }
 
+    @Test
+    fun `resend - not offered by the server - never sends`() = runTest {
+        coEvery { repository.sendPush(any()) } returns Result.Success(PushStatus.Pending(POLL, canResend = false))
+        coEvery { repository.checkPushStatus() } returns Result.Success(PushStatus.Pending(POLL, canResend = false))
+        val engine = started(PHONE)
+
+        waitFor(ONE_SECOND * COOLDOWN)
+        engine.onIntent(MfaIntent.Resend)
+        runCurrent()
+
+        coVerify(exactly = 1) { repository.sendPush(PHONE) }
+    }
+
     // endregion
 
     // region leaving
@@ -143,15 +191,15 @@ class MfaEngineTest {
         engine.onIntent(MfaIntent.ChooseAnotherFactor)
         waitFor(POLL * 2)
 
-        assertThat(engine.step.value).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
+        assertThat(engine.step.value).isEqualTo(MfaStep.ChooseFactor(TWO))
         coVerify(exactly = 0) { repository.checkPushStatus() }
     }
 
-    // That the next SDK step waits for a check in flight is EmbeddedAuthStepsTest's job.
+    // That the next SDK step waits for a check in flight is MfaEngineLockTest's and EmbeddedAuthStepsTest's job.
     @Test
     fun `chose another device while a check is in flight - an approval it brings still signs in`() = runTest {
         val credentials = mockk<Credentials>()
-        val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
+        val answer = CompletableDeferred<Result<PushStatus, MfaError>>()
         coEvery { repository.checkPushStatus() } coAnswers { answer.await() }
         val engine = started(PHONE, TABLET, select = PHONE)
         waitFor(POLL)
@@ -166,34 +214,89 @@ class MfaEngineTest {
 
     @Test
     fun `chose another device while a check is in flight - a pending answer it brings changes nothing`() = runTest {
-        val answer = CompletableDeferred<Result<PushStatus, LoginFailure>>()
+        val answer = CompletableDeferred<Result<PushStatus, MfaError>>()
         coEvery { repository.checkPushStatus() } coAnswers { answer.await() }
         val engine = started(PHONE, TABLET, select = PHONE)
         waitFor(POLL)
 
         engine.onIntent(MfaIntent.ChooseAnotherFactor)
         runCurrent()
-        answer.complete(Result.Success(PushStatus.Pending(SLOWER)))
+        answer.complete(Result.Success(PushStatus.Pending(SLOWER, canResend = true)))
         waitFor(SLOWER * 2)
 
-        assertThat(engine.step.value).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
+        assertThat(engine.step.value).isEqualTo(MfaStep.ChooseFactor(TWO))
         assertThat(effects).isEmpty()
         coVerify(exactly = 1) { repository.checkPushStatus() }
     }
 
     @Test
-    fun `a check fails on the network - checks again quietly, with no second push`() = runTest {
-        val network = Result.Error(LoginFailure(EmbeddedLoginError.Network, canRetryStep = true))
-        coEvery { repository.checkPushStatus() } returnsMany listOf(network, Result.Success(PushStatus.Pending(POLL)))
-        val engine = started(PHONE)
+    fun `chose another device while a check is in flight - a terminal failure it brings still ends MFA with its real error`() =
+        runTest {
+            val answer = CompletableDeferred<Result<PushStatus, MfaError>>()
+            coEvery { repository.checkPushStatus() } coAnswers { answer.await() }
+            val engine = started(PHONE, TABLET, select = PHONE)
+            waitFor(POLL)
 
-        waitFor(POLL)
-        waitFor(POLL * 2)
+            engine.onIntent(MfaIntent.ChooseAnotherFactor)
+            runCurrent()
+            answer.complete(Result.Error(MfaError.Rejected(null)))
+            runCurrent()
 
-        assertThat(engine.step.value).isInstanceOf(MfaStep.PushWaiting::class.java)
-        coVerify(exactly = 2) { repository.checkPushStatus() }
-        coVerify(exactly = 1) { repository.sendPush(PHONE) }
-    }
+            assertThat(engine.step.value).isEqualTo(MfaStep.Failed(MfaError.Rejected(null)))
+            assertThat(effects).containsExactly(MfaEffect.Failed(MfaError.Rejected(null)))
+        }
+
+    @Test
+    fun `network blips while the app is in the background - never end the push, and on return it is checked at once`() =
+        runTest {
+            val network = Result.Error(MfaError.Network(null))
+            coEvery { repository.checkPushStatus() } returnsMany List(MfaReducer.QUIET_RETRIES + 2) { network } +
+                Result.Success(PENDING)
+            val engine = started(PHONE)
+            engine.onAppForeground(false)
+
+            repeat(MfaReducer.QUIET_RETRIES + 2) { waitFor(POLL) }
+
+            assertThat(engine.step.value).isInstanceOf(MfaStep.PushWaiting::class.java)
+            assertThat(effects).isEmpty()
+            coVerify(exactly = MfaReducer.QUIET_RETRIES + 2) { repository.checkPushStatus() }
+
+            // Back in the app the wait is cut short: the next check runs now, not after the interval.
+            engine.onAppForeground(true)
+            runCurrent()
+            coVerify(exactly = MfaReducer.QUIET_RETRIES + 3) { repository.checkPushStatus() }
+        }
+
+    @Test
+    fun `left the push while a resend was going out, then picked a device - the old send never answers for the new one`() =
+        runTest {
+            val oldSend = CompletableDeferred<Result<PushStatus.Pending, MfaError>>()
+            val engine = started(PHONE, TABLET, select = PHONE)
+            waitFor(ONE_SECOND * COOLDOWN)
+            coEvery { repository.sendPush(PHONE) } coAnswers { oldSend.await() }
+            engine.onIntent(MfaIntent.Resend)
+            runCurrent()
+
+            // Back leaves the push for the list; the user then picks the other device.
+            engine.back()
+            val newSend = CompletableDeferred<Result<PushStatus.Pending, MfaError>>()
+            coEvery { repository.sendPush(TABLET) } coAnswers { newSend.await() }
+            engine.onIntent(MfaIntent.SelectFactor(TABLET))
+            runCurrent()
+
+            // The old push answers while the new one is still going out: it must not stand in for it.
+            oldSend.complete(Result.Success(PushStatus.Pending(POLL, canResend = false)))
+            runCurrent()
+            assertThat(engine.step.value).isEqualTo(MfaStep.SendingChallenge(TWO, TABLET))
+
+            newSend.complete(Result.Success(PushStatus.Pending(SLOWER, canResend = true)))
+            runCurrent()
+
+            val shown = engine.step.value as MfaStep.PushWaiting
+            assertThat(shown.factor).isEqualTo(TABLET)
+            assertThat(shown.everyMs).isEqualTo(SLOWER)
+            assertThat(shown.canResend).isTrue()
+        }
 
     @Test
     fun `stopped by the host - nothing it started reaches the host any more`() = runTest {
@@ -206,6 +309,7 @@ class MfaEngineTest {
 
         assertThat(steps).hasSize(stepsSoFar)
         assertThat(effects).isEmpty()
+        assertThat(engine.isRunning).isFalse()
         coVerify(exactly = 0) { repository.checkPushStatus() }
     }
 
@@ -233,10 +337,19 @@ class MfaEngineTest {
         val engine = MfaEngine(MfaReducer(listOf(PHONE)), repository, backgroundScope, onEffect = { effects += it })
         waitFor(POLL)
 
-        assertThat(engine.step.value)
-            .isEqualTo(MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false))
+        assertThat(engine.step.value).isEqualTo(MfaStep.SendingChallenge(ONE, PHONE))
         coVerify(exactly = 0) { repository.sendPush(any()) }
         assertThat(effects).isEmpty()
+    }
+
+    @Test
+    fun `nothing usable at start - ends at once on its error screen, with no call to the server`() = runTest {
+        val engine = started()
+
+        assertThat(engine.step.value).isEqualTo(MfaStep.Failed(MfaError.NoEligibleFactors()))
+        assertThat(effects).containsExactly(MfaEffect.Failed(MfaError.NoEligibleFactors()))
+        assertThat(engine.isRunning).isFalse()
+        coVerify(exactly = 0) { repository.sendPush(any()) }
     }
 
     @Test
@@ -259,6 +372,7 @@ class MfaEngineTest {
         engine.back()
 
         assertThat(effects).containsExactly(MfaEffect.Restart)
+        assertThat(engine.isRunning).isFalse()
     }
 
     // endregion
@@ -287,17 +401,25 @@ class MfaEngineTest {
         runCurrent()
     }
 
-    private fun MfaEngine.resendSecondsLeft(): Int =
-        ((step.value as MfaStep.PushWaiting).phase as PushPhase.Polling).resendSecondsLeft
+    private fun MfaEngine.resendSecondsLeft(): Int = (step.value as MfaStep.PushWaiting).resendSecondsLeft
 
-    private fun polling(factor: MfaFactor.Push, everyMs: Long, resendSecondsLeft: Int) =
-        MfaStep.PushWaiting(factor, PushPhase.Polling(everyMs, resendSecondsLeft), canChooseAnother = false)
+    private fun waiting(round: MfaRound, factor: MfaFactor.Push) = MfaStep.PushWaiting(
+        round = round,
+        factor = factor,
+        phase = PushPhase.Waiting,
+        everyMs = POLL,
+        canResend = true,
+        resendSecondsLeft = COOLDOWN,
+    )
 
     private companion object {
         val PHONE = MfaFactor.Push(0, "Jane's phone")
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
+        val ONE = MfaRound(1, listOf(PHONE))
+        val TWO = MfaRound(1, listOf(PHONE, TABLET))
         const val POLL = 3_000L
         const val SLOWER = 5_000L
+        val PENDING = PushStatus.Pending(POLL, canResend = true)
         const val COOLDOWN = MfaReducer.RESEND_COOLDOWN_SECONDS
         const val ONE_SECOND = 1_000L
     }

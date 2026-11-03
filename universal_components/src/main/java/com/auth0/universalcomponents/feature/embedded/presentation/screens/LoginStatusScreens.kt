@@ -43,17 +43,22 @@ internal fun LoginLoadingScreen(modifier: Modifier = Modifier) {
     }
 }
 
-/** The flow stopped; "Try again" picks up from the last screen. An empty [message] shows a generic one. */
+/**
+ * The flow stopped; "Try again" picks up from the last screen. An empty [message] shows a generic one. MFA passes its
+ * own [title] and "Start over" as [actionTitle].
+ */
 @Composable
 internal fun LoginErrorScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     message: String = "",
+    title: String = stringResource(R.string.embedded_login_error_title),
+    actionTitle: String = stringResource(R.string.try_again),
 ) {
     LoginStatusScreen(
-        title = stringResource(R.string.embedded_login_error_title),
+        title = title,
         description = message.ifEmpty { stringResource(R.string.embedded_login_error_fallback) },
-        actionTitle = stringResource(R.string.try_again),
+        actionTitle = actionTitle,
         onAction = onRetry,
         modifier = modifier,
     )

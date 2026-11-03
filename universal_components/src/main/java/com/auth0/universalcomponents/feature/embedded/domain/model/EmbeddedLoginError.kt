@@ -23,22 +23,14 @@ internal sealed interface EmbeddedLoginError {
     data object TooManyLogins : EmbeddedLoginError
 
     /**
-     * The code was right, but the server wants a second factor first; [factors] are the ones it offered.
-     * The flow hands over to MFA, so this one never reaches the error screen.
+     * The code was right, but the server wants a second factor first; [factors] are the ones it offered that these
+     * screens support, maybe none. The flow hands over to MFA, which decides what to show, so this one never reaches
+     * the error screen.
      */
     data class MfaRequired(val factors: List<MfaFactor>) : EmbeddedLoginError
 
     /** The sign-in session ended or expired, so it has to start over; the server or SDK no longer knows it. */
     data object SessionExpired : EmbeddedLoginError
-
-    /** The user turned down the push on their device. */
-    data object PushDenied : EmbeddedLoginError
-
-    /** The account has no second factor it can use here. */
-    data object NoEligibleFactors : EmbeddedLoginError
-
-    /** The server asks for a further step that these screens can't show. */
-    data object ExtraStepUnsupported : EmbeddedLoginError
 
     /** Any other error the server explained; [text] is its own words. */
     data class Server(val text: String) : EmbeddedLoginError
