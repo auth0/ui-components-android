@@ -64,7 +64,7 @@ private fun MfaScreen(step: MfaStep, onIntent: (MfaIntent) -> Unit, onLeave: () 
                 sending = step.factor,
             )
         } else {
-            LoginLoadingScreen()
+            LoginLoadingScreen(showAtOnce = true)
         }
 
         is MfaStep.PushWaiting -> MfaPushScreen(

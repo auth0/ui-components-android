@@ -29,10 +29,14 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Lo
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** A quiet wait: a small spinner that fades in. */
+/**
+ * A quiet wait: a small spinner that fades in, so a fast load doesn't flicker. When [showAtOnce], the spinner is
+ * there from the first frame: for a wait the user caused and is sure to notice, such as a push going out, where a
+ * blank screen would look broken.
+ */
 @Composable
-internal fun LoginLoadingScreen(modifier: Modifier = Modifier) {
-    var showLoader by remember { mutableStateOf(false) }
+internal fun LoginLoadingScreen(modifier: Modifier = Modifier, showAtOnce: Boolean = false) {
+    var showLoader by remember { mutableStateOf(showAtOnce) }
     LaunchedEffect(Unit) {
         showLoader = true
     }
