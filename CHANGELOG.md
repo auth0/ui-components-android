@@ -1,5 +1,11 @@
 # Change Log
 
+## [1.0.0-beta.2](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.2) (2026-11-03)
+[Full Changelog](https://github.com/auth0/ui-components-android/compare/1.0.0-beta.1...1.0.0-beta.2)
+
+**Added**
+- MFA Support Added for embedded login With Push Notification as a factor [\#54](https://github.com/auth0/ui-components-android/pull/54) ([pacific-ring](https://github.com/pacific-ring))
+
 ## [1.0.0-beta.1](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.1) (2026-10-15)
 [Full Changelog](https://github.com/auth0/ui-components-android/compare/1.0.0-beta.0...1.0.0-beta.1)
 
