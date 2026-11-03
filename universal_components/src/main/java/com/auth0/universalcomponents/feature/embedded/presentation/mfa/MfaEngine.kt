@@ -10,6 +10,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -17,12 +20,15 @@ import kotlinx.coroutines.launch
  * [onEffect]. It makes no decisions itself and knows nothing about the first factor, so any host can own it:
  * embedded login today, a standalone MFA component or step-up later. Its work runs in a child of [hostScope]
  * that [stop] cancels, so the host ends MFA with one call.
+ *
+ * [step] is what [MfaHost] draws, and taps come back through [onIntent]. It is ready as soon as the engine exists,
+ * but nothing runs until [start]: the host stores the engine first, so an effect sent while starting finds it.
+ * After [stop], [step] keeps its last value (the screen may still be animating out) and taps are ignored.
  */
 internal class MfaEngine(
     factors: List<MfaFactor>,
     private val repository: MfaRepository,
     hostScope: CoroutineScope,
-    private val onStep: (MfaStep) -> Unit,
     private val onEffect: (MfaEffect) -> Unit,
 ) {
 
@@ -30,8 +36,9 @@ internal class MfaEngine(
     private val job = SupervisorJob(hostScope.coroutineContext[Job])
     private val scope = CoroutineScope(hostScope.coroutineContext + job)
 
-    lateinit var step: MfaStep
-        private set
+    private val first = reducer.start()
+    private val _step = MutableStateFlow(first.step)
+    val step: StateFlow<MfaStep> = _step.asStateFlow()
 
     /** The wait before the next push check; null once the check itself has started, so stopping never cuts it off. */
     private var pollDelayJob: Job? = null
@@ -39,22 +46,30 @@ internal class MfaEngine(
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
 
-    init {
-        applyUpdate(reducer.start())
+    /** Set by the first [start]; the step alone can't tell, since the list looks the same before and after. */
+    private var isStarted = false
+
+    /** Runs the first step's work, once: the host calls it right after it stores the engine, and a repeat is ignored. */
+    fun start() {
+        if (isStarted) return
+        isStarted = true
+        applyUpdate(first)
     }
 
-    fun onIntent(intent: MfaIntent) = applyUpdate(reducer.handleIntent(step, intent))
+    fun onIntent(intent: MfaIntent) = applyUpdate(reducer.handleIntent(_step.value, intent))
+
+    /** System back or the top-bar arrow; MFA decides what it means on the screen on show. */
+    fun back() = onIntent(MfaIntent.Back)
 
     /** Ends this run: nothing it started reaches the host any more. */
     fun stop() = job.cancel()
 
-    private fun onOutcome(outcome: MfaOutcome) = applyUpdate(reducer.handleOutcome(step, outcome))
+    private fun onOutcome(outcome: MfaOutcome) = applyUpdate(reducer.handleOutcome(_step.value, outcome))
 
     /** An effect means MFA is over, so the engine stops itself once it has told the host; no timer outlives it. */
     private fun applyUpdate(update: MfaUpdate) {
         if (!job.isActive) return
-        step = update.step
-        onStep(update.step)
+        _step.value = update.step
         update.commands.forEach(::runCommand)
         update.effect?.let { effect ->
             stop()
@@ -106,7 +121,7 @@ internal class MfaEngine(
         resendCountdownJob?.cancel()
         resendCountdownJob = scope.launch {
             delay(ONE_SECOND_MILLIS)
-            applyUpdate(reducer.handleSecondPassed(step))
+            applyUpdate(reducer.handleSecondPassed(_step.value))
         }
     }
 

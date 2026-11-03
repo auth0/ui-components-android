@@ -14,7 +14,9 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -53,7 +55,7 @@ class MfaEngineTest {
         val engine = started(PHONE)
 
         assertThat(steps.first()).isEqualTo(MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false))
-        assertThat(engine.step).isEqualTo(polling(PHONE, POLL, COOLDOWN))
+        assertThat(engine.step.value).isEqualTo(polling(PHONE, POLL, COOLDOWN))
         coVerify(exactly = 1) { repository.sendPush(PHONE) }
     }
 
@@ -74,7 +76,7 @@ class MfaEngineTest {
 
         waitFor(POLL)
         val secondsWaited = (POLL / ONE_SECOND).toInt()
-        assertThat(engine.step).isEqualTo(polling(PHONE, SLOWER, COOLDOWN - secondsWaited))
+        assertThat(engine.step.value).isEqualTo(polling(PHONE, SLOWER, COOLDOWN - secondsWaited))
         waitFor(SLOWER - 1)
         coVerify(exactly = 1) { repository.checkPushStatus() }
         waitFor(1)
@@ -103,7 +105,7 @@ class MfaEngineTest {
 
         waitFor(POLL * 2)
 
-        assertThat(engine.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network))
+        assertThat(engine.step.value).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network))
         coVerify(exactly = 0) { repository.checkPushStatus() }
     }
 
@@ -141,7 +143,7 @@ class MfaEngineTest {
         engine.onIntent(MfaIntent.ChooseAnotherFactor)
         waitFor(POLL * 2)
 
-        assertThat(engine.step).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
+        assertThat(engine.step.value).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
         coVerify(exactly = 0) { repository.checkPushStatus() }
     }
 
@@ -174,7 +176,7 @@ class MfaEngineTest {
         answer.complete(Result.Success(PushStatus.Pending(SLOWER)))
         waitFor(SLOWER * 2)
 
-        assertThat(engine.step).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
+        assertThat(engine.step.value).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
         assertThat(effects).isEmpty()
         coVerify(exactly = 1) { repository.checkPushStatus() }
     }
@@ -188,7 +190,7 @@ class MfaEngineTest {
         waitFor(POLL)
         waitFor(POLL * 2)
 
-        assertThat(engine.step).isInstanceOf(MfaStep.PushWaiting::class.java)
+        assertThat(engine.step.value).isInstanceOf(MfaStep.PushWaiting::class.java)
         coVerify(exactly = 2) { repository.checkPushStatus() }
         coVerify(exactly = 1) { repository.sendPush(PHONE) }
     }
@@ -207,17 +209,73 @@ class MfaEngineTest {
         coVerify(exactly = 0) { repository.checkPushStatus() }
     }
 
+    @Test
+    fun `taps after the host stopped it - are ignored, and the last step stays`() = runTest {
+        val engine = started(PHONE, TABLET)
+        val shown = engine.step.value
+
+        engine.stop()
+        engine.onIntent(MfaIntent.SelectFactor(TABLET))
+        engine.back()
+        runCurrent()
+
+        assertThat(engine.step.value).isEqualTo(shown)
+        assertThat(effects).isEmpty()
+        coVerify(exactly = 0) { repository.sendPush(any()) }
+    }
+
     // endregion
 
-    /** Starts MFA and lets the push for [select] go out; with one factor it's picked straight away. */
+    // region starting
+
+    @Test
+    fun `created but not started - shows its first step and runs nothing`() = runTest {
+        val engine = MfaEngine(listOf(PHONE), repository, backgroundScope, onEffect = { effects += it })
+        waitFor(POLL)
+
+        assertThat(engine.step.value)
+            .isEqualTo(MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false))
+        coVerify(exactly = 0) { repository.sendPush(any()) }
+        assertThat(effects).isEmpty()
+    }
+
+    @Test
+    fun `started twice - the second start is ignored, so one push goes out and progress is kept`() = runTest {
+        val engine = started(PHONE)
+        waitFor(POLL)
+        val shown = engine.step.value
+
+        engine.start()
+        runCurrent()
+
+        assertThat(engine.step.value).isEqualTo(shown)
+        coVerify(exactly = 1) { repository.sendPush(PHONE) }
+    }
+
+    @Test
+    fun `back - on the list - ends MFA so sign-in starts over`() = runTest {
+        val engine = started(PHONE, TABLET)
+
+        engine.back()
+
+        assertThat(effects).containsExactly(MfaEffect.Restart)
+    }
+
+    // endregion
+
+    /**
+     * Starts MFA, recording every step it shows, and lets the push for [select] go out; with one factor it's picked
+     * straight away.
+     */
     private fun TestScope.started(vararg factors: MfaFactor.Push, select: MfaFactor.Push? = null): MfaEngine {
         val engine = MfaEngine(
             factors = factors.toList(),
             repository = repository,
             hostScope = backgroundScope,
-            onStep = { steps += it },
             onEffect = { effects += it },
         )
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { engine.step.collect { steps += it } }
+        engine.start()
         if (select != null) engine.onIntent(MfaIntent.SelectFactor(select))
         runCurrent()
         return engine
@@ -230,7 +288,7 @@ class MfaEngineTest {
     }
 
     private fun MfaEngine.resendSecondsLeft(): Int =
-        ((step as MfaStep.PushWaiting).phase as PushPhase.Polling).resendSecondsLeft
+        ((step.value as MfaStep.PushWaiting).phase as PushPhase.Polling).resendSecondsLeft
 
     private fun polling(factor: MfaFactor.Push, everyMs: Long, resendSecondsLeft: Int) =
         MfaStep.PushWaiting(factor, PushPhase.Polling(everyMs, resendSecondsLeft), canChooseAnother = false)

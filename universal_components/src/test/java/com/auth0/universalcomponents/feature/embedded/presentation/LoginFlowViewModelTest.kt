@@ -204,32 +204,33 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
 
-        assertThat(viewModel.loginStep.value)
-            .isEqualTo(LoginStep.Mfa(MfaStep.AuthenticatorList(listOf(PHONE, TABLET))))
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Mfa::class.java)
+        assertThat(mfaStep()).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
     }
 
     @Test
-    fun `mfa - taps - reach MFA, which shows its next step`() = runTest {
+    fun `mfa - taps on its own screens - go to MFA alone, which shows its next step`() = runTest {
         startAtMfa(PHONE, TABLET)
+        val engine = (viewModel.loginStep.value as LoginStep.Mfa).engine
 
-        viewModel.send(LoginEvent.Mfa(MfaIntent.SelectFactor(TABLET)))
+        engine.onIntent(MfaIntent.SelectFactor(TABLET))
         advanceUntilIdle()
 
-        val step = (viewModel.loginStep.value as LoginStep.Mfa).step
+        val step = mfaStep()
         assertThat(step).isInstanceOf(MfaStep.PushWaiting::class.java)
         assertThat((step as MfaStep.PushWaiting).factor).isEqualTo(TABLET)
         coVerify(exactly = 1) { mfaRepository.sendPush(TABLET) }
     }
 
     @Test
-    fun `mfa - taps outside MFA - are ignored`() = runTest {
-        startAtCode()
+    fun `mfa - Back - is passed to MFA, which decides what it means`() = runTest {
+        startAtMfa(PHONE, TABLET)
 
-        viewModel.send(LoginEvent.Mfa(MfaIntent.SelectFactor(PHONE)))
+        assertThat(viewModel.goBack()).isTrue()
         advanceUntilIdle()
 
-        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.CollectOtpCode::class.java)
-        coVerify(exactly = 0) { mfaRepository.sendPush(any()) }
+        // Back on the list leaves MFA; had login handled it, the list would still be on show.
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
 
     @Test
@@ -261,7 +262,7 @@ class LoginFlowViewModelTest {
             advanceUntilIdle()
 
             // A fresh push, whose resend wait the test clock has already run out.
-            val step = (viewModel.loginStep.value as LoginStep.Mfa).step
+            val step = mfaStep()
             val polling = PushPhase.Polling(PUSH_POLL_MS, resendSecondsLeft = 0)
             assertThat(step).isEqualTo(MfaStep.PushWaiting(PHONE, polling, canChooseAnother = false))
             coVerify(exactly = 2) { mfaRepository.sendPush(PHONE) }
@@ -545,6 +546,9 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
     }
+
+    /** What MFA is showing, read from the engine the login step carries. */
+    private fun mfaStep(): MfaStep = (viewModel.loginStep.value as LoginStep.Mfa).engine.step.value
 
     /** On the code step with the resend countdown already run out. */
     private fun TestScope.startAtCode() {

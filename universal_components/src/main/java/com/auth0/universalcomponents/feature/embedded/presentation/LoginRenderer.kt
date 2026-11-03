@@ -4,9 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaScreen
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaStep
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.transitionIdentity
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaHost
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginErrorScreen
@@ -35,8 +34,8 @@ internal sealed interface ScreenPlan {
         val resendSecondsLeft: Int = 0,
     ) : ScreenPlan
 
-    /** A second factor; MFA draws its own [step]. */
-    data class Mfa(val step: MfaStep) : ScreenPlan
+    /** A second factor; MFA draws its own screens from [engine]. */
+    data class Mfa(val engine: MfaEngine) : ScreenPlan
 
     data object Authenticated : ScreenPlan
 
@@ -51,7 +50,7 @@ internal val ScreenPlan.transitionIdentity: String
         ScreenPlan.Loading -> "loading"
         is ScreenPlan.Identifier -> "identifier"
         is ScreenPlan.OtpCode -> "otpCode"
-        is ScreenPlan.Mfa -> step.transitionIdentity
+        is ScreenPlan.Mfa -> "mfa"
         ScreenPlan.Authenticated -> "authenticated"
         is ScreenPlan.Failed -> "failed"
         ScreenPlan.NoMethods -> "noMethods"
@@ -63,11 +62,7 @@ internal val ScreenPlan.navigationDepth: Int
         ScreenPlan.Loading -> 0
         is ScreenPlan.Identifier, ScreenPlan.NoMethods -> 1
         is ScreenPlan.OtpCode -> 2
-        is ScreenPlan.Mfa -> when (step) {
-            is MfaStep.AuthenticatorList -> 3
-            is MfaStep.PushWaiting -> 4
-            is MfaStep.Failed -> 5
-        }
+        is ScreenPlan.Mfa -> 3
         ScreenPlan.Authenticated, is ScreenPlan.Failed -> 5
     }
 
@@ -84,7 +79,7 @@ internal fun plan(step: LoginStep): ScreenPlan = when (step) {
     LoginStep.Authenticated -> ScreenPlan.Authenticated
     is LoginStep.Failed -> ScreenPlan.Failed(step.error)
     LoginStep.NoMethodsAvailable -> ScreenPlan.NoMethods
-    is LoginStep.Mfa -> ScreenPlan.Mfa(step.step)
+    is LoginStep.Mfa -> ScreenPlan.Mfa(step.engine)
 }
 
 /** Builds the screen for [plan]; input goes back through [context]. */
@@ -110,7 +105,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
             onResend = { context.dispatch(LoginEvent.Resend) },
         )
 
-        is ScreenPlan.Mfa -> MfaScreen(plan.step, onIntent = { context.dispatch(LoginEvent.Mfa(it)) })
+        is ScreenPlan.Mfa -> MfaHost(plan.engine)
 
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 

@@ -1,8 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaIntent
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaStep
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
 
 /**
  * Where the login flow is, with everything its screen shows. The ViewModel moves between steps;
@@ -34,10 +33,10 @@ internal sealed interface LoginStep {
     ) : LoginStep
 
     /**
-     * The first factor passed and the server wants a second; MFA carries on with the same session and [step] is
-     * its screen.
+     * The first factor passed and the server wants a second; MFA carries on with the same session. It draws itself
+     * from [engine] and takes its own taps, and login hears only how it ends.
      */
-    data class Mfa(val step: MfaStep) : LoginStep
+    data class Mfa(val engine: MfaEngine) : LoginStep
 
     data object Authenticated : LoginStep
 
@@ -59,7 +58,4 @@ internal sealed interface LoginEvent {
     data object Resend : LoginEvent
 
     data object Retry : LoginEvent
-
-    /** A tap on an MFA screen, passed on to the MFA flow. */
-    data class Mfa(val intent: MfaIntent) : LoginEvent
 }
