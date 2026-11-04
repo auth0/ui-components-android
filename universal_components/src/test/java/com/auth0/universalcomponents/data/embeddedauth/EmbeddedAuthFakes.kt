@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.data.repository
+package com.auth0.universalcomponents.data.embeddedauth
 
 import com.auth0.android.callback.Callback
 import com.auth0.android.embedded.EmbeddedAuthError
@@ -7,9 +7,6 @@ import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.request.Request
 import com.auth0.universalcomponents.data.FakeRequestImpl
-import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
-import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.CompletableDeferred
 
 /** A step that answers "not finished yet, do one of [next]", the way every step before the last does. */
@@ -78,9 +75,3 @@ internal class InFlightRequest<T> : Request<T, EmbeddedAuthException> {
 internal inline fun <reified T> sdkInstance(vararg args: Pair<Class<*>, Any?>): T =
     T::class.java.getConstructor(*args.map { it.first }.toTypedArray())
         .newInstance(*args.map { it.second }.toTypedArray())
-
-/** Every failure comes back from a repository as a [LoginFailure], never thrown. */
-internal fun Result<*, LoginFailure>.failure(): LoginFailure {
-    assertThat(this).isInstanceOf(Result.Error::class.java)
-    return (this as Result.Error).error
-}

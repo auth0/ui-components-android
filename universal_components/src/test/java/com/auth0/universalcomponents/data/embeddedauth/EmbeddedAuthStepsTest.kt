@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.data.repository
+package com.auth0.universalcomponents.data.embeddedauth
 
 import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.android.embedded.EmbeddedAuthError
@@ -6,6 +6,7 @@ import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Re
 import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.result.Credentials
+import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
 import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks

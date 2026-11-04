@@ -4,11 +4,11 @@ import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
+import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
+import com.auth0.universalcomponents.data.embeddedauth.StepAnswer
 import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAuthSteps
-import com.auth0.universalcomponents.feature.embedded.data.repository.StepAnswer
-import com.auth0.universalcomponents.feature.embedded.data.repository.mfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.mfaError
 import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFactors
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus

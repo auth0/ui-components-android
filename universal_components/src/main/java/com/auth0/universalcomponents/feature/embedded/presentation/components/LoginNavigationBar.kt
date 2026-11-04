@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.presentation.ui.flow.loginBackground
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /** The top bar with the back arrow and the "Log in" title. */

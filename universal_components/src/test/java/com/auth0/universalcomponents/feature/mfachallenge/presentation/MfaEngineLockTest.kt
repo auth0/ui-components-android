@@ -5,11 +5,11 @@ import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAuthSteps
-import com.auth0.universalcomponents.feature.embedded.data.repository.InFlightRequest
-import com.auth0.universalcomponents.feature.embedded.data.repository.sdkException
-import com.auth0.universalcomponents.feature.embedded.data.repository.sdkInstance
-import com.auth0.universalcomponents.feature.embedded.data.repository.step
+import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
+import com.auth0.universalcomponents.data.embeddedauth.InFlightRequest
+import com.auth0.universalcomponents.data.embeddedauth.sdkException
+import com.auth0.universalcomponents.data.embeddedauth.sdkInstance
+import com.auth0.universalcomponents.data.embeddedauth.step
 import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.google.common.truth.Truth.assertThat

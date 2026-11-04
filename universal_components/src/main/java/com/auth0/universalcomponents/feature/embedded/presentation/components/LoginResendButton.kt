@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.presentation.ui.flow.LoginTextButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /** "Resend Code", or the wait left while [secondsLeft] counts down; the ViewModel owns the countdown. */

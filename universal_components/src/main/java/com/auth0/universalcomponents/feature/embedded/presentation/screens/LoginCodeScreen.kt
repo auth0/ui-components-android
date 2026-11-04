@@ -13,10 +13,10 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.CO
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginCodeField
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginPrimaryButton
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginResendButton
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenHeader
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginStepLayout
+import com.auth0.universalcomponents.presentation.ui.flow.LoginPrimaryButton
+import com.auth0.universalcomponents.presentation.ui.flow.LoginScreenHeader
+import com.auth0.universalcomponents.presentation.ui.flow.LoginStepLayout
 
 /**
  * Entry for the emailed code. Verify turns on once every digit is in.

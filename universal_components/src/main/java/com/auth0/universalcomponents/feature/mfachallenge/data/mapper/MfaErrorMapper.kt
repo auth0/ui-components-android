@@ -2,7 +2,8 @@ package com.auth0.universalcomponents.feature.mfachallenge.data.mapper
 
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthException
-import com.auth0.universalcomponents.feature.embedded.data.mapper.serverDescription
+import com.auth0.universalcomponents.data.embeddedauth.StepAnswer
+import com.auth0.universalcomponents.data.embeddedauth.serverDescription
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 
 /**
@@ -21,3 +22,7 @@ internal fun EmbeddedAuthException.toMfaError(): MfaError = when (error) {
     EmbeddedAuthError.TooManyLogins -> MfaError.TooManyAttempts(this)
     else -> MfaError.Unexpected(serverDescription, this)
 }
+
+/** A failed step in MFA's terms. */
+internal val StepAnswer.Failed.mfaError: MfaError
+    get() = (error as? EmbeddedAuthException)?.toMfaError() ?: MfaError.Unexpected(cause = error)

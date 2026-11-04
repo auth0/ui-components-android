@@ -14,14 +14,14 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginPrimaryButton
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenHeader
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginStepLayout
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginTextButton
-import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginErrorScreen
-import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginLoadingScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.components.MfaFactorRow
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
+import com.auth0.universalcomponents.presentation.ui.flow.LoginErrorScreen
+import com.auth0.universalcomponents.presentation.ui.flow.LoginLoadingScreen
+import com.auth0.universalcomponents.presentation.ui.flow.LoginPrimaryButton
+import com.auth0.universalcomponents.presentation.ui.flow.LoginScreenHeader
+import com.auth0.universalcomponents.presentation.ui.flow.LoginStepLayout
+import com.auth0.universalcomponents.presentation.ui.flow.LoginTextButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /*

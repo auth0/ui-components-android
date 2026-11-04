@@ -4,6 +4,7 @@ import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.universalcomponents.Auth0UniversalComponents
 import com.auth0.universalcomponents.data.MyAccountProvider
 import com.auth0.universalcomponents.data.TokenManager
+import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
 import com.auth0.universalcomponents.data.repository.MyAccountRepositoryImpl
 import com.auth0.universalcomponents.data.repository.UserRepositoryImpl
 import com.auth0.universalcomponents.di.viewmodelfactory.AuthenticatorMethodViewModelFactory
@@ -19,7 +20,6 @@ import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMetho
 import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
-import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAuthSteps
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
 import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl

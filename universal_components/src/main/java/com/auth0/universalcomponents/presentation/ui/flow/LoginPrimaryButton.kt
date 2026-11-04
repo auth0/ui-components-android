@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.presentation.components
+package com.auth0.universalcomponents.presentation.ui.flow
 
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height

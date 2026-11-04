@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.data.repository
+package com.auth0.universalcomponents.data.embeddedauth
 
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException

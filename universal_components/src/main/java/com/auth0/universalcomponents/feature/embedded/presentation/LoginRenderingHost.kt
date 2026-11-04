@@ -10,8 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenFrame
@@ -20,6 +18,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
 import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaLifecycle
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.mirror
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
@@ -51,7 +50,7 @@ internal fun LoginRenderingHost(
         viewModel.send(LoginEvent.MfaErrorAnswered(handling))
     }
 
-    MfaLifecycle(step)
+    MfaLifecycle((step as? LoginStep.Mfa)?.engine)
     (mfa.presentation as? MfaPresentation.Headless)?.let { PublishToStream(it.stream, viewModel, step) }
 
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
@@ -72,18 +71,6 @@ internal fun LoginRenderingHost(
             LoginRenderer(plan, context)
         }
     }
-}
-
-/**
- * Tells MFA when the app leaves or returns to the foreground, so a network failure while the user approves in another
- * app doesn't count against the push. Here, not in the MFA screens, because a headless app draws none, and the rule
- * must hold for it too.
- */
-@Composable
-private fun MfaLifecycle(step: LoginStep) {
-    val engine by rememberUpdatedState((step as? LoginStep.Mfa)?.engine)
-    LifecycleEventEffect(Lifecycle.Event.ON_START) { engine?.onAppForeground(true) }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { engine?.onAppForeground(false) }
 }
 
 /**
