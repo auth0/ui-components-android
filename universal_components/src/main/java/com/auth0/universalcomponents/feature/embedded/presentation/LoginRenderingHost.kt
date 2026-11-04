@@ -2,32 +2,23 @@ package com.auth0.universalcomponents.feature.embedded.presentation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.core.EaseInOut
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.IntOffset
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenFrame
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
-
-private const val TRANSITION_MILLIS = 280
+import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 
 /**
- * Draws the ViewModel's step, MFA included, animates screen changes and owns the navigation bar. It only draws:
- * moving into and out of MFA is the ViewModel's, so nothing depends on a screen being on show.
+ * Draws the ViewModel's step, animates screen changes and owns the navigation bar and the one Back handler. During MFA
+ * it places [MfaHost] inside its frame. It only draws: moving into and out of MFA is the ViewModel's, so nothing
+ * depends on a screen being on show.
  */
 @Composable
 internal fun LoginRenderingHost(
@@ -36,7 +27,7 @@ internal fun LoginRenderingHost(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val step by viewModel.loginStep.collectAsState()
+    val step by viewModel.loginStep.collectAsStateWithLifecycle()
     val currentOnAuthenticated by rememberUpdatedState(onAuthenticated)
     val currentOnExit by rememberUpdatedState(onExit)
 
@@ -61,13 +52,4 @@ internal fun LoginRenderingHost(
             LoginRenderer(plan, context)
         }
     }
-}
-
-/** A deeper screen pushes in from the end; a shallower one pops back in from the start. */
-private fun stepTransition(isForward: Boolean): ContentTransform {
-    val direction = if (isForward) 1 else -1
-    val spec = tween<Float>(TRANSITION_MILLIS, easing = EaseInOut)
-    val slide = tween<IntOffset>(TRANSITION_MILLIS, easing = EaseInOut)
-    return (slideInHorizontally(slide) { direction * it } + fadeIn(spec)) togetherWith
-        (slideOutHorizontally(slide) { -direction * it } + fadeOut(spec))
 }

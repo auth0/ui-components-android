@@ -13,7 +13,7 @@ import com.auth0.universalcomponents.feature.embedded.domain.repository.Embedded
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEffect
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaIntent
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaReducer
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -46,9 +46,6 @@ internal class LoginFlowViewModel(
     private var inFlight: Job? = null
     private var countdown: Job? = null
 
-    /** The MFA run on show, while [LoginStep.Mfa] is. */
-    private var mfa: MfaEngine? = null
-
     fun send(event: LoginEvent) {
         val current = _loginStep.value
         when (event) {
@@ -71,8 +68,6 @@ internal class LoginFlowViewModel(
             }
 
             LoginEvent.Retry -> if (current is LoginStep.Failed) launchStep { retry(current) }
-
-            is LoginEvent.Mfa -> if (current is LoginStep.Mfa) mfa?.onIntent(event.intent)
         }
     }
 
@@ -80,7 +75,7 @@ internal class LoginFlowViewModel(
     fun goBack(): Boolean {
         val current = _loginStep.value
         if (current is LoginStep.Mfa) {
-            mfa?.onIntent(MfaIntent.Back)
+            current.engine.back()
             return true
         }
         // Stay put until the request in flight answers, rather than dropping it halfway.
@@ -154,23 +149,24 @@ internal class LoginFlowViewModel(
     }
 
     /**
-     * MFA runs in its own engine, owned here and stopped when it ends, so each visit starts fresh and nothing from an
-     * old one reaches the screen. Its steps are shown as [LoginStep.Mfa]; how it ends is decided here. [identifier] is
-     * what the user typed for the first factor, kept here (not in the MFA state) to pre-fill it if MFA sends them back.
+     * MFA runs in its own engine, a new one for each visit so nothing from an old one reaches the screen. It stops
+     * itself when it ends. It is shown as [LoginStep.Mfa] and draws and takes its own taps, so all login sees is Back
+     * and how it ends, decided here. [identifier] is what the user typed for the first factor, kept here (not in the
+     * MFA state) to pre-fill it if MFA sends them back.
      */
     private fun startMfa(identifier: String, factors: List<MfaFactor>) {
-        mfa = MfaEngine(
-            factors = factors,
+        val engine = MfaEngine(
+            reducer = MfaReducer(factors),
             repository = mfaRepository,
             hostScope = viewModelScope,
-            onStep = { _loginStep.value = LoginStep.Mfa(it) },
             onEffect = { effect -> endMfa(identifier, effect) },
         )
+        // Shown before it starts, so an end reached while starting replaces this step rather than being overwritten.
+        _loginStep.value = LoginStep.Mfa(engine)
+        engine.start()
     }
 
     private fun endMfa(identifier: String, effect: MfaEffect) {
-        mfa?.stop()
-        mfa = null
         when (effect) {
             is MfaEffect.Authenticated -> viewModelScope.launch { signedIn(effect.credentials) }
             // What was typed is kept; the next code opens a new session.

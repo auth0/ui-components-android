@@ -1,7 +1,9 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
 import com.google.common.truth.Truth.assertThat
+import io.mockk.mockk
 import org.junit.Test
 
 class LoginRendererTest {
@@ -43,6 +45,13 @@ class LoginRendererTest {
     }
 
     @Test
+    fun `plan - second factor - hands MFA its engine to draw from`() {
+        val engine = mockk<MfaEngine>()
+
+        assertThat(plan(LoginStep.Mfa(engine))).isEqualTo(ScreenPlan.Mfa(engine))
+    }
+
+    @Test
     fun `transitionIdentity - same screen with new data - doesn't animate`() {
         assertThat(ScreenPlan.Identifier("").transitionIdentity)
             .isEqualTo(ScreenPlan.Identifier(EMAIL).transitionIdentity)
@@ -51,11 +60,21 @@ class LoginRendererTest {
     }
 
     @Test
+    fun `transitionIdentity - MFA changing its own screens - is one screen to login, so only MFA animates`() {
+        val first = ScreenPlan.Mfa(mockk())
+        val second = ScreenPlan.Mfa(mockk())
+
+        assertThat(first.transitionIdentity).isEqualTo(second.transitionIdentity)
+        assertThat(first.transitionIdentity).isNotEqualTo(ScreenPlan.OtpCode(EMAIL).transitionIdentity)
+    }
+
+    @Test
     fun `navigationDepth - moving forward through the flow - pushes`() {
         val depths = listOf(
             ScreenPlan.Loading,
             ScreenPlan.Identifier(EMAIL),
             ScreenPlan.OtpCode(EMAIL),
+            ScreenPlan.Mfa(mockk()),
             ScreenPlan.Authenticated,
         ).map { it.navigationDepth }
 
