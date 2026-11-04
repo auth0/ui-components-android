@@ -52,6 +52,18 @@ class LoginRendererTest {
     }
 
     @Test
+    fun `plan - waiting for the app after MFA ended - is the loading screen's own plan`() {
+        assertThat(plan(LoginStep.AwaitingApp(mockk(), EMAIL))).isEqualTo(ScreenPlan.AwaitingApp)
+    }
+
+    @Test
+    fun `navigationDepth - waiting for the app - sits level with MFA, so it and MFA's own screen both push`() {
+        assertThat(ScreenPlan.AwaitingApp.navigationDepth).isEqualTo(ScreenPlan.Mfa(mockk()).navigationDepth)
+        assertThat(ScreenPlan.AwaitingApp.transitionIdentity)
+            .isNotEqualTo(ScreenPlan.Mfa(mockk()).transitionIdentity)
+    }
+
+    @Test
     fun `transitionIdentity - same screen with new data - doesn't animate`() {
         assertThat(ScreenPlan.Identifier("").transitionIdentity)
             .isEqualTo(ScreenPlan.Identifier(EMAIL).transitionIdentity)

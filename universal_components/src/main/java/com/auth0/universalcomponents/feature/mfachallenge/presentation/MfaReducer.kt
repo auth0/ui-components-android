@@ -1,6 +1,6 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 
@@ -17,11 +17,11 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
 
     fun start(): MfaUpdate = beginRound(MfaRound(number = 1, factors = factors))
 
-    fun handleIntent(step: MfaStep, intent: MfaIntent): MfaUpdate {
+    fun handleIntent(step: MfaState, intent: MfaIntent): MfaUpdate {
         val unchanged = MfaUpdate(step)
         return when (intent) {
             is MfaIntent.SelectFactor ->
-                if (step is MfaStep.ChooseFactor && intent.factor in step.round.factors) {
+                if (step is MfaState.ChooseFactor && intent.factor in step.round.factors) {
                     select(step.round, intent.factor)
                 } else {
                     unchanged
@@ -29,7 +29,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
 
             // Not while a resend is going out: the push can't be taken back, and a second pick would send another.
             MfaIntent.ChooseAnotherFactor ->
-                if (step is MfaStep.PushWaiting && step.round.canSwitch && step.phase != PushPhase.Resending) {
+                if (step is MfaState.PushWaiting && step.round.canSwitch && step.phase != PushPhase.Resending) {
                     showList(step.round)
                 } else {
                     unchanged
@@ -37,11 +37,14 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
 
             MfaIntent.Back -> goBack(step)
 
-            MfaIntent.Resend -> if (step is MfaStep.PushWaiting && step.canResendNow) resend(step) else unchanged
+            // Out of MFA from wherever it is; once MFA has ended, leaving is the host's.
+            MfaIntent.Cancel -> if (step is MfaState.Failed) unchanged else leave(step)
+
+            MfaIntent.Resend -> if (step is MfaState.PushWaiting && step.canResendNow) resend(step) else unchanged
         }
     }
 
-    fun handleOutcome(step: MfaStep, outcome: MfaOutcome): MfaUpdate = when (outcome) {
+    fun handleOutcome(step: MfaState, outcome: MfaOutcome): MfaUpdate = when (outcome) {
         is MfaOutcome.PushSent -> pushSent(step, outcome.pending)
         is MfaOutcome.PushPending -> pushPending(step, outcome.pending)
         // Even after the user moved on: they did approve, so they're signed in. The host shows the success screen.
@@ -58,24 +61,24 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      * The app is back in the foreground: the user may have approved in another app meanwhile, so a waiting push is
      * checked now instead of after the wait, as on iOS. A check already on its way is left to answer.
      */
-    fun handleAppForegrounded(step: MfaStep): MfaUpdate =
-        if (step is MfaStep.PushWaiting && step.phase == PushPhase.Waiting) {
+    fun handleAppForegrounded(step: MfaState): MfaUpdate =
+        if (step is MfaState.PushWaiting && step.phase == PushPhase.Waiting) {
             MfaUpdate(step.copy(phase = PushPhase.Checking), listOf(MfaCommand.CancelPushWork, MfaCommand.CheckPush))
         } else {
             MfaUpdate(step)
         }
 
     /** The wait before the next check is over. It checks only if the push is still waiting and nothing is on its way. */
-    fun handlePushCheckDue(step: MfaStep): MfaUpdate =
-        if (step is MfaStep.PushWaiting && step.phase == PushPhase.Waiting) {
+    fun handlePushCheckDue(step: MfaState): MfaUpdate =
+        if (step is MfaState.PushWaiting && step.phase == PushPhase.Waiting) {
             MfaUpdate(step.copy(phase = PushPhase.Checking), listOf(MfaCommand.CheckPush))
         } else {
             MfaUpdate(step)
         }
 
     /** One second of the resend wait has passed; it stops at zero, or once the push screen is left. */
-    fun handleSecondPassed(step: MfaStep): MfaUpdate {
-        if (step !is MfaStep.PushWaiting || step.resendSecondsLeft == 0) return MfaUpdate(step)
+    fun handleSecondPassed(step: MfaState): MfaUpdate {
+        if (step !is MfaState.PushWaiting || step.resendSecondsLeft == 0) return MfaUpdate(step)
         val left = step.resendSecondsLeft - 1
         return MfaUpdate(
             step.copy(resendSecondsLeft = left),
@@ -91,19 +94,19 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     private fun beginRound(round: MfaRound): MfaUpdate = when {
         round.factors.isEmpty() -> end(MfaError.NoEligibleFactors())
         round.factors.size == 1 && !round.isAdditional -> select(round, round.factors.single())
-        else -> MfaUpdate(MfaStep.ChooseFactor(round))
+        else -> MfaUpdate(MfaState.ChooseFactor(round))
     }
 
     /** The challenge goes out first; its screen shows once it's out. */
     private fun select(round: MfaRound, factor: MfaFactor): MfaUpdate = when (factor) {
-        is MfaFactor.Push -> MfaUpdate(MfaStep.SendingChallenge(round, factor), listOf(MfaCommand.SendPush(factor)))
+        is MfaFactor.Push -> MfaUpdate(MfaState.SendingChallenge(round, factor), listOf(MfaCommand.SendPush(factor)))
     }
 
     /** A first push, or a resend, is out: the checks and the resend wait start. */
-    private fun pushSent(step: MfaStep, pending: PushStatus.Pending): MfaUpdate {
+    private fun pushSent(step: MfaState, pending: PushStatus.Pending): MfaUpdate {
         val everyMs = checkInterval(pending.retryInMs)
         val waiting = when {
-            step is MfaStep.SendingChallenge && step.factor is MfaFactor.Push -> MfaStep.PushWaiting(
+            step is MfaState.SendingChallenge && step.factor is MfaFactor.Push -> MfaState.PushWaiting(
                 round = step.round,
                 factor = step.factor,
                 phase = PushPhase.Waiting,
@@ -112,7 +115,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
                 resendSecondsLeft = RESEND_COOLDOWN_SECONDS,
             )
 
-            step is MfaStep.PushWaiting && step.phase == PushPhase.Resending -> step.copy(
+            step is MfaState.PushWaiting && step.phase == PushPhase.Resending -> step.copy(
                 phase = PushPhase.Waiting,
                 everyMs = everyMs,
                 canResend = pending.canResend,
@@ -127,8 +130,8 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     }
 
     /** Still waiting: check again at the server's pace, a little slower when it said we asked too soon. */
-    private fun pushPending(step: MfaStep, pending: PushStatus.Pending): MfaUpdate {
-        if (step !is MfaStep.PushWaiting || step.phase != PushPhase.Checking) return MfaUpdate(step)
+    private fun pushPending(step: MfaState, pending: PushStatus.Pending): MfaUpdate {
+        if (step !is MfaState.PushWaiting || step.phase != PushPhase.Checking) return MfaUpdate(step)
         val everyMs = if (pending.isSlowDown) {
             checkInterval(maxOf(pending.retryInMs ?: 0, step.everyMs + SLOW_DOWN_STEP_MS))
         } else {
@@ -147,16 +150,16 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      * The user approved and the sign-in needs one more factor: the next round starts with the server's new menu,
      * even when the approval came from a device the user switched away from.
      */
-    private fun nextRound(step: MfaStep, factors: List<MfaFactor>): MfaUpdate {
+    private fun nextRound(step: MfaState, factors: List<MfaFactor>): MfaUpdate {
         val round = step.roundOrNull ?: return MfaUpdate(step)
         val next = beginRound(MfaRound(round.number + 1, factors))
         return next.copy(commands = listOf(MfaCommand.CancelPushWork) + next.commands)
     }
 
     /** A send fails the flow only while it's the one on show: the first push, or a resend. */
-    private fun sendFailed(step: MfaStep, error: MfaError): MfaUpdate {
-        val isOnShow = step is MfaStep.SendingChallenge ||
-            (step is MfaStep.PushWaiting && step.phase == PushPhase.Resending)
+    private fun sendFailed(step: MfaState, error: MfaError): MfaUpdate {
+        val isOnShow = step is MfaState.SendingChallenge ||
+            (step is MfaState.PushWaiting && step.phase == PushPhase.Resending)
         return if (isOnShow) end(error) else MfaUpdate(step)
     }
 
@@ -168,10 +171,10 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      * MFA ends. A blip from a check the user has left behind is dropped. As on iOS, a blip while the app is in the
      * background doesn't count: the user is approving in another app, where Android may cut this one's network.
      */
-    private fun checkFailed(step: MfaStep, failed: MfaOutcome.CheckFailed): MfaUpdate {
+    private fun checkFailed(step: MfaState, failed: MfaOutcome.CheckFailed): MfaUpdate {
         val error = failed.error
         if (error !is MfaError.Network) return end(error)
-        if (step !is MfaStep.PushWaiting || step.phase != PushPhase.Checking) return MfaUpdate(step)
+        if (step !is MfaState.PushWaiting || step.phase != PushPhase.Checking) return MfaUpdate(step)
         if (!failed.whileInBackground && step.failedChecks >= QUIET_RETRIES) return end(error)
         val failedChecks = if (failed.whileInBackground) step.failedChecks else step.failedChecks + 1
         val waiting = step.copy(phase = PushPhase.Waiting, failedChecks = failedChecks)
@@ -179,10 +182,10 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     }
 
     private fun showList(round: MfaRound): MfaUpdate =
-        MfaUpdate(MfaStep.ChooseFactor(round), listOf(MfaCommand.CancelPushWork))
+        MfaUpdate(MfaState.ChooseFactor(round), listOf(MfaCommand.CancelPushWork))
 
     /** A resend replaces the checks until it's out; an answer to a check still on its way is handled as it comes. */
-    private fun resend(step: MfaStep.PushWaiting): MfaUpdate = MfaUpdate(
+    private fun resend(step: MfaState.PushWaiting): MfaUpdate = MfaUpdate(
         step.copy(phase = PushPhase.Resending, canResend = false),
         listOf(MfaCommand.CancelPushWork, MfaCommand.SendPush(step.factor)),
     )
@@ -192,30 +195,30 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      * otherwise out of MFA to start over. A challenge still going out finishes on its own, and its answer is dropped.
      * Once MFA has ended, Back is the host's.
      */
-    private fun goBack(step: MfaStep): MfaUpdate = when (step) {
-        is MfaStep.PushWaiting -> if (step.round.showsList) showList(step.round) else leave(step)
-        is MfaStep.ChooseFactor, is MfaStep.SendingChallenge -> leave(step)
-        is MfaStep.Failed -> MfaUpdate(step)
+    private fun goBack(step: MfaState): MfaUpdate = when (step) {
+        is MfaState.PushWaiting -> if (step.round.showsList) showList(step.round) else leave(step)
+        is MfaState.ChooseFactor, is MfaState.SendingChallenge -> leave(step)
+        is MfaState.Failed -> MfaUpdate(step)
     }
 
-    private fun leave(step: MfaStep) = MfaUpdate(step, effect = MfaEffect.Restart)
+    private fun leave(step: MfaState) = MfaUpdate(step, effect = MfaEffect.Restart)
 
     /** MFA is over: its screen says why, and the host is told. */
-    private fun end(error: MfaError) = MfaUpdate(MfaStep.Failed(error), effect = MfaEffect.Failed(error))
+    private fun end(error: MfaError) = MfaUpdate(MfaState.Failed(error), effect = MfaEffect.Failed(error))
 
     /** The server's wait between checks, or [DEFAULT_CHECK_MS] when it gave none, kept within [CHECK_MS_RANGE]. */
     private fun checkInterval(ms: Long?): Long = (ms ?: DEFAULT_CHECK_MS).coerceIn(CHECK_MS_RANGE)
 
     /** The push is out, the server still offers another, and the resend wait is over. */
-    private val MfaStep.PushWaiting.canResendNow: Boolean
+    private val MfaState.PushWaiting.canResendNow: Boolean
         get() = phase != PushPhase.Resending && canResend && resendSecondsLeft == 0
 
-    private val MfaStep.roundOrNull: MfaRound?
+    private val MfaState.roundOrNull: MfaRound?
         get() = when (this) {
-            is MfaStep.ChooseFactor -> round
-            is MfaStep.SendingChallenge -> round
-            is MfaStep.PushWaiting -> round
-            is MfaStep.Failed -> null
+            is MfaState.ChooseFactor -> round
+            is MfaState.SendingChallenge -> round
+            is MfaState.PushWaiting -> round
+            is MfaState.Failed -> null
         }
 
     companion object {

@@ -1,7 +1,8 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
 import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -43,7 +44,7 @@ internal class MfaEngine(
 
     private val first = reducer.start()
     private val _step = MutableStateFlow(first.step)
-    val step: StateFlow<MfaStep> = _step.asStateFlow()
+    val step: StateFlow<MfaState> = _step.asStateFlow()
 
     /** The wait before the next push check. The check itself runs on its own, so cancelling this never cuts it off. */
     private var pushCheckWait: Job? = null

@@ -5,7 +5,7 @@ import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.universalcomponents.feature.embedded.data.mapper.toLoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaError
 
 /**

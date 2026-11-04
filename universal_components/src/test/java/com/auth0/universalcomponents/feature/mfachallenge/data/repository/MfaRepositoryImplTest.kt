@@ -11,7 +11,7 @@ import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAu
 import com.auth0.universalcomponents.feature.embedded.data.repository.failingWith
 import com.auth0.universalcomponents.feature.embedded.data.repository.sdkInstance
 import com.auth0.universalcomponents.feature.embedded.data.repository.step
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.google.common.truth.Truth.assertThat
@@ -64,14 +64,14 @@ class MfaRepositoryImplTest {
     fun `sendPush - no wait to check it with - fails as unexpected`() = runTest {
         every { client.challengePush(PHONE.index) } returns step(NextAction.VerifyRecoveryCode)
 
-        assertThat(repository.sendPush(PHONE).mfaError()).isEqualTo(MfaError.Unexpected())
+        assertThat(repository.sendPush(PHONE).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
     }
 
     @Test
     fun `sendPush - signed in on send - fails as unexpected`() = runTest {
         every { client.challengePush(PHONE.index) } returns FakeRequestImpl(response = null)
 
-        assertThat(repository.sendPush(PHONE).mfaError()).isEqualTo(MfaError.Unexpected())
+        assertThat(repository.sendPush(PHONE).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
     }
 
     @Test
@@ -147,7 +147,7 @@ class MfaRepositoryImplTest {
     fun `checkPushStatus - answered as a wrong code - fails as unexpected`() = runTest {
         every { client.verifyOob() } returns step(verifyOob(POLL_MS), reason = Reason.INVALID_CODE)
 
-        assertThat(repository.checkPushStatus().mfaError()).isEqualTo(MfaError.Unexpected())
+        assertThat(repository.checkPushStatus().mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
     }
 
     @Test

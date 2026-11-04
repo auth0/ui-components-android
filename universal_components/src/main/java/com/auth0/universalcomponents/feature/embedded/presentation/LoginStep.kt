@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 
 /**
@@ -43,6 +44,13 @@ internal sealed interface LoginStep {
      */
     data class Mfa(val engine: MfaEngine, val identifier: String) : LoginStep
 
+    /**
+     * MFA ended with no factor this app can use, and login waits for the app to say whether it takes over (a spinner
+     * shows meanwhile, so an app that does never sees an error flash by). If it doesn't, the [engine]'s own
+     * "not available" screen comes back. It is not an MFA screen and not a login error, so it is its own step.
+     */
+    data class AwaitingApp(val engine: MfaEngine, val identifier: String) : LoginStep
+
     data object Authenticated : LoginStep
 
     /** Try again goes to [retryTo]; when null, it opens a new session. */
@@ -66,4 +74,7 @@ internal sealed interface LoginEvent {
 
     /** "Start over" on MFA's error screen: back to email entry. Counts only while MFA is on show. */
     data object LeaveMfa : LoginEvent
+
+    /** The app's answer to an MFA error it was told about. Counts only while login waits for it. */
+    data class MfaErrorAnswered(val handling: MfaErrorHandling) : LoginEvent
 }

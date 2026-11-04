@@ -1,7 +1,7 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 
@@ -11,7 +11,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatu
  * the next input.
  *
  *   inputs:  MfaIntent (the user did something) · MfaOutcome (the server answered) · a wait is over
- *   outputs: MfaStep (what to draw) · MfaCommand (work to run) · MfaEffect (MFA is over)
+ *   outputs: MfaState (what to draw) · MfaCommand (work to run) · MfaEffect (MFA is over)
  *
  * The rules are the ones iOS's MFA Core follows, so a sign-in behaves the same on both platforms. One difference, from
  * the PRD's additional challenge: in round 2 and later the list shows even with a single factor.
@@ -37,16 +37,16 @@ internal data class MfaRound(val number: Int, val factors: List<MfaFactor>) {
 }
 
 /** The MFA screen on show, with everything it draws; the steps are mutually exclusive, one per screen. */
-internal sealed interface MfaStep {
+internal sealed interface MfaState {
 
     /** The round's factors, one row each. Shown only when there is more than one. */
-    data class ChooseFactor(val round: MfaRound) : MfaStep
+    data class ChooseFactor(val round: MfaRound) : MfaState
 
     /**
      * [factor]'s challenge is going out, and its screen shows once it's out. With a choice the list stays, with that
      * row busy; with one factor, a loading screen shows.
      */
-    data class SendingChallenge(val round: MfaRound, val factor: MfaFactor) : MfaStep
+    data class SendingChallenge(val round: MfaRound, val factor: MfaFactor) : MfaState
 
     /**
      * The push is out and waits for the user's approval; [phase] says what's on its way. It's checked every
@@ -61,10 +61,10 @@ internal sealed interface MfaStep {
         val canResend: Boolean,
         val resendSecondsLeft: Int,
         val failedChecks: Int = 0,
-    ) : MfaStep
+    ) : MfaState
 
     /** MFA ended without signing in, and this screen says why. Leaving it is up to the host. */
-    data class Failed(val error: MfaError) : MfaStep
+    data class Failed(val error: MfaError) : MfaState
 }
 
 /** What's on its way for the push on show; only one at a time. */
@@ -91,13 +91,16 @@ internal sealed interface MfaIntent {
     /** System back or the top-bar arrow. */
     data object Back : MfaIntent
 
+    /** The app's Cancel on any screen: leaves MFA at once, where Back may only step back to the list. */
+    data object Cancel : MfaIntent
+
     /** Sends the push to the same device again. */
     data object Resend : MfaIntent
 }
 
 /**
  * What the server answered to a command, in MFA's terms rather than the SDK's; only [MfaEngine] creates these,
- * from what the [com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository] returns.
+ * from what the [com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository] returns.
  */
 internal sealed interface MfaOutcome {
 
@@ -161,13 +164,13 @@ internal sealed interface MfaEffect {
     /** The user left MFA, so the sign-in starts over from the first factor. Not an error, so it isn't reported. */
     data object Restart : MfaEffect
 
-    /** MFA failed without signing in; its [MfaStep.Failed] screen stays until the user leaves it. */
+    /** MFA failed without signing in; its [MfaState.Failed] screen stays until the user leaves it. */
     data class Failed(val error: MfaError) : MfaEffect
 }
 
 /** What [MfaReducer] returns for one input: the step to show, the [commands] to run in order, and maybe an effect. */
 internal data class MfaUpdate(
-    val step: MfaStep,
+    val step: MfaState,
     val commands: List<MfaCommand> = emptyList(),
     val effect: MfaEffect? = null,
 )

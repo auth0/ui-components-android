@@ -5,14 +5,16 @@ import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
+import com.auth0.universalcomponents.feature.mfachallenge.MfaResult
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaIntent
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaRound
-import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaStep
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaState
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.PushPhase
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
@@ -207,7 +209,7 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Mfa::class.java)
-        assertThat(mfaStep()).isEqualTo(MfaStep.ChooseFactor(MfaRound(1, listOf(PHONE, TABLET))))
+        assertThat(mfaStep()).isEqualTo(MfaState.ChooseFactor(MfaRound(1, listOf(PHONE, TABLET))))
     }
 
     @Test
@@ -219,14 +221,14 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         val step = mfaStep()
-        assertThat(step).isInstanceOf(MfaStep.PushWaiting::class.java)
-        assertThat((step as MfaStep.PushWaiting).factor).isEqualTo(TABLET)
+        assertThat(step).isInstanceOf(MfaState.PushWaiting::class.java)
+        assertThat((step as MfaState.PushWaiting).factor).isEqualTo(TABLET)
         coVerify(exactly = 1) { mfaRepository.sendPush(TABLET) }
     }
 
     @Test
     fun `mfa - Start over tapped twice - leaves MFA once, and the second tap does not leave the login`() = runTest {
-        coEvery { mfaRepository.checkPushStatus() } returns Result.Success(PushStatus.Rejected)
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(REJECTED)
         startAtMfa(PHONE)
         viewModel.send(LoginEvent.LeaveMfa)
         viewModel.send(LoginEvent.LeaveMfa)
@@ -277,7 +279,7 @@ class LoginFlowViewModelTest {
 
             // A fresh push, whose resend wait the test clock has already run out, with its first check on its way.
             assertThat(mfaStep()).isEqualTo(
-                MfaStep.PushWaiting(
+                MfaState.PushWaiting(
                     round = MfaRound(1, listOf(PHONE)),
                     factor = PHONE,
                     phase = PushPhase.Checking,
@@ -290,29 +292,197 @@ class LoginFlowViewModelTest {
         }
 
     @Test
-    fun `mfa - nothing usable - shows MFA's own screen saying so, and Start over returns to email entry`() =
-        runTest {
-            startAtMfa()
+    fun `mfa - nothing usable - sends no push, and hands the decision to the app`() = runTest {
+        startAtMfa()
 
-            assertThat(mfaStep()).isEqualTo(MfaStep.Failed(MfaError.NoEligibleFactors()))
-            coVerify(exactly = 0) { mfaRepository.sendPush(any()) }
-
-            // "Start over" is the host's Back, since MFA itself has ended.
-            assertThat(viewModel.goBack()).isTrue()
-            assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
-        }
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.AwaitingApp::class.java)
+        coVerify(exactly = 0) { mfaRepository.sendPush(any()) }
+    }
 
     @Test
     fun `mfa - ends with an error - its screen stays until Back, which starts over with the email kept`() = runTest {
-        coEvery { mfaRepository.checkPushStatus() } returns Result.Success(PushStatus.Rejected)
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(REJECTED)
         startAtMfa(PHONE)
 
-        assertThat(mfaStep()).isEqualTo(MfaStep.Failed(MfaError.Rejected(null)))
+        assertThat(mfaStep()).isEqualTo(MfaState.Failed(REJECTED))
         assertThat((viewModel.loginStep.value as LoginStep.Mfa).engine.isRunning).isFalse()
 
         assertThat(viewModel.goBack()).isTrue()
         assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
     }
+
+    // region app told about MFA errors
+
+    @Test
+    fun `mfa error - no usable factor - waits for the app behind a spinner and tells it once`() = runTest {
+        val reported = mutableListOf<MfaError>()
+        val job = launch { viewModel.mfaFailed.toList(reported) }
+
+        startAtMfa()
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.AwaitingApp::class.java)
+        assertThat(reported).hasSize(1)
+        assertThat(reported.single()).isInstanceOf(MfaError.NoEligibleFactors::class.java)
+        job.cancel()
+    }
+
+    @Test
+    fun `mfa error - no usable factor and the app handles it - stays on the spinner`() = runTest {
+        startAtMfa()
+
+        viewModel.send(LoginEvent.MfaErrorAnswered(MfaErrorHandling.Handled))
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.AwaitingApp::class.java)
+    }
+
+    @Test
+    fun `mfa error - no usable factor and the app does not handle it - shows the not available screen`() = runTest {
+        startAtMfa()
+
+        viewModel.send(LoginEvent.MfaErrorAnswered(MfaErrorHandling.NotHandled))
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Mfa::class.java)
+        assertThat((mfaStep() as MfaState.Failed).error).isInstanceOf(MfaError.NoEligibleFactors::class.java)
+
+        // From there, "Start over" still returns to email entry with the email kept.
+        viewModel.send(LoginEvent.LeaveMfa)
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+    }
+
+    @Test
+    fun `mfa error - any other - tells the app once, and its screen shows whatever the app answers`() = runTest {
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(REJECTED)
+        val reported = mutableListOf<MfaError>()
+        val job = launch { viewModel.mfaFailed.toList(reported) }
+
+        startAtMfa(PHONE)
+        viewModel.send(LoginEvent.MfaErrorAnswered(MfaErrorHandling.Handled))
+        advanceUntilIdle()
+
+        assertThat(reported).containsExactly(REJECTED)
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Mfa::class.java)
+        assertThat(mfaStep()).isEqualTo(MfaState.Failed(REJECTED))
+        job.cancel()
+    }
+
+    @Test
+    fun `mfa error - the user leaves MFA - the app is not told`() = runTest {
+        val reported = mutableListOf<MfaError>()
+        val job = launch { viewModel.mfaFailed.toList(reported) }
+        startAtMfa(PHONE, TABLET)
+
+        viewModel.goBack()
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+        assertThat(reported).isEmpty()
+        job.cancel()
+    }
+
+    @Test
+    fun `mfa error - signed in - the app is not told`() = runTest {
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Success(PushStatus.Approved(mockk()))
+        val reported = mutableListOf<MfaError>()
+        val job = launch { viewModel.mfaFailed.toList(reported) }
+
+        startAtMfa(PHONE)
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.Authenticated)
+        assertThat(reported).isEmpty()
+        job.cancel()
+    }
+
+    @Test
+    fun `mfa error - Back while waiting for the app - returns to email entry with the email kept`() = runTest {
+        startAtMfa()
+
+        assertThat(viewModel.goBack()).isTrue()
+
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+    }
+
+    @Test
+    fun `mfa error - the app answers after the user went back - the answer is dropped`() = runTest {
+        startAtMfa()
+        viewModel.goBack()
+
+        viewModel.send(LoginEvent.MfaErrorAnswered(MfaErrorHandling.NotHandled))
+
+        assertThat(viewModel.loginStep.value).isEqualTo(LoginStep.CollectOtpIdentifier(EMAIL))
+    }
+
+    // endregion
+
+    // region how MFA ended
+
+    @Test
+    fun `result - before and during MFA - is none`() = runTest {
+        assertThat(viewModel.mfaResult.value).isNull()
+
+        startAtMfa(PHONE, TABLET)
+
+        assertThat(viewModel.mfaResult.value).isNull()
+    }
+
+    @Test
+    fun `result - signed in - is SignedIn`() = runTest {
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Success(PushStatus.Approved(mockk()))
+
+        startAtMfa(PHONE)
+        advanceUntilIdle()
+
+        assertThat(viewModel.mfaResult.value).isEqualTo(MfaResult.SignedIn)
+    }
+
+    @Test
+    fun `result - ended with an error - is Ended with that error`() = runTest {
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(REJECTED)
+
+        startAtMfa(PHONE)
+
+        assertThat((viewModel.mfaResult.value as MfaResult.Ended).error).isSameInstanceAs(REJECTED)
+    }
+
+    @Test
+    fun `result - the user leaves - is Ended as cancelled`() = runTest {
+        startAtMfa(PHONE, TABLET)
+
+        viewModel.goBack()
+        advanceUntilIdle()
+
+        assertThat((viewModel.mfaResult.value as MfaResult.Ended).error).isInstanceOf(MfaError.Cancelled::class.java)
+    }
+
+    @Test
+    fun `result - Start over after an error - keeps the error it ended with`() = runTest {
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(REJECTED)
+        startAtMfa(PHONE)
+
+        viewModel.send(LoginEvent.LeaveMfa)
+
+        assertThat((viewModel.mfaResult.value as MfaResult.Ended).error).isSameInstanceAs(REJECTED)
+    }
+
+    @Test
+    fun `result - the next MFA starts - clears the last one`() = runTest {
+        startAtMfa(PHONE, TABLET)
+        viewModel.goBack()
+        advanceUntilIdle()
+        assertThat(viewModel.mfaResult.value).isNotNull()
+
+        viewModel.send(LoginEvent.SubmitIdentifier(EMAIL))
+        advanceUntilIdle()
+        viewModel.send(LoginEvent.SubmitOtp(CODE))
+        advanceUntilIdle()
+
+        assertThat(viewModel.mfaResult.value).isNull()
+    }
+
+    // endregion
 
     @Test
     fun `submit code - wrong code - stays on the code step with the error, the countdown going on`() = runTest {
@@ -594,7 +764,7 @@ class LoginFlowViewModelTest {
     }
 
     /** What MFA is showing, read from the engine the login step carries. */
-    private fun mfaStep(): MfaStep = (viewModel.loginStep.value as LoginStep.Mfa).engine.step.value
+    private fun mfaStep(): MfaState = (viewModel.loginStep.value as LoginStep.Mfa).engine.step.value
 
     /** On the code step with the resend countdown already run out. */
     private fun TestScope.startAtCode() {
@@ -621,6 +791,7 @@ class LoginFlowViewModelTest {
         const val ONE_SECOND_MILLIS = 1_000L
         const val PUSH_POLL_MS = 3_000L
         val PHONE = MfaFactor.Push(0, "Jane's phone")
+        val REJECTED = MfaError.Rejected()
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
     }
 }

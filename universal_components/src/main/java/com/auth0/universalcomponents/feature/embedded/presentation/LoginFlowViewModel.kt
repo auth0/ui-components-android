@@ -9,6 +9,9 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLogin
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
+import com.auth0.universalcomponents.feature.mfachallenge.MfaResult
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEffect
@@ -41,6 +44,16 @@ internal class LoginFlowViewModel(
     private val _authenticated = Channel<Credentials>(Channel.BUFFERED)
     val authenticated: Flow<Credentials> = _authenticated.receiveAsFlow()
 
+    private val _mfaFailed = Channel<MfaError>(Channel.BUFFERED)
+
+    /** Each time MFA ends with an error, once. The user leaving MFA is not one. */
+    val mfaFailed: Flow<MfaError> = _mfaFailed.receiveAsFlow()
+
+    private val _mfaResult = MutableStateFlow<MfaResult?>(null)
+
+    /** How the last MFA ended; null while one runs, and again once the next starts. Only a headless app reads it. */
+    val mfaResult: StateFlow<MfaResult?> = _mfaResult.asStateFlow()
+
     /** False before the first Start, and again once the flow signed in or was left; the next Start begins anew. */
     private var isRunning = false
     private var inFlight: Job? = null
@@ -71,17 +84,28 @@ internal class LoginFlowViewModel(
 
             // Its own event, not Back: a second tap on the screen still sliding out must not leave the login.
             LoginEvent.LeaveMfa -> if (current is LoginStep.Mfa) leaveMfa(current)
+
+            // An app that doesn't take over leaves the user on MFA's own "not available" screen.
+            is LoginEvent.MfaErrorAnswered ->
+                if (current is LoginStep.AwaitingApp && event.handling == MfaErrorHandling.NotHandled) {
+                    _loginStep.value = LoginStep.Mfa(current.engine, current.identifier)
+                }
         }
     }
 
     /**
      * Code entry goes back to email entry, and MFA decides its own Back (true); anywhere else leaves (false). Once MFA
-     * has ended, its error screen is all that is left of it, so Back leaves it, as its "Start over" does.
+     * has ended, its error screen is all that is left of it, so Back leaves it, as its "Start over" does. So does Back
+     * while waiting for the app: the user doesn't wait for an app that never answers.
      */
     fun goBack(): Boolean {
         val current = _loginStep.value
         if (current is LoginStep.Mfa) {
             if (current.engine.isRunning) current.engine.back() else leaveMfa(current)
+            return true
+        }
+        if (current is LoginStep.AwaitingApp) {
+            _loginStep.value = LoginStep.CollectOtpIdentifier(current.identifier)
             return true
         }
         // Stay put until the request in flight answers, rather than dropping it halfway.
@@ -161,6 +185,7 @@ internal class LoginFlowViewModel(
      * the MFA state) to pre-fill it if the user starts over.
      */
     private fun startMfa(identifier: String, factors: List<MfaFactor>) {
+        _mfaResult.value = null
         val engine = MfaEngine(
             reducer = MfaReducer(factors),
             repository = mfaRepository,
@@ -175,17 +200,37 @@ internal class LoginFlowViewModel(
     /** Back to email entry with what was typed kept; the next code opens a new session. */
     private fun leaveMfa(mfa: LoginStep.Mfa) {
         mfa.engine.stop()
+        if (_mfaResult.value == null) _mfaResult.value = MfaResult.Ended(MfaError.Cancelled())
         _loginStep.value = LoginStep.CollectOtpIdentifier(mfa.identifier)
     }
 
     private fun endMfa(identifier: String, effect: MfaEffect) {
         when (effect) {
-            is MfaEffect.Authenticated -> viewModelScope.launch { signedIn(effect.credentials) }
+            is MfaEffect.Authenticated -> {
+                _mfaResult.value = MfaResult.SignedIn
+                viewModelScope.launch { signedIn(effect.credentials) }
+            }
             // What was typed is kept; the next code opens a new session.
-            MfaEffect.Restart -> _loginStep.value = LoginStep.CollectOtpIdentifier(identifier)
+            MfaEffect.Restart -> {
+                _mfaResult.value = MfaResult.Ended(MfaError.Cancelled())
+                _loginStep.value = LoginStep.CollectOtpIdentifier(identifier)
+            }
             // Its error screen stays on show until the user starts over. The engine already logged the failure, once.
-            is MfaEffect.Failed -> Unit
+            is MfaEffect.Failed -> mfaFailed(effect.error)
         }
+    }
+
+    /**
+     * Tells the app, once. When no factor can be used, the app may take over, so the error screen is held back
+     * behind a spinner until it answers; every other error already has its screen, which the answer doesn't change.
+     */
+    private fun mfaFailed(error: MfaError) {
+        _mfaResult.value = MfaResult.Ended(error)
+        val mfa = _loginStep.value as? LoginStep.Mfa
+        if (mfa != null && error is MfaError.NoEligibleFactors) {
+            _loginStep.value = LoginStep.AwaitingApp(mfa.engine, mfa.identifier)
+        }
+        viewModelScope.launch { _mfaFailed.send(error) }
     }
 
     private suspend fun signedIn(credentials: Credentials) {

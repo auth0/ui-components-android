@@ -1,7 +1,7 @@
 package com.auth0.universalcomponents.feature.mfachallenge.domain.repository
 
 import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 

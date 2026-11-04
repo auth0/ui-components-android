@@ -8,12 +8,23 @@ import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.di.UniversalComponentsModule
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginFlowViewModel
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginRenderingHost
+import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 
 /**
  * Embedded login with an emailed code, followed by MFA when the account needs it; the server decides
  * which screen comes next. [onAuthenticated] receives the credentials; storing them is up to the app.
+ *
+ * [onMfaError] is told, once, each time MFA ends with an error; the user leaving MFA is not one. The answer matters
+ * for [MfaError.NoEligibleFactors] only: [MfaErrorHandling.Handled] means the app takes over (the user sees a spinner,
+ * not an error), and [MfaErrorHandling.NotHandled], or no handler, shows MFA's own "not available" screen. For any
+ * other error the screen already shows, and the answer changes nothing. A later release may add error cases, so give
+ * the `when` an `else` branch.
+ *
+ * [mfa] customizes MFA: change its words, replace a screen, or draw it all yourself (headless).
  */
 @Composable
 fun EmbeddedLoginScreen(
@@ -22,6 +33,8 @@ fun EmbeddedLoginScreen(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
     themeConfiguration: Auth0ThemeConfiguration = Auth0ThemeConfiguration.Default,
+    onMfaError: ((MfaError) -> MfaErrorHandling)? = null,
+    mfa: MfaConfiguration = MfaConfiguration(),
 ) {
     Auth0Theme(configuration = themeConfiguration) {
         // Remembered so a recomposition doesn't build an SDK client that's never used.
@@ -32,6 +45,8 @@ fun EmbeddedLoginScreen(
             onAuthenticated = onAuthenticated,
             onExit = onExit,
             modifier = modifier,
+            onMfaError = onMfaError,
+            mfa = mfa,
         )
     }
 }

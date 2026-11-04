@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -33,10 +34,11 @@ private const val LABEL_MAX_LINES = 2
  */
 @Composable
 internal fun MfaFactorRow(
-    icon: Painter,
+    icon: Painter?,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    subtitle: String? = null,
     isBusy: Boolean = false,
     enabled: Boolean = true,
 ) {
@@ -56,20 +58,30 @@ internal fun MfaFactorRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
     ) {
-        Icon(
-            painter = icon,
-            contentDescription = null,
-            tint = colors.textBold,
-            modifier = Modifier.size(sizes.iconMedium),
-        )
-        Text(
-            text = label,
-            style = Auth0Theme.typography.title,
-            color = colors.textBold,
-            maxLines = LABEL_MAX_LINES,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
+        if (icon != null) {
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                tint = colors.textBold,
+                modifier = Modifier.size(sizes.iconMedium),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = Auth0Theme.typography.title,
+                color = colors.textBold,
+                maxLines = LABEL_MAX_LINES,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    style = Auth0Theme.typography.bodySmall,
+                    color = colors.textDefault,
+                )
+            }
+        }
         if (isBusy) {
             CircularLoader(modifier = Modifier.size(sizes.iconSmall))
         } else {

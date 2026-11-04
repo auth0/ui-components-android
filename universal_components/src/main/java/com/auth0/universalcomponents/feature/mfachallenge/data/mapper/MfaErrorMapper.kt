@@ -3,7 +3,7 @@ package com.auth0.universalcomponents.feature.mfachallenge.data.mapper
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.universalcomponents.feature.embedded.data.mapper.serverDescription
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 
 /**
  * Names the SDK error in MFA's terms, as iOS does. IP blocks, consent and the like have no case of their own, so
