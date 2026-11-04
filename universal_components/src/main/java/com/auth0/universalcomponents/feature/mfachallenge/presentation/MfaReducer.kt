@@ -196,10 +196,16 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     /**
      * The server can't step back, so Back stays on our side: from the push to the list when there's a choice,
      * otherwise out of MFA to start over. A challenge still going out finishes on its own, and its answer is dropped.
-     * Once MFA has ended, Back is the host's.
+     * Not while a resend is going out, for the reason "Verify another way" is not either: the push can't be taken back,
+     * and picking the device again from the list would send another. Cancel still leaves. Once MFA has ended, Back is
+     * the host's.
      */
     private fun goBack(state: MfaState): MfaUpdate = when (state) {
-        is MfaState.PushWaiting -> if (state.round.showsList) showList(state.round) else restart(state)
+        is MfaState.PushWaiting -> when {
+            state.phase == PushPhase.Resending -> MfaUpdate(state)
+            state.round.showsList -> showList(state.round)
+            else -> restart(state)
+        }
         is MfaState.ChooseFactor, is MfaState.SendingChallenge -> restart(state)
         is MfaState.Failed -> MfaUpdate(state)
     }

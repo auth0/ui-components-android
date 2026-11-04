@@ -295,34 +295,28 @@ class MfaEngineTest {
         }
 
     @Test
-    fun `left the push while a resend was going out, then picked a device - the old send never answers for the new one`() =
+    fun `back while a resend is going out - is ignored, so the device can't be picked again for a second push`() =
         runTest {
-            val oldSend = CompletableDeferred<Result<PushStatus.Pending, MfaError>>()
+            val resendAnswer = CompletableDeferred<Result<PushStatus.Pending, MfaError>>()
             val engine = started(PHONE, TABLET, select = PHONE)
             waitFor(ONE_SECOND * COOLDOWN)
-            coEvery { repository.sendPush(PHONE) } coAnswers { oldSend.await() }
+            coEvery { repository.sendPush(PHONE) } coAnswers { resendAnswer.await() }
             engine.onIntent(MfaIntent.Resend)
             runCurrent()
 
-            // Back leaves the push for the list; the user then picks the other device.
             engine.back()
-            val newSend = CompletableDeferred<Result<PushStatus.Pending, MfaError>>()
-            coEvery { repository.sendPush(TABLET) } coAnswers { newSend.await() }
-            engine.onIntent(MfaIntent.SelectFactor(TABLET))
-            runCurrent()
 
-            // The old push answers while the new one is still going out: it must not stand in for it.
-            oldSend.complete(Result.Success(PushStatus.Pending(POLL, canResend = false)))
-            runCurrent()
-            assertThat(engine.state.value).isEqualTo(MfaState.SendingChallenge(TWO, TABLET))
+            // Still on the push with the resend on its way; the list never showed, so nothing else could be sent.
+            assertThat((engine.state.value as MfaState.PushWaiting).phase).isEqualTo(PushPhase.Resending)
+            coVerify(exactly = 0) { repository.sendPush(TABLET) }
 
-            newSend.complete(Result.Success(PushStatus.Pending(SLOWER, canResend = true)))
+            resendAnswer.complete(Result.Success(PushStatus.Pending(SLOWER, canResend = true)))
             runCurrent()
 
             val shown = engine.state.value as MfaState.PushWaiting
-            assertThat(shown.factor).isEqualTo(TABLET)
+            assertThat(shown.phase).isEqualTo(PushPhase.Waiting)
             assertThat(shown.everyMs).isEqualTo(SLOWER)
-            assertThat(shown.canResend).isTrue()
+            coVerify(exactly = 2) { repository.sendPush(PHONE) }
         }
 
     @Test

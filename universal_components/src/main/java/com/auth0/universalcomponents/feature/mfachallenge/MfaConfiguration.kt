@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * the [presentation] (draw it all, headless).
  */
 @Immutable
-class MfaConfiguration(
+class MfaConfiguration @JvmOverloads constructor(
     val messages: MfaMessages = MfaMessages.Default,
     val screens: MfaScreens = MfaScreens(),
     val presentation: MfaPresentation = MfaPresentation.Standard,
@@ -30,9 +30,9 @@ sealed interface MfaPresentation {
 }
 
 /**
- * What a headless app draws from, and how MFA ended. Keep one instance across recompositions (`remember`); it survives
- * a rotation, because the flow lives in the ViewModel. It is not saved: after process death the sign-in starts over
- * from email entry.
+ * What a headless app draws from, and how MFA ended. Keep one instance across recompositions (`remember`). A rotation
+ * makes a new, empty stream; the library fills it again from the flow, which lives in the ViewModel. It is not saved:
+ * after process death the sign-in starts over from email entry.
  */
 class MfaStepStream {
 

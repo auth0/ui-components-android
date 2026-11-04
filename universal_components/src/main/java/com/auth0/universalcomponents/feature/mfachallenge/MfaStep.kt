@@ -11,6 +11,10 @@ import androidx.compose.runtime.Immutable
  * Functions only equal themselves, so two models are equal when they hold the same data and the very same functions:
  * to check what a model shows, compare its fields.
  *
+ * A later release may add a field to a model. It goes last, with a default, and the constructors keep every shorter
+ * form (`@JvmOverloads`), so an app that is already compiled keeps working. `copy` and destructuring are the exception:
+ * recompile if you use them.
+ *
  * A model can change often (the push model every second, while the resend wait counts down), so draw from the latest
  * one. A later release may add steps, factors and error cases: give every `when` over these types an `else` branch.
  */
@@ -37,7 +41,7 @@ sealed interface MfaStep {
 
 /** [cancel] leaves MFA, when the user may; null when there is nothing to cancel. */
 @Immutable
-data class LoadingModel(val cancel: (() -> Unit)? = null)
+data class LoadingModel @JvmOverloads constructor(val cancel: (() -> Unit)? = null)
 
 /** Which words head the list. */
 enum class AuthenticatorListHeader {
@@ -55,7 +59,7 @@ enum class AuthenticatorListHeader {
  * row; [cancel] leaves MFA.
  */
 @Immutable
-data class AuthenticatorListModel(
+data class AuthenticatorListModel @JvmOverloads constructor(
     val header: AuthenticatorListHeader,
     val rows: List<Row>,
     val round: Int = 1,
@@ -70,7 +74,7 @@ data class AuthenticatorListModel(
      * words its second line from the messages too. [icon] is a drawable of this library; null draws none.
      */
     @Immutable
-    data class Row(
+    data class Row @JvmOverloads constructor(
         val id: String,
         val factor: MfaFactorId,
         val title: String,
@@ -84,7 +88,11 @@ data class AuthenticatorListModel(
  * [PushChallengeModel]).
  */
 @Immutable
-data class MfaFactorStep(val factor: MfaFactorId, val model: MfaFactorModel, val round: Int = 1)
+data class MfaFactorStep @JvmOverloads constructor(
+    val factor: MfaFactorId,
+    val model: MfaFactorModel,
+    val round: Int = 1,
+)
 
 /** What a factor's screen shows and does. */
 sealed interface MfaFactorModel
@@ -95,7 +103,7 @@ sealed interface MfaFactorModel
  * returns to the list when [canSwitch]. [cancel] leaves MFA.
  */
 @Immutable
-data class PushChallengeModel(
+data class PushChallengeModel @JvmOverloads constructor(
     val deviceName: String,
     val canResend: Boolean = false,
     val resendAvailableIn: Int = 0,
@@ -108,7 +116,7 @@ data class PushChallengeModel(
 
 /** Why MFA ended is [error]; [exit] says where [leave] goes. */
 @Immutable
-data class ErrorModel(
+data class ErrorModel @JvmOverloads constructor(
     val error: MfaError,
     val exit: MfaExit = MfaExit.StartOver,
     val leave: () -> Unit = {},

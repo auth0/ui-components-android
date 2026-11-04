@@ -36,7 +36,7 @@ internal class MfaEngine(
     private val reducer: MfaReducer,
     private val repository: MfaRepository,
     hostScope: CoroutineScope,
-    private val timeSource: TimeSource = TimeSource.Monotonic,
+    private val timeSource: TimeSource = ElapsedRealtimeSource,
     private val onEffect: (MfaEffect) -> Unit,
 ) {
 

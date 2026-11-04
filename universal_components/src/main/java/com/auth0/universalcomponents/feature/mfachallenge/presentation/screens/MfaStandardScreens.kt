@@ -155,8 +155,9 @@ internal fun MfaPushChallengeScreen(
 }
 
 /**
- * MFA ended, and this says why: the server's own words for an unexpected error when it gave some. The way out is
- * "Start over" or "Close".
+ * MFA ended, and this says why: the server's own words for an unexpected error when it gave some (cut at
+ * [MAX_SERVER_EXPLANATION] characters, since they come untranslated and unchecked). The way out is "Start over" or
+ * "Close".
  */
 @Composable
 internal fun MfaErrorScreen(
@@ -168,13 +169,26 @@ internal fun MfaErrorScreen(
     FlowErrorScreen(
         modifier = modifier,
         title = words.title,
-        message = (model.error as? MfaError.Unexpected)?.serverMessage ?: words.description,
+        message = model.error.descriptionToShow(words),
         actionTitle = when (model.exit) {
             MfaExit.StartOver -> messages.errors.startOver
             MfaExit.Close -> messages.errors.close
         },
         onRetry = { model.leave() },
     )
+}
+
+/** The longest explanation from the server the error screen shows; it is untranslated text we did not write. */
+internal const val MAX_SERVER_EXPLANATION = 200
+
+/** What the error screen says under its title: the server's explanation, cut short, or else our words for the error. */
+internal fun MfaError.descriptionToShow(words: ResolvedMfaMessages.Message): String {
+    val explanation = (this as? MfaError.Unexpected)?.serverMessage?.trim().orEmpty()
+    return when {
+        explanation.isEmpty() -> words.description
+        explanation.length <= MAX_SERVER_EXPLANATION -> explanation
+        else -> explanation.take(MAX_SERVER_EXPLANATION).trimEnd() + "…"
+    }
 }
 
 /** The spinner with its caption, announced once to screen readers, with the device's name when it has one. */

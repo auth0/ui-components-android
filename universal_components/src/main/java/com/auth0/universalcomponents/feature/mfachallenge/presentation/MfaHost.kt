@@ -4,10 +4,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
+import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
@@ -29,6 +32,9 @@ import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
  *
  * While [isAwaitingApp], MFA has ended and the app decides what happens next: a spinner (with the loading label for
  * screen readers) takes the place of the step, so the error MFA ended on never shows if the app takes over.
+ *
+ * A headless app draws every MFA screen itself, so this draws nothing for it, except what login owns: that wait, and the
+ * "not available" screen.
  */
 @Composable
 internal fun MfaHost(
@@ -39,6 +45,8 @@ internal fun MfaHost(
     isAwaitingApp: Boolean = false,
 ) {
     val state by engine.state.collectAsStateWithLifecycle()
+    val currentOnLeave by rememberUpdatedState(onLeave)
+    if (configuration.presentation is MfaPresentation.Headless && !isAwaitingApp && !state.isNoEligibleFactors) return
     val messages = configuration.messages.resolve()
     AnimatedContent(
         targetState = if (isAwaitingApp) null else state,
@@ -52,7 +60,10 @@ internal fun MfaHost(
         if (visibleState == null) {
             MfaLoadingScreen(LoadingModel(), messages = messages)
         } else {
-            val step = visibleState.toMfaStep(onIntent = engine::onIntent, onLeave = onLeave)
+            // Built once per state, not on every recomposition: the host recomposes for reasons that change nothing here.
+            val step = remember(visibleState, engine) {
+                visibleState.toMfaStep(onIntent = engine::onIntent, onLeave = { currentOnLeave() })
+            }
             MfaStepContent(step, configuration, messages)
         }
     }

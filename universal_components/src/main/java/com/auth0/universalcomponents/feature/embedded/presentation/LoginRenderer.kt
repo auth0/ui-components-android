@@ -1,9 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.res.stringResource
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
@@ -11,10 +9,8 @@ import com.auth0.universalcomponents.feature.embedded.presentation.screens.Login
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginNoMethodsScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginSuccessScreen
 import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
-import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaHost
-import com.auth0.universalcomponents.feature.mfachallenge.presentation.isNoEligibleFactors
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 
@@ -116,19 +112,13 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
             onResend = { context.dispatch(LoginEvent.Resend) },
         )
 
-        // A headless app draws MFA itself, from its step stream, except what is login's: the "not available" screen, and
-        // the wait for the app.
-        is ScreenPlan.Mfa -> {
-            val state by plan.engine.state.collectAsStateWithLifecycle()
-            if (context.mfa.presentation == MfaPresentation.Standard || state.isNoEligibleFactors || plan.isAwaitingApp) {
-                MfaHost(
-                    plan.engine,
-                    onLeave = { context.dispatch(LoginEvent.LeaveMfa) },
-                    configuration = context.mfa,
-                    isAwaitingApp = plan.isAwaitingApp,
-                )
-            }
-        }
+        // MfaHost knows what a headless app leaves to login: the wait for the app, and the "not available" screen.
+        is ScreenPlan.Mfa -> MfaHost(
+            plan.engine,
+            onLeave = { context.dispatch(LoginEvent.LeaveMfa) },
+            configuration = context.mfa,
+            isAwaitingApp = plan.isAwaitingApp,
+        )
 
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 

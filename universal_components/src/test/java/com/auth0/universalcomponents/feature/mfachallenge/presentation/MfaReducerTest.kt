@@ -428,6 +428,25 @@ class MfaReducerTest {
     }
 
     @Test
+    fun `back - while a resend is going out - is ignored, so a second push can't follow`() {
+        val resendingWithChoice = waiting(TWO, PHONE).copy(phase = PushPhase.Resending)
+        val resendingAlone = waiting(ONE, PHONE).copy(phase = PushPhase.Resending)
+
+        val ignoredWithChoice = twoDevices.handleIntent(resendingWithChoice, MfaIntent.Back)
+        val ignoredAlone = oneDevice.handleIntent(resendingAlone, MfaIntent.Back)
+
+        assertThat(ignoredWithChoice).isEqualTo(MfaUpdate(resendingWithChoice))
+        assertThat(ignoredAlone).isEqualTo(MfaUpdate(resendingAlone))
+    }
+
+    @Test
+    fun `cancel - while a resend is going out - still leaves MFA`() {
+        val resending = waiting(TWO, PHONE).copy(phase = PushPhase.Resending)
+
+        assertThat(twoDevices.handleIntent(resending, MfaIntent.Cancel).effect).isEqualTo(MfaEffect.Restart)
+    }
+
+    @Test
     fun `back - on the push with a choice - goes back to the list`() {
         val update = twoDevices.handleIntent(waiting(TWO, PHONE), MfaIntent.Back)
 

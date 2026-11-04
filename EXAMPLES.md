@@ -394,7 +394,7 @@ The `Handled` spinner has no button of its own; **Back** returns to email entry.
 
 **Always add an `else` branch** when you switch over `MfaError`: a later release can add cases, and Kotlin can't warn about a case it doesn't know yet. The compiler may call the branch redundant today; it is what keeps your app working once a case is added.
 
-The cases are `TokenExpired`, `TokenInvalid`, `Rejected`, `TooManyAttempts`, `NoEligibleFactors`, `Network` and `Unexpected(serverMessage)`. `Cancelled` and `PresentationUnavailable` exist for a later release and are not sent by embedded login today. `MfaError` is an `Exception`, and its `cause` holds the SDK's own error when there is one (for example `error.cause as? EmbeddedAuthException`). Its `toString()` names the case only, so logging it never writes a server message or a device name. Adding `onMfaError` is source-compatible, but your app must be recompiled against this version.
+The cases are `TokenExpired`, `TokenInvalid`, `Rejected`, `TooManyAttempts`, `NoEligibleFactors`, `Network` and `Unexpected(serverMessage)`. `PresentationUnavailable` exists for a later release and embedded login never produces it. `Cancelled` is never sent to `onMfaError` (leaving isn't a failure); a headless app sees it only as `MfaResult.Ended(Cancelled)`. `MfaError` is an `Exception`, and its `cause` holds the SDK's own error when there is one (for example `error.cause as? EmbeddedAuthException`). Its `message` is null and its `toString()` names the case only, so logging the error itself never writes a server message or a device name. Its `cause` can hold the server's words, so don't show it or send it to analytics as it is. Adding `onMfaError` is source-compatible, but your app must be recompiled against this version.
 
 ### Customize MFA
 
@@ -535,7 +535,7 @@ Box {
 - **`result`** is `null` while MFA runs and is cleared when the next MFA starts. It becomes `MfaResult.SignedIn`, or `MfaResult.Ended(error)`: `MfaError.Cancelled` when the user left, otherwise the error. `onAuthenticated` and `onMfaError` are called as usual.
 - **Every control is an action on a model.** To leave MFA, call `cancel()`; on the error step, `leave()` returns to email entry.
 - **The login frame stays:** its navigation bar and system Back are still there, and Back behaves as in the standard screens. A `BackHandler` you add inside your own UI takes precedence.
-- **Rotation is safe** because you hold the stream and the flow lives in a ViewModel. **Process death** starts again from email entry; the stream isn't saved.
+- **Rotation is safe:** the flow lives in a ViewModel, and the new stream your `remember` makes after a rotation is filled with the current step and result again. **Process death** starts again from email entry; the stream isn't saved.
 
 #### More than one step (level 6)
 

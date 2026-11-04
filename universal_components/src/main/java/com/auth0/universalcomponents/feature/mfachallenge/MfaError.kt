@@ -10,10 +10,11 @@ import com.auth0.universalcomponents.domain.error.ResultError
  * branch redundant today; it is what keeps your app working once a case is added.
  *
  * Each case keeps the failure behind it as its [cause], for an app that wants the SDK's own details (read it as
- * `error.cause as? EmbeddedAuthException`); the cases MFA decides on its own have none. [toString] names the case only,
- * so logging an error never writes a server message or a device name.
+ * `error.cause as? EmbeddedAuthException`); the cases MFA decides on its own have none. [message] is null and
+ * [toString] names the case only, so logging the error itself never writes a server message or a device name. The
+ * [cause] can: it may hold the server's words, so don't show it to the user or send it to analytics as it is.
  */
-sealed class MfaError(cause: Throwable?) : Exception(cause), ResultError {
+sealed class MfaError(cause: Throwable?) : Exception(null as String?, cause), ResultError {
 
     /** The user left MFA. Only a headless app sees it, as `MfaResult.Ended`; it is never sent to `onMfaError`. */
     class Cancelled : MfaError(null)

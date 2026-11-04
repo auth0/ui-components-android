@@ -41,4 +41,15 @@ class MfaStepTest {
         stream.finish(null)
         assertThat(stream.result.value).isNull()
     }
+
+    @Test
+    fun `constructors - the shortest form of each model - stays, so a field added later does not break a compiled app`() {
+        // Only the models without a value-class parameter: Kotlin mangles the constructors of the others.
+        PushChallengeModel::class.java.getConstructor(String::class.java)
+        AuthenticatorListModel::class.java.getConstructor(AuthenticatorListHeader::class.java, List::class.java)
+        ErrorModel::class.java.getConstructor(MfaError::class.java)
+        LoadingModel::class.java.getConstructor()
+        MfaConfiguration::class.java.getConstructor()
+        MfaConfiguration::class.java.getConstructor(MfaMessages::class.java)
+    }
 }
