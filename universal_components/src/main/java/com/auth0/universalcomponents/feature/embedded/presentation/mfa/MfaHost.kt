@@ -12,8 +12,8 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLogin
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginErrorScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.MfaFactorListScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.MfaPushScreen
-import com.auth0.universalcomponents.feature.embedded.presentation.stepTransition
 import com.auth0.universalcomponents.feature.embedded.presentation.text
+import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 
 /**
  * Draws [engine]'s steps and sends every tap straight back to it, so whoever hosts MFA needs to know nothing of its

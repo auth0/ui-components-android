@@ -6,6 +6,10 @@ import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
 /**
  * Where the login flow is, with everything its screen shows. The ViewModel moves between steps;
  * the renderer draws one screen per step.
+ *
+ * Every step is a plain value except [Mfa], which carries a live engine (a coroutine scope and mutable state). Two
+ * [Mfa] steps are equal when they hold the same engine, and a [copy][Mfa.copy] points at the same running engine, not a
+ * new one, so don't treat it as a value like the others.
  */
 internal sealed interface LoginStep {
 
