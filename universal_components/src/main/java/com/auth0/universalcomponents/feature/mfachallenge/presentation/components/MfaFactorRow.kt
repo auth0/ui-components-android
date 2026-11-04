@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.presentation.components
+package com.auth0.universalcomponents.feature.mfachallenge.presentation.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.feature.embedded.presentation.components.HAIRLINE
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.theme.Auth0Theme
 

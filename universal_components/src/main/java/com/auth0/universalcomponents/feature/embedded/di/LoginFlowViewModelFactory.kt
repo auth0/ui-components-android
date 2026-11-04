@@ -3,8 +3,8 @@ package com.auth0.universalcomponents.feature.embedded.di
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
-import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginFlowViewModel
+import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 
 internal class LoginFlowViewModelFactory(
     private val repository: EmbeddedLoginRepository,

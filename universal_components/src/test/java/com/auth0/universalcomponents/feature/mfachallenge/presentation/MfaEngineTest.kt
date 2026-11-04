@@ -1,11 +1,11 @@
-package com.auth0.universalcomponents.feature.embedded.presentation.mfa
+package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
-import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
+import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery

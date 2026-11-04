@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaHost
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
@@ -12,6 +11,7 @@ import com.auth0.universalcomponents.feature.embedded.presentation.screens.Login
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginLoadingScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginNoMethodsScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginSuccessScreen
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 
 /** What a screen needs from the host, without knowing about the ViewModel. */
 internal class RenderContext(

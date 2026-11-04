@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.data.repository
+package com.auth0.universalcomponents.feature.mfachallenge.data.repository
 
 import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.android.embedded.EmbeddedAuthError
@@ -7,9 +7,13 @@ import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAuthSteps
+import com.auth0.universalcomponents.feature.embedded.data.repository.failingWith
+import com.auth0.universalcomponents.feature.embedded.data.repository.sdkInstance
+import com.auth0.universalcomponents.feature.embedded.data.repository.step
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.every

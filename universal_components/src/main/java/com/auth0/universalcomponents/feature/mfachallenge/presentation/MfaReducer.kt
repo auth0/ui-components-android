@@ -1,8 +1,8 @@
-package com.auth0.universalcomponents.feature.embedded.presentation.mfa
+package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 
 /**
  * Every MFA rule in one place: the step on show plus an input gives the next step, maybe with work to run and an

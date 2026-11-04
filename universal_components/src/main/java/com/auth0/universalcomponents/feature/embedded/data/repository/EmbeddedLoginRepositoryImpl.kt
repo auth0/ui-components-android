@@ -11,11 +11,11 @@ import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.domain.network.EmptyResult
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.data.mapper.toLoginOption
-import com.auth0.universalcomponents.feature.embedded.data.mapper.toMfaFactors
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
+import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFactors
 import com.auth0.universalcomponents.utils.logging.Logger
 
 /**

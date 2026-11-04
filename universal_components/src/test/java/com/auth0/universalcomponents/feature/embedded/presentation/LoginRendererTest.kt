@@ -1,7 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
 import org.junit.Test

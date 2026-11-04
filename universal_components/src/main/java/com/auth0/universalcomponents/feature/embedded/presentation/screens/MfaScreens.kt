@@ -16,12 +16,12 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginPrimaryButton
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenHeader
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginTextButton
-import com.auth0.universalcomponents.feature.embedded.presentation.components.MfaFactorRow
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.components.MfaFactorRow
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.theme.Auth0Theme
 

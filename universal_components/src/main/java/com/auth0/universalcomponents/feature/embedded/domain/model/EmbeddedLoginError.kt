@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.domain.model
 
 import com.auth0.universalcomponents.domain.error.ResultError
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 
 /** What went wrong in the login flow. It only names the problem; the presentation layer picks the words. */
 internal sealed interface EmbeddedLoginError {

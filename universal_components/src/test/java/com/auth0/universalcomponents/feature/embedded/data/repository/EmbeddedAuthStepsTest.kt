@@ -6,6 +6,7 @@ import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Re
 import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.result.Credentials
+import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.every

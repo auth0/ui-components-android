@@ -1,15 +1,18 @@
-package com.auth0.universalcomponents.feature.embedded.data.repository
+package com.auth0.universalcomponents.feature.mfachallenge.data.repository
 
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.data.mapper.toMfaFactors
+import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAuthSteps
+import com.auth0.universalcomponents.feature.embedded.data.repository.StepAnswer
+import com.auth0.universalcomponents.feature.embedded.data.repository.mfaError
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
-import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
-import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
+import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFactors
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
+import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
 
 /**

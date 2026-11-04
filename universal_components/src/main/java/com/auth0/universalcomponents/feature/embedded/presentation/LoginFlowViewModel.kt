@@ -8,12 +8,12 @@ import com.auth0.universalcomponents.domain.network.onSuccess
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
-import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEffect
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaReducer
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEffect
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaReducer
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel

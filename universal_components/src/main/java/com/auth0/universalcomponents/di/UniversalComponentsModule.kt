@@ -21,8 +21,8 @@ import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedAuthSteps
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
-import com.auth0.universalcomponents.feature.embedded.data.repository.MfaRepositoryImpl
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
+import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl
 
 object UniversalComponentsModule {
 

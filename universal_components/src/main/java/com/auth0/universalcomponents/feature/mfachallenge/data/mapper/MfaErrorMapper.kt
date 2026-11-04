@@ -1,7 +1,8 @@
-package com.auth0.universalcomponents.feature.embedded.data.mapper
+package com.auth0.universalcomponents.feature.mfachallenge.data.mapper
 
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthException
+import com.auth0.universalcomponents.feature.embedded.data.mapper.serverDescription
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
 
 /**

@@ -1,7 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 
 /**
  * Where the login flow is, with everything its screen shows. The ViewModel moves between steps;

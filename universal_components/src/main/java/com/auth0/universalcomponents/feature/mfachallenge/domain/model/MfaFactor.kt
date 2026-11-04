@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.embedded.domain.model
+package com.auth0.universalcomponents.feature.mfachallenge.domain.model
 
 import com.auth0.android.result.Credentials
 
