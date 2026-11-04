@@ -2,7 +2,6 @@ package com.auth0.universalcomponents.feature.embedded.presentation.mfa
 
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -24,15 +23,18 @@ import kotlinx.coroutines.launch
  * [step] is what [MfaHost] draws, and taps come back through [onIntent]. It is ready as soon as the engine exists,
  * but nothing runs until [start]: the host stores the engine first, so an effect sent while starting finds it.
  * After [stop], [step] keeps its last value (the screen may still be animating out) and taps are ignored.
+ *
+ * The engine is confined to the main thread: [hostScope] must run on it (the ViewModel's does), and so must every
+ * call. Its state is plain, not atomic, because a single thread is what keeps the reducer's read-then-write of [step]
+ * safe; making one flag atomic would not make the rest so.
  */
 internal class MfaEngine(
-    factors: List<MfaFactor>,
+    private val reducer: MfaReducer,
     private val repository: MfaRepository,
     hostScope: CoroutineScope,
     private val onEffect: (MfaEffect) -> Unit,
 ) {
 
-    private val reducer = MfaReducer(factors)
     private val job = SupervisorJob(hostScope.coroutineContext[Job])
     private val scope = CoroutineScope(hostScope.coroutineContext + job)
 
@@ -61,7 +63,11 @@ internal class MfaEngine(
     /** System back or the top-bar arrow; MFA decides what it means on the screen on show. */
     fun back() = onIntent(MfaIntent.Back)
 
-    /** Ends this run: nothing it started reaches the host any more. */
+    /**
+     * Ends this run: nothing it started reaches the host any more. It can't be undone, so the host builds a new engine
+     * for the next visit rather than starting this one again. Nothing is left to clean up: the waits and the countdown
+     * are cancelled with the job, and a call already on its way can't be recalled but its answer is dropped.
+     */
     fun stop() = job.cancel()
 
     private fun onOutcome(outcome: MfaOutcome) = applyUpdate(reducer.handleOutcome(_step.value, outcome))

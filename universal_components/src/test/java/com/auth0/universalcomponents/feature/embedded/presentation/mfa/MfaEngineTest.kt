@@ -230,7 +230,7 @@ class MfaEngineTest {
 
     @Test
     fun `created but not started - shows its first step and runs nothing`() = runTest {
-        val engine = MfaEngine(listOf(PHONE), repository, backgroundScope, onEffect = { effects += it })
+        val engine = MfaEngine(MfaReducer(listOf(PHONE)), repository, backgroundScope, onEffect = { effects += it })
         waitFor(POLL)
 
         assertThat(engine.step.value)
@@ -269,7 +269,7 @@ class MfaEngineTest {
      */
     private fun TestScope.started(vararg factors: MfaFactor.Push, select: MfaFactor.Push? = null): MfaEngine {
         val engine = MfaEngine(
-            factors = factors.toList(),
+            reducer = MfaReducer(factors.toList()),
             repository = repository,
             hostScope = backgroundScope,
             onEffect = { effects += it },

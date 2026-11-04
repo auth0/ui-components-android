@@ -13,6 +13,7 @@ import com.auth0.universalcomponents.feature.embedded.domain.repository.Embedded
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEffect
 import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
+import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaReducer
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -155,7 +156,7 @@ internal class LoginFlowViewModel(
      */
     private fun startMfa(identifier: String, factors: List<MfaFactor>) {
         val engine = MfaEngine(
-            factors = factors,
+            reducer = MfaReducer(factors),
             repository = mfaRepository,
             hostScope = viewModelScope,
             onEffect = { effect -> endMfa(identifier, effect) },

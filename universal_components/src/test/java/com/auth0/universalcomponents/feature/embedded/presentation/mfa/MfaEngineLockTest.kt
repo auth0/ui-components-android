@@ -52,14 +52,13 @@ class MfaEngineLockTest {
         val check = InFlightRequest<Credentials>()
         every { client.verifyOob() } returns check
         val engine = MfaEngine(
-            factors = listOf(PHONE, TABLET),
+            reducer = MfaReducer(listOf(PHONE, TABLET)),
             repository = MfaRepositoryImpl(EmbeddedAuthSteps(client)),
             hostScope = backgroundScope,
             onEffect = {},
         )
         engine.start()
         engine.onIntent(MfaIntent.SelectFactor(PHONE))
-        runCurrent()
         advanceTimeBy(POLL_MS)
         runCurrent()
         verify(exactly = 1) { client.verifyOob() }
