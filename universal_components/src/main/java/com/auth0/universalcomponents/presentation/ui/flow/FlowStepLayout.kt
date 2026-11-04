@@ -22,7 +22,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * when it fits, pinned actions still sit at the bottom.
  */
 @Composable
-internal fun LoginStepLayout(
+internal fun FlowStepLayout(
     pageDescription: @Composable () -> Unit,
     content: @Composable () -> Unit,
     primaryAction: @Composable () -> Unit,

@@ -11,7 +11,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 
 /** The main call-to-action, drawn with the library's shared button. */
 @Composable
-internal fun LoginPrimaryButton(
+internal fun FlowPrimaryButton(
     title: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

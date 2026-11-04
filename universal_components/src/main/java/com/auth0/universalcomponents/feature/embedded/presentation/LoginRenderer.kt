@@ -15,8 +15,8 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaHost
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.isNoEligibleFactors
-import com.auth0.universalcomponents.presentation.ui.flow.LoginErrorScreen
-import com.auth0.universalcomponents.presentation.ui.flow.LoginLoadingScreen
+import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
+import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 
 /** What a screen needs from the host, without knowing about the ViewModel. */
 internal class RenderContext(
@@ -97,7 +97,7 @@ internal fun plan(step: LoginStep): ScreenPlan = when (step) {
 @Composable
 internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
     when (plan) {
-        ScreenPlan.Loading -> LoginLoadingScreen()
+        ScreenPlan.Loading -> FlowLoadingScreen()
 
         is ScreenPlan.Identifier -> LoginEmailScreen(
             email = plan.email,
@@ -119,7 +119,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
         // A headless app draws MFA itself, from its step stream, except what is login's: the "not available" screen, and
         // the wait for the app.
         is ScreenPlan.Mfa -> {
-            val state by plan.engine.step.collectAsStateWithLifecycle()
+            val state by plan.engine.state.collectAsStateWithLifecycle()
             if (context.mfa.presentation == MfaPresentation.Standard || state.isNoEligibleFactors || plan.isAwaitingApp) {
                 MfaHost(
                     plan.engine,
@@ -132,7 +132,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
 
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 
-        is ScreenPlan.Failed -> LoginErrorScreen(
+        is ScreenPlan.Failed -> FlowErrorScreen(
             message = plan.error.text(),
             onRetry = { context.dispatch(LoginEvent.Retry) },
         )

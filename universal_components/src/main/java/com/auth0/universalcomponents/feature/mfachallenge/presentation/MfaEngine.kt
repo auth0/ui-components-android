@@ -16,20 +16,20 @@ import kotlinx.coroutines.launch
 import kotlin.time.TimeSource
 
 /**
- * One run of MFA: holds the step on show, runs the work [MfaReducer] asks for, and reports the end through
+ * One run of MFA: holds the state on show, runs the work [MfaReducer] asks for, and reports the end through
  * [onEffect]. It makes no decisions itself and knows nothing about the first factor, so any host can own it:
  * embedded login today, a standalone MFA component or step-up later. Its work runs in a child of [hostScope]
  * that [stop] cancels, so the host ends MFA with one call.
  *
- * [step] is what [MfaHost] draws, and taps come back through [onIntent]. It is ready as soon as the engine exists,
+ * [state] is what [MfaHost] draws, and taps come back through [onIntent]. It is ready as soon as the engine exists,
  * but nothing runs until [start]: the host stores the engine first, so an effect sent while starting finds it.
- * After [stop], [step] keeps its last value (the screen may still be animating out) and taps are ignored.
+ * After [stop], [state] keeps its last value (the screen may still be animating out) and taps are ignored.
  *
  * Checks carry on while the app is in the background, so an approval given in another app is seen as soon as the
  * server has it and the screen is up to date when the user comes back.
  *
  * The engine is confined to the main thread: [hostScope] must run on it (the ViewModel's does), and so must every
- * call. Its state is plain, not atomic, because a single thread is what keeps the reducer's read-then-write of [step]
+ * call. Its state is plain, not atomic, because a single thread is what keeps the reducer's read-then-write of [state]
  * safe; making one flag atomic would not make the rest so.
  */
 internal class MfaEngine(
@@ -43,18 +43,18 @@ internal class MfaEngine(
     private val job = SupervisorJob(hostScope.coroutineContext[Job])
     private val scope = CoroutineScope(hostScope.coroutineContext + job)
 
-    private val first = reducer.start()
-    private val _step = MutableStateFlow(first.step)
-    val step: StateFlow<MfaState> = _step.asStateFlow()
+    private val initialUpdate = reducer.start()
+    private val _state = MutableStateFlow(initialUpdate.state)
+    val state: StateFlow<MfaState> = _state.asStateFlow()
 
     /** The wait before the next push check. The check itself runs on its own, so cancelling this never cuts it off. */
-    private var pushCheckWait: Job? = null
+    private var pushCheckTimer: Job? = null
 
     /**
      * The push being sent, from the moment it waits its turn at the SDK. Cancelling it drops a push the user has left
      * (it is never sent if it hasn't started), and a call already on its way finishes but is not heard.
      */
-    private var pushSend: Job? = null
+    private var pushSendJob: Job? = null
 
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
@@ -69,10 +69,10 @@ internal class MfaEngine(
     fun start() {
         if (isStarted) return
         isStarted = true
-        applyUpdate(first)
+        applyUpdate(initialUpdate)
     }
 
-    fun onIntent(intent: MfaIntent) = applyUpdate(reducer.handleIntent(_step.value, intent))
+    fun onIntent(intent: MfaIntent) = applyUpdate(reducer.handleIntent(_state.value, intent))
 
     /** System back or the top-bar arrow; MFA decides what it means on the screen on show. */
     fun back() = onIntent(MfaIntent.Back)
@@ -92,7 +92,7 @@ internal class MfaEngine(
     fun onAppForegrounded() {
         if (!isInBackground) return
         isInBackground = false
-        applyUpdate(reducer.handleAppForegrounded(_step.value))
+        applyUpdate(reducer.handleAppForegrounded(_state.value))
     }
 
     /** False once MFA has ended, one way or another; the host then owns what is left on screen. */
@@ -106,12 +106,12 @@ internal class MfaEngine(
      */
     fun stop() = job.cancel()
 
-    private fun onOutcome(outcome: MfaOutcome) = applyUpdate(reducer.handleOutcome(_step.value, outcome))
+    private fun onOutcome(outcome: MfaOutcome) = applyUpdate(reducer.handleOutcome(_state.value, outcome))
 
     /** An effect means MFA is over, so the engine stops itself once it has told the host; no timer outlives it. */
     private fun applyUpdate(update: MfaUpdate) {
         if (!job.isActive) return
-        _step.value = update.step
+        _state.value = update.state
         update.commands.forEach(::runCommand)
         update.effect?.let { effect ->
             stop()
@@ -124,18 +124,18 @@ internal class MfaEngine(
             // A check still on its way finishes first: the repository runs one SDK step at a time. A send that is
             // replaced, or abandoned, is cancelled, so an old push can't answer for a newer one.
             is MfaCommand.SendPush -> {
-                pushSend?.cancel()
-                pushSend = scope.launch {
+                pushSendJob?.cancel()
+                pushSendJob = scope.launch {
                     val sent = repository.sendPush(command.factor)
                     onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
                 }
             }
 
             is MfaCommand.SchedulePushCheck -> {
-                pushCheckWait?.cancel()
-                pushCheckWait = scope.launch {
+                pushCheckTimer?.cancel()
+                pushCheckTimer = scope.launch {
                     delay(command.afterMs)
-                    applyUpdate(reducer.handlePushCheckDue(_step.value))
+                    applyUpdate(reducer.handlePushCheckDue(_state.value))
                 }
             }
 
@@ -144,8 +144,8 @@ internal class MfaEngine(
             MfaCommand.CheckPush -> scope.launch { onOutcome(checkPushStatus()) }
 
             MfaCommand.CancelPushWork -> {
-                pushCheckWait?.cancel()
-                pushSend?.cancel()
+                pushCheckTimer?.cancel()
+                pushSendJob?.cancel()
             }
 
             MfaCommand.CountDownResend -> countDownResend()
@@ -176,7 +176,7 @@ internal class MfaEngine(
         resendCountdownJob = scope.launch {
             delay(ONE_SECOND_MILLIS)
             val passed = (startedAt.elapsedNow().inWholeMilliseconds + HALF_SECOND_MILLIS) / ONE_SECOND_MILLIS
-            applyUpdate(reducer.handleSecondPassed(_step.value, seconds = passed.toInt()))
+            applyUpdate(reducer.handleSecondPassed(_state.value, seconds = passed.toInt()))
         }
     }
 

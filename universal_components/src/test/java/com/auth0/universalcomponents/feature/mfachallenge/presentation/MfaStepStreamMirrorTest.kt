@@ -24,7 +24,7 @@ import org.junit.Test
 
 /** A headless app draws from the stream, so a run of the real engine is read there as steps. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class MfaStreamBridgeTest {
+class MfaStepStreamMirrorTest {
 
     private lateinit var repository: MfaRepository
     private val stream = MfaStepStream()
@@ -114,7 +114,7 @@ class MfaStreamBridgeTest {
         val engine = started()
 
         assertThat(stream.step.value).isNull()
-        assertThat(engine.step.value.isNoEligibleFactors).isTrue()
+        assertThat(engine.state.value.isNoEligibleFactors).isTrue()
         assertThat(effects).hasSize(1)
     }
 

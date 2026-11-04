@@ -12,12 +12,12 @@ import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-class MfaStepProjectionTest {
+class MfaStepMapperTest {
 
     private val intents = mutableListOf<MfaIntent>()
     private var left = 0
 
-    private fun project(state: MfaState) = project(state, onIntent = { intents += it }, onLeave = { left++ })
+    private fun project(state: MfaState) = state.toMfaStep(onIntent = { intents += it }, onLeave = { left++ })
 
     // region what each state shows
 
@@ -162,28 +162,6 @@ class MfaStepProjectionTest {
 
         assertThat(left).isEqualTo(1)
         assertThat(intents).isEmpty()
-    }
-
-    // endregion
-
-    // region equality
-
-    @Test
-    fun `models - built twice with different actions - are equal, so a stream does not announce them again`() {
-        val state = waiting(TWO, PHONE)
-
-        val first = project(state, onIntent = {}, onLeave = {})
-        val second = project(state, onIntent = { intents += it }, onLeave = { left++ })
-
-        assertThat(first).isEqualTo(second)
-    }
-
-    @Test
-    fun `models - a changed countdown - are different`() {
-        val first = project(waiting(TWO, PHONE).copy(resendSecondsLeft = 10))
-        val second = project(waiting(TWO, PHONE).copy(resendSecondsLeft = 9))
-
-        assertThat(first).isNotEqualTo(second)
     }
 
     // endregion

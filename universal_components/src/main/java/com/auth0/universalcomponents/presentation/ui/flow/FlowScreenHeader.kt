@@ -17,7 +17,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 
 /** The page title, with an optional subtitle and "Edit" action. [bottomSpacing] overrides the gap to the content. */
 @Composable
-internal fun LoginScreenHeader(
+internal fun FlowScreenHeader(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,

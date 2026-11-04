@@ -495,37 +495,10 @@ mfa = MfaConfiguration(
 
 - **A replaced screen is drawn inside the login frame** (below its navigation bar), in place of the standard one.
 - **Models hold data only.** The push model changes every second while Resend counts down (`resendAvailableIn`), so always draw from the model you are given.
-- **Actions are `MfaAction`s:** call them like functions (`model.resend()`). All actions are equal to each other, so two models are equal when their data is.
+- **Actions are plain functions on the model:** call them (`model.resend()`). Functions only equal themselves, so to check what a model shows in a test, compare its fields rather than whole models.
 - **Timers keep running** while your screen is shown: the countdown, the checks and the quiet retries belong to MFA, not to the screen.
-- **A factor's screen can also be replaced by its id:** `replace(MfaFactorId.Push) { model, messages -> … }` is what `pushChallenge { … }` does. The model is that factor's (a `PushChallengeModel` for push); a model of another type draws nothing.
 - **There is no screen to replace for loading.** `loading.accessibilityLabel` is its only text.
-
-#### Use the standard screens on their own
-
-The standard screens are public composables that take a model, so you can keep the look for a step you don't want to redraw, or drive your own flow with a model you build. They draw no frame (no navigation bar or background): place them inside your own, and inside `Auth0Theme { }` (`EmbeddedLoginScreen` already provides it; without a theme they throw). `messages` defaults to the library's words; pass `MfaMessages { … }.resolve()` to use yours.
-
-| Screen | Model |
-| --- | --- |
-| `MfaAuthenticatorListScreen` | `AuthenticatorListModel` |
-| `MfaPushChallengeScreen` | `PushChallengeModel` |
-| `MfaErrorScreen` | `ErrorModel` |
-| `MfaLoadingScreen` | `LoadingModel` |
-
-The models need only their data, so they are easy to build for a preview or a test; every action defaults to doing nothing:
-
-```kotlin
-Auth0Theme {
-    MfaPushChallengeScreen(
-        model = PushChallengeModel(
-            deviceName = "Jane's phone",
-            canResend = true,
-            resendAvailableIn = 42,
-            canSwitch = true,
-            resend = MfaAction { /* send the request again */ },
-        ),
-    )
-}
-```
+- **The models need only their data**, so they are easy to build for a preview or a test of your own screen; every action defaults to doing nothing.
 
 MFA itself only runs inside `EmbeddedLoginScreen` for now. A standalone MFA component, for an API that answers `mfa_required` (step-up), is planned and not available yet.
 

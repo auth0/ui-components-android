@@ -4,12 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
-import com.auth0.universalcomponents.presentation.ui.flow.LoginStatusScreen
+import com.auth0.universalcomponents.presentation.ui.flow.FlowStatusScreen
 
 /** Shown briefly before the app moves on. */
 @Composable
 internal fun LoginSuccessScreen(modifier: Modifier = Modifier) {
-    LoginStatusScreen(title = stringResource(R.string.embedded_login_success_title), modifier = modifier)
+    FlowStatusScreen(title = stringResource(R.string.embedded_login_success_title), modifier = modifier)
 }
 
 /** The server offered nothing this flow can drive. A null [onBack] hides "Go back". */
@@ -18,7 +18,7 @@ internal fun LoginNoMethodsScreen(
     modifier: Modifier = Modifier,
     onBack: (() -> Unit)? = null,
 ) {
-    LoginStatusScreen(
+    FlowStatusScreen(
         title = stringResource(R.string.embedded_login_no_methods_title),
         description = stringResource(R.string.embedded_login_no_methods_description),
         actionTitle = stringResource(R.string.embedded_login_go_back),

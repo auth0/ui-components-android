@@ -26,7 +26,7 @@ private const val ERROR_BORDER_ALPHA = 0.18f
 
 /** The white, softly lifted surface behind a field; lifts further when focused. */
 @Composable
-internal fun Modifier.loginSurface(shape: Shape, isFocused: Boolean, isError: Boolean): Modifier {
+internal fun Modifier.flowSurface(shape: Shape, isFocused: Boolean, isError: Boolean): Modifier {
     val colors = Auth0Theme.colors
     val elevation by animateDpAsState(
         targetValue = if (isFocused) Auth0Theme.dimensions.spacingXxs else HAIRLINE,
@@ -52,7 +52,7 @@ internal fun Modifier.loginSurface(shape: Shape, isFocused: Boolean, isError: Bo
 
 /** The base background with a soft brand glow along the bottom. */
 @Composable
-internal fun Modifier.loginBackground(): Modifier {
+internal fun Modifier.flowBackground(): Modifier {
     val base = Auth0Theme.colors.backgroundLayerBase
     val glow = Auth0Theme.colors.backgroundAccent.copy(alpha = GLOW_ALPHA)
     return this

@@ -12,10 +12,10 @@ class ResolvedMfaMessages internal constructor(
     val pushChallenge: PushChallenge,
 ) {
 
-    class Text internal constructor(val title: String, val description: String)
+    class Message internal constructor(val title: String, val description: String)
 
     class AuthenticatorList internal constructor(val headers: Headers) {
-        class Headers internal constructor(val challenge: Text, val challengeAdditional: Text)
+        class Headers internal constructor(val challenge: Message, val challengeAdditional: Message)
     }
 
     class Loading internal constructor(val accessibilityLabel: String)
@@ -23,18 +23,19 @@ class ResolvedMfaMessages internal constructor(
     class Errors internal constructor(
         val startOver: String,
         val close: String,
-        private val texts: Map<Class<out MfaError>, Text>,
+        private val messageByError: Map<Class<out MfaError>, Message>,
     ) {
 
         /**
          * The words for [error]. An error with none of its own gets the [MfaError.Unexpected] ones: one this version
          * does not know, or [MfaError.PresentationUnavailable], which is never shown.
          */
-        fun textFor(error: MfaError): Text = texts[error.javaClass] ?: texts.getValue(MfaError.Unexpected::class.java)
+        fun messageFor(error: MfaError): Message =
+            messageByError[error.javaClass] ?: messageByError.getValue(MfaError.Unexpected::class.java)
     }
 
     class PushChallenge internal constructor(
-        val row: Text,
+        val row: Message,
         val title: String,
         val description: (deviceName: String) -> String,
         val descriptionUnnamed: String,

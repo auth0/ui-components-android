@@ -69,7 +69,7 @@ class MfaEngineLockTest {
 
         // The check holds the SDK session, so the second push hasn't touched it yet.
         verify(exactly = 0) { client.challengePush(TABLET.index) }
-        assertThat(engine.step.value).isInstanceOf(MfaState.SendingChallenge::class.java)
+        assertThat(engine.state.value).isInstanceOf(MfaState.SendingChallenge::class.java)
 
         check.fail(pending())
         runCurrent()
@@ -78,7 +78,7 @@ class MfaEngineLockTest {
             client.verifyOob()
             client.challengePush(TABLET.index)
         }
-        val shown = engine.step.value as MfaState.PushWaiting
+        val shown = engine.state.value as MfaState.PushWaiting
         assertThat(shown.factor).isEqualTo(TABLET)
         assertThat(shown.phase).isEqualTo(PushPhase.Waiting)
     }
@@ -117,7 +117,7 @@ class MfaEngineLockTest {
 
         // The tablet push the user picked in round 1 would have gone out on the round-2 session.
         verify(exactly = 0) { client.challengePush(TABLET.index) }
-        assertThat(engine.step.value).isEqualTo(
+        assertThat(engine.state.value).isEqualTo(
             MfaState.ChooseFactor(MfaRound(2, listOf(PHONE, TABLET))),
         )
     }

@@ -5,8 +5,11 @@ import androidx.compose.runtime.Immutable
 
 /*
  * What MFA shows at one moment, as data: the same for the standard screens, a screen the app replaced, and an app that
- * draws everything itself (headless). The models hold data only; the words come from the app's MfaMessages, and a
- * replaced screen receives the resolved words together with its model.
+ * draws everything itself (headless). A model holds data and one function per control; the words come from the app's
+ * MfaMessages, and a replaced screen receives the resolved words together with its model.
+ *
+ * Functions only equal themselves, so two models are equal when they hold the same data and the very same functions:
+ * to check what a model shows, compare its fields.
  *
  * A model can change often (the push model every second, while the resend wait counts down), so draw from the latest
  * one. A later release may add steps, factors and error cases: give every `when` over these types an `else` branch.
@@ -34,7 +37,7 @@ sealed interface MfaStep {
 
 /** [cancel] leaves MFA, when the user may; null when there is nothing to cancel. */
 @Immutable
-data class LoadingModel(val cancel: MfaAction? = null)
+data class LoadingModel(val cancel: (() -> Unit)? = null)
 
 /** Which words head the list. */
 enum class AuthenticatorListHeader {
@@ -57,8 +60,8 @@ data class AuthenticatorListModel(
     val rows: List<Row>,
     val round: Int = 1,
     val pendingRowId: String? = null,
-    val select: MfaSelectAction = MfaSelectAction { },
-    val cancel: MfaAction = MfaAction.None,
+    val select: (rowId: String) -> Unit = {},
+    val cancel: () -> Unit = {},
 ) {
 
     /**
@@ -72,7 +75,7 @@ data class AuthenticatorListModel(
         val factor: MfaFactorId,
         val title: String,
         val subtitle: String? = null,
-        @DrawableRes val icon: Int? = null,
+        @param:DrawableRes val icon: Int? = null,
     )
 }
 
@@ -97,9 +100,9 @@ data class PushChallengeModel(
     val canResend: Boolean = false,
     val resendAvailableIn: Int = 0,
     val canSwitch: Boolean = false,
-    val resend: MfaAction = MfaAction.None,
-    val switchFactor: MfaAction = MfaAction.None,
-    val cancel: MfaAction = MfaAction.None,
+    val resend: () -> Unit = {},
+    val switchFactor: () -> Unit = {},
+    val cancel: () -> Unit = {},
     val isResending: Boolean = false,
 ) : MfaFactorModel
 
@@ -108,7 +111,7 @@ data class PushChallengeModel(
 data class ErrorModel(
     val error: MfaError,
     val exit: MfaExit = MfaExit.StartOver,
-    val leave: MfaAction = MfaAction.None,
+    val leave: () -> Unit = {},
 )
 
 /** Where the error screen's way out leads. */
@@ -119,4 +122,17 @@ enum class MfaExit {
 
     /** Close MFA. */
     Close,
+}
+
+/**
+ * Which kind of second factor a row or a screen is about. Open, so a later release adds a factor without breaking an
+ * app's `when`: give it an `else` branch.
+ */
+@JvmInline
+value class MfaFactorId(val value: String) {
+
+    companion object {
+        /** Approve a sign-in request on another device. */
+        val Push = MfaFactorId("push")
+    }
 }

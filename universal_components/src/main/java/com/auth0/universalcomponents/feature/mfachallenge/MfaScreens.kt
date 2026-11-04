@@ -16,9 +16,9 @@ internal typealias MfaScreen<Model> = @Composable (model: Model, messages: Resol
  * }
  * ```
  *
- * A factor's screen is replaced by its [MfaFactorId] with [Builder.replace], and each factor adds a typed shortcut
- * (`pushChallenge`), so the list of screens never names a factor. Built with a block, rather than a constructor with a
- * parameter per screen, so a later release can add a screen without breaking an app that is already compiled.
+ * Each factor adds a typed shortcut (`pushChallenge`), so the list of screens never names a factor. Built with a block,
+ * rather than a constructor with a parameter per screen, so a later release can add a screen without breaking an app
+ * that is already compiled.
  */
 class MfaScreens private constructor(
     internal val authenticatorList: MfaScreen<AuthenticatorListModel>?,
@@ -32,7 +32,6 @@ class MfaScreens private constructor(
         operator fun invoke(configure: Builder.() -> Unit = {}): MfaScreens = Builder().apply(configure).build()
     }
 
-    @MfaDsl
     class Builder internal constructor() {
         private var authenticatorList: MfaScreen<AuthenticatorListModel>? = null
         private var error: MfaScreen<ErrorModel>? = null
@@ -49,10 +48,10 @@ class MfaScreens private constructor(
         }
 
         /**
-         * The screen of [factor]. [content] gets that factor's model: cast it to the factor's model type, such as
-         * [PushChallengeModel]. A model of another type draws nothing.
+         * The screen of [factor], for the factor shortcuts. [content] gets that factor's model, which a shortcut casts to
+         * its type (such as [PushChallengeModel]); a model of another type draws nothing.
          */
-        fun replace(factor: MfaFactorId, content: @Composable (MfaFactorModel, ResolvedMfaMessages) -> Unit) {
+        internal fun replace(factor: MfaFactorId, content: @Composable (MfaFactorModel, ResolvedMfaMessages) -> Unit) {
             factors[factor] = content
         }
 

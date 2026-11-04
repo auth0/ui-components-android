@@ -57,7 +57,7 @@ class MfaEngineTest {
         val engine = started(PHONE)
 
         assertThat(steps.first()).isEqualTo(MfaState.SendingChallenge(ONE, PHONE))
-        assertThat(engine.step.value).isEqualTo(waiting(ONE, PHONE))
+        assertThat(engine.state.value).isEqualTo(waiting(ONE, PHONE))
         coVerify(exactly = 1) { repository.sendPush(PHONE) }
     }
 
@@ -77,7 +77,7 @@ class MfaEngineTest {
         val engine = started(PHONE)
 
         waitFor(POLL)
-        assertThat((engine.step.value as MfaState.PushWaiting).everyMs).isEqualTo(SLOWER)
+        assertThat((engine.state.value as MfaState.PushWaiting).everyMs).isEqualTo(SLOWER)
         waitFor(SLOWER - 1)
         coVerify(exactly = 1) { repository.checkPushStatus() }
         waitFor(1)
@@ -107,7 +107,7 @@ class MfaEngineTest {
 
         waitFor(POLL * 2)
 
-        assertThat(engine.step.value).isEqualTo(MfaState.Failed(error))
+        assertThat(engine.state.value).isEqualTo(MfaState.Failed(error))
         assertThat(effects).containsExactly(MfaEffect.Failed(error))
         assertThat(engine.isRunning).isFalse()
         coVerify(exactly = 0) { repository.checkPushStatus() }
@@ -122,7 +122,7 @@ class MfaEngineTest {
         waitFor(POLL)
         waitFor(POLL)
 
-        assertThat(engine.step.value).isInstanceOf(MfaState.PushWaiting::class.java)
+        assertThat(engine.state.value).isInstanceOf(MfaState.PushWaiting::class.java)
         coVerify(exactly = 2) { repository.checkPushStatus() }
         coVerify(exactly = 1) { repository.sendPush(PHONE) }
     }
@@ -136,14 +136,14 @@ class MfaEngineTest {
 
         // One factor in round 2: the list still comes back, headed "One more step"; its push goes out once picked.
         val round2 = MfaRound(2, listOf(TABLET))
-        assertThat(engine.step.value).isEqualTo(MfaState.ChooseFactor(round2))
+        assertThat(engine.state.value).isEqualTo(MfaState.ChooseFactor(round2))
         coVerify(exactly = 0) { repository.sendPush(TABLET) }
 
         engine.onIntent(MfaIntent.SelectFactor(TABLET))
         runCurrent()
 
         assertThat(steps).contains(MfaState.SendingChallenge(round2, TABLET))
-        assertThat(engine.step.value).isEqualTo(waiting(round2, TABLET))
+        assertThat(engine.state.value).isEqualTo(waiting(round2, TABLET))
         coVerify(exactly = 1) { repository.sendPush(TABLET) }
     }
 
@@ -217,7 +217,7 @@ class MfaEngineTest {
         engine.onIntent(MfaIntent.ChooseAnotherFactor)
         waitFor(POLL * 2)
 
-        assertThat(engine.step.value).isEqualTo(MfaState.ChooseFactor(TWO))
+        assertThat(engine.state.value).isEqualTo(MfaState.ChooseFactor(TWO))
         coVerify(exactly = 0) { repository.checkPushStatus() }
     }
 
@@ -250,7 +250,7 @@ class MfaEngineTest {
         answer.complete(Result.Success(PushStatus.Pending(SLOWER, canResend = true)))
         waitFor(SLOWER * 2)
 
-        assertThat(engine.step.value).isEqualTo(MfaState.ChooseFactor(TWO))
+        assertThat(engine.state.value).isEqualTo(MfaState.ChooseFactor(TWO))
         assertThat(effects).isEmpty()
         coVerify(exactly = 1) { repository.checkPushStatus() }
     }
@@ -269,7 +269,7 @@ class MfaEngineTest {
             answer.complete(Result.Error(rejected))
             runCurrent()
 
-            assertThat(engine.step.value).isEqualTo(MfaState.Failed(rejected))
+            assertThat(engine.state.value).isEqualTo(MfaState.Failed(rejected))
             assertThat(effects).containsExactly(MfaEffect.Failed(rejected))
         }
 
@@ -284,7 +284,7 @@ class MfaEngineTest {
 
             repeat(MfaReducer.QUIET_RETRIES + 2) { waitFor(POLL) }
 
-            assertThat(engine.step.value).isInstanceOf(MfaState.PushWaiting::class.java)
+            assertThat(engine.state.value).isInstanceOf(MfaState.PushWaiting::class.java)
             assertThat(effects).isEmpty()
             coVerify(exactly = MfaReducer.QUIET_RETRIES + 2) { repository.checkPushStatus() }
 
@@ -314,12 +314,12 @@ class MfaEngineTest {
             // The old push answers while the new one is still going out: it must not stand in for it.
             oldSend.complete(Result.Success(PushStatus.Pending(POLL, canResend = false)))
             runCurrent()
-            assertThat(engine.step.value).isEqualTo(MfaState.SendingChallenge(TWO, TABLET))
+            assertThat(engine.state.value).isEqualTo(MfaState.SendingChallenge(TWO, TABLET))
 
             newSend.complete(Result.Success(PushStatus.Pending(SLOWER, canResend = true)))
             runCurrent()
 
-            val shown = engine.step.value as MfaState.PushWaiting
+            val shown = engine.state.value as MfaState.PushWaiting
             assertThat(shown.factor).isEqualTo(TABLET)
             assertThat(shown.everyMs).isEqualTo(SLOWER)
             assertThat(shown.canResend).isTrue()
@@ -343,14 +343,14 @@ class MfaEngineTest {
     @Test
     fun `taps after the host stopped it - are ignored, and the last step stays`() = runTest {
         val engine = started(PHONE, TABLET)
-        val shown = engine.step.value
+        val shown = engine.state.value
 
         engine.stop()
         engine.onIntent(MfaIntent.SelectFactor(TABLET))
         engine.back()
         runCurrent()
 
-        assertThat(engine.step.value).isEqualTo(shown)
+        assertThat(engine.state.value).isEqualTo(shown)
         assertThat(effects).isEmpty()
         coVerify(exactly = 0) { repository.sendPush(any()) }
     }
@@ -364,7 +364,7 @@ class MfaEngineTest {
         val engine = MfaEngine(MfaReducer(listOf(PHONE)), repository, backgroundScope, onEffect = { effects += it })
         waitFor(POLL)
 
-        assertThat(engine.step.value).isEqualTo(MfaState.SendingChallenge(ONE, PHONE))
+        assertThat(engine.state.value).isEqualTo(MfaState.SendingChallenge(ONE, PHONE))
         coVerify(exactly = 0) { repository.sendPush(any()) }
         assertThat(effects).isEmpty()
     }
@@ -373,7 +373,7 @@ class MfaEngineTest {
     fun `nothing usable at start - ends at once on its error screen, with no call to the server`() = runTest {
         val engine = started()
 
-        val failed = engine.step.value as MfaState.Failed
+        val failed = engine.state.value as MfaState.Failed
         assertThat(failed.error).isInstanceOf(MfaError.NoEligibleFactors::class.java)
         assertThat(effects).containsExactly(MfaEffect.Failed(failed.error))
         assertThat(engine.isRunning).isFalse()
@@ -384,12 +384,12 @@ class MfaEngineTest {
     fun `started twice - the second start is ignored, so one push goes out and progress is kept`() = runTest {
         val engine = started(PHONE)
         waitFor(POLL)
-        val shown = engine.step.value
+        val shown = engine.state.value
 
         engine.start()
         runCurrent()
 
-        assertThat(engine.step.value).isEqualTo(shown)
+        assertThat(engine.state.value).isEqualTo(shown)
         coVerify(exactly = 1) { repository.sendPush(PHONE) }
     }
 
@@ -421,7 +421,7 @@ class MfaEngineTest {
             timeSource = timeSource,
             onEffect = { effects += it },
         )
-        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { engine.step.collect { steps += it } }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { engine.state.collect { steps += it } }
         engine.start()
         if (select != null) engine.onIntent(MfaIntent.SelectFactor(select))
         runCurrent()
@@ -434,7 +434,7 @@ class MfaEngineTest {
         runCurrent()
     }
 
-    private fun MfaEngine.resendSecondsLeft(): Int = (step.value as MfaState.PushWaiting).resendSecondsLeft
+    private fun MfaEngine.resendSecondsLeft(): Int = (state.value as MfaState.PushWaiting).resendSecondsLeft
 
     private fun waiting(round: MfaRound, factor: MfaFactor.Push) = MfaState.PushWaiting(
         round = round,

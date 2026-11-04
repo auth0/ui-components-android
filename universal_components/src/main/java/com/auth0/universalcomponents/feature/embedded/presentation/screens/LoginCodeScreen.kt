@@ -14,9 +14,9 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Lo
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginResendButton
-import com.auth0.universalcomponents.presentation.ui.flow.LoginPrimaryButton
-import com.auth0.universalcomponents.presentation.ui.flow.LoginScreenHeader
-import com.auth0.universalcomponents.presentation.ui.flow.LoginStepLayout
+import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
+import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
+import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
 
 /**
  * Entry for the emailed code. Verify turns on once every digit is in.
@@ -44,10 +44,10 @@ internal fun LoginCodeScreen(
     LaunchedEffect(errorMessage) { if (errorMessage != null) hideError = false }
     val activeError = errorMessage.takeUnless { hideError }
 
-    LoginStepLayout(
+    FlowStepLayout(
         modifier = modifier,
         pageDescription = {
-            LoginScreenHeader(
+            FlowScreenHeader(
                 title = title,
                 subtitle = subtitle,
                 editLabel = stringResource(R.string.embedded_login_code_edit),
@@ -68,7 +68,7 @@ internal fun LoginCodeScreen(
             activeError?.let { LoginInlineError(it) }
         },
         primaryAction = {
-            LoginPrimaryButton(
+            FlowPrimaryButton(
                 title = stringResource(R.string.embedded_login_verify),
                 onClick = { onVerify(code) },
                 isLoading = isLoading,

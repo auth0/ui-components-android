@@ -168,9 +168,9 @@ internal sealed interface MfaEffect {
     data class Failed(val error: MfaError) : MfaEffect
 }
 
-/** What [MfaReducer] returns for one input: the step to show, the [commands] to run in order, and maybe an effect. */
+/** What [MfaReducer] returns for one input: the state to show, the [commands] to run in order, and maybe an effect. */
 internal data class MfaUpdate(
-    val step: MfaState,
+    val state: MfaState,
     val commands: List<MfaCommand> = emptyList(),
     val effect: MfaEffect? = null,
 )

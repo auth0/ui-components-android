@@ -27,73 +27,67 @@ class MfaMessages private constructor(
 ) {
 
     /** A title and a description, either of which can be changed. */
-    @MfaDsl
-    class Text internal constructor() {
+    class Message internal constructor() {
         var title: String? = null
         var description: String? = null
     }
 
-    @MfaDsl
     class AuthenticatorList internal constructor() {
         internal val headers = Headers()
 
         fun headers(configure: Headers.() -> Unit) = headers.configure()
 
-        @MfaDsl
         class Headers internal constructor() {
-            internal val challenge = Text()
-            internal val challengeAdditional = Text()
+            internal val challenge = Message()
+            internal val challengeAdditional = Message()
 
             /** Above the list in the first round. */
-            fun challenge(configure: Text.() -> Unit) = challenge.configure()
+            fun challenge(configure: Message.() -> Unit) = challenge.configure()
 
             /** Above the list when the server asks for one more factor. */
-            fun challengeAdditional(configure: Text.() -> Unit) = challengeAdditional.configure()
+            fun challengeAdditional(configure: Message.() -> Unit) = challengeAdditional.configure()
         }
     }
 
-    @MfaDsl
     class Loading internal constructor() {
         /** What a screen reader says for the loading spinner. */
         var accessibilityLabel: String? = null
     }
 
     /** One group per [MfaError] case, plus the words for the way out of the error screen. */
-    @MfaDsl
     class Errors internal constructor() {
         var startOver: String? = null
         var close: String? = null
 
-        internal val cancelled = Text()
-        internal val tokenExpired = Text()
-        internal val tokenInvalid = Text()
-        internal val rejected = Text()
-        internal val tooManyAttempts = Text()
-        internal val noEligibleFactors = Text()
-        internal val network = Text()
-        internal val unexpected = Text()
+        internal val cancelled = Message()
+        internal val tokenExpired = Message()
+        internal val tokenInvalid = Message()
+        internal val rejected = Message()
+        internal val tooManyAttempts = Message()
+        internal val noEligibleFactors = Message()
+        internal val network = Message()
+        internal val unexpected = Message()
 
-        fun cancelled(configure: Text.() -> Unit) = cancelled.configure()
+        fun cancelled(configure: Message.() -> Unit) = cancelled.configure()
 
-        fun tokenExpired(configure: Text.() -> Unit) = tokenExpired.configure()
+        fun tokenExpired(configure: Message.() -> Unit) = tokenExpired.configure()
 
-        fun tokenInvalid(configure: Text.() -> Unit) = tokenInvalid.configure()
+        fun tokenInvalid(configure: Message.() -> Unit) = tokenInvalid.configure()
 
-        fun rejected(configure: Text.() -> Unit) = rejected.configure()
+        fun rejected(configure: Message.() -> Unit) = rejected.configure()
 
-        fun tooManyAttempts(configure: Text.() -> Unit) = tooManyAttempts.configure()
+        fun tooManyAttempts(configure: Message.() -> Unit) = tooManyAttempts.configure()
 
-        fun noEligibleFactors(configure: Text.() -> Unit) = noEligibleFactors.configure()
+        fun noEligibleFactors(configure: Message.() -> Unit) = noEligibleFactors.configure()
 
-        fun network(configure: Text.() -> Unit) = network.configure()
+        fun network(configure: Message.() -> Unit) = network.configure()
 
         /** Shown with the server's own explanation instead of the description, when it gave one. */
-        fun unexpected(configure: Text.() -> Unit) = unexpected.configure()
+        fun unexpected(configure: Message.() -> Unit) = unexpected.configure()
     }
 
-    @MfaDsl
     class PushChallenge internal constructor() {
-        internal val row = Text()
+        internal val row = Message()
 
         var title: String? = null
 
@@ -112,9 +106,8 @@ class MfaMessages private constructor(
          * How the factor looks in the list. The title is the factor's name, and the description sits under it for
          * a device with no name of its own (a named device leads, with the factor's name under it).
          */
-        fun row(configure: Text.() -> Unit) = row.configure()
+        fun row(configure: Message.() -> Unit) = row.configure()
 
-        @MfaDsl
         class Resend internal constructor() {
             var button: String? = null
 
@@ -126,16 +119,15 @@ class MfaMessages private constructor(
     companion object {
 
         /**
-         * Every word its default. One shared instance, so a screen that takes it as its default argument finds the same
-         * key each time it is drawn and resolves the words once, not on every recomposition.
+         * Every word its default. One shared instance, so the words are resolved once, not each time the screen that
+         * holds the default configuration is drawn again.
          */
-        val Default: MfaMessages = MfaMessages()
+        internal val Default: MfaMessages = MfaMessages()
 
         /** Builds the words to change, from [configure]. With nothing set, every word is its default. */
         operator fun invoke(configure: Builder.() -> Unit = {}): MfaMessages = Builder().apply(configure).build()
     }
 
-    @MfaDsl
     class Builder internal constructor() {
         private val authenticatorList = AuthenticatorList()
         private val loading = Loading()

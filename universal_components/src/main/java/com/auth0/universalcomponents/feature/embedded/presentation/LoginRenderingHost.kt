@@ -18,7 +18,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
 import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
-import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaLifecycle
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaForegroundEffect
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.mirror
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
@@ -55,7 +55,7 @@ internal fun LoginRenderingHost(
         viewModel.send(LoginEvent.MfaErrorAnswered(handling))
     }
 
-    MfaLifecycle((step as? LoginStep.Mfa)?.engine)
+    MfaForegroundEffect((step as? LoginStep.Mfa)?.engine)
     (mfa.presentation as? MfaPresentation.Headless)?.let { PublishToStream(it.stream, viewModel, step) }
 
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
@@ -81,10 +81,6 @@ internal fun LoginRenderingHost(
 /**
  * Mirrors MFA into a headless app's [stream]: the step to draw while MFA runs (null otherwise), and how it ended.
  * The step is cleared when this leaves the composition, so a stale step is never left behind.
- *
- * Every MFA action equals every other (see `MfaAction`), so a model rebuilt for a different engine would not be told
- * apart from the old one. That cannot happen: each visit to MFA has its own engine, and login always passes through a
- * step without one in between (the stream is null then), so a model is never published with an old engine's actions.
  */
 @Composable
 private fun PublishToStream(stream: MfaStepStream, viewModel: LoginFlowViewModel, step: LoginStep) {

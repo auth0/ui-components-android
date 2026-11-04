@@ -1,19 +1,26 @@
 package com.auth0.universalcomponents.feature.mfachallenge
 
+import android.content.res.Resources
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.resolve
 import com.google.common.truth.Truth.assertThat
+import io.mockk.every
+import io.mockk.mockk
 import org.junit.Test
 
 class MfaMessagesTest {
 
-    /** Stands in for the string resources: each default is its resource id and its arguments. */
-    private val defaults = MfaStrings { id, args -> "default($id${args.joinToString(prefix = ",", separator = ",")})" }
+    /** Stands in for the string resources: each default is its resource id and its argument. */
+    private val resources = mockk<Resources> {
+        every { getString(any<Int>()) } answers { default(firstArg()) }
+        every { getString(any<Int>(), any()) } answers { default(firstArg(), *secondArg<Array<Any>>()) }
+    }
 
     private fun default(id: Int, vararg args: Any) = "default($id${args.joinToString(prefix = ",", separator = ",")})"
 
     @Test
     fun `nothing set - every word is the string resource's`() {
-        val words = MfaMessages().resolve(defaults)
+        val words = MfaMessages().resolve(resources)
 
         assertThat(words.pushChallenge.title).isEqualTo(default(R.string.auth0_mfa_push_challenge_title))
         assertThat(words.pushChallenge.waiting).isEqualTo(default(R.string.auth0_mfa_push_challenge_waiting))
@@ -26,7 +33,7 @@ class MfaMessagesTest {
 
     @Test
     fun `one key set - replaces that key only, the others keep their defaults`() {
-        val words = MfaMessages { pushChallenge { title = "Approve on your phone" } }.resolve(defaults)
+        val words = MfaMessages { pushChallenge { title = "Approve on your phone" } }.resolve(resources)
 
         assertThat(words.pushChallenge.title).isEqualTo("Approve on your phone")
         assertThat(words.pushChallenge.waiting).isEqualTo(default(R.string.auth0_mfa_push_challenge_waiting))
@@ -38,7 +45,7 @@ class MfaMessagesTest {
     fun `nested keys - a header's title is changed without its description`() {
         val words = MfaMessages {
             authenticatorList { headers { challengeAdditional { title = "Almost there" } } }
-        }.resolve(defaults)
+        }.resolve(resources)
 
         val header = words.authenticatorList.headers.challengeAdditional
         assertThat(header.title).isEqualTo("Almost there")
@@ -55,7 +62,7 @@ class MfaMessagesTest {
                 description = { device -> "Sent to $device." }
                 resend { cooldown = { seconds -> "Again in ${seconds}s" } }
             }
-        }.resolve(defaults)
+        }.resolve(resources)
 
         assertThat(words.pushChallenge.description("Jane's phone")).isEqualTo("Sent to Jane's phone.")
         assertThat(words.pushChallenge.resend.cooldown(42)).isEqualTo("Again in 42s")
@@ -63,7 +70,7 @@ class MfaMessagesTest {
 
     @Test
     fun `dynamic text - left unset - the string resource is formatted with the argument`() {
-        val words = MfaMessages().resolve(defaults)
+        val words = MfaMessages().resolve(resources)
 
         assertThat(words.pushChallenge.description("Jane's phone"))
             .isEqualTo(default(R.string.auth0_mfa_push_challenge_description, "Jane's phone"))
@@ -73,7 +80,7 @@ class MfaMessagesTest {
 
     @Test
     fun `error text - every case - has its own words, and an override changes one case only`() {
-        val words = MfaMessages { errors { rejected { title = "Denied" } } }.resolve(defaults)
+        val words = MfaMessages { errors { rejected { title = "Denied" } } }.resolve(resources)
 
         val cases = listOf(
             MfaError.Cancelled(),
@@ -85,20 +92,20 @@ class MfaMessagesTest {
             MfaError.Network(),
             MfaError.Unexpected(),
         )
-        val titles = cases.map { words.errors.textFor(it).title }
+        val titles = cases.map { words.errors.messageFor(it).title }
 
         assertThat(titles).containsNoDuplicates()
         // Never shown, so it has no words of its own.
-        assertThat(words.errors.textFor(MfaError.PresentationUnavailable()))
-            .isSameInstanceAs(words.errors.textFor(MfaError.Unexpected()))
-        assertThat(words.errors.textFor(MfaError.Rejected()).title).isEqualTo("Denied")
-        assertThat(words.errors.textFor(MfaError.Rejected()).description)
+        assertThat(words.errors.messageFor(MfaError.PresentationUnavailable()))
+            .isSameInstanceAs(words.errors.messageFor(MfaError.Unexpected()))
+        assertThat(words.errors.messageFor(MfaError.Rejected()).title).isEqualTo("Denied")
+        assertThat(words.errors.messageFor(MfaError.Rejected()).description)
             .isEqualTo(default(R.string.auth0_mfa_errors_rejected_description))
     }
 
     @Test
     fun `row - the factor in the list - has a title and a description, either of which can be changed`() {
-        val words = MfaMessages { pushChallenge { row { description = "Tap to approve." } } }.resolve(defaults)
+        val words = MfaMessages { pushChallenge { row { description = "Tap to approve." } } }.resolve(resources)
 
         assertThat(words.pushChallenge.row.title).isEqualTo(default(R.string.auth0_mfa_push_challenge_row_title))
         assertThat(words.pushChallenge.row.description).isEqualTo("Tap to approve.")
@@ -111,9 +118,20 @@ class MfaMessagesTest {
                 startOver = "Restart"
                 close = "Done"
             }
-        }.resolve(defaults)
+        }.resolve(resources)
 
         assertThat(words.errors.startOver).isEqualTo("Restart")
         assertThat(words.errors.close).isEqualTo("Done")
+    }
+
+    @Test
+    fun `a word with a percent sign - is read as it is, never formatted`() {
+        val sure = mockk<Resources>()
+        every { sure.getString(any<Int>()) } returns "100% sure"
+
+        val words = MfaMessages().resolve(sure)
+
+        assertThat(words.pushChallenge.title).isEqualTo("100% sure")
+        assertThat(words.errors.startOver).isEqualTo("100% sure")
     }
 }

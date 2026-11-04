@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.mfachallenge.presentation.components
+package com.auth0.universalcomponents.feature.mfachallenge.presentation.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

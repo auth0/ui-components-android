@@ -12,8 +12,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
  * none, and the rule must hold for it too. Whoever hosts MFA places it with the engine that is running (null: none).
  */
 @Composable
-internal fun MfaLifecycle(engine: MfaEngine?) {
+internal fun MfaForegroundEffect(engine: MfaEngine?) {
     val current by rememberUpdatedState(engine)
-    LifecycleEventEffect(Lifecycle.Event.ON_START) { current?.onAppForeground(true) }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { current?.onAppForeground(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { current?.onAppForegrounded() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { current?.onAppBackgrounded() }
 }

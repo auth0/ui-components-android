@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.mfachallenge
+package com.auth0.universalcomponents.feature.mfachallenge.presentation.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,37 +14,43 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import com.auth0.universalcomponents.feature.mfachallenge.presentation.components.MfaFactorRow
+import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListHeader
+import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListModel
+import com.auth0.universalcomponents.feature.mfachallenge.ErrorModel
+import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaExit
+import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorId
+import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
-import com.auth0.universalcomponents.presentation.ui.flow.LoginErrorScreen
-import com.auth0.universalcomponents.presentation.ui.flow.LoginLoadingScreen
-import com.auth0.universalcomponents.presentation.ui.flow.LoginPrimaryButton
-import com.auth0.universalcomponents.presentation.ui.flow.LoginScreenHeader
-import com.auth0.universalcomponents.presentation.ui.flow.LoginStepLayout
-import com.auth0.universalcomponents.presentation.ui.flow.LoginTextButton
+import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
+import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
+import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
+import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
+import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
+import com.auth0.universalcomponents.presentation.ui.flow.FlowTextButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /*
  * The standard MFA screens. Each draws a public model with the resolved words, exactly what a screen the app replaced
- * receives, so the two behave the same. They are public so an app can use one on its own, to keep the look for a step
- * it doesn't redraw, or to drive its own flow with a model it builds. They draw no frame: place them inside your own,
- * and inside [Auth0Theme] (`EmbeddedLoginScreen` already provides it); without a theme they throw.
+ * receives, so the two behave the same. They draw no frame: [MfaHost] places them inside the login frame.
  */
 
 /**
  * A short wait with nothing to ask. It is there from the first frame, since the user caused it and a blank screen
  * would look broken; [messages] gives screen readers a label. It offers no Cancel: leaving is the host's job (Back), so
- * [model] is only there to match the other screens. Draw it inside [Auth0Theme].
+ * [model] is only there to match the other screens.
  */
 @Composable
 @Suppress("UnusedParameter")
-fun MfaLoadingScreen(
+internal fun MfaLoadingScreen(
     model: LoadingModel,
+    messages: ResolvedMfaMessages,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
     val label = messages.loading.accessibilityLabel
-    LoginLoadingScreen(
+    FlowLoadingScreen(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
         showAtOnce = true,
     )
@@ -53,23 +59,23 @@ fun MfaLoadingScreen(
 /**
  * Every factor the round offers, one row each. From round 2 on, the server has asked for one more factor, so the
  * header says so. While [AuthenticatorListModel.pendingRowId]'s challenge goes out, its row is busy and no row can be
- * tapped. Draw it inside [Auth0Theme].
+ * tapped.
  */
 @Composable
-fun MfaAuthenticatorListScreen(
+internal fun MfaAuthenticatorListScreen(
     model: AuthenticatorListModel,
+    messages: ResolvedMfaMessages,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
     val dimensions = Auth0Theme.dimensions
     val header = when (model.header) {
         AuthenticatorListHeader.Challenge -> messages.authenticatorList.headers.challenge
         AuthenticatorListHeader.ChallengeAdditional -> messages.authenticatorList.headers.challengeAdditional
     }
-    LoginStepLayout(
+    FlowStepLayout(
         modifier = modifier,
         pageDescription = {
-            LoginScreenHeader(
+            FlowScreenHeader(
                 title = header.title,
                 subtitle = header.description,
                 bottomSpacing = dimensions.spacingLg,
@@ -98,20 +104,20 @@ fun MfaAuthenticatorListScreen(
  * Waiting for the user to approve the push on [PushChallengeModel.deviceName], which may be blank. Resend shows only
  * while [PushChallengeModel.canResend] (the server allows another push) and opens once the wait is over; while the push
  * is being sent again it can't be tapped twice, and "Verify another way" is off until the push is out. That action
- * shows only when [PushChallengeModel.canSwitch]. Draw it inside [Auth0Theme].
+ * shows only when [PushChallengeModel.canSwitch].
  */
 @Composable
-fun MfaPushChallengeScreen(
+internal fun MfaPushChallengeScreen(
     model: PushChallengeModel,
+    messages: ResolvedMfaMessages,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
     val dimensions = Auth0Theme.dimensions
     val words = messages.pushChallenge
-    LoginStepLayout(
+    FlowStepLayout(
         modifier = modifier,
         pageDescription = {
-            LoginScreenHeader(
+            FlowScreenHeader(
                 title = words.title,
                 subtitle = if (model.deviceName.isBlank()) {
                     words.descriptionUnnamed
@@ -125,7 +131,7 @@ fun MfaPushChallengeScreen(
         primaryAction = {
             Column(verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)) {
                 if (model.canResend) {
-                    LoginPrimaryButton(
+                    FlowPrimaryButton(
                         title = if (model.resendAvailableIn > 0) {
                             words.resend.cooldown(model.resendAvailableIn)
                         } else {
@@ -136,7 +142,7 @@ fun MfaPushChallengeScreen(
                     )
                 }
                 if (model.canSwitch) {
-                    LoginTextButton(
+                    FlowTextButton(
                         title = words.verifyAnotherWay,
                         onClick = { model.switchFactor() },
                         enabled = !model.isResending,
@@ -150,16 +156,16 @@ fun MfaPushChallengeScreen(
 
 /**
  * MFA ended, and this says why: the server's own words for an unexpected error when it gave some. The way out is
- * "Start over" or "Close". Draw it inside [Auth0Theme].
+ * "Start over" or "Close".
  */
 @Composable
-fun MfaErrorScreen(
+internal fun MfaErrorScreen(
     model: ErrorModel,
+    messages: ResolvedMfaMessages,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
-    val words = messages.errors.textFor(model.error)
-    LoginErrorScreen(
+    val words = messages.errors.messageFor(model.error)
+    FlowErrorScreen(
         modifier = modifier,
         title = words.title,
         message = (model.error as? MfaError.Unexpected)?.serverMessage ?: words.description,
@@ -198,8 +204,8 @@ private fun MfaWaitingForApproval(caption: String, device: String) {
  * What a row says. A named device leads, with the factor's name under it; a device with no name shows the factor's name
  * with its description under it. A factor this version has no words for shows just its own title.
  */
-private fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Text {
-    if (factor != MfaFactorId.Push) return ResolvedMfaMessages.Text(title, subtitle.orEmpty())
+private fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
+    if (factor != MfaFactorId.Push) return ResolvedMfaMessages.Message(title, subtitle.orEmpty())
     val kind = messages.pushChallenge.row
-    return if (title.isBlank()) kind else ResolvedMfaMessages.Text(title, kind.title)
+    return if (title.isBlank()) kind else ResolvedMfaMessages.Message(title, kind.title)
 }

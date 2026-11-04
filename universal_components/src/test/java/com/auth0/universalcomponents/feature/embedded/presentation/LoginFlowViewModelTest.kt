@@ -795,7 +795,7 @@ class LoginFlowViewModelTest {
     }
 
     /** What MFA is showing, read from the engine the login step carries. */
-    private fun mfaStep(): MfaState = (viewModel.loginStep.value as LoginStep.Mfa).engine.step.value
+    private fun mfaStep(): MfaState = (viewModel.loginStep.value as LoginStep.Mfa).engine.state.value
 
     /** On the code step with the resend countdown already run out. */
     private fun TestScope.startAtCode() {

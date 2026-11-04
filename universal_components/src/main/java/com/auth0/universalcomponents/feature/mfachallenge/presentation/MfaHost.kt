@@ -7,15 +7,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
-import com.auth0.universalcomponents.feature.mfachallenge.MfaAuthenticatorListScreen
 import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
-import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorScreen
-import com.auth0.universalcomponents.feature.mfachallenge.MfaLoadingScreen
-import com.auth0.universalcomponents.feature.mfachallenge.MfaPushChallengeScreen
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
-import com.auth0.universalcomponents.feature.mfachallenge.resolve
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaAuthenticatorListScreen
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaErrorScreen
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaLoadingScreen
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaPushChallengeScreen
 import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 
 /**
@@ -39,7 +38,7 @@ internal fun MfaHost(
     modifier: Modifier = Modifier,
     isAwaitingApp: Boolean = false,
 ) {
-    val state by engine.step.collectAsStateWithLifecycle()
+    val state by engine.state.collectAsStateWithLifecycle()
     val messages = configuration.messages.resolve()
     AnimatedContent(
         targetState = if (isAwaitingApp) null else state,
@@ -49,18 +48,19 @@ internal fun MfaHost(
         },
         modifier = modifier.fillMaxSize(),
         label = "mfaStep",
-    ) { shown ->
-        if (shown == null) {
+    ) { visibleState ->
+        if (visibleState == null) {
             MfaLoadingScreen(LoadingModel(), messages = messages)
         } else {
-            MfaScreen(project(shown, onIntent = engine::onIntent, onLeave = onLeave), configuration, messages)
+            val step = visibleState.toMfaStep(onIntent = engine::onIntent, onLeave = onLeave)
+            MfaStepContent(step, configuration, messages)
         }
     }
 }
 
 /** Draws one [MfaStep], with the app's screen where it replaced the standard one. It holds no logic. */
 @Composable
-private fun MfaScreen(step: MfaStep, configuration: MfaConfiguration, messages: ResolvedMfaMessages) {
+private fun MfaStepContent(step: MfaStep, configuration: MfaConfiguration, messages: ResolvedMfaMessages) {
     val screens = configuration.screens
     when (step) {
         is MfaStep.Loading -> MfaLoadingScreen(step.model, messages = messages)

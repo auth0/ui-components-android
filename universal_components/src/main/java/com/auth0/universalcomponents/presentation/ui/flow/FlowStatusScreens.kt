@@ -34,7 +34,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * blank screen would look broken.
  */
 @Composable
-internal fun LoginLoadingScreen(modifier: Modifier = Modifier, showAtOnce: Boolean = false) {
+internal fun FlowLoadingScreen(modifier: Modifier = Modifier, showAtOnce: Boolean = false) {
     var showLoader by remember { mutableStateOf(showAtOnce) }
     LaunchedEffect(Unit) {
         showLoader = true
@@ -51,14 +51,14 @@ internal fun LoginLoadingScreen(modifier: Modifier = Modifier, showAtOnce: Boole
  * own [title] and "Start over" as [actionTitle].
  */
 @Composable
-internal fun LoginErrorScreen(
+internal fun FlowErrorScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     message: String = "",
     title: String = stringResource(R.string.embedded_login_error_title),
     actionTitle: String = stringResource(R.string.try_again),
 ) {
-    LoginStatusScreen(
+    FlowStatusScreen(
         title = title,
         description = message.ifEmpty { stringResource(R.string.embedded_login_error_fallback) },
         actionTitle = actionTitle,
@@ -72,7 +72,7 @@ internal fun LoginErrorScreen(
  * It scrolls when it doesn't fit, as in landscape with large text.
  */
 @Composable
-internal fun LoginStatusScreen(
+internal fun FlowStatusScreen(
     title: String,
     modifier: Modifier = Modifier,
     description: String? = null,
@@ -106,7 +106,7 @@ internal fun LoginStatusScreen(
                 )
             }
             if (actionTitle != null && onAction != null) {
-                LoginPrimaryButton(title = actionTitle, onClick = onAction)
+                FlowPrimaryButton(title = actionTitle, onClick = onAction)
             }
         }
     }

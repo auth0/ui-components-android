@@ -20,7 +20,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * target. Its colour fades between enabled and disabled.
  */
 @Composable
-internal fun LoginTextButton(
+internal fun FlowTextButton(
     title: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

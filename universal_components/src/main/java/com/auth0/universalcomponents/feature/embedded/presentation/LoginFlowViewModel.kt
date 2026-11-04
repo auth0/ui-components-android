@@ -59,8 +59,8 @@ internal class LoginFlowViewModel(
 
     /** Whether the app set an `onMfaError`; without one, no one is waited for when MFA ends with nothing usable. */
     private var hasMfaErrorHandler = false
-    private var inFlight: Job? = null
-    private var countdown: Job? = null
+    private var runningStep: Job? = null
+    private var resendCountdownJob: Job? = null
 
     fun send(event: LoginEvent) {
         val current = _loginStep.value
@@ -247,8 +247,8 @@ internal class LoginFlowViewModel(
 
     /** Counts the resend wait down a second at a time; it stops at zero, or once code entry is left. */
     private fun startResendCountdown() {
-        countdown?.cancel()
-        countdown = viewModelScope.launch {
+        resendCountdownJob?.cancel()
+        resendCountdownJob = viewModelScope.launch {
             while (_loginStep.value.isCountingDown) {
                 delay(ONE_SECOND_MILLIS)
                 updateCodeStep { copy(resendSecondsLeft = (resendSecondsLeft - 1).coerceAtLeast(0)) }
@@ -275,8 +275,8 @@ internal class LoginFlowViewModel(
 
     /** Runs one step at a time; a second tap while one is in flight is dropped. */
     private fun launchStep(block: suspend () -> Unit) {
-        if (inFlight?.isActive == true) return
-        inFlight = viewModelScope.launch { block() }
+        if (runningStep?.isActive == true) return
+        runningStep = viewModelScope.launch { block() }
     }
 
     private companion object {
