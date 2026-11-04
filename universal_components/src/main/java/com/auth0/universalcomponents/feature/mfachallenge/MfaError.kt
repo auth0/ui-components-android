@@ -3,8 +3,11 @@ package com.auth0.universalcomponents.feature.mfachallenge
 import com.auth0.universalcomponents.domain.error.ResultError
 
 /**
- * Why MFA ended without signing the user in: the same cases, under the same names, as on iOS. A later release may add
- * cases, so give every `when` over this type an `else` branch.
+ * Why MFA ended without signing the user in: the same cases, under the same names, as iOS's `MfaError`, except
+ * `credentialsNotSaved`, which is iOS's alone: this library never stores credentials, so there is nothing to fail.
+ *
+ * A later release may add cases, so give every `when` over this type an `else` branch. The compiler may call that
+ * branch redundant today; it is what keeps your app working once a case is added.
  *
  * Each case keeps the failure behind it as its [cause], for an app that wants the SDK's own details (read it as
  * `error.cause as? EmbeddedAuthException`); the cases MFA decides on its own have none. [toString] names the case only,
@@ -39,5 +42,16 @@ sealed class MfaError(cause: Throwable?) : Exception(cause), ResultError {
     /** Anything else. [serverMessage] is the server's own explanation, when it gave one. */
     class Unexpected(val serverMessage: String? = null, cause: Throwable? = null) : MfaError(cause)
 
-    override fun toString(): String = this::class.java.simpleName
+    // Written out rather than read from the class, whose name R8 shortens in a release build.
+    override fun toString(): String = when (this) {
+        is Cancelled -> "Cancelled"
+        is TokenExpired -> "TokenExpired"
+        is TokenInvalid -> "TokenInvalid"
+        is Rejected -> "Rejected"
+        is TooManyAttempts -> "TooManyAttempts"
+        is NoEligibleFactors -> "NoEligibleFactors"
+        is PresentationUnavailable -> "PresentationUnavailable"
+        is Network -> "Network"
+        is Unexpected -> "Unexpected"
+    }
 }

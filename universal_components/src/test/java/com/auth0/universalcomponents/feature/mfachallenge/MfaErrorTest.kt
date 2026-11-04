@@ -38,6 +38,23 @@ class MfaErrorTest {
     }
 
     @Test
+    fun `toString - every case - is its own name, written out so R8 can't shorten it`() {
+        val names = listOf(
+            MfaError.Cancelled() to "Cancelled",
+            MfaError.TokenExpired() to "TokenExpired",
+            MfaError.TokenInvalid() to "TokenInvalid",
+            MfaError.Rejected() to "Rejected",
+            MfaError.TooManyAttempts() to "TooManyAttempts",
+            MfaError.NoEligibleFactors() to "NoEligibleFactors",
+            MfaError.PresentationUnavailable() to "PresentationUnavailable",
+            MfaError.Network() to "Network",
+            MfaError.Unexpected() to "Unexpected",
+        )
+
+        names.forEach { (error, name) -> assertThat(error.toString()).isEqualTo(name) }
+    }
+
+    @Test
     fun `equality - two errors of one case - are different, as exceptions are`() {
         assertThat(MfaError.Rejected()).isNotEqualTo(MfaError.Rejected())
     }

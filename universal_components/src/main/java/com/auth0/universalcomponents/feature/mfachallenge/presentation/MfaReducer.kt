@@ -76,10 +76,13 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             MfaUpdate(step)
         }
 
-    /** One second of the resend wait has passed; it stops at zero, or once the push screen is left. */
-    fun handleSecondPassed(step: MfaState): MfaUpdate {
+    /**
+     * [seconds] of the resend wait have passed: one, or more when the app was frozen meanwhile and catches up, as on
+     * iOS, instead of making the user wait the countdown out again. It stops at zero, or once the push screen is left.
+     */
+    fun handleSecondPassed(step: MfaState, seconds: Int = 1): MfaUpdate {
         if (step !is MfaState.PushWaiting || step.resendSecondsLeft == 0) return MfaUpdate(step)
-        val left = step.resendSecondsLeft - 1
+        val left = (step.resendSecondsLeft - maxOf(1, seconds)).coerceAtLeast(0)
         return MfaUpdate(
             step.copy(resendSecondsLeft = left),
             if (left > 0) listOf(MfaCommand.CountDownResend) else emptyList(),

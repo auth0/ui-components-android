@@ -293,7 +293,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `mfa - nothing usable - sends no push, and hands the decision to the app`() = runTest {
-        startAtMfa()
+        startAtMfaWithHandler()
 
         assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.AwaitingApp::class.java)
         coVerify(exactly = 0) { mfaRepository.sendPush(any()) }
@@ -318,7 +318,7 @@ class LoginFlowViewModelTest {
         val reported = mutableListOf<MfaError>()
         val job = launch { viewModel.mfaFailed.toList(reported) }
 
-        startAtMfa()
+        startAtMfaWithHandler()
         advanceUntilIdle()
 
         assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.AwaitingApp::class.java)
@@ -328,8 +328,33 @@ class LoginFlowViewModelTest {
     }
 
     @Test
-    fun `mfa error - no usable factor and the app handles it - stays on the spinner`() = runTest {
+    fun `mfa error - no usable factor and the app set no handler - shows the not available screen at once`() = runTest {
+        val reported = mutableListOf<MfaError>()
+        val job = launch { viewModel.mfaFailed.toList(reported) }
+
         startAtMfa()
+        advanceUntilIdle()
+
+        // Nobody can answer, so there is no spinner to wait behind.
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Mfa::class.java)
+        assertThat((mfaStep() as MfaState.Failed).error).isInstanceOf(MfaError.NoEligibleFactors::class.java)
+        assertThat(reported).hasSize(1)
+        job.cancel()
+    }
+
+    @Test
+    fun `mfa error - the app removed its handler - nothing waits for it`() = runTest {
+        viewModel.send(LoginEvent.MfaErrorHandlerChanged(isSet = true))
+        viewModel.send(LoginEvent.MfaErrorHandlerChanged(isSet = false))
+
+        startAtMfa()
+
+        assertThat(viewModel.loginStep.value).isInstanceOf(LoginStep.Mfa::class.java)
+    }
+
+    @Test
+    fun `mfa error - no usable factor and the app handles it - stays on the spinner`() = runTest {
+        startAtMfaWithHandler()
 
         viewModel.send(LoginEvent.MfaErrorAnswered(MfaErrorHandling.Handled))
         advanceUntilIdle()
@@ -339,7 +364,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `mfa error - no usable factor and the app does not handle it - shows the not available screen`() = runTest {
-        startAtMfa()
+        startAtMfaWithHandler()
 
         viewModel.send(LoginEvent.MfaErrorAnswered(MfaErrorHandling.NotHandled))
         advanceUntilIdle()
@@ -398,7 +423,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `mfa error - Back while waiting for the app - returns to email entry with the email kept`() = runTest {
-        startAtMfa()
+        startAtMfaWithHandler()
 
         assertThat(viewModel.goBack()).isTrue()
 
@@ -407,7 +432,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `mfa error - the app answers after the user went back - the answer is dropped`() = runTest {
-        startAtMfa()
+        startAtMfaWithHandler()
         viewModel.goBack()
 
         viewModel.send(LoginEvent.MfaErrorAnswered(MfaErrorHandling.NotHandled))
@@ -761,6 +786,12 @@ class LoginFlowViewModelTest {
         coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.MfaRequired(factors.toList()))
         viewModel.send(LoginEvent.SubmitOtp(CODE))
         advanceUntilIdle()
+    }
+
+    /** Like [startAtMfa], for an app that set `onMfaError`: it is waited for when no factor can be used. */
+    private fun TestScope.startAtMfaWithHandler(vararg factors: MfaFactor) {
+        viewModel.send(LoginEvent.MfaErrorHandlerChanged(isSet = true))
+        startAtMfa(*factors)
     }
 
     /** What MFA is showing, read from the engine the login step carries. */

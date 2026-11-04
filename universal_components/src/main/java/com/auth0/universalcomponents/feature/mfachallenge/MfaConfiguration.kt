@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 @Immutable
 class MfaConfiguration(
-    val messages: MfaMessages = MfaMessages(),
+    val messages: MfaMessages = MfaMessages.Default,
     val screens: MfaScreens = MfaScreens(),
     val presentation: MfaPresentation = MfaPresentation.Standard,
 )

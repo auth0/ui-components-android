@@ -43,6 +43,11 @@ internal fun LoginRenderingHost(
     val currentOnMfaError by rememberUpdatedState(onMfaError)
 
     LaunchedEffect(viewModel) { viewModel.send(LoginEvent.Start) }
+    // Without a handler nobody can take over when MFA has nothing usable, so login doesn't wait for an answer.
+    val hasMfaErrorHandler = onMfaError != null
+    LaunchedEffect(viewModel, hasMfaErrorHandler) {
+        viewModel.send(LoginEvent.MfaErrorHandlerChanged(hasMfaErrorHandler))
+    }
     ObserveAsEvents(viewModel.authenticated) { currentOnAuthenticated(it) }
     // No handler counts as "not handled", so the user is never stranded on a spinner.
     ObserveAsEvents(viewModel.mfaFailed) { error ->
@@ -76,6 +81,10 @@ internal fun LoginRenderingHost(
 /**
  * Mirrors MFA into a headless app's [stream]: the step to draw while MFA runs (null otherwise), and how it ended.
  * The step is cleared when this leaves the composition, so a stale step is never left behind.
+ *
+ * Every MFA action equals every other (see `MfaAction`), so a model rebuilt for a different engine would not be told
+ * apart from the old one. That cannot happen: each visit to MFA has its own engine, and login always passes through a
+ * step without one in between (the stream is null then), so a model is never published with an old engine's actions.
  */
 @Composable
 private fun PublishToStream(stream: MfaStepStream, viewModel: LoginFlowViewModel, step: LoginStep) {
@@ -90,6 +99,3 @@ private fun PublishToStream(stream: MfaStepStream, viewModel: LoginFlowViewModel
     LaunchedEffect(stream, viewModel) { viewModel.mfaResult.collect(stream::finish) }
     DisposableEffect(stream) { onDispose { stream.showStep(null) } }
 }
-
-
-

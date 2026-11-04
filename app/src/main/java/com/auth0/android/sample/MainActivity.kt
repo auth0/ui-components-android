@@ -227,16 +227,14 @@ fun SampleApp(
                     },
                     onMfaError = { error ->
                         // The error's name only: its cause and server message can carry account details.
-                        Log.w("SampleApp", "MFA ended with ${error::class.java.simpleName}")
+                        Log.w("SampleApp", "MFA ended with $error")
                         if (error is MfaError.NoEligibleFactors) {
-                            // No second factor this app supports: fall back to Universal Login.
-                            Log.w("SampleApp", "MFA ended with ${error::class.java.simpleName}")
-                            // If the user backs out of the browser, leave this screen: its spinner would never end.
-                            authViewModel.login(context, webAuthProvider, onCancelled = { navController.popBackStack() })
+                            // No second factor this app supports: fall back to Universal Login. If that doesn't sign
+                            // the user in (they back out of the browser, or it fails), leave this screen: its
+                            // spinner would never end.
+                            authViewModel.login(context, webAuthProvider, onNotSignedIn = { navController.popBackStack() })
                             MfaErrorHandling.Handled
                         } else {
-                            Log.w("SampleApp", "MFA ended with ${error::class.java.simpleName}")
-
                             MfaErrorHandling.NotHandled
                         }
                     },

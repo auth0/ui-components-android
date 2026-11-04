@@ -40,11 +40,12 @@ internal sealed interface ScreenPlan {
         val resendSecondsLeft: Int = 0,
     ) : ScreenPlan
 
-    /** A second factor; MFA draws its own screens from [engine]. */
-    data class Mfa(val engine: MfaEngine) : ScreenPlan
-
-    /** MFA ended and the app decides what happens next; a spinner shows until it does. */
-    data object AwaitingApp : ScreenPlan
+    /**
+     * A second factor; MFA draws its own screens from [engine]. When MFA ended and the app decides what happens next
+     * ([isAwaitingApp]), a spinner takes their place. It is the same screen to login, so that wait never slides MFA out
+     * and back, and the error MFA ended on never shows while it does.
+     */
+    data class Mfa(val engine: MfaEngine, val isAwaitingApp: Boolean = false) : ScreenPlan
 
     data object Authenticated : ScreenPlan
 
@@ -60,7 +61,6 @@ internal val ScreenPlan.transitionIdentity: String
         is ScreenPlan.Identifier -> "identifier"
         is ScreenPlan.OtpCode -> "otpCode"
         is ScreenPlan.Mfa -> "mfa"
-        ScreenPlan.AwaitingApp -> "awaitingApp"
         ScreenPlan.Authenticated -> "authenticated"
         is ScreenPlan.Failed -> "failed"
         ScreenPlan.NoMethods -> "noMethods"
@@ -72,7 +72,7 @@ internal val ScreenPlan.navigationDepth: Int
         ScreenPlan.Loading -> 0
         is ScreenPlan.Identifier, ScreenPlan.NoMethods -> 1
         is ScreenPlan.OtpCode -> 2
-        is ScreenPlan.Mfa, ScreenPlan.AwaitingApp -> 3
+        is ScreenPlan.Mfa -> 3
         ScreenPlan.Authenticated, is ScreenPlan.Failed -> 5
     }
 
@@ -90,7 +90,7 @@ internal fun plan(step: LoginStep): ScreenPlan = when (step) {
     is LoginStep.Failed -> ScreenPlan.Failed(step.error)
     LoginStep.NoMethodsAvailable -> ScreenPlan.NoMethods
     is LoginStep.Mfa -> ScreenPlan.Mfa(step.engine)
-    is LoginStep.AwaitingApp -> ScreenPlan.AwaitingApp
+    is LoginStep.AwaitingApp -> ScreenPlan.Mfa(step.engine, isAwaitingApp = true)
 }
 
 /** Builds the screen for [plan]; input goes back through [context]. */
@@ -116,15 +116,19 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
             onResend = { context.dispatch(LoginEvent.Resend) },
         )
 
-        // A headless app draws MFA itself, from its step stream, except the "not available" screen: that one is login's.
+        // A headless app draws MFA itself, from its step stream, except what is login's: the "not available" screen, and
+        // the wait for the app.
         is ScreenPlan.Mfa -> {
             val state by plan.engine.step.collectAsStateWithLifecycle()
-            if (context.mfa.presentation == MfaPresentation.Standard || state.isNoEligibleFactors) {
-                MfaHost(plan.engine, onLeave = { context.dispatch(LoginEvent.LeaveMfa) }, configuration = context.mfa)
+            if (context.mfa.presentation == MfaPresentation.Standard || state.isNoEligibleFactors || plan.isAwaitingApp) {
+                MfaHost(
+                    plan.engine,
+                    onLeave = { context.dispatch(LoginEvent.LeaveMfa) },
+                    configuration = context.mfa,
+                    isAwaitingApp = plan.isAwaitingApp,
+                )
             }
         }
-
-        ScreenPlan.AwaitingApp -> LoginLoadingScreen(showAtOnce = true)
 
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 

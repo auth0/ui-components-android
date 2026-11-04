@@ -52,15 +52,18 @@ class LoginRendererTest {
     }
 
     @Test
-    fun `plan - waiting for the app after MFA ended - is the loading screen's own plan`() {
-        assertThat(plan(LoginStep.AwaitingApp(mockk(), EMAIL))).isEqualTo(ScreenPlan.AwaitingApp)
+    fun `plan - waiting for the app after MFA ended - is MFA's own plan, told to wait`() {
+        val engine = mockk<MfaEngine>()
+
+        assertThat(plan(LoginStep.AwaitingApp(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine, isAwaitingApp = true))
     }
 
     @Test
-    fun `navigationDepth - waiting for the app - sits level with MFA, so it and MFA's own screen both push`() {
-        assertThat(ScreenPlan.AwaitingApp.navigationDepth).isEqualTo(ScreenPlan.Mfa(mockk()).navigationDepth)
-        assertThat(ScreenPlan.AwaitingApp.transitionIdentity)
-            .isNotEqualTo(ScreenPlan.Mfa(mockk()).transitionIdentity)
+    fun `transitionIdentity - waiting for the app - is still the MFA screen, so the wait never slides MFA out`() {
+        val engine = mockk<MfaEngine>()
+
+        assertThat(ScreenPlan.Mfa(engine, isAwaitingApp = true).transitionIdentity)
+            .isEqualTo(ScreenPlan.Mfa(engine).transitionIdentity)
     }
 
     @Test

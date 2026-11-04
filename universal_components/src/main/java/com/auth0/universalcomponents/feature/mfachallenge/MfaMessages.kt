@@ -125,6 +125,12 @@ class MfaMessages private constructor(
 
     companion object {
 
+        /**
+         * Every word its default. One shared instance, so a screen that takes it as its default argument finds the same
+         * key each time it is drawn and resolves the words once, not on every recomposition.
+         */
+        val Default: MfaMessages = MfaMessages()
+
         /** Builds the words to change, from [configure]. With nothing set, every word is its default. */
         operator fun invoke(configure: Builder.() -> Unit = {}): MfaMessages = Builder().apply(configure).build()
     }

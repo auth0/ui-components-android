@@ -27,20 +27,21 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 /*
  * The standard MFA screens. Each draws a public model with the resolved words, exactly what a screen the app replaced
  * receives, so the two behave the same. They are public so an app can use one on its own, to keep the look for a step
- * it doesn't redraw, or to drive its own flow with a model it builds. They draw no frame: place them inside your own.
+ * it doesn't redraw, or to drive its own flow with a model it builds. They draw no frame: place them inside your own,
+ * and inside [Auth0Theme] (`EmbeddedLoginScreen` already provides it); without a theme they throw.
  */
 
 /**
  * A short wait with nothing to ask. It is there from the first frame, since the user caused it and a blank screen
  * would look broken; [messages] gives screen readers a label. It offers no Cancel: leaving is the host's job (Back), so
- * [model] is only there to match the other screens.
+ * [model] is only there to match the other screens. Draw it inside [Auth0Theme].
  */
 @Composable
 @Suppress("UnusedParameter")
 fun MfaLoadingScreen(
     model: LoadingModel,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages().resolve(),
+    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
     val label = messages.loading.accessibilityLabel
     LoginLoadingScreen(
@@ -52,13 +53,13 @@ fun MfaLoadingScreen(
 /**
  * Every factor the round offers, one row each. From round 2 on, the server has asked for one more factor, so the
  * header says so. While [AuthenticatorListModel.pendingRowId]'s challenge goes out, its row is busy and no row can be
- * tapped.
+ * tapped. Draw it inside [Auth0Theme].
  */
 @Composable
 fun MfaAuthenticatorListScreen(
     model: AuthenticatorListModel,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages().resolve(),
+    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
     val dimensions = Auth0Theme.dimensions
     val header = when (model.header) {
@@ -97,13 +98,13 @@ fun MfaAuthenticatorListScreen(
  * Waiting for the user to approve the push on [PushChallengeModel.deviceName], which may be blank. Resend shows only
  * while [PushChallengeModel.canResend] (the server allows another push) and opens once the wait is over; while the push
  * is being sent again it can't be tapped twice, and "Verify another way" is off until the push is out. That action
- * shows only when [PushChallengeModel.canSwitch].
+ * shows only when [PushChallengeModel.canSwitch]. Draw it inside [Auth0Theme].
  */
 @Composable
 fun MfaPushChallengeScreen(
     model: PushChallengeModel,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages().resolve(),
+    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
     val dimensions = Auth0Theme.dimensions
     val words = messages.pushChallenge
@@ -149,13 +150,13 @@ fun MfaPushChallengeScreen(
 
 /**
  * MFA ended, and this says why: the server's own words for an unexpected error when it gave some. The way out is
- * "Start over" or "Close".
+ * "Start over" or "Close". Draw it inside [Auth0Theme].
  */
 @Composable
 fun MfaErrorScreen(
     model: ErrorModel,
     modifier: Modifier = Modifier,
-    messages: ResolvedMfaMessages = MfaMessages().resolve(),
+    messages: ResolvedMfaMessages = MfaMessages.Default.resolve(),
 ) {
     val words = messages.errors.textFor(model.error)
     LoginErrorScreen(

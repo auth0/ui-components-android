@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.feature.mfachallenge
 
+import android.content.res.Resources
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -20,11 +21,16 @@ internal fun interface MfaStrings {
 fun MfaMessages.resolve(): ResolvedMfaMessages {
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
-    return remember(this, context, configuration) {
-        // At most one argument, so the copy the spread makes is nothing.
-        @Suppress("SpreadOperator")
-        resolve(MfaStrings { id, args -> context.resources.getString(id, *args) })
-    }
+    return remember(this, context, configuration) { resolve(context.resources.asMfaStrings()) }
+}
+
+/**
+ * The words from the string resources. A word with no argument is read as it is, not formatted: `getString(id, *args)`
+ * always formats, so an app's word with a `%` in it (`100% sure`) would throw.
+ */
+@Suppress("SpreadOperator") // At most one argument, so the copy the spread makes is nothing.
+internal fun Resources.asMfaStrings() = MfaStrings { id, args ->
+    if (args.isEmpty()) getString(id) else getString(id, *args)
 }
 
 /** The app's words where it set some, the string resources' where not. */

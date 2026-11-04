@@ -56,6 +56,9 @@ internal class LoginFlowViewModel(
 
     /** False before the first Start, and again once the flow signed in or was left; the next Start begins anew. */
     private var isRunning = false
+
+    /** Whether the app set an `onMfaError`; without one, no one is waited for when MFA ends with nothing usable. */
+    private var hasMfaErrorHandler = false
     private var inFlight: Job? = null
     private var countdown: Job? = null
 
@@ -84,6 +87,8 @@ internal class LoginFlowViewModel(
 
             // Its own event, not Back: a second tap on the screen still sliding out must not leave the login.
             LoginEvent.LeaveMfa -> if (current is LoginStep.Mfa) leaveMfa(current)
+
+            is LoginEvent.MfaErrorHandlerChanged -> hasMfaErrorHandler = event.isSet
 
             // An app that doesn't take over leaves the user on MFA's own "not available" screen.
             is LoginEvent.MfaErrorAnswered ->
@@ -216,21 +221,22 @@ internal class LoginFlowViewModel(
                 _loginStep.value = LoginStep.CollectOtpIdentifier(identifier)
             }
             // Its error screen stays on show until the user starts over. The engine already logged the failure, once.
-            is MfaEffect.Failed -> mfaFailed(effect.error)
+            is MfaEffect.Failed -> reportMfaFailure(effect.error)
         }
     }
 
     /**
-     * Tells the app, once. When no factor can be used, the app may take over, so the error screen is held back
-     * behind a spinner until it answers; every other error already has its screen, which the answer doesn't change.
+     * Tells the app, once. When no factor can be used and the app set a handler, the app may take over, so the error
+     * screen is held back behind a spinner until it answers. Without a handler nobody can answer, and every other error
+     * already has its screen, which the answer doesn't change: neither waits.
      */
-    private fun mfaFailed(error: MfaError) {
+    private fun reportMfaFailure(error: MfaError) {
         _mfaResult.value = MfaResult.Ended(error)
         val mfa = _loginStep.value as? LoginStep.Mfa
-        if (mfa != null && error is MfaError.NoEligibleFactors) {
+        if (mfa != null && error is MfaError.NoEligibleFactors && hasMfaErrorHandler) {
             _loginStep.value = LoginStep.AwaitingApp(mfa.engine, mfa.identifier)
         }
-        viewModelScope.launch { _mfaFailed.send(error) }
+        _mfaFailed.trySend(error)
     }
 
     private suspend fun signedIn(credentials: Credentials) {

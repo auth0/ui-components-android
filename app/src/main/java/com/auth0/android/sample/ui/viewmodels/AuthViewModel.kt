@@ -54,8 +54,11 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /** [onCancelled] runs when the user backs out of the browser, for a screen that handed over to this login. */
-    fun login(context: Context, webAuthProvider: WebAuthProvider.Builder, onCancelled: () -> Unit = {}) {
+    /**
+     * [onNotSignedIn] runs when the browser login ends without signing in (cancelled or failed), for a screen that
+     * handed over to it.
+     */
+    fun login(context: Context, webAuthProvider: WebAuthProvider.Builder, onNotSignedIn: () -> Unit = {}) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
@@ -69,11 +72,12 @@ class AuthViewModel : ViewModel() {
                     Log.i("TAG", "login: User cancelled or browser not available")
                     _loginError.send("User cancelled or browser not available\"")
                     _authState.value = AuthState.Idle
-                    onCancelled()
+                    onNotSignedIn()
                 } else {
                     Log.e("TAG", "login: ${e.printStackTrace()}")
                     _loginError.send(e.message ?: "An unknown error occurred")
                     _authState.value = AuthState.Error(e.message ?: "An unknown error occurred")
+                    onNotSignedIn()
                 }
             }
         }

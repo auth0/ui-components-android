@@ -22,6 +22,9 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TestTimeSource
+import kotlin.time.TimeSource
 
 /**
  * The engine runs the reducer's commands with the timing the SDK asks for. It runs in the test's background scope,
@@ -165,6 +168,29 @@ class MfaEngineTest {
 
         coVerify(exactly = 2) { repository.sendPush(PHONE) }
         assertThat(engine.resendSecondsLeft()).isEqualTo(COOLDOWN)
+    }
+
+    @Test
+    fun `resend - the app was frozen meanwhile - the countdown catches up with the time that really passed`() = runTest {
+        val time = TestTimeSource()
+        val engine = started(PHONE, timeSource = time)
+
+        time += 40.seconds
+        waitFor(1_000)
+
+        assertThat(engine.resendSecondsLeft()).isEqualTo(COOLDOWN - 40)
+    }
+
+    @Test
+    fun `resend - frozen for longer than the wait - opens at zero and stops counting`() = runTest {
+        val time = TestTimeSource()
+        val engine = started(PHONE, timeSource = time)
+
+        time += (COOLDOWN + 30).seconds
+        waitFor(1_000)
+        waitFor(5_000)
+
+        assertThat(engine.resendSecondsLeft()).isEqualTo(0)
     }
 
     @Test
@@ -383,11 +409,16 @@ class MfaEngineTest {
      * Starts MFA, recording every step it shows, and lets the push for [select] go out; with one factor it's picked
      * straight away.
      */
-    private fun TestScope.started(vararg factors: MfaFactor.Push, select: MfaFactor.Push? = null): MfaEngine {
+    private fun TestScope.started(
+        vararg factors: MfaFactor.Push,
+        select: MfaFactor.Push? = null,
+        timeSource: TimeSource = TimeSource.Monotonic,
+    ): MfaEngine {
         val engine = MfaEngine(
             reducer = MfaReducer(factors.toList()),
             repository = repository,
             hostScope = backgroundScope,
+            timeSource = timeSource,
             onEffect = { effects += it },
         )
         backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { engine.step.collect { steps += it } }

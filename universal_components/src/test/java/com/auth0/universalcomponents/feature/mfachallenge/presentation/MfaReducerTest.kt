@@ -384,6 +384,17 @@ class MfaReducerTest {
     }
 
     @Test
+    fun `second passed - several at once after the app was frozen - catches up, and stops at zero`() {
+        val caughtUp = oneDevice.handleSecondPassed(waiting(ONE, PHONE).copy(resendSecondsLeft = 50), seconds = 40)
+        val past = oneDevice.handleSecondPassed(caughtUp.step, seconds = 40)
+
+        assertThat((caughtUp.step as MfaState.PushWaiting).resendSecondsLeft).isEqualTo(10)
+        assertThat(caughtUp.commands).containsExactly(MfaCommand.CountDownResend)
+        assertThat((past.step as MfaState.PushWaiting).resendSecondsLeft).isEqualTo(0)
+        assertThat(past.commands).isEmpty()
+    }
+
+    @Test
     fun `second passed - after the push screen was left - stops`() {
         val list = MfaState.ChooseFactor(TWO)
 

@@ -2,7 +2,6 @@ package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
-import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -14,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.TimeSource
 
 /**
  * One run of MFA: holds the step on show, runs the work [MfaReducer] asks for, and reports the end through
@@ -36,6 +36,7 @@ internal class MfaEngine(
     private val reducer: MfaReducer,
     private val repository: MfaRepository,
     hostScope: CoroutineScope,
+    private val timeSource: TimeSource = TimeSource.Monotonic,
     private val onEffect: (MfaEffect) -> Unit,
 ) {
 
@@ -165,12 +166,17 @@ internal class MfaEngine(
         }
     }
 
-    /** Replaces any tick still waiting, so a new countdown never loses a second to an old one. */
+    /**
+     * Replaces any tick still waiting, so a new countdown never loses a second to an old one. A tick counts the whole
+     * seconds that really passed (at least the one asked for), so an app that was frozen in the background catches up.
+     */
     private fun countDownResend() {
         resendCountdownJob?.cancel()
+        val startedAt = timeSource.markNow()
         resendCountdownJob = scope.launch {
             delay(ONE_SECOND_MILLIS)
-            applyUpdate(reducer.handleSecondPassed(_step.value))
+            val passed = (startedAt.elapsedNow().inWholeMilliseconds + HALF_SECOND_MILLIS) / ONE_SECOND_MILLIS
+            applyUpdate(reducer.handleSecondPassed(_step.value, seconds = passed.toInt()))
         }
     }
 
@@ -189,5 +195,6 @@ internal class MfaEngine(
     private companion object {
         const val TAG = "MfaEngine"
         const val ONE_SECOND_MILLIS = 1_000L
+        const val HALF_SECOND_MILLIS = 500L
     }
 }

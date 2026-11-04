@@ -1,12 +1,7 @@
 package com.auth0.universalcomponents.data.embeddedauth
 
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
-import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
-import com.auth0.universalcomponents.feature.embedded.data.mapper.toLoginFailure
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
-import com.auth0.universalcomponents.feature.mfachallenge.MfaError
-import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaError
 
 /**
  * How one SDK step answered: finished, "not finished yet, do one of [Next.actions]", or failed. A failure keeps the
@@ -24,11 +19,3 @@ internal val INVALID_CODE_REASONS = setOf(Reason.INVALID_CODE, Reason.INVALID_ID
 /** The actions a step asks for next; none if it finished. */
 internal val StepAnswer<*>.nextActions: List<NextAction>
     get() = (this as? StepAnswer.Next)?.actions.orEmpty()
-
-/** A failed step in the login flow's terms. */
-internal val StepAnswer.Failed.failure: LoginFailure
-    get() = (error as? EmbeddedAuthException)?.toLoginFailure() ?: error.toLoginFailure()
-
-/** A failed step in MFA's terms. */
-internal val StepAnswer.Failed.mfaError: MfaError
-    get() = (error as? EmbeddedAuthException)?.toMfaError() ?: MfaError.Unexpected(cause = error)

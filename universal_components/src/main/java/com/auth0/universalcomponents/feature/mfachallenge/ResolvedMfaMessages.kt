@@ -12,15 +12,15 @@ class ResolvedMfaMessages internal constructor(
     val pushChallenge: PushChallenge,
 ) {
 
-    class Text(val title: String, val description: String)
+    class Text internal constructor(val title: String, val description: String)
 
-    class AuthenticatorList(val headers: Headers) {
-        class Headers(val challenge: Text, val challengeAdditional: Text)
+    class AuthenticatorList internal constructor(val headers: Headers) {
+        class Headers internal constructor(val challenge: Text, val challengeAdditional: Text)
     }
 
-    class Loading(val accessibilityLabel: String)
+    class Loading internal constructor(val accessibilityLabel: String)
 
-    class Errors(
+    class Errors internal constructor(
         val startOver: String,
         val close: String,
         private val texts: Map<Class<out MfaError>, Text>,
@@ -33,7 +33,7 @@ class ResolvedMfaMessages internal constructor(
         fun textFor(error: MfaError): Text = texts[error.javaClass] ?: texts.getValue(MfaError.Unexpected::class.java)
     }
 
-    class PushChallenge(
+    class PushChallenge internal constructor(
         val row: Text,
         val title: String,
         val description: (deviceName: String) -> String,
@@ -42,6 +42,6 @@ class ResolvedMfaMessages internal constructor(
         val resend: Resend,
         val verifyAnotherWay: String,
     ) {
-        class Resend(val button: String, val cooldown: (seconds: Int) -> String)
+        class Resend internal constructor(val button: String, val cooldown: (seconds: Int) -> String)
     }
 }

@@ -390,9 +390,9 @@ EmbeddedLoginScreen(
 )
 ```
 
-The `Handled` spinner has no button of its own; **Back** returns to email entry. If you return `Handled`, your app owns what happens next, including when the user backs out of what you opened (for example the browser for Universal Login): route them somewhere, or they stay on the spinner until they press Back.
+The `Handled` spinner has no button of its own; **Back** returns to email entry. If you return `Handled`, your app owns what happens next, including when what you opened ends without signing the user in (for example they back out of the browser for Universal Login, or it fails): route them somewhere, or they stay on the spinner until they press Back.
 
-**Always add an `else` branch** when you switch over `MfaError`: a later release can add cases, and Kotlin can't warn about a case it doesn't know yet.
+**Always add an `else` branch** when you switch over `MfaError`: a later release can add cases, and Kotlin can't warn about a case it doesn't know yet. The compiler may call the branch redundant today; it is what keeps your app working once a case is added.
 
 The cases are `TokenExpired`, `TokenInvalid`, `Rejected`, `TooManyAttempts`, `NoEligibleFactors`, `Network` and `Unexpected(serverMessage)`. `Cancelled` and `PresentationUnavailable` exist for a later release and are not sent by embedded login today. `MfaError` is an `Exception`, and its `cause` holds the SDK's own error when there is one (for example `error.cause as? EmbeddedAuthException`). Its `toString()` names the case only, so logging it never writes a server message or a device name. Adding `onMfaError` is source-compatible, but your app must be recompiled against this version.
 
@@ -416,11 +416,9 @@ Adding `mfa` is source-compatible, but your app must be recompiled against this 
 Every word has a default string resource named `auth0_mfa_<group>_<key>`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value, use `MfaMessages`; anything you leave unset keeps its default:
 
 ```kotlin
-EmbeddedLoginScreen(
-    connection = "Username-Password-Authentication",
-    onAuthenticated = { credentials -> /* save them */ },
-    onExit = onBack,
-    mfa = MfaConfiguration(
+// Built once: a new MfaMessages on every recomposition would make the words resolve again.
+val mfa = remember {
+    MfaConfiguration(
         messages = MfaMessages {
             pushChallenge {
                 title = "Approve on your phone"
@@ -429,7 +427,14 @@ EmbeddedLoginScreen(
             }
             errors { rejected { title = "Sign-in denied" } }
         },
-    ),
+    )
+}
+
+EmbeddedLoginScreen(
+    connection = "Username-Password-Authentication",
+    onAuthenticated = { credentials -> /* save them */ },
+    onExit = onBack,
+    mfa = mfa,
 )
 ```
 
@@ -497,7 +502,7 @@ mfa = MfaConfiguration(
 
 #### Use the standard screens on their own
 
-The standard screens are public composables that take a model, so you can keep the look for a step you don't want to redraw, or drive your own flow with a model you build. They draw no frame (no navigation bar or background): place them inside your own. `messages` defaults to the library's words; pass `MfaMessages { … }.resolve()` to use yours.
+The standard screens are public composables that take a model, so you can keep the look for a step you don't want to redraw, or drive your own flow with a model you build. They draw no frame (no navigation bar or background): place them inside your own, and inside `Auth0Theme { }` (`EmbeddedLoginScreen` already provides it; without a theme they throw). `messages` defaults to the library's words; pass `MfaMessages { … }.resolve()` to use yours.
 
 | Screen | Model |
 | --- | --- |
@@ -509,15 +514,17 @@ The standard screens are public composables that take a model, so you can keep t
 The models need only their data, so they are easy to build for a preview or a test; every action defaults to doing nothing:
 
 ```kotlin
-MfaPushChallengeScreen(
-    model = PushChallengeModel(
-        deviceName = "Jane's phone",
-        canResend = true,
-        resendAvailableIn = 42,
-        canSwitch = true,
-        resend = MfaAction { /* send the request again */ },
-    ),
-)
+Auth0Theme {
+    MfaPushChallengeScreen(
+        model = PushChallengeModel(
+            deviceName = "Jane's phone",
+            canResend = true,
+            resendAvailableIn = 42,
+            canSwitch = true,
+            resend = MfaAction { /* send the request again */ },
+        ),
+    )
+}
 ```
 
 MFA itself only runs inside `EmbeddedLoginScreen` for now. A standalone MFA component, for an API that answers `mfa_required` (step-up), is planned and not available yet.
