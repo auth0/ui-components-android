@@ -214,7 +214,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, in order`() = runTest {
+    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, push first and each kind in the server's order`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
             challengeEmail(at = 0),
             sdkInstance<NextAction.ChallengePhone>(
@@ -233,10 +233,10 @@ class EmbeddedLoginRepositoryImplTest {
         assertThat(failure.error).isEqualTo(
             EmbeddedLoginError.MfaRequired(
                 listOf(
-                    MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.TEXT),
-                    MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.VOICE),
                     MfaFactor.Push(2, DEVICE),
                     MfaFactor.Push(3, OTHER_DEVICE),
+                    MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.TEXT),
+                    MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.VOICE),
                 ),
             ),
         )

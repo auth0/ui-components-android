@@ -171,7 +171,7 @@
     <string name="auth0_mfa_errors_cancelled_title">Verification cancelled.</string>
     <string name="auth0_mfa_errors_cancelled_description">You cancelled verification.</string>
     <string name="auth0_mfa_errors_token_expired_title">Request expired.</string>
-    <string name="auth0_mfa_errors_token_expired_description">The request wasn\'t approved in time. Sign in again to send a new one.</string>
+    <string name="auth0_mfa_errors_token_expired_description">This request expired. Sign in again to continue.</string>
     <string name="auth0_mfa_errors_token_invalid_title">Sign-in session ended.</string>
     <string name="auth0_mfa_errors_token_invalid_description">Your sign-in session ended. Please sign in again.</string>
     <string name="auth0_mfa_errors_rejected_title">Sign-in request denied.</string>

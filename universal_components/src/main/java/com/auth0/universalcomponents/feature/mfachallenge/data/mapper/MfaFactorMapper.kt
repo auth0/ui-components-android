@@ -5,8 +5,9 @@ import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 
 /**
- * The second factors in a server menu that these screens support, in its order; the rest is left out. A phone gives one
- * factor for each way the server can reach it, and a text when it names none, as the SDK does.
+ * The second factors in a server menu that these screens support; the rest is left out. A push comes before a code sent
+ * to a phone, the more phishing-resistant first; within each kind the server's order is kept. A phone gives one factor
+ * for each way the server can reach it, and a text when it names none, as the SDK does.
  */
 internal fun List<NextAction>.toMfaFactors(): List<MfaFactor> = flatMap { action ->
     when (action) {
@@ -17,4 +18,4 @@ internal fun List<NextAction>.toMfaFactors(): List<MfaFactor> = flatMap { action
             }
         else -> emptyList()
     }
-}
+}.sortedBy { it is MfaFactor.Phone }
