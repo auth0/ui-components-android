@@ -34,7 +34,7 @@ internal fun LoginRenderingHost(
     onAuthenticated: (Credentials) -> Unit,
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
-    onMfaError: ((MfaError) -> MfaErrorHandling)? = null,
+    onMfaError: (MfaError) -> MfaErrorHandling = { MfaErrorHandling.NotHandled },
     mfa: MfaConfiguration = MfaConfiguration(),
 ) {
     val step by viewModel.loginState.collectAsStateWithLifecycle()
@@ -43,19 +43,10 @@ internal fun LoginRenderingHost(
     val currentOnMfaError by rememberUpdatedState(onMfaError)
 
     LaunchedEffect(viewModel) { viewModel.send(LoginIntent.Start) }
-    // Without a handler nobody can take over when MFA has nothing usable, so login doesn't wait for an answer.
-    val hasMfaErrorHandler = onMfaError != null
-    LaunchedEffect(viewModel, hasMfaErrorHandler) {
-        viewModel.send(LoginIntent.MfaErrorHandlerChanged(hasMfaErrorHandler))
-    }
     ObserveAsEvents(viewModel.events) { event ->
         when (event) {
             is LoginEvent.Authenticated -> currentOnAuthenticated(event.credentials)
-            // No handler counts as "not handled", so the user is never stranded on a spinner.
-            is LoginEvent.MfaFailed -> {
-                val handling = currentOnMfaError?.invoke(event.error) ?: MfaErrorHandling.NotHandled
-                viewModel.send(LoginIntent.MfaErrorAnswered(handling))
-            }
+            is LoginEvent.MfaFailed -> viewModel.send(LoginIntent.MfaErrorAnswered(currentOnMfaError(event.error)))
         }
     }
 

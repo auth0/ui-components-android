@@ -356,7 +356,7 @@ When the code is right but the account needs a second factor, the same screen ca
 - **While the push waits,** the screen checks with the server at the interval it asks for, kept between 1 and 60 seconds (2 seconds if it gives none), and 2 seconds slower each time the server says it checked too soon. **Resend notification** shows while the server allows another push, and opens after a 60-second wait. **Verify another way** returns to the list; if the user had already approved on the first device, they are signed in. The checks carry on while the app is in the background; a network failure there isn't held against the push, and when the user returns a waiting push is checked at once.
 - **When the sign-in policy needs another factor,** the list comes back headed "One more step", with the factors the server offers for that step. Even with just one factor the list shows, so the user sees why they're asked again. There's no limit on the number of steps: the server decides.
 - **If a check hits a network error,** it is retried quietly, up to three times. After that, or on any other error (a declined push, an expired request, an ended session, too many attempts), MFA ends on an error screen that says why, and **Start over** returns to email entry with the email kept.
-- **Back** returns from the push to the list. From the list, while a push is being sent, when there's only one device, or on the error screen, it returns to email entry with the email kept, and the next code starts a new sign-in. A push that has already left the app can't be recalled, so its notification may still reach the device after the user went back.
+- **Back** returns from the push to the list. While a resend is going out it does nothing, so the new push is not cut off. From the list, while a push is being sent, when there's only one device, or on the error screen, it returns to email entry with the email kept, and the next code starts a new sign-in. A push that has already left the app can't be recalled, so its notification may still reach the device after the user went back.
 - **The sign-in session lives in memory.** If Android ends the app while the user is approving the push, for example in the background, the flow starts again from email entry when the app reopens.
 
 ### Handle MFA Errors
@@ -494,6 +494,7 @@ mfa = MfaConfiguration(
 ```
 
 - **A replaced screen is drawn inside the login frame** (below its navigation bar), in place of the standard one.
+- **To preview or test a screen,** build its model (a public data class) and the words with `ResolvedMfaMessages.from(context)`; pass `MfaMessages { ... }` as the second argument to include your own words.
 - **Models hold data only.** The push model changes every second while Resend counts down (`resendAvailableIn`), so always draw from the model you are given.
 - **Actions are plain functions on the model:** call them (`model.resend()`). Functions only equal themselves, so to check what a model shows in a test, compare its fields rather than whole models.
 - **Timers keep running** while your screen is shown: the countdown, the checks and the quiet retries belong to MFA, not to the screen.
@@ -527,6 +528,7 @@ Box {
         }
         is MfaStep.Error -> MyError(current.model)
         null -> Unit
+        else -> Unit
     }
 }
 ```

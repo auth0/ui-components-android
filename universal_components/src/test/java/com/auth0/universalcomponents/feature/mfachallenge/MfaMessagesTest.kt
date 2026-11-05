@@ -134,4 +134,14 @@ class MfaMessagesTest {
         assertThat(words.pushChallenge.title).isEqualTo("100% sure")
         assertThat(words.errors.startOver).isEqualTo("100% sure")
     }
+
+    @Test
+    fun `from a context - the words are the ones the standard screens use`() {
+        val context = mockk<android.content.Context> { every { resources } returns this@MfaMessagesTest.resources }
+
+        val words = ResolvedMfaMessages.from(context, MfaMessages { pushChallenge { title = "Approve" } })
+
+        assertThat(words.pushChallenge.title).isEqualTo("Approve")
+        assertThat(words.pushChallenge.waiting).isEqualTo(default(R.string.auth0_mfa_push_challenge_waiting))
+    }
 }

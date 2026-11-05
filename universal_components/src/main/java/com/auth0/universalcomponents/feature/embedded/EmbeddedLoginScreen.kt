@@ -20,7 +20,7 @@ import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
  *
  * [onMfaError] is told, once, each time MFA ends with an error; the user leaving MFA is not one. The answer matters
  * for [MfaError.NoEligibleFactors] only: [MfaErrorHandling.Handled] means the app takes over (the user sees a spinner,
- * not an error), and [MfaErrorHandling.NotHandled], or no handler, shows MFA's own "not available" screen. For any
+ * not an error), and [MfaErrorHandling.NotHandled], the default, shows MFA's own "not available" screen. For any
  * other error the screen already shows, and the answer changes nothing. A later release may add error cases, so give
  * the `when` an `else` branch.
  *
@@ -33,7 +33,7 @@ fun EmbeddedLoginScreen(
     onExit: () -> Unit,
     modifier: Modifier = Modifier,
     themeConfiguration: Auth0ThemeConfiguration = Auth0ThemeConfiguration.Default,
-    onMfaError: ((MfaError) -> MfaErrorHandling)? = null,
+    onMfaError: (MfaError) -> MfaErrorHandling = { MfaErrorHandling.NotHandled },
     mfa: MfaConfiguration = MfaConfiguration(),
 ) {
     Auth0Theme(configuration = themeConfiguration) {

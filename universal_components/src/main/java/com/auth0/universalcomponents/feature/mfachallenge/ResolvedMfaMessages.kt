@@ -1,5 +1,8 @@
 package com.auth0.universalcomponents.feature.mfachallenge
 
+import android.content.Context
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.resolve
+
 /**
  * Every word MFA shows, after the app's [MfaMessages] and the string resources are applied, in the language the screen
  * is in now. A screen the app replaced receives these together with its model, so it need not look any word up.
@@ -11,6 +14,18 @@ class ResolvedMfaMessages internal constructor(
     val errors: Errors,
     val pushChallenge: PushChallenge,
 ) {
+
+    companion object {
+
+        /**
+         * The words as [context] shows them now: the string resources, with [messages] applied over them. For what
+         * has no MFA screen to hand them in: a `@Preview` or a test of a replaced screen, or a headless app that
+         * wants the same words the standard screens use. Call it again when the language changes.
+         */
+        @JvmOverloads
+        fun from(context: Context, messages: MfaMessages = MfaMessages()): ResolvedMfaMessages =
+            messages.resolve(context.resources)
+    }
 
     class Message internal constructor(val title: String, val description: String)
 

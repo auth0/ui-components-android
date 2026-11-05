@@ -79,12 +79,6 @@ internal sealed interface LoginIntent {
 
     /** The app's answer to an MFA error it was told about. Counts only while login waits for it. */
     data class MfaErrorAnswered(val handling: MfaErrorHandling) : LoginIntent
-
-    /**
-     * Whether the app set an `onMfaError`, sent when the screen is drawn and whenever that changes. Without one nobody
-     * can take over, so login does not wait for an answer.
-     */
-    data class MfaErrorHandlerChanged(val isSet: Boolean) : LoginIntent
 }
 
 /**

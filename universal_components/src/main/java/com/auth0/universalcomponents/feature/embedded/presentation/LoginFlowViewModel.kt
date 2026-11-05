@@ -61,8 +61,6 @@ internal class LoginFlowViewModel(
     /** False before the first Start, and again once the flow signed in or was left; the next Start begins anew. */
     private var isRunning = false
 
-    /** Whether the app set an `onMfaError`; without one, no one is waited for when MFA ends with nothing usable. */
-    private var hasMfaErrorHandler = false
     private var runningStep: Job? = null
     private var resendCountdownJob: Job? = null
 
@@ -91,8 +89,6 @@ internal class LoginFlowViewModel(
 
             // Its own event, not Back: a second tap on the screen still sliding out must not leave the login.
             LoginIntent.LeaveMfa -> if (current is LoginState.Mfa) leaveMfa(current)
-
-            is LoginIntent.MfaErrorHandlerChanged -> hasMfaErrorHandler = event.isSet
 
             // An app that doesn't take over leaves the user on MFA's own "not available" screen.
             is LoginIntent.MfaErrorAnswered ->
@@ -240,13 +236,12 @@ internal class LoginFlowViewModel(
     }
 
     /**
-     * When no factor can be used and the app set a handler, the app may take over, so the error screen is held back
-     * behind a spinner until it answers. Without a handler nobody can answer, and every other error already has its
-     * screen, which the answer doesn't change: neither waits.
+     * When no factor can be used the app may take over, so the error screen is held back behind a spinner until it
+     * answers. Every other error already has its screen, which the answer doesn't change: it doesn't wait.
      */
     private fun tellApp(error: MfaError) {
         val mfa = _loginState.value as? LoginState.Mfa
-        if (mfa != null && error is MfaError.NoEligibleFactors && hasMfaErrorHandler) {
+        if (mfa != null && error is MfaError.NoEligibleFactors) {
             _loginState.value = LoginState.AwaitingApp(mfa.engine, mfa.identifier)
         }
         _events.trySend(LoginEvent.MfaFailed(error))
