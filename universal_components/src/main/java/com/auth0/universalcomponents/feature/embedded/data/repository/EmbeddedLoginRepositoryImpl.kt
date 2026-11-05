@@ -1,5 +1,8 @@
 package com.auth0.universalcomponents.feature.embedded.data.repository
 
+import com.auth0.android.embedded.EmbeddedAuthError
+import com.auth0.android.embedded.EmbeddedAuthException
+import com.auth0.android.embedded.authorize.EmbeddedCapability
 import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
@@ -31,7 +34,7 @@ internal class EmbeddedLoginRepositoryImpl(
 
     override suspend fun discover(): Result<List<LoginOption>, LoginFailure> {
         if (connection.isBlank()) return Result.Error(LoginFailure(EmbeddedLoginError.ConnectionMissing))
-        val opened = steps.run { authorize(connection) }
+        val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
         if (opened is StepAnswer.Failed) return Result.Error(opened.failure)
         isDiscoverySessionUnused = true
         return Result.Success(opened.nextActions.map { it.toLoginOption() })
@@ -39,7 +42,7 @@ internal class EmbeddedLoginRepositoryImpl(
 
     override suspend fun startEmailOtp(email: String): EmptyResult<LoginFailure> {
         if (!isDiscoverySessionUnused) {
-            val opened = steps.run { authorize(connection) }
+            val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
             if (opened is StepAnswer.Failed) return Result.Error(opened.failure)
         }
         isDiscoverySessionUnused = false
@@ -70,21 +73,42 @@ internal class EmbeddedLoginRepositoryImpl(
             is StepAnswer.Next -> if (verified.reason in INVALID_CODE_REASONS) {
                 Result.Error(LoginFailure(EmbeddedLoginError.InvalidCode))
             } else {
-                // As in the SDK, a second factor comes back as an error, here carrying the factors on offer.
+                // As in the SDK, a second factor comes back as an error, carrying the factors on offer. MFA decides
+                // what happens when none of them can be used here, so the app hears about it the same way.
                 val factors = verified.actions.toMfaFactors()
-                if (factors.isNotEmpty()) {
-                    Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired(factors)))
-                } else {
+                if (factors.isEmpty()) {
                     val offered = verified.actions.map { it.capability.value }
-                    Logger.w(TAG, "The server asked for a further step: $offered")
-                    Result.Error(LoginFailure(EmbeddedLoginError.ExtraStepUnsupported))
+                    Logger.w(TAG, "No usable second factor; the server offered $offered")
+                    Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired.NoUsableFactor))
+                } else {
+                    Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired(factors)))
                 }
             }
 
-            is StepAnswer.Failed -> Result.Error(verified.failure)
+            // The server can also say outright that the account has no usable second factor: MFA tells the user.
+            is StepAnswer.Failed -> if (verified.isNoEligibleFactors) {
+                Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired.NoUsableFactor))
+            } else {
+                Result.Error(verified.failure)
+            }
         }
+
+    private val StepAnswer.Failed.isNoEligibleFactors: Boolean
+        get() = (error as? EmbeddedAuthException)?.error == EmbeddedAuthError.NoEligibleFactors
 
     private companion object {
         const val TAG = "EmbeddedRepository"
+
+        /**
+         * What these screens can drive, told to the server so it only offers those: the emailed code, then push.
+         * The same as iOS, which sends only what is plugged in.
+         */
+        val CAPABILITIES = setOf(
+            EmbeddedCapability.IDENTIFY_EMAIL,
+            EmbeddedCapability.CHALLENGE_EMAIL,
+            EmbeddedCapability.VERIFY_OTP,
+            EmbeddedCapability.CHALLENGE_PUSH,
+            EmbeddedCapability.VERIFY_OOB,
+        )
     }
 }

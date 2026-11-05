@@ -21,7 +21,7 @@ internal interface EmbeddedLoginRepository {
 
     /**
      * Verifies a code the user received. A correct code signs in, or fails with [EmbeddedLoginError.MfaRequired]
-     * when the server wants a second factor; any other further step isn't supported and fails.
+     * when the server wants more, even if none of the factors it offers can be used here: MFA tells the user.
      */
     suspend fun verifyOtp(code: String): Result<Credentials, LoginFailure>
 }

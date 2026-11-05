@@ -69,7 +69,7 @@ class MfaEngineLockTest {
 
         // The check holds the SDK session, so the second push hasn't touched it yet.
         verify(exactly = 0) { client.challengePush(TABLET.index) }
-        assertThat((engine.step.value as MfaStep.PushWaiting).phase).isEqualTo(PushPhase.Sending)
+        assertThat(engine.step.value).isInstanceOf(MfaStep.SendingChallenge::class.java)
 
         check.fail(pending())
         runCurrent()
@@ -80,10 +80,52 @@ class MfaEngineLockTest {
         }
         val shown = engine.step.value as MfaStep.PushWaiting
         assertThat(shown.factor).isEqualTo(TABLET)
-        assertThat(shown.phase).isInstanceOf(PushPhase.Polling::class.java)
+        assertThat(shown.phase).isEqualTo(PushPhase.Waiting)
+    }
+
+    @Test
+    fun `another factor while a push waits its turn - that push is dropped, never sent on the new round`() = runTest {
+        val check = InFlightRequest<Credentials>()
+        every { client.verifyOob() } returns check
+        val engine = MfaEngine(
+            reducer = MfaReducer(listOf(PHONE, TABLET)),
+            repository = MfaRepositoryImpl(EmbeddedAuthSteps(client)),
+            hostScope = backgroundScope,
+            onEffect = {},
+        )
+        engine.start()
+        engine.onIntent(MfaIntent.SelectFactor(PHONE))
+        runCurrent()
+        advanceTimeBy(POLL_MS)
+        runCurrent()
+        engine.onIntent(MfaIntent.ChooseAnotherFactor)
+        engine.onIntent(MfaIntent.SelectFactor(TABLET))
+        runCurrent()
+        verify(exactly = 0) { client.challengePush(TABLET.index) }
+
+        // The phone check says: approved, and the policy wants another factor, with both devices on offer.
+        check.fail(
+            sdkException(
+                EmbeddedAuthError.InsufficientAuthorization(
+                    listOf(challengePush(PHONE), challengePush(TABLET)),
+                    Reason.NONE,
+                ),
+                code = "insufficient_authorization",
+            ),
+        )
+        runCurrent()
+
+        // The tablet push the user picked in round 1 would have gone out on the round-2 session.
+        verify(exactly = 0) { client.challengePush(TABLET.index) }
+        assertThat(engine.step.value).isEqualTo(
+            MfaStep.ChooseFactor(MfaRound(2, listOf(PHONE, TABLET))),
+        )
     }
 
     private fun verifyOob(): NextAction.VerifyOob = sdkInstance(Int::class.java to POLL_MS.toInt())
+
+    private fun challengePush(factor: MfaFactor.Push): NextAction.ChallengePush =
+        sdkInstance(Int::class.java to factor.index, String::class.java to factor.deviceName)
 
     private fun pending() = sdkException(
         EmbeddedAuthError.InsufficientAuthorization(listOf(verifyOob()), Reason.AUTHORIZATION_PENDING),

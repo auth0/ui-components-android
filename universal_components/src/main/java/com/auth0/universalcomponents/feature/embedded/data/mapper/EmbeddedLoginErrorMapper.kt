@@ -23,20 +23,25 @@ internal fun EmbeddedAuthException.toLoginFailure(): LoginFailure {
         EmbeddedAuthError.TooManyWrongOtpAttempts -> EmbeddedLoginError.TooManyWrongCodes
         EmbeddedAuthError.TooManyAttempts -> EmbeddedLoginError.TooManyAttempts
         EmbeddedAuthError.TooManyLogins -> EmbeddedLoginError.TooManyLogins
-        EmbeddedAuthError.AuthorizationRejected -> EmbeddedLoginError.PushDenied
-        EmbeddedAuthError.NoEligibleFactors -> EmbeddedLoginError.NoEligibleFactors
         // The SDK's own text for these is developer advice ("Call authorize() first"), never for the user.
         EmbeddedAuthError.NoActiveSession, EmbeddedAuthError.SessionExpired -> EmbeddedLoginError.SessionExpired
         else -> null
     }
-    val fromServer = code !in SDK_ERROR_CODES && description.isNotBlank()
-    val loginError = known ?: if (fromServer) {
-        EmbeddedLoginError.Server(description)
-    } else {
-        EmbeddedLoginError.Unknown("$code: $description")
-    }
+    val loginError = known ?: serverDescription?.let(EmbeddedLoginError::Server)
+        ?: EmbeddedLoginError.Unknown("$code: $description")
     return LoginFailure(loginError, canRetryStep, cause = this)
 }
+
+/**
+ * The server's own explanation of the error, when it sent one in words; null otherwise. For every error the SDK
+ * recognises, the description is the server's machine token (`no_eligible_factors`, `ip_blocked`, ...), which is
+ * how the SDK recognises it, so only an error it left unclassified carries text meant to be read.
+ */
+internal val EmbeddedAuthException.serverDescription: String?
+    get() = description.takeIf {
+        (error == EmbeddedAuthError.AccessDenied || error == EmbeddedAuthError.Unknown) &&
+            code !in SDK_ERROR_CODES && it.isNotBlank()
+    }
 
 /** HTTP 5xx: the server failed, not the request. */
 private val SERVER_ERROR_STATUS = 500..599

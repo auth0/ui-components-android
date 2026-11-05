@@ -8,20 +8,28 @@ import com.auth0.android.result.Credentials
  */
 internal sealed interface MfaFactor {
 
-    /** [index] is the server's handle for that device; [deviceName] is what the user called it. */
+    /** [index] is the server's handle for that device; [deviceName] is what the user called it, maybe blank. */
     data class Push(val index: Int, val deviceName: String) : MfaFactor
 }
 
-/** Where a push approval stands after one check. */
+/** Where a push stands after the server answered: sending it, or one check of it. */
 internal sealed interface PushStatus {
 
     data class Approved(val credentials: Credentials) : PushStatus
 
-    /** Not answered yet; check again in [retryInMs]. */
-    data class Pending(val retryInMs: Long) : PushStatus
-}
+    /**
+     * Not answered yet. [retryInMs] is the server's wait before the next check, when it gave one; [isSlowDown] means
+     * we checked too soon. [canResend] is true while the server still offers to send the push again.
+     */
+    data class Pending(
+        val retryInMs: Long?,
+        val canResend: Boolean,
+        val isSlowDown: Boolean = false,
+    ) : PushStatus
 
-/** The wait between push checks when the server doesn't give one. The server always asks for 2 seconds. */
-internal object PushPolling {
-    const val DEFAULT_WAIT_MS = 2_000L
+    /** Approved, and the sign-in needs one more factor: [factors] are the next round's that these screens support. */
+    data class AnotherFactor(val factors: List<MfaFactor>) : PushStatus
+
+    /** The user denied the push. It's their answer, not a failure, so it isn't an error. */
+    data object Rejected : PushStatus
 }

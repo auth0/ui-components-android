@@ -1,7 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.presentation.mfa
 
 import com.auth0.universalcomponents.domain.network.Result
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
 import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.embedded.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -24,6 +24,9 @@ import kotlinx.coroutines.launch
  * but nothing runs until [start]: the host stores the engine first, so an effect sent while starting finds it.
  * After [stop], [step] keeps its last value (the screen may still be animating out) and taps are ignored.
  *
+ * Checks carry on while the app is in the background, so an approval given in another app is seen as soon as the
+ * server has it and the screen is up to date when the user comes back.
+ *
  * The engine is confined to the main thread: [hostScope] must run on it (the ViewModel's does), and so must every
  * call. Its state is plain, not atomic, because a single thread is what keeps the reducer's read-then-write of [step]
  * safe; making one flag atomic would not make the rest so.
@@ -42,11 +45,20 @@ internal class MfaEngine(
     private val _step = MutableStateFlow(first.step)
     val step: StateFlow<MfaStep> = _step.asStateFlow()
 
-    /** The wait before the next push check; null once the check itself has started, so stopping never cuts it off. */
-    private var pollDelayJob: Job? = null
+    /** The wait before the next push check. The check itself runs on its own, so cancelling this never cuts it off. */
+    private var pushCheckWait: Job? = null
+
+    /**
+     * The push being sent, from the moment it waits its turn at the SDK. Cancelling it drops a push the user has left
+     * (it is never sent if it hasn't started), and a call already on its way finishes but is not heard.
+     */
+    private var pushSend: Job? = null
 
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
+
+    /** True while the app is in the background; only the main thread reads or sets it. */
+    private var isInBackground = false
 
     /** Set by the first [start]; the step alone can't tell, since the list looks the same before and after. */
     private var isStarted = false
@@ -62,6 +74,28 @@ internal class MfaEngine(
 
     /** System back or the top-bar arrow; MFA decides what it means on the screen on show. */
     fun back() = onIntent(MfaIntent.Back)
+
+    /**
+     * Told by whoever draws MFA when the app leaves the foreground. Checks carry on, but a network failure while in
+     * the background doesn't count against the push.
+     */
+    fun onAppBackgrounded() {
+        isInBackground = true
+    }
+
+    /**
+     * Told when the app returns to the foreground: the user may have approved in another app meanwhile, so a waiting
+     * push is checked at once instead of after the rest of its wait. Does nothing if the app never left.
+     */
+    fun onAppForegrounded() {
+        if (!isInBackground) return
+        isInBackground = false
+        applyUpdate(reducer.handleAppForegrounded(_step.value))
+    }
+
+    /** False once MFA has ended, one way or another; the host then owns what is left on screen. */
+    val isRunning: Boolean
+        get() = job.isActive
 
     /**
      * Ends this run: nothing it started reaches the host any more. It can't be undone, so the host builds a new engine
@@ -85,42 +119,50 @@ internal class MfaEngine(
 
     private fun runCommand(command: MfaCommand) {
         when (command) {
-            MfaCommand.StopPolling -> pollDelayJob?.cancel()
-            is MfaCommand.CheckPushStatus -> schedulePushCheck(command.afterMs)
-            MfaCommand.CountDownResend -> countDownResend()
-            // A check still in flight finishes first: the repository runs one SDK step at a time.
+            // A check still on its way finishes first: the repository runs one SDK step at a time. A send that is
+            // replaced, or abandoned, is cancelled, so an old push can't answer for a newer one.
             is MfaCommand.SendPush -> {
-                pollDelayJob?.cancel()
-                scope.launch {
+                pushSend?.cancel()
+                pushSend = scope.launch {
                     val sent = repository.sendPush(command.factor)
                     onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
                 }
             }
+
+            is MfaCommand.SchedulePushCheck -> {
+                pushCheckWait?.cancel()
+                pushCheckWait = scope.launch {
+                    delay(command.afterMs)
+                    applyUpdate(reducer.handlePushCheckDue(_step.value))
+                }
+            }
+
+            // Not tied to the wait, so leaving the push screen never cuts a check off: an approval that lands after
+            // the user picked another device isn't lost. The reducer drops answers that no longer fit the screen.
+            MfaCommand.CheckPush -> scope.launch { onOutcome(checkPushStatus()) }
+
+            MfaCommand.CancelPushWork -> {
+                pushCheckWait?.cancel()
+                pushSend?.cancel()
+            }
+
+            MfaCommand.CountDownResend -> countDownResend()
         }
     }
 
-    /**
-     * Waits, then checks once. Stopping cancels only the wait: a check that has started runs to the end and its
-     * answer still comes in, so an approval that lands after the user picked another device isn't lost. The
-     * reducer drops answers that no longer fit the screen. Only [stop] ends a check in flight.
-     */
-    private fun schedulePushCheck(delayMs: Long) {
-        pollDelayJob?.cancel()
-        pollDelayJob = scope.launch {
-            delay(delayMs)
-            // The wait is over; from here on only stop() can end the check.
-            pollDelayJob = null
-            onOutcome(checkPushStatus())
-        }
-    }
-
-    private suspend fun checkPushStatus(): MfaOutcome =
-        repository.checkPushStatus().toOutcome(MfaOutcome::CheckFailed) { status ->
+    private suspend fun checkPushStatus(): MfaOutcome {
+        val checked = repository.checkPushStatus()
+        // Read when the answer arrives: that is when a failure is judged.
+        val whileInBackground = isInBackground
+        return checked.toOutcome({ MfaOutcome.CheckFailed(it, whileInBackground) }) { status ->
             when (status) {
                 is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
-                is PushStatus.Pending -> MfaOutcome.PushPending(status.retryInMs)
+                is PushStatus.Pending -> MfaOutcome.PushPending(status)
+                is PushStatus.AnotherFactor -> MfaOutcome.AnotherFactor(status.factors)
+                PushStatus.Rejected -> MfaOutcome.PushRejected
             }
         }
+    }
 
     /** Replaces any tick still waiting, so a new countdown never loses a second to an old one. */
     private fun countDownResend() {
@@ -132,13 +174,13 @@ internal class MfaEngine(
     }
 
     /** A failure is logged once here, with its cause, so it can be traced in a live app. */
-    private inline fun <T> Result<T, LoginFailure>.toOutcome(
-        onFailure: (LoginFailure) -> MfaOutcome,
+    private inline fun <T> Result<T, MfaError>.toOutcome(
+        onFailure: (MfaError) -> MfaOutcome,
         onSuccess: (T) -> MfaOutcome,
     ): MfaOutcome = when (this) {
         is Result.Success -> onSuccess(data)
         is Result.Error -> {
-            Logger.e(TAG, "MFA step failed: ${error.error}", error.cause)
+            Logger.e(TAG, "MFA step failed: $error", error)
             onFailure(error)
         }
     }

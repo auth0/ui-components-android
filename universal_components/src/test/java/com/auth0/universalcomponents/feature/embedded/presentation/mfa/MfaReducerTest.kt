@@ -1,9 +1,9 @@
 package com.auth0.universalcomponents.feature.embedded.presentation.mfa
 
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
+import com.auth0.universalcomponents.feature.embedded.domain.model.MfaError
 import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.embedded.domain.model.PushStatus
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
 import org.junit.Test
@@ -16,10 +16,10 @@ class MfaReducerTest {
     // region start
 
     @Test
-    fun `start - one device - sends the push straight away, showing the push screen`() {
+    fun `start - one device - sends its push first, with no screen of its own until it's out`() {
         val update = oneDevice.start()
 
-        assertThat(update.step).isEqualTo(MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false))
+        assertThat(update.step).isEqualTo(MfaStep.SendingChallenge(ONE, PHONE))
         assertThat(update.commands).containsExactly(MfaCommand.SendPush(PHONE))
     }
 
@@ -27,168 +27,312 @@ class MfaReducerTest {
     fun `start - several devices - shows the list`() {
         val update = twoDevices.start()
 
-        assertThat(update.step).isEqualTo(MfaStep.AuthenticatorList(listOf(PHONE, TABLET)))
+        assertThat(update.step).isEqualTo(MfaStep.ChooseFactor(TWO))
         assertThat(update.commands).isEmpty()
     }
 
     @Test
-    fun `start - no factors - fails as unsupported`() {
-        assertThat(MfaReducer(emptyList()).start().step)
-            .isEqualTo(MfaStep.Failed(EmbeddedLoginError.ExtraStepUnsupported))
+    fun `start - nothing usable - ends MFA with no usable factor`() {
+        val update = MfaReducer(emptyList()).start()
+
+        assertThat(update.step).isEqualTo(MfaStep.Failed(MfaError.NoEligibleFactors()))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(MfaError.NoEligibleFactors()))
+        assertThat(update.commands).isEmpty()
     }
 
     // endregion
 
-    // region push
+    // region choosing and sending
 
     @Test
-    fun `select - a device from the list - sends its push, and Back waits while it's sent`() {
-        val selected = twoDevices.handleIntent(LIST, MfaIntent.SelectFactor(TABLET))
+    fun `select - a device from the list - sends its push, with the list kept`() {
+        val update = twoDevices.handleIntent(MfaStep.ChooseFactor(TWO), MfaIntent.SelectFactor(TABLET))
 
-        assertThat(selected.step).isEqualTo(MfaStep.PushWaiting(TABLET, PushPhase.Sending, canChooseAnother = true))
-        assertThat(selected.commands).containsExactly(MfaCommand.SendPush(TABLET))
-        assertThat(twoDevices.handleIntent(selected.step, MfaIntent.Back)).isEqualTo(MfaUpdate(selected.step))
+        assertThat(update.step).isEqualTo(MfaStep.SendingChallenge(TWO, TABLET))
+        assertThat(update.commands).containsExactly(MfaCommand.SendPush(TABLET))
     }
 
     @Test
-    fun `sent, then pending - checks again after the server's wait`() {
-        val sending = MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false)
+    fun `select - while a push is going out, or a device not offered - does nothing`() {
+        val sending = MfaStep.SendingChallenge(TWO, TABLET)
+        val stranger = MfaFactor.Push(9, "Someone else's phone")
 
-        val sent = oneDevice.handleOutcome(sending, MfaOutcome.PushSent(POLL))
-        val pending = oneDevice.handleOutcome(sent.step, MfaOutcome.PushPending(SLOWER))
+        assertThat(twoDevices.handleIntent(sending, MfaIntent.SelectFactor(PHONE))).isEqualTo(MfaUpdate(sending))
+        assertThat(twoDevices.handleIntent(MfaStep.ChooseFactor(TWO), MfaIntent.SelectFactor(stranger)))
+            .isEqualTo(MfaUpdate(MfaStep.ChooseFactor(TWO)))
+    }
 
-        assertThat(sent.step).isEqualTo(polling(PHONE, POLL, COOLDOWN, canChooseAnother = false))
-        assertThat(sent.commands)
-            .containsExactly(MfaCommand.CheckPushStatus(POLL), MfaCommand.CountDownResend)
+    @Test
+    fun `sent - shows the push screen, then waits the server's interval and the resend wait`() {
+        val update = oneDevice.handleOutcome(MfaStep.SendingChallenge(ONE, PHONE), sent(POLL))
+
+        assertThat(update.step).isEqualTo(waiting(ONE, PHONE))
+        assertThat(update.commands)
+            .containsExactly(MfaCommand.SchedulePushCheck(POLL), MfaCommand.CountDownResend)
             .inOrder()
-        assertThat(pending.commands).containsExactly(MfaCommand.CheckPushStatus(SLOWER))
     }
 
     @Test
-    fun `approved - hands over the credentials, and keeps no success step of its own`() {
+    fun `sent - the server's interval - is kept between 1 and 60 seconds`() {
+        val sending = MfaStep.SendingChallenge(ONE, PHONE)
+
+        val tooFast = oneDevice.handleOutcome(sending, sent(0)).step as MfaStep.PushWaiting
+        val tooSlow = oneDevice.handleOutcome(sending, sent(120_000)).step as MfaStep.PushWaiting
+
+        assertThat(tooFast.everyMs).isEqualTo(1_000)
+        assertThat(tooSlow.everyMs).isEqualTo(60_000)
+    }
+
+    @Test
+    fun `sent - after the user left that screen - is dropped`() {
+        val list = MfaStep.ChooseFactor(TWO)
+
+        assertThat(twoDevices.handleOutcome(list, sent(POLL))).isEqualTo(MfaUpdate(list))
+    }
+
+    @Test
+    fun `send fails - even on the network - ends MFA`() {
+        val error = MfaError.Network(null)
+
+        val update = oneDevice.handleOutcome(MfaStep.SendingChallenge(ONE, PHONE), MfaOutcome.SendFailed(error))
+
+        assertThat(update.step).isEqualTo(MfaStep.Failed(error))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(error))
+    }
+
+    @Test
+    fun `send fails - after the user left that screen - is dropped`() {
+        val list = MfaStep.ChooseFactor(TWO)
+
+        assertThat(twoDevices.handleOutcome(list, MfaOutcome.SendFailed(MfaError.Network(null))))
+            .isEqualTo(MfaUpdate(list))
+    }
+
+    // endregion
+
+    // region checking
+
+    @Test
+    fun `check due - while waiting - checks once`() {
+        val update = oneDevice.handlePushCheckDue(waiting(ONE, PHONE))
+
+        assertThat(update.step).isEqualTo(waiting(ONE, PHONE).copy(phase = PushPhase.Checking))
+        assertThat(update.commands).containsExactly(MfaCommand.CheckPush)
+    }
+
+    @Test
+    fun `check due - with a check or a resend on its way, or off the push screen - does nothing`() {
+        listOf(
+            waiting(ONE, PHONE).copy(phase = PushPhase.Checking),
+            waiting(ONE, PHONE).copy(phase = PushPhase.Resending),
+            MfaStep.ChooseFactor(TWO),
+        ).forEach { step -> assertThat(twoDevices.handlePushCheckDue(step)).isEqualTo(MfaUpdate(step)) }
+    }
+
+    @Test
+    fun `pending - waits the server's new interval and says again whether resend is allowed`() {
+        val checking = checking(ONE, PHONE).copy(failedChecks = 2)
+
+        val update = oneDevice.handleOutcome(checking, pending(SLOWER, canResend = false))
+
+        assertThat(update.step).isEqualTo(
+            waiting(ONE, PHONE).copy(everyMs = SLOWER, canResend = false, failedChecks = 0),
+        )
+        assertThat(update.commands).containsExactly(MfaCommand.SchedulePushCheck(SLOWER))
+    }
+
+    @Test
+    fun `pending - with no interval - keeps the last one`() {
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), pending(null))
+
+        assertThat((update.step as MfaStep.PushWaiting).everyMs).isEqualTo(POLL)
+    }
+
+    @Test
+    fun `slow down - waits 2 seconds longer, or the server's wait if that's longer`() {
+        val shorter = oneDevice.handleOutcome(checking(ONE, PHONE), pending(1_000, isSlowDown = true))
+        val longer = oneDevice.handleOutcome(checking(ONE, PHONE), pending(9_000, isSlowDown = true))
+
+        assertThat((shorter.step as MfaStep.PushWaiting).everyMs).isEqualTo(POLL + 2_000)
+        assertThat((longer.step as MfaStep.PushWaiting).everyMs).isEqualTo(9_000)
+    }
+
+    @Test
+    fun `pending - after the user left, or while a resend is going out - is dropped`() {
+        listOf(MfaStep.ChooseFactor(TWO), waiting(TWO, PHONE).copy(phase = PushPhase.Resending)).forEach { step ->
+            assertThat(twoDevices.handleOutcome(step, pending(POLL))).isEqualTo(MfaUpdate(step))
+        }
+    }
+
+    @Test
+    fun `approved - from any screen, even after the user switched device - signs in`() {
         val credentials = mockk<Credentials>()
-        val waiting = polling(PHONE, canChooseAnother = false)
+        listOf(
+            checking(ONE, PHONE),
+            MfaStep.ChooseFactor(TWO),
+            MfaStep.SendingChallenge(TWO, TABLET),
+        ).forEach { step ->
+            val update = twoDevices.handleOutcome(step, MfaOutcome.SignedIn(credentials))
 
-        val update = oneDevice.handleOutcome(waiting, MfaOutcome.SignedIn(credentials))
-
-        assertThat(update.step).isEqualTo(waiting)
-        assertThat(update.commands).isEmpty()
-        assertThat(update.effect).isEqualTo(MfaEffect.Authenticated(credentials))
+            assertThat(update.step).isEqualTo(step)
+            assertThat(update.effect).isEqualTo(MfaEffect.Authenticated(credentials))
+        }
     }
 
     @Test
-    fun `choose another device - stops checking and shows the list`() {
-        val update = twoDevices.handleIntent(polling(PHONE, canChooseAnother = true), MfaIntent.ChooseAnotherFactor)
-
-        assertThat(update.step).isEqualTo(LIST)
-        assertThat(update.commands).containsExactly(MfaCommand.StopPolling)
-    }
-
-    @Test
-    fun `choose another device - with only one, or while the push is sent - does nothing`() {
-        val alone = polling(PHONE, canChooseAnother = false)
-        val sending = MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = true)
-
-        assertThat(oneDevice.handleIntent(alone, MfaIntent.ChooseAnotherFactor)).isEqualTo(MfaUpdate(alone))
-        assertThat(twoDevices.handleIntent(sending, MfaIntent.ChooseAnotherFactor)).isEqualTo(MfaUpdate(sending))
-    }
-
-    @Test
-    fun `back with other devices - stops checking and shows the list`() {
-        val update = twoDevices.handleIntent(polling(PHONE, canChooseAnother = true), MfaIntent.Back)
-
-        assertThat(update.step).isEqualTo(LIST)
-        assertThat(update.commands).containsExactly(MfaCommand.StopPolling)
-    }
-
-    @Test
-    fun `back with only one device - stops checking and starts the sign-in over`() {
-        val update = oneDevice.handleIntent(polling(PHONE, canChooseAnother = false), MfaIntent.Back)
-
-        assertThat(update.commands).containsExactly(MfaCommand.StopPolling)
-        assertThat(update.effect).isEqualTo(MfaEffect.Restart)
-    }
-
-    @Test
-    fun `pending after the user left - stops`() {
-        assertThat(twoDevices.handleOutcome(LIST, MfaOutcome.PushPending(POLL)).commands).isEmpty()
-    }
-
-    @Test
-    fun `denied - fails for good, and Try again starts the sign-in over`() {
-        val denied = MfaOutcome.CheckFailed(LoginFailure(EmbeddedLoginError.PushDenied))
-
-        val failed = oneDevice.handleOutcome(polling(PHONE, canChooseAnother = false), denied)
-        val retried = oneDevice.handleIntent(failed.step, MfaIntent.Retry)
-
-        assertThat(failed.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.PushDenied))
-        assertThat(retried.effect).isEqualTo(MfaEffect.Restart)
-    }
-
-    @Test
-    fun `sending fails on the network - Try again sends the push again`() {
-        val sending = MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false)
-
-        val failed = oneDevice.handleOutcome(sending, MfaOutcome.SendFailed(NETWORK))
-        val retried = oneDevice.handleIntent(failed.step, MfaIntent.Retry)
-
-        assertThat(failed.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network, MfaRetry.SendAgain(PHONE)))
-        assertThat(retried.step).isEqualTo(sending)
-        assertThat(retried.commands).containsExactly(MfaCommand.SendPush(PHONE))
-    }
-
-    @Test
-    fun `a check fails on the network - checks again quietly, waiting longer each time`() {
-        var step: MfaStep = polling(PHONE, everyMs = POLL, canChooseAnother = false)
-        val waits = (1..MfaReducer.QUIET_RETRIES).map {
+    fun `check fails on the network - checks again quietly at the same pace, up to three times`() {
+        var step: MfaStep = checking(ONE, PHONE)
+        repeat(MfaReducer.QUIET_RETRIES) { retry ->
             val update = oneDevice.handleOutcome(step, MfaOutcome.CheckFailed(NETWORK))
-            step = update.step
-            assertThat(step).isInstanceOf(MfaStep.PushWaiting::class.java)
-            (update.commands.single() as MfaCommand.CheckPushStatus).afterMs
+
+            assertThat(update.step).isEqualTo(waiting(ONE, PHONE).copy(failedChecks = retry + 1))
+            assertThat(update.commands).containsExactly(MfaCommand.SchedulePushCheck(POLL))
+            assertThat(update.effect).isNull()
+            step = oneDevice.handlePushCheckDue(update.step).step
         }
 
-        assertThat(waits).containsExactly(POLL * 2, POLL * 4, POLL * 8).inOrder()
+        val last = oneDevice.handleOutcome(step, MfaOutcome.CheckFailed(NETWORK))
+
+        assertThat(last.step).isEqualTo(MfaStep.Failed(NETWORK))
+        assertThat(last.effect).isEqualTo(MfaEffect.Failed(NETWORK))
     }
 
     @Test
-    fun `a check keeps failing on the network - shows the error, and Try again checks again without a second push`() {
-        val waiting = polling(PHONE, resendSecondsLeft = 10, canChooseAnother = false)
-        val failing = MfaStep.PushWaiting(
-            PHONE,
-            PushPhase.Polling(POLL, resendSecondsLeft = 10, failedChecks = MfaReducer.QUIET_RETRIES),
-            canChooseAnother = false,
-        )
+    fun `check fails for good - ends MFA at once`() {
+        val expired = MfaError.TokenExpired(null)
 
-        val failed = oneDevice.handleOutcome(failing, MfaOutcome.CheckFailed(NETWORK))
-        val retried = oneDevice.handleIntent(failed.step, MfaIntent.Retry)
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.CheckFailed(expired))
 
-        assertThat(failed.step).isEqualTo(MfaStep.Failed(EmbeddedLoginError.Network, MfaRetry.CheckAgain(waiting)))
-        assertThat(retried.step).isEqualTo(waiting)
-        assertThat(retried.commands)
-            .containsExactly(MfaCommand.CheckPushStatus(0), MfaCommand.CountDownResend)
-            .inOrder()
+        assertThat(update.step).isEqualTo(MfaStep.Failed(expired))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(expired))
     }
 
     @Test
-    fun `an answer after a failed check - starts the quiet retries afresh`() {
-        val retried = MfaStep.PushWaiting(PHONE, PushPhase.Polling(POLL, 0, failedChecks = 2), canChooseAnother = false)
+    fun `push denied - ends MFA at once with the rejection`() {
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.PushRejected)
 
-        val pending = oneDevice.handleOutcome(retried, MfaOutcome.PushPending(POLL))
-
-        assertThat(pending.step).isEqualTo(polling(PHONE, canChooseAnother = false))
+        assertThat(update.step).isEqualTo(MfaStep.Failed(MfaError.Rejected(null)))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(MfaError.Rejected(null)))
     }
 
     @Test
-    fun `answers that no longer fit the screen - are dropped, except an approval`() {
-        val credentials = mockk<Credentials>()
-        val sending = MfaStep.PushWaiting(TABLET, PushPhase.Sending, canChooseAnother = true)
+    fun `network blip from a check the user left, or while a resend is going out - is dropped`() {
+        listOf(
+            MfaStep.ChooseFactor(TWO),
+            MfaStep.SendingChallenge(TWO, TABLET),
+            waiting(TWO, PHONE).copy(phase = PushPhase.Resending),
+        ).forEach { step ->
+            assertThat(twoDevices.handleOutcome(step, MfaOutcome.CheckFailed(NETWORK))).isEqualTo(MfaUpdate(step))
+        }
+    }
 
-        assertThat(twoDevices.handleOutcome(LIST, MfaOutcome.CheckFailed(NETWORK))).isEqualTo(MfaUpdate(LIST))
-        assertThat(twoDevices.handleOutcome(sending, MfaOutcome.CheckFailed(NETWORK))).isEqualTo(MfaUpdate(sending))
-        assertThat(twoDevices.handleOutcome(LIST, MfaOutcome.SendFailed(NETWORK))).isEqualTo(MfaUpdate(LIST))
-        // The user did approve, on the device they moved away from: they're signed in.
-        assertThat(twoDevices.handleOutcome(LIST, MfaOutcome.SignedIn(credentials)).effect)
-            .isEqualTo(MfaEffect.Authenticated(credentials))
+    @Test
+    fun `denial from a check the user left - still ends MFA with the real reason, not a later session ended`() {
+        val rejected = MfaError.Rejected(null)
+        listOf(
+            MfaStep.ChooseFactor(TWO),
+            MfaStep.SendingChallenge(TWO, TABLET),
+            waiting(TWO, PHONE).copy(phase = PushPhase.Resending),
+        ).forEach { step ->
+            val update = twoDevices.handleOutcome(step, MfaOutcome.PushRejected)
+
+            assertThat(update.step).isEqualTo(MfaStep.Failed(rejected))
+            assertThat(update.effect).isEqualTo(MfaEffect.Failed(rejected))
+        }
+    }
+
+    @Test
+    fun `network blips while the app is in the background - are not counted, so the push isn't lost`() {
+        var step: MfaStep = checking(ONE, PHONE)
+        repeat(MfaReducer.QUIET_RETRIES + 2) {
+            val update = oneDevice.handleOutcome(step, MfaOutcome.CheckFailed(NETWORK, whileInBackground = true))
+
+            assertThat(update.effect).isNull()
+            assertThat((update.step as MfaStep.PushWaiting).failedChecks).isEqualTo(0)
+            step = oneDevice.handlePushCheckDue(update.step).step
+        }
+    }
+
+    @Test
+    fun `back in the foreground - a waiting push is checked at once`() {
+        val update = oneDevice.handleAppForegrounded(waiting(ONE, PHONE))
+
+        assertThat(update.step).isEqualTo(checking(ONE, PHONE))
+        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork, MfaCommand.CheckPush).inOrder()
+    }
+
+    @Test
+    fun `back in the foreground - with a check already on its way, or off the push screen - does nothing`() {
+        listOf(checking(ONE, PHONE), MfaStep.ChooseFactor(TWO), MfaStep.SendingChallenge(ONE, PHONE)).forEach { step ->
+            assertThat(oneDevice.handleAppForegrounded(step)).isEqualTo(MfaUpdate(step))
+        }
+    }
+
+    // endregion
+
+    // region one more step
+
+    @Test
+    fun `another factor - with a choice - shows the next round's list`() {
+        val update = twoDevices.handleOutcome(checking(TWO, PHONE), MfaOutcome.AnotherFactor(listOf(PHONE, TABLET)))
+
+        assertThat(update.step).isEqualTo(MfaStep.ChooseFactor(MfaRound(2, listOf(PHONE, TABLET))))
+        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+    }
+
+    @Test
+    fun `another factor - just one - still shows the list headed One more step, as the PRD says`() {
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.AnotherFactor(listOf(TABLET)))
+        val round2 = MfaRound(2, listOf(TABLET))
+
+        assertThat(update.step).isEqualTo(MfaStep.ChooseFactor(round2))
+        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+        assertThat(round2.isAdditional).isTrue()
+
+        val picked = oneDevice.handleIntent(update.step, MfaIntent.SelectFactor(TABLET))
+        assertThat(picked.step).isEqualTo(MfaStep.SendingChallenge(round2, TABLET))
+        assertThat(picked.commands).containsExactly(MfaCommand.SendPush(TABLET))
+    }
+
+    @Test
+    fun `first round - just one factor - still skips the list`() {
+        assertThat(oneDevice.start().step).isEqualTo(MfaStep.SendingChallenge(ONE, PHONE))
+    }
+
+    @Test
+    fun `back - on the push of a later round with one factor - goes back to that round's list`() {
+        val round2 = MfaRound(2, listOf(TABLET))
+
+        val update = oneDevice.handleIntent(waiting(round2, TABLET), MfaIntent.Back)
+
+        assertThat(update.step).isEqualTo(MfaStep.ChooseFactor(round2))
+        assertThat(update.effect).isNull()
+    }
+
+    @Test
+    fun `another factor - none usable - ends MFA with no usable factor`() {
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.AnotherFactor(emptyList()))
+
+        assertThat(update.step).isEqualTo(MfaStep.Failed(MfaError.NoEligibleFactors()))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(MfaError.NoEligibleFactors()))
+    }
+
+    @Test
+    fun `another factor - after the user switched device - still counts`() {
+        val update = twoDevices.handleOutcome(MfaStep.ChooseFactor(TWO), MfaOutcome.AnotherFactor(listOf(TABLET)))
+
+        assertThat(update.step).isEqualTo(MfaStep.ChooseFactor(MfaRound(2, listOf(TABLET))))
+    }
+
+    @Test
+    fun `another factor - again and again - has no limit, the server decides`() {
+        var round = ONE
+        repeat(5) {
+            val update = oneDevice.handleOutcome(checking(round, PHONE), MfaOutcome.AnotherFactor(listOf(PHONE)))
+            round = (update.step as MfaStep.ChooseFactor).round
+        }
+
+        assertThat(round.number).isEqualTo(6)
     }
 
     // endregion
@@ -196,73 +340,149 @@ class MfaReducerTest {
     // region resend
 
     @Test
-    fun `resend - wait not over - does nothing`() {
-        val waiting = polling(PHONE, resendSecondsLeft = 1, canChooseAnother = false)
-
-        assertThat(oneDevice.handleIntent(waiting, MfaIntent.Resend)).isEqualTo(MfaUpdate(waiting))
+    fun `resend - wait not over, server doesn't offer it, or already going out - does nothing`() {
+        listOf(
+            waiting(ONE, PHONE).copy(resendSecondsLeft = 5),
+            waiting(ONE, PHONE).copy(resendSecondsLeft = 0, canResend = false),
+            waiting(ONE, PHONE).copy(resendSecondsLeft = 0, phase = PushPhase.Resending),
+        ).forEach { step -> assertThat(oneDevice.handleIntent(step, MfaIntent.Resend)).isEqualTo(MfaUpdate(step)) }
     }
 
     @Test
-    fun `resend - while the push is being sent - does nothing`() {
-        val sending = MfaStep.PushWaiting(PHONE, PushPhase.Sending, canChooseAnother = false)
+    fun `resend - wait over - stops the checks and sends the push to the same device again`() {
+        val update = oneDevice.handleIntent(waiting(ONE, PHONE).copy(resendSecondsLeft = 0), MfaIntent.Resend)
 
-        assertThat(oneDevice.handleIntent(sending, MfaIntent.Resend)).isEqualTo(MfaUpdate(sending))
+        assertThat(update.step).isEqualTo(
+            waiting(ONE, PHONE).copy(phase = PushPhase.Resending, canResend = false, resendSecondsLeft = 0),
+        )
+        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork, MfaCommand.SendPush(PHONE)).inOrder()
     }
 
     @Test
-    fun `resend - wait over - sends the push to the same device again`() {
-        val update = twoDevices.handleIntent(polling(TABLET, canChooseAnother = true), MfaIntent.Resend)
+    fun `resend sent - checks again and starts a new resend wait`() {
+        val resending = waiting(ONE, PHONE).copy(phase = PushPhase.Resending, canResend = false, failedChecks = 1)
 
-        assertThat(update.step).isEqualTo(MfaStep.PushWaiting(TABLET, PushPhase.Sending, canChooseAnother = true))
-        assertThat(update.commands).containsExactly(MfaCommand.SendPush(TABLET))
+        val update = oneDevice.handleOutcome(resending, sent(SLOWER))
+
+        assertThat(update.step).isEqualTo(waiting(ONE, PHONE).copy(everyMs = SLOWER))
+        assertThat(update.commands)
+            .containsExactly(MfaCommand.SchedulePushCheck(SLOWER), MfaCommand.CountDownResend)
+            .inOrder()
+    }
+
+    @Test
+    fun `resend fails - ends MFA`() {
+        val resending = waiting(ONE, PHONE).copy(phase = PushPhase.Resending)
+
+        val update = oneDevice.handleOutcome(resending, MfaOutcome.SendFailed(NETWORK))
+
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(NETWORK))
     }
 
     @Test
     fun `second passed - counts down, and stops at zero`() {
-        val waiting = polling(PHONE, resendSecondsLeft = 2, canChooseAnother = false)
+        val counted = oneDevice.handleSecondPassed(waiting(ONE, PHONE).copy(resendSecondsLeft = 2))
+        val last = oneDevice.handleSecondPassed(counted.step)
+        val atZero = oneDevice.handleSecondPassed(last.step)
 
-        val one = oneDevice.handleSecondPassed(waiting)
-        val zero = oneDevice.handleSecondPassed(one.step)
-
-        assertThat(one.step).isEqualTo(polling(PHONE, resendSecondsLeft = 1, canChooseAnother = false))
-        assertThat(one.commands).containsExactly(MfaCommand.CountDownResend)
-        assertThat(zero.step).isEqualTo(polling(PHONE, resendSecondsLeft = 0, canChooseAnother = false))
-        assertThat(zero.commands).isEmpty()
+        assertThat((counted.step as MfaStep.PushWaiting).resendSecondsLeft).isEqualTo(1)
+        assertThat(counted.commands).containsExactly(MfaCommand.CountDownResend)
+        assertThat((last.step as MfaStep.PushWaiting).resendSecondsLeft).isEqualTo(0)
+        assertThat(last.commands).isEmpty()
+        assertThat(atZero).isEqualTo(MfaUpdate(last.step))
     }
 
     @Test
     fun `second passed - after the push screen was left - stops`() {
-        assertThat(twoDevices.handleSecondPassed(LIST)).isEqualTo(MfaUpdate(LIST))
+        val list = MfaStep.ChooseFactor(TWO)
+
+        assertThat(twoDevices.handleSecondPassed(list)).isEqualTo(MfaUpdate(list))
     }
 
     // endregion
 
-    // region back
+    // region leaving
 
     @Test
-    fun `back - from the list or an error - starts the sign-in over`() {
-        val failed = MfaStep.Failed(EmbeddedLoginError.PushDenied)
+    fun `verify another way - with a choice - stops checking and shows the list`() {
+        val update = twoDevices.handleIntent(checking(TWO, PHONE), MfaIntent.ChooseAnotherFactor)
 
-        assertThat(twoDevices.handleIntent(LIST, MfaIntent.Back).effect).isEqualTo(MfaEffect.Restart)
-        assertThat(oneDevice.handleIntent(failed, MfaIntent.Back).effect).isEqualTo(MfaEffect.Restart)
+        assertThat(update.step).isEqualTo(MfaStep.ChooseFactor(TWO))
+        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+    }
+
+    @Test
+    fun `verify another way - while a resend is going out - does nothing, so it can't send another push`() {
+        val resending = waiting(TWO, PHONE).copy(phase = PushPhase.Resending, canResend = false)
+
+        assertThat(twoDevices.handleIntent(resending, MfaIntent.ChooseAnotherFactor)).isEqualTo(MfaUpdate(resending))
+    }
+
+    @Test
+    fun `verify another way - with only one device - does nothing`() {
+        val step = waiting(ONE, PHONE)
+
+        assertThat(oneDevice.handleIntent(step, MfaIntent.ChooseAnotherFactor)).isEqualTo(MfaUpdate(step))
+    }
+
+    @Test
+    fun `back - on the push with a choice - goes back to the list`() {
+        val update = twoDevices.handleIntent(waiting(TWO, PHONE), MfaIntent.Back)
+
+        assertThat(update.step).isEqualTo(MfaStep.ChooseFactor(TWO))
+        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+        assertThat(update.effect).isNull()
+    }
+
+    @Test
+    fun `back - on the push with one device, the list, or while a push goes out - starts the sign-in over`() {
+        listOf(
+            waiting(ONE, PHONE),
+            MfaStep.ChooseFactor(TWO),
+            MfaStep.SendingChallenge(TWO, TABLET),
+            MfaStep.SendingChallenge(ONE, PHONE),
+        ).forEach { step ->
+            val update = twoDevices.handleIntent(step, MfaIntent.Back)
+
+            assertThat(update.effect).isEqualTo(MfaEffect.Restart)
+        }
+    }
+
+    @Test
+    fun `back - once MFA has ended - is left to the host`() {
+        val failed = MfaStep.Failed(NETWORK)
+
+        assertThat(oneDevice.handleIntent(failed, MfaIntent.Back)).isEqualTo(MfaUpdate(failed))
     }
 
     // endregion
 
-    private fun polling(
-        factor: MfaFactor.Push,
-        everyMs: Long = POLL,
-        resendSecondsLeft: Int = 0,
-        canChooseAnother: Boolean,
-    ) = MfaStep.PushWaiting(factor, PushPhase.Polling(everyMs, resendSecondsLeft), canChooseAnother)
+    private fun sent(pollMs: Long, canResend: Boolean = true) =
+        MfaOutcome.PushSent(PushStatus.Pending(pollMs, canResend))
+
+    private fun pending(pollMs: Long?, canResend: Boolean = true, isSlowDown: Boolean = false) =
+        MfaOutcome.PushPending(PushStatus.Pending(pollMs, canResend, isSlowDown))
+
+    /** On the push screen right after it went out: waiting for the first check, the resend wait just started. */
+    private fun waiting(round: MfaRound, factor: MfaFactor.Push) = MfaStep.PushWaiting(
+        round = round,
+        factor = factor,
+        phase = PushPhase.Waiting,
+        everyMs = POLL,
+        canResend = true,
+        resendSecondsLeft = MfaReducer.RESEND_COOLDOWN_SECONDS,
+    )
+
+    private fun checking(round: MfaRound, factor: MfaFactor.Push) =
+        waiting(round, factor).copy(phase = PushPhase.Checking)
 
     private companion object {
         val PHONE = MfaFactor.Push(0, "Jane's phone")
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
-        val LIST = MfaStep.AuthenticatorList(listOf(PHONE, TABLET))
+        val ONE = MfaRound(1, listOf(PHONE))
+        val TWO = MfaRound(1, listOf(PHONE, TABLET))
+        val NETWORK = MfaError.Network(null)
         const val POLL = 3_000L
         const val SLOWER = 5_000L
-        const val COOLDOWN = MfaReducer.RESEND_COOLDOWN_SECONDS
-        val NETWORK = LoginFailure(EmbeddedLoginError.Network, canRetryStep = true)
     }
 }

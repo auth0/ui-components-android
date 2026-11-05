@@ -38,9 +38,10 @@ internal sealed interface LoginStep {
 
     /**
      * The first factor passed and the server wants a second; MFA carries on with the same session. It draws itself
-     * from [engine] and takes its own taps, and login hears only how it ends.
+     * from [engine] and takes its own taps, and login hears only how it ends. [identifier] is what the user typed for
+     * the first factor, to pre-fill it if they start over.
      */
-    data class Mfa(val engine: MfaEngine) : LoginStep
+    data class Mfa(val engine: MfaEngine, val identifier: String) : LoginStep
 
     data object Authenticated : LoginStep
 
@@ -62,4 +63,7 @@ internal sealed interface LoginEvent {
     data object Resend : LoginEvent
 
     data object Retry : LoginEvent
+
+    /** "Start over" on MFA's error screen: back to email entry. Counts only while MFA is on show. */
+    data object LeaveMfa : LoginEvent
 }
