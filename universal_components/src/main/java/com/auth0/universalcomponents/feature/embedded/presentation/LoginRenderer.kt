@@ -4,19 +4,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaEngine
-import com.auth0.universalcomponents.feature.embedded.presentation.mfa.MfaHost
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
-import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginErrorScreen
-import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginLoadingScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginNoMethodsScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginSuccessScreen
+import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaHost
+import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
+import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 
 /** What a screen needs from the host, without knowing about the ViewModel. */
 internal class RenderContext(
-    val dispatch: (LoginEvent) -> Unit,
+    val dispatch: (LoginIntent) -> Unit,
     val back: () -> Unit,
+    val mfa: MfaConfiguration = MfaConfiguration(),
 )
 
 /** The screen for a step, with the data it shows. */
@@ -34,8 +36,12 @@ internal sealed interface ScreenPlan {
         val resendSecondsLeft: Int = 0,
     ) : ScreenPlan
 
-    /** A second factor; MFA draws its own screens from [engine]. */
-    data class Mfa(val engine: MfaEngine) : ScreenPlan
+    /**
+     * A second factor; MFA draws its own screens from [engine]. When MFA ended and the app decides what happens next
+     * ([isAwaitingApp]), a spinner takes their place. It is the same screen to login, so that wait never slides MFA out
+     * and back, and the error MFA ended on never shows while it does.
+     */
+    data class Mfa(val engine: MfaEngine, val isAwaitingApp: Boolean = false) : ScreenPlan
 
     data object Authenticated : ScreenPlan
 
@@ -66,32 +72,33 @@ internal val ScreenPlan.navigationDepth: Int
         ScreenPlan.Authenticated, is ScreenPlan.Failed -> 5
     }
 
-internal fun plan(step: LoginStep): ScreenPlan = when (step) {
-    LoginStep.Loading -> ScreenPlan.Loading
-    is LoginStep.CollectOtpIdentifier -> ScreenPlan.Identifier(step.email, step.isSubmitting)
-    is LoginStep.CollectOtpCode -> ScreenPlan.OtpCode(
+internal fun plan(step: LoginState): ScreenPlan = when (step) {
+    LoginState.Loading -> ScreenPlan.Loading
+    is LoginState.CollectOtpIdentifier -> ScreenPlan.Identifier(step.email, step.isSubmitting)
+    is LoginState.CollectOtpCode -> ScreenPlan.OtpCode(
         identifier = step.identifier,
         error = step.error,
         isSubmitting = step.isSubmitting,
         isResending = step.isResending,
         resendSecondsLeft = step.resendSecondsLeft,
     )
-    LoginStep.Authenticated -> ScreenPlan.Authenticated
-    is LoginStep.Failed -> ScreenPlan.Failed(step.error)
-    LoginStep.NoMethodsAvailable -> ScreenPlan.NoMethods
-    is LoginStep.Mfa -> ScreenPlan.Mfa(step.engine)
+    LoginState.Authenticated -> ScreenPlan.Authenticated
+    is LoginState.Failed -> ScreenPlan.Failed(step.error)
+    LoginState.NoMethodsAvailable -> ScreenPlan.NoMethods
+    is LoginState.Mfa -> ScreenPlan.Mfa(step.engine)
+    is LoginState.AwaitingApp -> ScreenPlan.Mfa(step.engine, isAwaitingApp = true)
 }
 
 /** Builds the screen for [plan]; input goes back through [context]. */
 @Composable
 internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
     when (plan) {
-        ScreenPlan.Loading -> LoginLoadingScreen()
+        ScreenPlan.Loading -> FlowLoadingScreen()
 
         is ScreenPlan.Identifier -> LoginEmailScreen(
             email = plan.email,
             isLoading = plan.isSubmitting,
-            onContinue = { context.dispatch(LoginEvent.SubmitIdentifier(it)) },
+            onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(it)) },
         )
 
         is ScreenPlan.OtpCode -> LoginCodeScreen(
@@ -100,18 +107,24 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
             isResending = plan.isResending,
             resendSecondsLeft = plan.resendSecondsLeft,
             errorMessage = plan.error?.text(),
-            onVerify = { context.dispatch(LoginEvent.SubmitOtp(it)) },
+            onVerify = { context.dispatch(LoginIntent.SubmitOtp(it)) },
             onEdit = context.back,
-            onResend = { context.dispatch(LoginEvent.Resend) },
+            onResend = { context.dispatch(LoginIntent.Resend) },
         )
 
-        is ScreenPlan.Mfa -> MfaHost(plan.engine, onLeave = { context.dispatch(LoginEvent.LeaveMfa) })
+        // MfaHost knows what a headless app leaves to login: the wait for the app, and the "not available" screen.
+        is ScreenPlan.Mfa -> MfaHost(
+            plan.engine,
+            onLeave = { context.dispatch(LoginIntent.LeaveMfa) },
+            configuration = context.mfa,
+            isAwaitingApp = plan.isAwaitingApp,
+        )
 
         ScreenPlan.Authenticated -> LoginSuccessScreen()
 
-        is ScreenPlan.Failed -> LoginErrorScreen(
+        is ScreenPlan.Failed -> FlowErrorScreen(
             message = plan.error.text(),
-            onRetry = { context.dispatch(LoginEvent.Retry) },
+            onRetry = { context.dispatch(LoginIntent.Retry) },
         )
 
         ScreenPlan.NoMethods -> LoginNoMethodsScreen(onBack = context.back)

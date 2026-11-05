@@ -8,14 +8,19 @@ import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
 import com.auth0.android.embedded.authorize.OtpType
 import com.auth0.android.result.Credentials
+import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
+import com.auth0.universalcomponents.data.embeddedauth.INVALID_CODE_REASONS
+import com.auth0.universalcomponents.data.embeddedauth.StepAnswer
+import com.auth0.universalcomponents.data.embeddedauth.nextActions
 import com.auth0.universalcomponents.domain.network.EmptyResult
 import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.embedded.data.mapper.failure
 import com.auth0.universalcomponents.feature.embedded.data.mapper.toLoginOption
-import com.auth0.universalcomponents.feature.embedded.data.mapper.toMfaFactors
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
+import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFactors
 import com.auth0.universalcomponents.utils.logging.Logger
 
 /**

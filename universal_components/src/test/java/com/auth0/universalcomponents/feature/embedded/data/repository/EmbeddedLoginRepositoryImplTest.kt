@@ -14,10 +14,15 @@ import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.request.Request
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
+import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
+import com.auth0.universalcomponents.data.embeddedauth.failingWith
+import com.auth0.universalcomponents.data.embeddedauth.sdkInstance
+import com.auth0.universalcomponents.data.embeddedauth.step
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
-import com.auth0.universalcomponents.feature.embedded.domain.model.MfaFactor
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.every
@@ -395,4 +400,10 @@ class EmbeddedLoginRepositoryImplTest {
         const val OTHER_DEVICE = "Jane's tablet"
         const val CODE = "123456"
     }
+}
+
+/** Every failure comes back from a repository as a [LoginFailure], never thrown. */
+private fun Result<*, LoginFailure>.failure(): LoginFailure {
+    assertThat(this).isInstanceOf(Result.Error::class.java)
+    return (this as Result.Error).error
 }

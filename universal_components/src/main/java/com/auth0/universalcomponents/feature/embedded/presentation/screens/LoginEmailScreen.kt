@@ -12,9 +12,9 @@ import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginPrimaryButton
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenHeader
-import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginStepLayout
+import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
+import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
+import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
 
 /** Lenient on purpose; the server has the final say. */
 private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
@@ -47,9 +47,9 @@ internal fun LoginEmailScreen(
         if (EMAIL_PATTERN.matches(trimmed)) onContinue(trimmed) else isInvalidEmail = true
     }
 
-    LoginStepLayout(
+    FlowStepLayout(
         modifier = modifier,
-        pageDescription = { LoginScreenHeader(title = title) },
+        pageDescription = { FlowScreenHeader(title = title) },
         content = {
             LoginFieldLabel(stringResource(R.string.embedded_login_email_label))
             LoginInputField(
@@ -66,7 +66,7 @@ internal fun LoginEmailScreen(
             activeError?.let { LoginInlineError(it) }
         },
         primaryAction = {
-            LoginPrimaryButton(
+            FlowPrimaryButton(
                 title = stringResource(R.string.embedded_login_continue),
                 onClick = submit,
                 isLoading = isLoading,

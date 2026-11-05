@@ -49,6 +49,8 @@ import com.auth0.android.sample.ui.viewmodels.AppearanceViewModel
 import com.auth0.android.sample.ui.viewmodels.AuthState
 import com.auth0.android.sample.ui.viewmodels.AuthViewModel
 import com.auth0.universalcomponents.Auth0UniversalComponents
+import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.token.DefaultTokenProvider
 
@@ -209,6 +211,7 @@ fun SampleApp(
             }
 
             composable<AppRoute.EmbeddedLogin> {
+                val context = LocalContext.current
                 // Embedded login against the real /e/authorize API (email code). The library hands
                 // back the credentials and never stores them: save them the same way the hosted-login
                 // path does, load the profile, then land on the Dashboard.
@@ -220,6 +223,19 @@ fun SampleApp(
                         authViewModel.loadProfileFromCredentials(credentialsManager)
                         navController.navigate(AppRoute.Dashboard) {
                             popUpTo<AppRoute.ChooseSignIn> { inclusive = true }
+                        }
+                    },
+                    onMfaError = { error ->
+                        // The error's name only: its cause and server message can carry account details.
+                        Log.w("SampleApp", "MFA ended with $error")
+                        if (error is MfaError.NoEligibleFactors) {
+                            // No second factor this app supports: fall back to Universal Login. If that doesn't sign
+                            // the user in (they back out of the browser, or it fails), leave this screen: its
+                            // spinner would never end.
+                            authViewModel.login(context, webAuthProvider, onNotSignedIn = { navController.popBackStack() })
+                            MfaErrorHandling.Handled
+                        } else {
+                            MfaErrorHandling.NotHandled
                         }
                     },
                     themeConfiguration = appliedTheme.configuration,

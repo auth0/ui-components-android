@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import com.auth0.universalcomponents.presentation.ui.flow.flowSurface
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
@@ -85,7 +86,7 @@ internal fun LoginInputField(
             .fillMaxWidth()
             .height(Auth0Theme.sizes.codeContainerHeight)
             .focusRequester(focusRequester)
-            .loginSurface(shape, isFocused = isFocused, isError = isInvalid),
+            .flowSurface(shape, isFocused = isFocused, isError = isInvalid),
         decorationBox = { innerTextField ->
             Box(
                 modifier = Modifier.padding(horizontal = Auth0Theme.sizes.padding),
