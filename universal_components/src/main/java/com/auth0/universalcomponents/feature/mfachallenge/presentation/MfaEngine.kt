@@ -2,6 +2,7 @@ package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -129,6 +130,26 @@ internal class MfaEngine(
                     val sent = repository.sendPush(command.factor)
                     onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
                 }
+            }
+
+            // Not tracked like the push: nothing replaces a code on its way, since the screen stays off limits until
+            // it is out, and leaving ends the whole run.
+            is MfaCommand.SendPhoneCode -> scope.launch {
+                val sent = repository.sendPhoneCode(command.factor)
+                onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PhoneCodeSent(canResend = it) })
+            }
+
+            is MfaCommand.VerifyCode -> scope.launch {
+                val verified = repository.verifyCode(command.code)
+                onOutcome(
+                    verified.toOutcome(MfaOutcome::CodeFailed) { status ->
+                        when (status) {
+                            is CodeStatus.Verified -> MfaOutcome.SignedIn(status.credentials)
+                            CodeStatus.WrongCode -> MfaOutcome.CodeRejected
+                            is CodeStatus.AnotherFactor -> MfaOutcome.AnotherFactor(status.factors)
+                        }
+                    },
+                )
             }
 
             is MfaCommand.SchedulePushCheck -> {

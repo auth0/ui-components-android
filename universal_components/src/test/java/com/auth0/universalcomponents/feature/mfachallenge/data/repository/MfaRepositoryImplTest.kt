@@ -5,6 +5,9 @@ import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
+import com.auth0.android.embedded.authorize.OtpChannel
+import com.auth0.android.embedded.authorize.OtpType
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
@@ -13,6 +16,7 @@ import com.auth0.universalcomponents.data.embeddedauth.sdkInstance
 import com.auth0.universalcomponents.data.embeddedauth.step
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.google.common.truth.Truth.assertThat
@@ -218,6 +222,110 @@ class MfaRepositoryImplTest {
 
     // endregion
 
+    // region phone code
+
+    @Test
+    fun `sendPhoneCode - sent - texts that phone and returns whether the server offers another`() = runTest {
+        every { client.challengePhone(SMS.index, PhoneDeliveryMethod.TEXT) } returns
+            step(verifyOtp(OtpChannel.SMS), challengePhone())
+
+        assertThat(repository.sendPhoneCode(SMS)).isEqualTo(Result.Success(true))
+
+        verify(exactly = 1) { client.challengePhone(SMS.index, PhoneDeliveryMethod.TEXT) }
+    }
+
+    @Test
+    fun `sendPhoneCode - by voice, and no second offer - calls that phone and says resend isn't allowed`() = runTest {
+        every { client.challengePhone(SMS.index, PhoneDeliveryMethod.VOICE) } returns
+            step(verifyOtp(OtpChannel.VOICE))
+
+        assertThat(repository.sendPhoneCode(CALL)).isEqualTo(Result.Success(false))
+    }
+
+    @Test
+    fun `sendPhoneCode - nothing to verify it with, or it signed in - fails as unexpected`() = runTest {
+        every { client.challengePhone(any(), any()) } returns step(NextAction.VerifyRecoveryCode)
+        assertThat(repository.sendPhoneCode(SMS).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+        every { client.challengePhone(any(), any()) } returns FakeRequestImpl(response = null)
+        assertThat(repository.sendPhoneCode(SMS).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+    }
+
+    @Test
+    fun `sendPhoneCode - the server refuses - fails in MFA's terms, with the SDK error as cause`() = runTest {
+        every { client.challengePhone(any(), any()) } returns failingWith(EmbeddedAuthError.TooManyAttempts)
+
+        val error = repository.sendPhoneCode(SMS).mfaError()
+
+        assertThat(error).isInstanceOf(MfaError.TooManyAttempts::class.java)
+        assertThat(error.cause).isNotNull()
+    }
+
+    @Test
+    fun `verifyCode - right code - signs in`() = runTest {
+        val credentials = mockk<Credentials>()
+        every { client.verifyOtp("123456", OtpType.OOB) } returns FakeRequestImpl(response = credentials)
+
+        assertThat(repository.verifyCode("123456")).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
+    }
+
+    @Test
+    fun `verifyCode - wrong code - is not an error, the user types another`() = runTest {
+        listOf(Reason.INVALID_CODE, Reason.INVALID_IDENTIFIER_OR_CODE).forEach { reason ->
+            every { client.verifyOtp(any(), any()) } returns step(verifyOtp(OtpChannel.SMS), reason = reason)
+
+            assertThat(repository.verifyCode("000000")).isEqualTo(Result.Success(CodeStatus.WrongCode))
+        }
+    }
+
+    @Test
+    fun `verifyCode - right code and the policy asks for another factor - returns the next round's menu`() = runTest {
+        every { client.verifyOtp(any(), any()) } returns step(challengePush(), challengePhone(), reason = Reason.NONE)
+
+        val status = repository.verifyCode("123456")
+
+        assertThat(status).isEqualTo(
+            Result.Success(CodeStatus.AnotherFactor(listOf(PHONE, SMS, CALL))),
+        )
+    }
+
+    @Test
+    fun `verifyCode - any other answer, or a failure - is unexpected, or the mapped error`() = runTest {
+        every { client.verifyOtp(any(), any()) } returns step(verifyOtp(OtpChannel.SMS), reason = Reason.SLOW_DOWN)
+        assertThat(repository.verifyCode("123456").mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+        every { client.verifyOtp(any(), any()) } returns failingWith(EmbeddedAuthError.ChallengeExpired)
+        assertThat(repository.verifyCode("123456").mfaError()).isInstanceOf(MfaError.TokenExpired::class.java)
+    }
+
+    @Test
+    fun `a phone in the menu - gives one factor per way it can be reached, a text when none is named`() = runTest {
+        val noneNamed: NextAction.ChallengePhone = sdkInstance(
+            Int::class.java to 7,
+            String::class.java to "***0000",
+            List::class.java to emptyList<PhoneDeliveryMethod>(),
+        )
+        every { client.verifyOtp(any(), any()) } returns step(noneNamed, reason = Reason.NONE)
+
+        val status = repository.verifyCode("123456")
+
+        assertThat(status).isEqualTo(
+            Result.Success(CodeStatus.AnotherFactor(listOf(MfaFactor.Phone(7, "***0000", PhoneDeliveryMethod.TEXT)))),
+        )
+    }
+
+    // endregion
+
+    private fun verifyOtp(channel: OtpChannel): NextAction.VerifyOtp =
+        sdkInstance(OtpChannel::class.java to channel, String::class.java to SMS.maskedNumber)
+
+    /** The phone [SMS] and [CALL] are made from, which the server offers both ways. */
+    private fun challengePhone(): NextAction.ChallengePhone = sdkInstance(
+        Int::class.java to SMS.index,
+        String::class.java to SMS.maskedNumber,
+        List::class.java to listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE),
+    )
+
     private fun verifyOob(pollInMs: Int): NextAction.VerifyOob = sdkInstance(Int::class.java to pollInMs)
 
     private fun challengePush(index: Int = PHONE.index, name: String = PHONE.deviceName): NextAction.ChallengePush =
@@ -230,6 +338,8 @@ class MfaRepositoryImplTest {
 
     private companion object {
         val PHONE = MfaFactor.Push(2, "Jane's phone")
+        val SMS = MfaFactor.Phone(4, "***9239", PhoneDeliveryMethod.TEXT)
+        val CALL = SMS.copy(delivery = PhoneDeliveryMethod.VOICE)
         const val POLL_MS = 3_000
         const val SLOWER_MS = 5_000
     }

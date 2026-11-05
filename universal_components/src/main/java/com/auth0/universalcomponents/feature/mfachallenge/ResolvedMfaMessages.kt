@@ -13,6 +13,7 @@ class ResolvedMfaMessages internal constructor(
     val loading: Loading,
     val errors: Errors,
     val pushChallenge: PushChallenge,
+    val phoneChallenge: PhoneChallenge,
 ) {
 
     companion object {
@@ -57,6 +58,20 @@ class ResolvedMfaMessages internal constructor(
         val waiting: String,
         val resend: Resend,
         val verifyAnotherWay: String,
+    ) {
+        class Resend internal constructor(val button: String, val cooldown: (seconds: Int) -> String)
+    }
+
+    class PhoneChallenge internal constructor(
+        val title: String,
+        val description: (phoneNumber: String) -> String,
+        val descriptionVoice: (phoneNumber: String) -> String,
+        val verifyButton: String,
+        val wrongCode: String,
+        val resend: Resend,
+        val verifyAnotherWay: String,
+        val rowText: (phoneNumber: String) -> String,
+        val rowVoice: (phoneNumber: String) -> String,
     ) {
         class Resend internal constructor(val button: String, val cooldown: (seconds: Int) -> String)
     }

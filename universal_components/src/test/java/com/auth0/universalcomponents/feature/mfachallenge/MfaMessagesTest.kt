@@ -125,6 +125,38 @@ class MfaMessagesTest {
     }
 
     @Test
+    fun `phone challenge - nothing set - every word is the string resource's, with the number filled in`() {
+        val words = MfaMessages().resolve(resources).phoneChallenge
+
+        assertThat(words.title).isEqualTo(default(R.string.auth0_mfa_phone_challenge_title))
+        assertThat(words.description("***9239"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "9239"))
+        assertThat(words.descriptionVoice("***9239"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "9239"))
+        // The list row names the way the code comes, as the design does; an app can add the number itself.
+        assertThat(words.rowText("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_text))
+        assertThat(words.rowVoice("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_voice))
+        assertThat(words.resend.cooldown(30)).isEqualTo(default(R.string.auth0_mfa_phone_challenge_resend_cooldown, 30))
+    }
+
+    @Test
+    fun `phone challenge - some set - replaces those, the others keep their defaults`() {
+        val words = MfaMessages {
+            phoneChallenge {
+                title = "Enter your code"
+                description = { number -> "Texted $number" }
+                resend { button = "Send again" }
+            }
+        }.resolve(resources).phoneChallenge
+
+        assertThat(words.title).isEqualTo("Enter your code")
+        assertThat(words.description("***9239")).isEqualTo("Texted ***9239")
+        assertThat(words.resend.button).isEqualTo("Send again")
+        assertThat(words.wrongCode).isEqualTo(default(R.string.auth0_mfa_phone_challenge_wrong_code))
+        assertThat(words.verifyAnotherWay).isEqualTo(default(R.string.auth0_mfa_phone_challenge_verify_another_way))
+    }
+
+    @Test
     fun `a word with a percent sign - is read as it is, never formatted`() {
         val sure = mockk<Resources>()
         every { sure.getString(any<Int>()) } returns "100% sure"

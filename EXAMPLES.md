@@ -310,13 +310,11 @@ fun MFASettingsScreen() {
 
 ## Embedded Login
 
-> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.1` or later** (beta.0 has no MFA calls, so an app pinned to it fails once MFA starts), a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP on the connection you pass in.
+> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.1` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP on the connection you pass in.
 
 ### Display the Embedded Login Screen
 
-`EmbeddedLoginScreen` runs the full native sign-in flow inside your app: email entry, then the one-time code, then a second factor when the account needs one (see [Multi-Factor Authentication](#multi-factor-authentication)). The MFA enrollment components above are unaffected.
-
-It signs in with the `Auth0` account you passed to `Auth0UniversalComponents.initialize(...)`, so initialize the library first. On success it calls `onAuthenticated` with the credentials. It doesn't store them, so save them yourself:
+`EmbeddedLoginScreen` runs the full native sign-in flow inside your app: email entry, then the one-time code, then multi-factor authentication when the tenant's policy asks for more. It signs in with the `Auth0` account you passed to `Auth0UniversalComponents.initialize(...)`, so initialize the library first. The library stores nothing: when the user is signed in it hands the credentials to `onAuthenticated`, once, and your app keeps them where it keeps its session:
 
 ```kotlin
 @Composable
@@ -336,40 +334,22 @@ fun LoginScreen(
 }
 ```
 
-On code entry, Back returns to email entry; during MFA, Back works as described in [Multi-Factor Authentication](#multi-factor-authentication). Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
-
-### Flow Behaviour
-
-- **A wrong or expired code appears inline,** under the code field, and the user stays on code entry. After an expired code, **Resend** opens at once.
-- **Resend opens 60 seconds after each code is sent;** until then the button counts down.
-- **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email entry (with the email kept) if not. If the first load failed, it loads again.
-- **If no code can be sent to the email,** for example because the connection only offers another method for that user, the flow shows its error screen. **Try again** returns to email entry with the email kept.
-- **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen. (MFA is the exception: see below.)
-- **If the connection doesn't offer Email OTP,** the flow shows a screen saying no sign-in methods are available.
+On code entry, Back returns to email entry; during MFA, Back works as described below. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
 
 ### Multi-Factor Authentication
 
-When the code is right but the account needs a second factor, the same screen carries on with MFA. Nothing extra is needed in your app; `onAuthenticated` is called once MFA passes.
+When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLoginScreen` moves into MFA in place; nothing extra is needed in your app. Today it runs a push notification or a code sent to a phone, by text message or voice call. With several factors, the user picks one from a list first. Other factors aren't supported in this flow yet.
 
-- **Supported factor: push notification.** The flow tells the server it can run the emailed code and push only. If none of the factors the tenant offers can be used, the flow shows a "Verification method not available" screen, unless your app takes over (see [Handle MFA Errors](#handle-mfa-errors)).
-- **With one push device,** the push is sent straight away, and its screen shows once it's out. **With several,** the user picks one from a list, in the order the tenant offers them; the row spins while its push is sent.
-- **While the push waits,** the screen checks with the server at the interval it asks for, kept between 1 and 60 seconds (2 seconds if it gives none), and 2 seconds slower each time the server says it checked too soon. **Resend notification** shows while the server allows another push, and opens after a 60-second wait. **Verify another way** returns to the list; if the user had already approved on the first device, they are signed in. The checks carry on while the app is in the background; a network failure there isn't held against the push, and when the user returns a waiting push is checked at once.
-- **When the sign-in policy needs another factor,** the list comes back headed "One more step", with the factors the server offers for that step. Even with just one factor the list shows, so the user sees why they're asked again. There's no limit on the number of steps: the server decides.
-- **If a check hits a network error,** it is retried quietly, up to three times. After that, or on any other error (a declined push, an expired request, an ended session, too many attempts), MFA ends on an error screen that says why, and **Start over** returns to email entry with the email kept.
-- **Back** returns from the push to the list. While a resend is going out it does nothing, so the new push is not cut off. From the list, while a push is being sent, when there's only one device, or on the error screen, it returns to email entry with the email kept, and the next code starts a new sign-in. A push that has already left the app can't be recalled, so its notification may still reach the device after the user went back.
-- **The sign-in session lives in memory.** If Android ends the app while the user is approving the push, for example in the background, the flow starts again from email entry when the app reopens.
+- **Approved, or the code is right:** the credentials go to `onAuthenticated`. If the policy asks for another factor, the list returns headed **One more step**, with no limit on the number of steps.
+- **A wrong phone code** stays on the screen, inline, so the user can type another. **Resend** opens 60 seconds after each send.
+- **Declined, expired, session ended, too many attempts or no connection:** a screen with its own message and **Start over**, which returns to email entry with the email kept.
+- **Verify another way** (several factors) returns to the list. **Back** does the same from a factor screen, and returns to email entry from the list or when there is only one factor. While a code or a resend is being sent, or a code is being checked, it does nothing.
+- **No factor this flow can run:** a **Verification method not available** screen shows, unless your app takes over with `onMfaError`.
+- **Push checks right away** when the app returns to the foreground, so approving on the same phone signs in without waiting for the next check.
 
-### Handle MFA Errors
+#### Handle MFA Errors
 
-When MFA ends without signing the user in, `EmbeddedLoginScreen` calls `onMfaError` once with an `MfaError`, and shows the matching error screen. The callback is optional. It returns an `MfaErrorHandling`, which matters for one error only:
-
-| MFA ends with… | The user sees | `onMfaError` |
-| --- | --- | --- |
-| `NoEligibleFactors`, and you return `Handled` | A spinner, while your app takes over (nothing flashes by) | Called once |
-| `NoEligibleFactors`, and you return `NotHandled` (or set no handler) | The "Verification method not available" screen | Called once, if set |
-| Any other error | The MFA error screen; your answer is ignored | Called once, if set |
-| The user leaves (Back, **Start over**) | Email entry | **Not called**: leaving isn't a failure |
-| Signed in | The success screen | Not called |
+`onMfaError` is called once when MFA ends without signing the user in, except when the user leaves. It returns an `MfaErrorHandling`, which matters for `NoEligibleFactors` only: return `Handled` when your app takes over, and the user sees a spinner instead of the error; return `NotHandled` (or set no handler) and the screen shows. Every other error shows its own screen, and your answer is ignored.
 
 A good use is falling back to Universal Login when none of the tenant's factors can be run in the app:
 
@@ -390,30 +370,13 @@ EmbeddedLoginScreen(
 )
 ```
 
-The `Handled` spinner has no button of its own; **Back** returns to email entry. If you return `Handled`, your app owns what happens next, including when what you opened ends without signing the user in (for example they back out of the browser for Universal Login, or it fails): route them somewhere, or they stay on the spinner until they press Back.
+If you return `Handled`, your app owns what happens next, including when what you opened ends without signing the user in: route them somewhere, or they stay on the spinner until they press Back.
 
-**Always add an `else` branch** when you switch over `MfaError`: a later release can add cases, and Kotlin can't warn about a case it doesn't know yet. The compiler may call the branch redundant today; it is what keeps your app working once a case is added.
+**Always add an `else` branch** when you switch over `MfaError`: a later release can add cases. The cases are `TokenExpired`, `TokenInvalid`, `Rejected`, `TooManyAttempts`, `NoEligibleFactors`, `Network` and `Unexpected(serverMessage)`; `Cancelled` and `PresentationUnavailable` are never sent to `onMfaError`. `MfaError` is an `Exception` whose `cause` holds the SDK's own error when there is one. That cause can carry the server's words, so don't show it or send it to analytics as it is.
 
-The cases are `TokenExpired`, `TokenInvalid`, `Rejected`, `TooManyAttempts`, `NoEligibleFactors`, `Network` and `Unexpected(serverMessage)`. `PresentationUnavailable` exists for a later release and embedded login never produces it. `Cancelled` is never sent to `onMfaError` (leaving isn't a failure); a headless app sees it only as `MfaResult.Ended(Cancelled)`. `MfaError` is an `Exception`, and its `cause` holds the SDK's own error when there is one (for example `error.cause as? EmbeddedAuthException`). Its `message` is null and its `toString()` names the case only, so logging the error itself never writes a server message or a device name. Its `cause` can hold the server's words, so don't show it or send it to analytics as it is. Adding `onMfaError` is source-compatible, but your app must be recompiled against this version.
+#### Change the words
 
-### Customize MFA
-
-`EmbeddedLoginScreen` takes an optional `mfa = MfaConfiguration(messages, screens, presentation)`. Each part is independent, and you use only what you need:
-
-| Level | You want to… | Use |
-| --- | --- | --- |
-| 1 | Nothing: the default screens | no `mfa` argument |
-| 2 | Know when MFA fails | `onMfaError` ([Handle MFA Errors](#handle-mfa-errors)) |
-| 3 | Change the words | `MfaMessages` |
-| 4 | Replace one screen | `MfaScreens` |
-| 5 | Draw every MFA screen yourself | `MfaPresentation.Headless` |
-| 6 | Handle "One more step" | the `round` and `header` on the models |
-
-Adding `mfa` is source-compatible, but your app must be recompiled against this version.
-
-#### Change the words (level 3)
-
-Every word has a default string resource named `auth0_mfa_<group>_<key>`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value, use `MfaMessages`; anything you leave unset keeps its default:
+Every word has a default string resource named `auth0_mfa_<group>_<key>`, for example `auth0_mfa_push_challenge_title`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value such as the device name, use `MfaMessages`; anything you leave unset keeps its default. The groups are `authenticatorList`, `loading`, `errors`, `pushChallenge` and `phoneChallenge`.
 
 ```kotlin
 // Built once: a new MfaMessages on every recomposition would make the words resolve again.
@@ -423,6 +386,8 @@ val mfa = remember {
             pushChallenge {
                 title = "Approve on your phone"
                 description = { deviceName -> "We sent a request to $deviceName." }
+            }
+            phoneChallenge {
                 resend { cooldown = { seconds -> "Send again in $seconds s" } }
             }
             errors { rejected { title = "Sign-in denied" } }
@@ -438,26 +403,9 @@ EmbeddedLoginScreen(
 )
 ```
 
-The keys follow the same paths as on iOS:
+#### Replace one screen
 
-| Path | Takes | Resource name |
-| --- | --- | --- |
-| `authenticatorList.headers.challenge.{title, description}` | | `auth0_mfa_authenticator_list_headers_challenge_title` |
-| `authenticatorList.headers.challengeAdditional.{title, description}` | | `…_challenge_additional_title` |
-| `loading.accessibilityLabel` | | `auth0_mfa_loading_accessibility_label` |
-| `errors.<case>.{title, description}` for `cancelled`, `tokenExpired`, `tokenInvalid`, `rejected`, `tooManyAttempts`, `noEligibleFactors`, `network`, `unexpected` | | `auth0_mfa_errors_rejected_title` |
-| `errors.startOver`, `errors.close` | | `auth0_mfa_errors_start_over` |
-| `pushChallenge.row.{title, description}` (the factor in the list: a named device leads, with the title under it; a device with no name shows the title with the description under it) | | `auth0_mfa_push_challenge_row_title` |
-| `pushChallenge.title`, `.waiting`, `.verifyAnotherWay`, `.descriptionUnnamed` | | `auth0_mfa_push_challenge_title` |
-| `pushChallenge.description` | the device name | `auth0_mfa_push_challenge_description` |
-| `pushChallenge.resend.button` | | `auth0_mfa_push_challenge_resend_button` |
-| `pushChallenge.resend.cooldown` | the seconds left | `auth0_mfa_push_challenge_resend_cooldown` |
-
-For an unexpected error, the server's own explanation is shown when it gave one, instead of `errors.unexpected.description`.
-
-#### Replace one screen (level 4)
-
-`MfaScreens` replaces the list of factors, the push screen or the error screen; any you leave unset stays standard. Your screen receives the **model** (data and actions) and the **resolved words**, so you need not look anything up:
+A replaced screen only renders its model and calls its actions, so the countdowns, checks and cancel keep working underneath. It receives the **model** (data and actions) and the **resolved words**, so you need not look anything up:
 
 ```kotlin
 mfa = MfaConfiguration(
@@ -465,22 +413,9 @@ mfa = MfaConfiguration(
         pushChallenge { model, messages ->
             Column(Modifier.fillMaxSize().padding(24.dp)) {
                 Text(messages.pushChallenge.title, style = MaterialTheme.typography.headlineSmall)
-                Text(
-                    if (model.deviceName.isBlank()) {
-                        messages.pushChallenge.descriptionUnnamed
-                    } else {
-                        messages.pushChallenge.description(model.deviceName)
-                    },
-                )
                 if (model.canResend) {
                     Button(onClick = { model.resend() }, enabled = model.resendAvailableIn == 0 && !model.isResending) {
-                        Text(
-                            if (model.resendAvailableIn > 0) {
-                                messages.pushChallenge.resend.cooldown(model.resendAvailableIn)
-                            } else {
-                                messages.pushChallenge.resend.button
-                            },
-                        )
+                        Text(messages.pushChallenge.resend.button)
                     }
                 }
                 if (model.canSwitch) {
@@ -493,24 +428,17 @@ mfa = MfaConfiguration(
 )
 ```
 
-- **A replaced screen is drawn inside the login frame** (below its navigation bar), in place of the standard one.
-- **To preview or test a screen,** build its model (a public data class) and the words with `ResolvedMfaMessages.from(context)`; pass `MfaMessages { ... }` as the second argument to include your own words.
-- **Models hold data only.** The push model changes every second while Resend counts down (`resendAvailableIn`), so always draw from the model you are given.
-- **Actions are plain functions on the model:** call them (`model.resend()`). Functions only equal themselves, so to check what a model shows in a test, compare its fields rather than whole models.
-- **Timers keep running** while your screen is shown: the countdown, the checks and the quiet retries belong to MFA, not to the screen.
-- **There is no screen to replace for loading.** `loading.accessibilityLabel` is its only text.
-- **The models need only their data**, so they are easy to build for a preview or a test of your own screen; every action defaults to doing nothing.
+`canResend` says whether the server still allows another send. `resendAvailableIn` is the seconds left before it may be sent, and 0 when it can be tapped now. The flow owns that countdown, so calling `resend()` early does nothing; a replacement only has to show it (the model is published again each second while it counts down).
 
-MFA itself only runs inside `EmbeddedLoginScreen` for now. A standalone MFA component, for an API that answers `mfa_required` (step-up), is planned and not available yet.
+The factor list (`authenticatorList`), the phone code screen (`phoneChallenge`) and the error screen (`error`) are replaced the same way. There is no screen to replace for loading. Models hold data only, and every action defaults to doing nothing, so they are easy to build for a preview or a test of your own screen. Build the words with `ResolvedMfaMessages.from(context)`, passing `MfaMessages { ... }` as the second argument to include your own.
 
-#### Draw every MFA screen yourself (level 5)
+#### Draw every MFA screen yourself (headless)
 
-With `MfaPresentation.Headless`, the library draws no MFA screen. It publishes what to draw, and how MFA ended, in a `MfaStepStream` that **you create and keep** (`remember`), and your own UI draws it over the login:
+With `MfaPresentation.Headless`, the flow still decides everything: which factors to offer, when to check, when to give up, and when to hand the credentials to your app. It only publishes each step into a `MfaStepStream` that **you create and keep** (`remember`), and your own UI draws it over the login:
 
 ```kotlin
 val stream = remember { MfaStepStream() }
 val step by stream.step.collectAsStateWithLifecycle()
-val result by stream.result.collectAsStateWithLifecycle()
 
 Box {
     EmbeddedLoginScreen(
@@ -524,6 +452,7 @@ Box {
         is MfaStep.AuthenticatorList -> MyList(current.model)
         is MfaStep.Factor -> when (val model = current.step.model) {
             is PushChallengeModel -> MyPush(model)
+            is PhoneChallengeModel -> MyPhone(model)
             else -> Unit
         }
         is MfaStep.Error -> MyError(current.model)
@@ -533,15 +462,21 @@ Box {
 }
 ```
 
-- **`step`** is the screen to draw, or `null` when there is nothing to draw: before MFA, after it ended, or when MFA ended because no factor can be used (your `onMfaError` is told; with `Handled` your app takes over, otherwise the login draws its own "not available" screen, so you need not). A new factor adds no `MfaStep` case; it is another `MfaStep.Factor` model, so keep the `else` branch.
-- **`result`** is `null` while MFA runs and is cleared when the next MFA starts. It becomes `MfaResult.SignedIn`, or `MfaResult.Ended(error)`: `MfaError.Cancelled` when the user left, otherwise the error. `onAuthenticated` and `onMfaError` are called as usual.
-- **Every control is an action on a model.** To leave MFA, call `cancel()`; on the error step, `leave()` returns to email entry.
-- **The login frame stays:** its navigation bar and system Back are still there, and Back behaves as in the standard screens. A `BackHandler` you add inside your own UI takes precedence.
-- **Rotation is safe:** the flow lives in a ViewModel, and the new stream your `remember` makes after a rotation is filled with the current step and result again. **Process death** starts again from email entry; the stream isn't saved.
+- An `MfaStep` is `Loading`, `AuthenticatorList`, `Error`, or `Factor(step)` for a factor's own screen: read `step.factor` (for example `MfaFactorId.Push`) and check `step.model` for that factor's model. New factors add no case, so keep the `else` branch.
+- `stream.step` is `null` when there is nothing to draw: before MFA, after it ends, or when no factor can be used. Your overlay goes away and the login's own screen shows.
+- `stream.result` is `MfaResult.SignedIn` or `MfaResult.Ended(error)` when MFA ends, and goes back to `null` when the next MFA starts.
+- The login still draws its own background, navigation bar and Back; only the MFA steps are yours. Every control is an action on a model; on the error step, `leave()` returns to email entry.
 
-#### More than one step (level 6)
+Adding `onMfaError` or `mfa` is source-compatible, but your app must be recompiled against this version.
 
-When the sign-in policy needs another factor, the list comes back with `header = AuthenticatorListHeader.ChallengeAdditional` and `round` above 1, even with a single factor. `MfaFactorStep.round` tells the same for a factor's own screen. The server decides how many rounds there are; there is no limit.
+### Flow Behaviour
+
+- **A wrong or expired code appears inline,** under the code field, and the user stays on code entry. After an expired code, **Resend** opens at once.
+- **Resend opens 60 seconds after each code is sent;** until then the button counts down.
+- **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email entry (with the email kept) if not. If the first load failed, it loads again.
+- **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen. During MFA, Back is ignored only while a push or code is being sent again or a typed code is being checked.
+- **If the connection doesn't offer Email OTP,** the flow shows a screen saying no sign-in methods are available.
+- **The sign-in session lives in memory.** Rotation is safe, but if Android ends the app while the user is signing in, the flow starts again from email entry when the app reopens.
 
 ## Support
 

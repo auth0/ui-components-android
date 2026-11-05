@@ -18,8 +18,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,9 +40,11 @@ internal fun OTPInputField(
 ) {
     val dimensions = Auth0Theme.dimensions
 
+    // The cursor always sits after the last digit. The plain-string overload starts it at the front whenever the screen
+    // is rebuilt with a code already typed (a rotation, say), where Backspace would delete nothing.
     BasicTextField(
-        value = value,
-        onValueChange = onValueChange,
+        value = TextFieldValue(text = value, selection = TextRange(value.length)),
+        onValueChange = { if (it.text != value) onValueChange(it.text) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier
             .fillMaxWidth()

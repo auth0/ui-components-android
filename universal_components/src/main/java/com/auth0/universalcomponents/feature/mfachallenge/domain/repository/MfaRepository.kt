@@ -2,6 +2,7 @@ package com.auth0.universalcomponents.feature.mfachallenge.domain.repository
 
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 
@@ -16,4 +17,10 @@ internal interface MfaRepository {
 
     /** Checks once whether the user has answered the push. */
     suspend fun checkPushStatus(): Result<PushStatus, MfaError>
+
+    /** Sends the code to the phone; the answer is true while the server still offers to send it again. */
+    suspend fun sendPhoneCode(factor: MfaFactor.Phone): Result<Boolean, MfaError>
+
+    /** Sends the code the user typed for the phone code that went out last. */
+    suspend fun verifyCode(code: String): Result<CodeStatus, MfaError>
 }

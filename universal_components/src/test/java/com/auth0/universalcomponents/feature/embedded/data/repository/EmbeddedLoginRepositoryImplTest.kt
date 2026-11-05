@@ -77,6 +77,7 @@ class EmbeddedLoginRepositoryImplTest {
                     EmbeddedCapability.CHALLENGE_EMAIL,
                     EmbeddedCapability.VERIFY_OTP,
                     EmbeddedCapability.CHALLENGE_PUSH,
+                    EmbeddedCapability.CHALLENGE_PHONE,
                     EmbeddedCapability.VERIFY_OOB,
                 ),
             )
@@ -213,7 +214,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `verifyOtp - second factors offered - fails as MFA required, with only the push devices, in order`() = runTest {
+    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, in order`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
             challengeEmail(at = 0),
             sdkInstance<NextAction.ChallengePhone>(
@@ -230,7 +231,14 @@ class EmbeddedLoginRepositoryImplTest {
         val failure = repository.verifyOtp(CODE).failure()
 
         assertThat(failure.error).isEqualTo(
-            EmbeddedLoginError.MfaRequired(listOf(MfaFactor.Push(2, DEVICE), MfaFactor.Push(3, OTHER_DEVICE))),
+            EmbeddedLoginError.MfaRequired(
+                listOf(
+                    MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.TEXT),
+                    MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.VOICE),
+                    MfaFactor.Push(2, DEVICE),
+                    MfaFactor.Push(3, OTHER_DEVICE),
+                ),
+            ),
         )
     }
 
@@ -239,7 +247,7 @@ class EmbeddedLoginRepositoryImplTest {
         listOf(
             verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
             verifyOtp(OtpChannel.SMS, null),
-            // Second factors other than push aren't supported yet.
+            // Second factors other than push and a phone code aren't supported yet.
             verifyOtp(OtpChannel.TOTP, null),
             NextAction.VerifyRecoveryCode,
             challengeEmail(at = 0),

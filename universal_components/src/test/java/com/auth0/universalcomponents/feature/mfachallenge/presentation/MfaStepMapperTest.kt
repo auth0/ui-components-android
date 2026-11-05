@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListHeader
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListModel
@@ -7,6 +8,8 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaExit
 import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorId
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
+import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.google.common.truth.Truth.assertThat
@@ -98,6 +101,81 @@ class MfaStepMapperTest {
     }
 
     @Test
+    fun `phone code - the model carries the number, how the code came, and the wait states`() {
+        val state = codeReady(TWO_WITH_SMS).copy(resendSecondsLeft = 42, isWrongCode = true)
+
+        val factor = (toStep(state) as MfaStep.Factor).step
+        val model = factor.model as PhoneChallengeModel
+
+        assertThat(factor.factor).isEqualTo(MfaFactorId.Phone)
+        assertThat(model.phoneNumber).isEqualTo("***9239")
+        assertThat(model.delivery).isEqualTo(PhoneDelivery.Text)
+        assertThat(model.isWrongCode).isTrue()
+        assertThat(model.canResend).isTrue()
+        assertThat(model.resendAvailableIn).isEqualTo(42)
+        assertThat(model.canSwitch).isTrue()
+        assertThat(model.isVerifying).isFalse()
+        assertThat(model.isResending).isFalse()
+    }
+
+    @Test
+    fun `phone code - being checked, or sent again - says so`() {
+        val verifying = codeReady(TWO_WITH_SMS).copy(phase = PhoneCodePhase.Verifying)
+        val resending = codeReady(TWO_WITH_SMS).copy(phase = PhoneCodePhase.Resending, canResend = false)
+
+        val checked = (toStep(verifying) as MfaStep.Factor).step.model as PhoneChallengeModel
+        val sent = (toStep(resending) as MfaStep.Factor).step.model as PhoneChallengeModel
+
+        assertThat(checked.isVerifying).isTrue()
+        assertThat(sent.isResending).isTrue()
+        assertThat(sent.canResend).isFalse()
+    }
+
+    @Test
+    fun `phone code - a code by voice - is told apart from a text`() {
+        val state = codeReady(MfaRound(1, listOf(CALL))).copy(factor = CALL)
+
+        val model = (toStep(state) as MfaStep.Factor).step.model as PhoneChallengeModel
+
+        assertThat(model.delivery).isEqualTo(PhoneDelivery.Voice)
+    }
+
+    @Test
+    fun `list - a phone reachable two ways - is two rows, each with its number and how it is reached`() {
+        val step = toStep(MfaState.ChooseFactor(MfaRound(1, listOf(SMS, CALL)))) as MfaStep.AuthenticatorList
+
+        val (text, voice) = step.model.rows
+
+        assertThat(step.model.rows).hasSize(2)
+        assertThat(text.id).isEqualTo("phone:3:TEXT")
+        assertThat(voice.id).isEqualTo("phone:3:VOICE")
+        listOf(text, voice).forEach { row ->
+            assertThat(row.factor).isEqualTo(MfaFactorId.Phone)
+            assertThat(row.title).isEqualTo("***9239")
+            assertThat(row.icon).isEqualTo(R.drawable.ic_mfa_sms)
+        }
+        assertThat(text.delivery).isEqualTo(PhoneDelivery.Text)
+        assertThat(voice.delivery).isEqualTo(PhoneDelivery.Voice)
+    }
+
+    @Test
+    fun `phone code - the taps - come back as intents`() {
+        val model = (toStep(codeReady(TWO_WITH_SMS)) as MfaStep.Factor).step.model as PhoneChallengeModel
+
+        model.submit("123456")
+        model.resend()
+        model.switchFactor()
+        model.cancel()
+
+        assertThat(intents).containsExactly(
+            MfaIntent.SubmitCode("123456"),
+            MfaIntent.Resend,
+            MfaIntent.ChooseAnotherFactor,
+            MfaIntent.Cancel,
+        ).inOrder()
+    }
+
+    @Test
     fun `failed - any error, including no usable factor - is the error step with Start over`() {
         val errors = listOf(MfaError.Rejected(), MfaError.NoEligibleFactors(), MfaError.Network())
 
@@ -166,6 +244,14 @@ class MfaStepMapperTest {
 
     // endregion
 
+    private fun codeReady(round: MfaRound) = MfaState.PhoneCode(
+        round = round,
+        factor = SMS,
+        phase = PhoneCodePhase.Ready,
+        canResend = true,
+        resendSecondsLeft = 0,
+    )
+
     private fun waiting(round: MfaRound, factor: MfaFactor.Push) = MfaState.PushWaiting(
         round = round,
         factor = factor,
@@ -180,6 +266,9 @@ class MfaStepMapperTest {
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
         val ONE = MfaRound(1, listOf(PHONE))
         val TWO = MfaRound(1, listOf(PHONE, TABLET))
+        val SMS = MfaFactor.Phone(3, "***9239", PhoneDeliveryMethod.TEXT)
+        val CALL = SMS.copy(delivery = PhoneDeliveryMethod.VOICE)
+        val TWO_WITH_SMS = MfaRound(1, listOf(SMS, PHONE))
         const val POLL = 3_000L
     }
 }

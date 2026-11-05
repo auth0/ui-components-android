@@ -153,6 +153,16 @@
     <string name="auth0_mfa_push_challenge_resend_button">Resend notification</string>
     <string name="auth0_mfa_push_challenge_resend_cooldown">Resend in %1$d sec…</string>
     <string name="auth0_mfa_push_challenge_verify_another_way">Verify another way</string>
+    <string name="auth0_mfa_phone_challenge_title">Enter the 6-digit code</string>
+    <string name="auth0_mfa_phone_challenge_description">Sent to the number ending in XX-%1$s</string>
+    <string name="auth0_mfa_phone_challenge_description_voice">Calling the number ending in XX-%1$s</string>
+    <string name="auth0_mfa_phone_challenge_verify_button">Verify</string>
+    <string name="auth0_mfa_phone_challenge_wrong_code">Invalid code. Please check the code and try again.</string>
+    <string name="auth0_mfa_phone_challenge_resend_button">Resend code</string>
+    <string name="auth0_mfa_phone_challenge_resend_cooldown">Resend in %1$d sec…</string>
+    <string name="auth0_mfa_phone_challenge_verify_another_way">Verify another way</string>
+    <string name="auth0_mfa_phone_challenge_row_text">SMS OTP</string>
+    <string name="auth0_mfa_phone_challenge_row_voice">Voice OTP</string>
     <string name="auth0_mfa_errors_start_over">Start over</string>
     <string name="auth0_mfa_errors_close">Close</string>
     <string name="auth0_mfa_errors_cancelled_title">Verification cancelled.</string>

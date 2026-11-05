@@ -70,8 +70,10 @@ data class AuthenticatorListModel @JvmOverloads constructor(
 
     /**
      * One way to verify. [title] is what the user named the factor, such as a device name, and may be blank: show the
-     * factor's own name then (`messages.pushChallenge.row`). [subtitle] is null from this library: the standard list
-     * words its second line from the messages too. [icon] is a drawable of this library; null draws none.
+     * factor's own name then (`messages.pushChallenge.row`); for a phone it is the number as the server hides it, and
+     * [delivery] says how its code is sent (the standard list words the row from both). [subtitle] is null from this
+     * library: the standard list words its second line from the messages too. [icon] is a drawable of this library;
+     * null draws none.
      */
     @Immutable
     data class Row @JvmOverloads constructor(
@@ -80,12 +82,13 @@ data class AuthenticatorListModel @JvmOverloads constructor(
         val title: String,
         val subtitle: String? = null,
         @param:DrawableRes val icon: Int? = null,
+        val delivery: PhoneDelivery? = null,
     )
 }
 
 /**
  * The screen of one factor. [model] is the factor's own model, picked by [factor] (a push gets a
- * [PushChallengeModel]).
+ * [PushChallengeModel], a phone a [PhoneChallengeModel]).
  */
 @Immutable
 data class MfaFactorStep @JvmOverloads constructor(
@@ -113,6 +116,38 @@ data class PushChallengeModel @JvmOverloads constructor(
     val cancel: () -> Unit = {},
     val isResending: Boolean = false,
 ) : MfaFactorModel
+
+/**
+ * A code was sent to [phoneNumber] (as the server hides it) by [delivery], and waits to be typed. [submit] checks a
+ * typed code, unless [isVerifying]; [isWrongCode] is true after the server refused the last one. Resend is offered
+ * while [canResend] and opens once [resendAvailableIn] seconds have passed; while it goes out, [isResending] is true.
+ * [switchFactor] returns to the list when [canSwitch]. [cancel] leaves MFA.
+ */
+@Immutable
+data class PhoneChallengeModel @JvmOverloads constructor(
+    val phoneNumber: String,
+    val delivery: PhoneDelivery,
+    val isWrongCode: Boolean = false,
+    val isVerifying: Boolean = false,
+    val isResending: Boolean = false,
+    val canResend: Boolean = false,
+    val resendAvailableIn: Int = 0,
+    val canSwitch: Boolean = false,
+    val submit: (code: String) -> Unit = {},
+    val resend: () -> Unit = {},
+    val switchFactor: () -> Unit = {},
+    val cancel: () -> Unit = {},
+) : MfaFactorModel
+
+/** How a phone gets its code. */
+enum class PhoneDelivery {
+
+    /** A text message. */
+    Text,
+
+    /** A phone call that speaks the code. */
+    Voice,
+}
 
 /** Why MFA ended is [error]; [exit] says where [leave] goes. */
 @Immutable
@@ -142,5 +177,8 @@ value class MfaFactorId(val value: String) {
     companion object {
         /** Approve a sign-in request on another device. */
         val Push = MfaFactorId("push")
+
+        /** Type a code that was sent to a phone, by text or by a call. */
+        val Phone = MfaFactorId("phone")
     }
 }

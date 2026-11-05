@@ -24,6 +24,7 @@ class MfaMessages private constructor(
     internal val loading: Loading,
     internal val errors: Errors,
     internal val pushChallenge: PushChallenge,
+    internal val phoneChallenge: PhoneChallenge,
 ) {
 
     /** A title and a description, either of which can be changed. */
@@ -116,6 +117,38 @@ class MfaMessages private constructor(
         }
     }
 
+    /** Typing the code that was sent to a phone, by text or by a call. */
+    class PhoneChallenge internal constructor() {
+        var title: String? = null
+
+        /** For a code sent by text; takes the phone number as the server hides it. */
+        var description: ((phoneNumber: String) -> String)? = null
+
+        /** For a code sent by a call; takes the phone number as the server hides it. */
+        var descriptionVoice: ((phoneNumber: String) -> String)? = null
+        var verifyButton: String? = null
+
+        /** Under the code field after the server refused a code. */
+        var wrongCode: String? = null
+        var verifyAnotherWay: String? = null
+
+        /** How the factor looks in the list for a code sent by text; takes the phone number. */
+        var rowText: ((phoneNumber: String) -> String)? = null
+
+        /** How the factor looks in the list for a code sent by a call; takes the phone number. */
+        var rowVoice: ((phoneNumber: String) -> String)? = null
+        internal val resend = Resend()
+
+        fun resend(configure: Resend.() -> Unit) = resend.configure()
+
+        class Resend internal constructor() {
+            var button: String? = null
+
+            /** Takes the seconds left until Resend opens. */
+            var cooldown: ((seconds: Int) -> String)? = null
+        }
+    }
+
     companion object {
 
         /**
@@ -133,6 +166,7 @@ class MfaMessages private constructor(
         private val loading = Loading()
         private val errors = Errors()
         private val pushChallenge = PushChallenge()
+        private val phoneChallenge = PhoneChallenge()
 
         fun authenticatorList(configure: AuthenticatorList.() -> Unit) = authenticatorList.configure()
 
@@ -142,6 +176,8 @@ class MfaMessages private constructor(
 
         fun pushChallenge(configure: PushChallenge.() -> Unit) = pushChallenge.configure()
 
-        internal fun build() = MfaMessages(authenticatorList, loading, errors, pushChallenge)
+        fun phoneChallenge(configure: PhoneChallenge.() -> Unit) = phoneChallenge.configure()
+
+        internal fun build() = MfaMessages(authenticatorList, loading, errors, pushChallenge, phoneChallenge)
     }
 }

@@ -1,14 +1,23 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -21,9 +30,12 @@ import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaExit
 import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorId
+import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
+import com.auth0.universalcomponents.presentation.ui.components.OTPInputField
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
@@ -155,6 +167,108 @@ internal fun MfaPushChallengeScreen(
 }
 
 /**
+ * Typing the code that went to [PhoneChallengeModel.phoneNumber], by text or by a call. Verify turns on once every digit
+ * is in and nothing is on its way; the wrong-code line hides once the user types again. Resend and "Verify another
+ * way" follow the push screen's rules.
+ */
+@Composable
+internal fun MfaPhoneChallengeScreen(
+    model: PhoneChallengeModel,
+    messages: ResolvedMfaMessages,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = Auth0Theme.dimensions
+    val words = messages.phoneChallenge
+    var code by rememberSaveable { mutableStateOf("") }
+    // Hidden once the user types after a refused code, shown again by the next Verify. Kept across a rotation, so a
+    // line the user already dismissed does not come back.
+    var hideError by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    val isBusy = model.isVerifying || model.isResending
+    val showsError = model.isWrongCode && !hideError
+    val maxWidth = Auth0Theme.sizes.otpFieldWidth * CODE_LENGTH + dimensions.spacingXs * (CODE_LENGTH - 1)
+
+    FlowStepLayout(
+        modifier = modifier,
+        pageDescription = {
+            FlowScreenHeader(
+                title = words.title,
+                subtitle = when (model.delivery) {
+                    PhoneDelivery.Text -> words.description(model.phoneNumber)
+                    PhoneDelivery.Voice -> words.descriptionVoice(model.phoneNumber)
+                },
+            )
+        },
+        content = {
+            // Held to phone-sized boxes: they grow with the width, and would balloon in landscape.
+            Box(modifier = Modifier.widthIn(max = maxWidth)) {
+                OTPInputField(
+                    value = code,
+                    length = CODE_LENGTH,
+                    isError = showsError,
+                    onValueChange = {
+                        code = it.filter(Char::isDigit).take(CODE_LENGTH)
+                        hideError = true
+                    },
+                    focusRequester = focusRequester,
+                )
+            }
+            if (showsError) {
+                Text(
+                    text = words.wrongCode,
+                    style = Auth0Theme.typography.bodySmall,
+                    color = Auth0Theme.colors.textOnError,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = dimensions.spacingXs)
+                        .semantics { liveRegion = LiveRegionMode.Polite },
+                )
+            }
+        },
+        primaryAction = {
+            FlowPrimaryButton(
+                title = words.verifyButton,
+                onClick = {
+                    hideError = false
+                    model.submit(code)
+                },
+                isLoading = model.isVerifying,
+                enabled = code.length == CODE_LENGTH && !isBusy,
+            )
+        },
+        secondaryAction = if (model.canResend || model.canSwitch) {
+            {
+                Column(verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)) {
+                    if (model.canResend) {
+                        FlowTextButton(
+                            title = if (model.resendAvailableIn > 0) {
+                                words.resend.cooldown(model.resendAvailableIn)
+                            } else {
+                                words.resend.button
+                            },
+                            onClick = { model.resend() },
+                            enabled = model.resendAvailableIn == 0 && !isBusy,
+                            style = Auth0Theme.typography.body,
+                        )
+                    }
+                    if (model.canSwitch) {
+                        FlowTextButton(
+                            title = words.verifyAnotherWay,
+                            onClick = { model.switchFactor() },
+                            enabled = !isBusy,
+                        )
+                    }
+                }
+            }
+        } else {
+            null
+        },
+        pinActionsToBottom = false,
+    )
+}
+
+/**
  * MFA ended, and this says why: the server's own words for an unexpected error when it gave some (cut at
  * [MAX_SERVER_EXPLANATION] characters, since they come untranslated and unchecked). The way out is "Start over" or
  * "Close".
@@ -177,6 +291,9 @@ internal fun MfaErrorScreen(
         onRetry = { model.leave() },
     )
 }
+
+/** How many digits the code has. */
+private const val CODE_LENGTH = 6
 
 /** The longest explanation from the server the error screen shows; it is untranslated text we did not write. */
 internal const val MAX_SERVER_EXPLANATION = 200
@@ -216,9 +333,15 @@ private fun MfaWaitingForApproval(caption: String, device: String) {
 
 /**
  * What a row says. A named device leads, with the factor's name under it; a device with no name shows the factor's name
- * with its description under it. A factor this version has no words for shows just its own title.
+ * with its description under it. A phone leads with how its code is sent, to its number. A factor this version has no
+ * words for shows just its own title.
  */
 private fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
+    if (factor == MfaFactorId.Phone && delivery != null) {
+        val phone = messages.phoneChallenge
+        val label = if (delivery == PhoneDelivery.Voice) phone.rowVoice(title) else phone.rowText(title)
+        return ResolvedMfaMessages.Message(label, subtitle.orEmpty())
+    }
     if (factor != MfaFactorId.Push) return ResolvedMfaMessages.Message(title, subtitle.orEmpty())
     val kind = messages.pushChallenge.row
     return if (title.isBlank()) kind else ResolvedMfaMessages.Message(title, kind.title)

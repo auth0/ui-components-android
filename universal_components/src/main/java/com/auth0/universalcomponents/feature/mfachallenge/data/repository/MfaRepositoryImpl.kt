@@ -4,12 +4,15 @@ import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
+import com.auth0.android.embedded.authorize.OtpType
 import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
+import com.auth0.universalcomponents.data.embeddedauth.INVALID_CODE_REASONS
 import com.auth0.universalcomponents.data.embeddedauth.StepAnswer
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.mfaError
 import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFactors
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
@@ -70,6 +73,38 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
     /** The server says the user denied the push: an answer to the check, not a failure of it. */
     private val StepAnswer.Failed.isRejected: Boolean
         get() = (error as? EmbeddedAuthException)?.error == EmbeddedAuthError.AuthorizationRejected
+
+    override suspend fun sendPhoneCode(factor: MfaFactor.Phone): Result<Boolean, MfaError> =
+        when (val sent = steps.run { challengePhone(factor.index, factor.delivery) }) {
+            // The code is out once the server asks for it to be verified.
+            is StepAnswer.Next ->
+                if (sent.actions.any { it is NextAction.VerifyOtp }) {
+                    Result.Success(sent.actions.any { it is NextAction.ChallengePhone })
+                } else {
+                    unexpected("The code was sent without a way to verify it")
+                }
+            is StepAnswer.Failed -> Result.Error(sent.mfaError)
+            is StepAnswer.Done -> unexpected("Sending a code signed in")
+        }
+
+    override suspend fun verifyCode(code: String): Result<CodeStatus, MfaError> =
+        when (val verified = steps.run { verifyOtp(code, OtpType.OOB) }) {
+            is StepAnswer.Done -> Result.Success(CodeStatus.Verified(verified.value))
+            is StepAnswer.Next -> when {
+                // A wrong code answers "not finished yet" like a further step does; only its reason tells them apart.
+                verified.reason in INVALID_CODE_REASONS -> Result.Success(CodeStatus.WrongCode)
+
+                // The code passed, and the policy asks for another factor: the answer carries the next round's menu.
+                verified.reason == Reason.NONE -> {
+                    Logger.i(TAG, "Code accepted; the server asks for another factor")
+                    Result.Success(CodeStatus.AnotherFactor(verified.actions.toMfaFactors()))
+                }
+
+                else -> unexpected("A code was answered with ${verified.reason}")
+            }
+
+            is StepAnswer.Failed -> Result.Error(verified.mfaError)
+        }
 
     /** The "check the push" step the server offered, with the wait it wants before the next check. */
     private fun StepAnswer.Next.verifyOob(): NextAction.VerifyOob? =

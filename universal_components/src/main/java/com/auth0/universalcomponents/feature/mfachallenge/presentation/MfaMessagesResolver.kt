@@ -115,5 +115,37 @@ internal fun MfaMessages.resolve(resources: Resources): ResolvedMfaMessages {
             ),
             verifyAnotherWay = word(push.verifyAnotherWay, R.string.auth0_mfa_push_challenge_verify_another_way),
         ),
+        phoneChallenge = phoneChallenge.resolve(resources),
     )
 }
+
+/** The words of the phone code screen and its list rows, resolved the same way as the rest. */
+private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMfaMessages.PhoneChallenge {
+    fun word(override: String?, @StringRes id: Int) = override ?: resources.getString(id)
+
+    return ResolvedMfaMessages.PhoneChallenge(
+        title = word(title, R.string.auth0_mfa_phone_challenge_title),
+        description = description ?: { number ->
+            resources.getString(R.string.auth0_mfa_phone_challenge_description, number.lastDigits())
+        },
+        descriptionVoice = descriptionVoice ?: { number ->
+            resources.getString(R.string.auth0_mfa_phone_challenge_description_voice, number.lastDigits())
+        },
+        verifyButton = word(verifyButton, R.string.auth0_mfa_phone_challenge_verify_button),
+        wrongCode = word(wrongCode, R.string.auth0_mfa_phone_challenge_wrong_code),
+        resend = ResolvedMfaMessages.PhoneChallenge.Resend(
+            button = word(resend.button, R.string.auth0_mfa_phone_challenge_resend_button),
+            cooldown = resend.cooldown ?: { seconds ->
+                resources.getString(R.string.auth0_mfa_phone_challenge_resend_cooldown, seconds)
+            },
+        ),
+        verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_phone_challenge_verify_another_way),
+        rowText = rowText ?: { resources.getString(R.string.auth0_mfa_phone_challenge_row_text) },
+        rowVoice = rowVoice ?: { resources.getString(R.string.auth0_mfa_phone_challenge_row_voice) },
+    )
+}
+
+/** The server hides most of a phone number (`XXXXXXXXX0128`), so the default words name it by its last digits. */
+private fun String.lastDigits(): String = filter(Char::isDigit).takeLast(LAST_DIGITS).ifEmpty { this }
+
+private const val LAST_DIGITS = 4
