@@ -29,7 +29,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 /**
- * Drives the email-code flow: [LoginEvent]s in, [LoginStep]s out. Each event counts only on the screen it belongs to.
+ * Drives the email-code flow: [LoginIntent]s in, [LoginState]s out. Each event counts only on the screen it belongs to.
  * A second factor runs in an [MfaEngine] owned here, so the hand-off and its end are plain calls on this ViewModel.
  * The repositories return each failure as a [LoginFailure], so nothing here is caught.
  */
@@ -38,20 +38,24 @@ internal class LoginFlowViewModel(
     private val mfaRepository: MfaRepository,
 ) : ViewModel() {
 
-    private val _loginStep = MutableStateFlow<LoginStep>(LoginStep.Loading)
-    val loginStep: StateFlow<LoginStep> = _loginStep.asStateFlow()
+    private val _loginState = MutableStateFlow<LoginState>(LoginState.Loading)
+    val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
 
-    private val _authenticated = Channel<Credentials>(Channel.BUFFERED)
-    val authenticated: Flow<Credentials> = _authenticated.receiveAsFlow()
+    private val _events = Channel<LoginEvent>(Channel.BUFFERED)
 
-    private val _mfaFailed = Channel<MfaError>(Channel.BUFFERED)
-
-    /** Each time MFA ends with an error, once. The user leaving MFA is not one. */
-    val mfaFailed: Flow<MfaError> = _mfaFailed.receiveAsFlow()
+    /**
+     * What happens once, not what the screen draws: signing in, and MFA ending with an error (for `onMfaError`; the
+     * user leaving MFA is not one). The error event is not a second record of the ending: [finishMfa] derives it from
+     * [mfaResult], in one place.
+     */
+    val events: Flow<LoginEvent> = _events.receiveAsFlow()
 
     private val _mfaResult = MutableStateFlow<MfaResult?>(null)
 
-    /** How the last MFA ended; null while one runs, and again once the next starts. Only a headless app reads it. */
+    /**
+     * How the last MFA ended; null while one runs, and again once the next starts. It is kept, so a headless app that
+     * is redrawn (a rotation) still reads it, which an event could not offer. Only [finishMfa] sets it.
+     */
     val mfaResult: StateFlow<MfaResult?> = _mfaResult.asStateFlow()
 
     /** False before the first Start, and again once the flow signed in or was left; the next Start begins anew. */
@@ -62,38 +66,38 @@ internal class LoginFlowViewModel(
     private var runningStep: Job? = null
     private var resendCountdownJob: Job? = null
 
-    fun send(event: LoginEvent) {
-        val current = _loginStep.value
+    fun send(event: LoginIntent) {
+        val current = _loginState.value
         when (event) {
             // A Start mid-flow (after a rotation, say) keeps the user's place.
-            LoginEvent.Start -> if (!isRunning) {
+            LoginIntent.Start -> if (!isRunning) {
                 isRunning = true
                 launchStep { discover() }
             }
 
-            is LoginEvent.SubmitIdentifier -> if (current is LoginStep.CollectOtpIdentifier) {
+            is LoginIntent.SubmitIdentifier -> if (current is LoginState.CollectOtpIdentifier) {
                 launchStep { sendCode(event.email, isResend = false) }
             }
 
-            is LoginEvent.SubmitOtp -> if (current is LoginStep.CollectOtpCode) {
+            is LoginIntent.SubmitOtp -> if (current is LoginState.CollectOtpCode) {
                 launchStep { verify(current.identifier, event.code) }
             }
 
-            LoginEvent.Resend -> if (current is LoginStep.CollectOtpCode && !current.isCountingDown) {
+            LoginIntent.Resend -> if (current is LoginState.CollectOtpCode && !current.isCountingDown) {
                 launchStep { sendCode(current.identifier, isResend = true) }
             }
 
-            LoginEvent.Retry -> if (current is LoginStep.Failed) launchStep { retry(current) }
+            LoginIntent.Retry -> if (current is LoginState.Failed) launchStep { retry(current) }
 
             // Its own event, not Back: a second tap on the screen still sliding out must not leave the login.
-            LoginEvent.LeaveMfa -> if (current is LoginStep.Mfa) leaveMfa(current)
+            LoginIntent.LeaveMfa -> if (current is LoginState.Mfa) leaveMfa(current)
 
-            is LoginEvent.MfaErrorHandlerChanged -> hasMfaErrorHandler = event.isSet
+            is LoginIntent.MfaErrorHandlerChanged -> hasMfaErrorHandler = event.isSet
 
             // An app that doesn't take over leaves the user on MFA's own "not available" screen.
-            is LoginEvent.MfaErrorAnswered ->
-                if (current is LoginStep.AwaitingApp && event.handling == MfaErrorHandling.NotHandled) {
-                    _loginStep.value = LoginStep.Mfa(current.engine, current.identifier)
+            is LoginIntent.MfaErrorAnswered ->
+                if (current is LoginState.AwaitingApp && event.handling == MfaErrorHandling.NotHandled) {
+                    _loginState.value = LoginState.Mfa(current.engine, current.identifier)
                 }
         }
     }
@@ -104,19 +108,19 @@ internal class LoginFlowViewModel(
      * while waiting for the app: the user doesn't wait for an app that never answers.
      */
     fun goBack(): Boolean {
-        val current = _loginStep.value
-        if (current is LoginStep.Mfa) {
+        val current = _loginState.value
+        if (current is LoginState.Mfa) {
             if (current.engine.isRunning) current.engine.back() else leaveMfa(current)
             return true
         }
-        if (current is LoginStep.AwaitingApp) {
-            _loginStep.value = LoginStep.CollectOtpIdentifier(current.identifier)
+        if (current is LoginState.AwaitingApp) {
+            _loginState.value = LoginState.CollectOtpIdentifier(current.identifier)
             return true
         }
         // Stay put until the request in flight answers, rather than dropping it halfway.
         if (current.isBusy) return true
-        if (current is LoginStep.CollectOtpCode) {
-            _loginStep.value = LoginStep.CollectOtpIdentifier(current.identifier)
+        if (current is LoginState.CollectOtpCode) {
+            _loginState.value = LoginState.CollectOtpIdentifier(current.identifier)
             return true
         }
         isRunning = false
@@ -124,13 +128,13 @@ internal class LoginFlowViewModel(
     }
 
     private suspend fun discover() {
-        _loginStep.value = LoginStep.Loading
+        _loginState.value = LoginState.Loading
         repository.discover()
             .onSuccess { options ->
-                _loginStep.value =
-                    if (LoginOption.EmailOtp in options) LoginStep.CollectOtpIdentifier() else LoginStep.NoMethodsAvailable
+                _loginState.value =
+                    if (LoginOption.EmailOtp in options) LoginState.CollectOtpIdentifier() else LoginState.NoMethodsAvailable
             }
-            .onError { failure -> _loginStep.value = failed(failure, retryTo = null) }
+            .onError { failure -> _loginState.value = failed(failure, retryTo = null) }
     }
 
     /**
@@ -138,17 +142,17 @@ internal class LoginFlowViewModel(
      * is one for good: Try again returns to email entry with the email kept.
      */
     private suspend fun sendCode(email: String, isResend: Boolean) {
-        _loginStep.value = if (isResend) {
-            LoginStep.CollectOtpCode(email, isResending = true)
+        _loginState.value = if (isResend) {
+            LoginState.CollectOtpCode(email, isResending = true)
         } else {
-            LoginStep.CollectOtpIdentifier(email, isSubmitting = true)
+            LoginState.CollectOtpIdentifier(email, isSubmitting = true)
         }
         repository.startEmailOtp(email)
             .onSuccess {
-                _loginStep.value = LoginStep.CollectOtpCode(email, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
+                _loginState.value = LoginState.CollectOtpCode(email, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
                 startResendCountdown()
             }
-            .onError { failure -> _loginStep.value = failed(failure, retryTo = LoginStep.CollectOtpIdentifier(email)) }
+            .onError { failure -> _loginState.value = failed(failure, retryTo = LoginState.CollectOtpIdentifier(email)) }
     }
 
     /**
@@ -171,12 +175,12 @@ internal class LoginFlowViewModel(
                     EmbeddedLoginError.CodeExpired ->
                         updateCodeStep { copy(error = failure.error, isSubmitting = false, resendSecondsLeft = 0) }
 
-                    else -> _loginStep.value = failed(
+                    else -> _loginState.value = failed(
                         failure,
                         retryTo = if (failure.canRetryStep) {
-                            LoginStep.CollectOtpCode(email)
+                            LoginState.CollectOtpCode(email)
                         } else {
-                            LoginStep.CollectOtpIdentifier(email)
+                            LoginState.CollectOtpIdentifier(email)
                         },
                     )
                 }
@@ -185,7 +189,7 @@ internal class LoginFlowViewModel(
 
     /**
      * MFA runs in its own engine, a new one for each visit so nothing from an old one reaches the screen. It stops
-     * itself when it ends. It is shown as [LoginStep.Mfa] and draws and takes its own taps, so all login sees is Back
+     * itself when it ends. It is shown as [LoginState.Mfa] and draws and takes its own taps, so all login sees is Back
      * and how it ends, decided here. [identifier] is what the user typed for the first factor, kept by login (not in
      * the MFA state) to pre-fill it if the user starts over.
      */
@@ -198,58 +202,67 @@ internal class LoginFlowViewModel(
             onEffect = { effect -> endMfa(identifier, effect) },
         )
         // Shown before it starts, so an end reached while starting replaces this step rather than being overwritten.
-        _loginStep.value = LoginStep.Mfa(engine, identifier)
+        _loginState.value = LoginState.Mfa(engine, identifier)
         engine.start()
     }
 
     /** Back to email entry with what was typed kept; the next code opens a new session. */
-    private fun leaveMfa(mfa: LoginStep.Mfa) {
+    private fun leaveMfa(mfa: LoginState.Mfa) {
         mfa.engine.stop()
-        if (_mfaResult.value == null) _mfaResult.value = MfaResult.Ended(MfaError.Cancelled())
-        _loginStep.value = LoginStep.CollectOtpIdentifier(mfa.identifier)
+        // An ending already recorded (an error screen being left) stays what it was.
+        if (_mfaResult.value == null) finishMfa(MfaResult.Ended(MfaError.Cancelled()))
+        _loginState.value = LoginState.CollectOtpIdentifier(mfa.identifier)
     }
 
     private fun endMfa(identifier: String, effect: MfaEffect) {
         when (effect) {
             is MfaEffect.Authenticated -> {
-                _mfaResult.value = MfaResult.SignedIn
+                finishMfa(MfaResult.SignedIn)
                 viewModelScope.launch { signedIn(effect.credentials) }
             }
             // What was typed is kept; the next code opens a new session.
             MfaEffect.Restart -> {
-                _mfaResult.value = MfaResult.Ended(MfaError.Cancelled())
-                _loginStep.value = LoginStep.CollectOtpIdentifier(identifier)
+                finishMfa(MfaResult.Ended(MfaError.Cancelled()))
+                _loginState.value = LoginState.CollectOtpIdentifier(identifier)
             }
             // Its error screen stays on show until the user starts over. The engine already logged the failure, once.
-            is MfaEffect.Failed -> reportMfaFailure(effect.error)
+            is MfaEffect.Failed -> finishMfa(MfaResult.Ended(effect.error))
         }
     }
 
     /**
-     * Tells the app, once. When no factor can be used and the app set a handler, the app may take over, so the error
-     * screen is held back behind a spinner until it answers. Without a handler nobody can answer, and every other error
-     * already has its screen, which the answer doesn't change: neither waits.
+     * The one place an MFA ending is recorded: [mfaResult] keeps it, and an error is also told to the app, once, as
+     * a [LoginEvent.MfaFailed]. The user leaving (Cancelled) is a result but not an error, so it is not told.
      */
-    private fun reportMfaFailure(error: MfaError) {
-        _mfaResult.value = MfaResult.Ended(error)
-        val mfa = _loginStep.value as? LoginStep.Mfa
+    private fun finishMfa(result: MfaResult) {
+        _mfaResult.value = result
+        if (result is MfaResult.Ended && result.error !is MfaError.Cancelled) tellApp(result.error)
+    }
+
+    /**
+     * When no factor can be used and the app set a handler, the app may take over, so the error screen is held back
+     * behind a spinner until it answers. Without a handler nobody can answer, and every other error already has its
+     * screen, which the answer doesn't change: neither waits.
+     */
+    private fun tellApp(error: MfaError) {
+        val mfa = _loginState.value as? LoginState.Mfa
         if (mfa != null && error is MfaError.NoEligibleFactors && hasMfaErrorHandler) {
-            _loginStep.value = LoginStep.AwaitingApp(mfa.engine, mfa.identifier)
+            _loginState.value = LoginState.AwaitingApp(mfa.engine, mfa.identifier)
         }
-        _mfaFailed.trySend(error)
+        _events.trySend(LoginEvent.MfaFailed(error))
     }
 
     private suspend fun signedIn(credentials: Credentials) {
-        _loginStep.value = LoginStep.Authenticated
+        _loginState.value = LoginState.Authenticated
         isRunning = false
-        _authenticated.send(credentials)
+        _events.send(LoginEvent.Authenticated(credentials))
     }
 
     /** Counts the resend wait down a second at a time; it stops at zero, or once code entry is left. */
     private fun startResendCountdown() {
         resendCountdownJob?.cancel()
         resendCountdownJob = viewModelScope.launch {
-            while (_loginStep.value.isCountingDown) {
+            while (_loginState.value.isCountingDown) {
                 delay(ONE_SECOND_MILLIS)
                 updateCodeStep { copy(resendSecondsLeft = (resendSecondsLeft - 1).coerceAtLeast(0)) }
             }
@@ -257,20 +270,20 @@ internal class LoginFlowViewModel(
     }
 
     /** Changes code entry in place, so its countdown carries on; does nothing once that step is left. */
-    private inline fun updateCodeStep(change: LoginStep.CollectOtpCode.() -> LoginStep.CollectOtpCode) {
-        val current = _loginStep.value as? LoginStep.CollectOtpCode ?: return
-        _loginStep.value = current.change()
+    private inline fun updateCodeStep(change: LoginState.CollectOtpCode.() -> LoginState.CollectOtpCode) {
+        val current = _loginState.value as? LoginState.CollectOtpCode ?: return
+        _loginState.value = current.change()
     }
 
     /** The full-screen error. Logged once here, with its cause, so a failure in a live app can be traced. */
-    private fun failed(failure: LoginFailure, retryTo: LoginStep?): LoginStep {
+    private fun failed(failure: LoginFailure, retryTo: LoginState?): LoginState {
         Logger.e(TAG, "Login step failed: ${failure.error}", failure.cause)
-        return LoginStep.Failed(failure.error, retryTo)
+        return LoginState.Failed(failure.error, retryTo)
     }
 
-    private suspend fun retry(failed: LoginStep.Failed) {
+    private suspend fun retry(failed: LoginState.Failed) {
         val target = failed.retryTo
-        if (target != null) _loginStep.value = target else discover()
+        if (target != null) _loginState.value = target else discover()
     }
 
     /** Runs one step at a time; a second tap while one is in flight is dropped. */
@@ -285,14 +298,14 @@ internal class LoginFlowViewModel(
         const val ONE_SECOND_MILLIS = 1_000L
 
         /** Resend is still waiting out its cooldown. */
-        val LoginStep.isCountingDown: Boolean
-            get() = this is LoginStep.CollectOtpCode && resendSecondsLeft > 0
+        val LoginState.isCountingDown: Boolean
+            get() = this is LoginState.CollectOtpCode && resendSecondsLeft > 0
 
         /** A request for this screen is in flight. */
-        val LoginStep.isBusy: Boolean
+        val LoginState.isBusy: Boolean
             get() = when (this) {
-                is LoginStep.CollectOtpIdentifier -> isSubmitting
-                is LoginStep.CollectOtpCode -> isSubmitting || isResending
+                is LoginState.CollectOtpIdentifier -> isSubmitting
+                is LoginState.CollectOtpCode -> isSubmitting || isResending
                 else -> false
             }
     }

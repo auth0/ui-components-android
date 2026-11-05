@@ -12,12 +12,12 @@ class LoginRendererTest {
     fun `plan - each step - gets its screen and data`() {
         val error = EmbeddedLoginError.Server("Your account is blocked.")
         val expected = mapOf(
-            LoginStep.Loading to ScreenPlan.Loading,
-            LoginStep.CollectOtpIdentifier(EMAIL) to ScreenPlan.Identifier(EMAIL),
-            LoginStep.CollectOtpCode(EMAIL) to ScreenPlan.OtpCode(EMAIL),
-            LoginStep.Authenticated to ScreenPlan.Authenticated,
-            LoginStep.Failed(error) to ScreenPlan.Failed(error),
-            LoginStep.NoMethodsAvailable to ScreenPlan.NoMethods,
+            LoginState.Loading to ScreenPlan.Loading,
+            LoginState.CollectOtpIdentifier(EMAIL) to ScreenPlan.Identifier(EMAIL),
+            LoginState.CollectOtpCode(EMAIL) to ScreenPlan.OtpCode(EMAIL),
+            LoginState.Authenticated to ScreenPlan.Authenticated,
+            LoginState.Failed(error) to ScreenPlan.Failed(error),
+            LoginState.NoMethodsAvailable to ScreenPlan.NoMethods,
         )
         expected.forEach { (step, plan) -> assertThat(plan(step)).isEqualTo(plan) }
     }
@@ -25,9 +25,9 @@ class LoginRendererTest {
     @Test
     fun `plan - input steps - carry their error, busy state and countdown to the screen`() {
         val expected = mapOf(
-            LoginStep.CollectOtpIdentifier(EMAIL, isSubmitting = true) to
+            LoginState.CollectOtpIdentifier(EMAIL, isSubmitting = true) to
                 ScreenPlan.Identifier(EMAIL, isSubmitting = true),
-            LoginStep.CollectOtpCode(
+            LoginState.CollectOtpCode(
                 EMAIL,
                 EmbeddedLoginError.InvalidCode,
                 isSubmitting = true,
@@ -48,14 +48,14 @@ class LoginRendererTest {
     fun `plan - second factor - hands MFA its engine to draw from`() {
         val engine = mockk<MfaEngine>()
 
-        assertThat(plan(LoginStep.Mfa(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine))
+        assertThat(plan(LoginState.Mfa(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine))
     }
 
     @Test
     fun `plan - waiting for the app after MFA ended - is MFA's own plan, told to wait`() {
         val engine = mockk<MfaEngine>()
 
-        assertThat(plan(LoginStep.AwaitingApp(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine, isAwaitingApp = true))
+        assertThat(plan(LoginState.AwaitingApp(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine, isAwaitingApp = true))
     }
 
     @Test

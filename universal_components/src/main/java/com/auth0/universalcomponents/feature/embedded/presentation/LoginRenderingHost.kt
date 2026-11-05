@@ -37,25 +37,29 @@ internal fun LoginRenderingHost(
     onMfaError: ((MfaError) -> MfaErrorHandling)? = null,
     mfa: MfaConfiguration = MfaConfiguration(),
 ) {
-    val step by viewModel.loginStep.collectAsStateWithLifecycle()
+    val step by viewModel.loginState.collectAsStateWithLifecycle()
     val currentOnAuthenticated by rememberUpdatedState(onAuthenticated)
     val currentOnExit by rememberUpdatedState(onExit)
     val currentOnMfaError by rememberUpdatedState(onMfaError)
 
-    LaunchedEffect(viewModel) { viewModel.send(LoginEvent.Start) }
+    LaunchedEffect(viewModel) { viewModel.send(LoginIntent.Start) }
     // Without a handler nobody can take over when MFA has nothing usable, so login doesn't wait for an answer.
     val hasMfaErrorHandler = onMfaError != null
     LaunchedEffect(viewModel, hasMfaErrorHandler) {
-        viewModel.send(LoginEvent.MfaErrorHandlerChanged(hasMfaErrorHandler))
+        viewModel.send(LoginIntent.MfaErrorHandlerChanged(hasMfaErrorHandler))
     }
-    ObserveAsEvents(viewModel.authenticated) { currentOnAuthenticated(it) }
-    // No handler counts as "not handled", so the user is never stranded on a spinner.
-    ObserveAsEvents(viewModel.mfaFailed) { error ->
-        val handling = currentOnMfaError?.invoke(error) ?: MfaErrorHandling.NotHandled
-        viewModel.send(LoginEvent.MfaErrorAnswered(handling))
+    ObserveAsEvents(viewModel.events) { event ->
+        when (event) {
+            is LoginEvent.Authenticated -> currentOnAuthenticated(event.credentials)
+            // No handler counts as "not handled", so the user is never stranded on a spinner.
+            is LoginEvent.MfaFailed -> {
+                val handling = currentOnMfaError?.invoke(event.error) ?: MfaErrorHandling.NotHandled
+                viewModel.send(LoginIntent.MfaErrorAnswered(handling))
+            }
+        }
     }
 
-    MfaForegroundEffect((step as? LoginStep.Mfa)?.engine)
+    MfaForegroundEffect((step as? LoginState.Mfa)?.engine)
     (mfa.presentation as? MfaPresentation.Headless)?.let { PublishToStream(it.stream, viewModel, step) }
 
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
@@ -71,7 +75,7 @@ internal fun LoginRenderingHost(
                 stepTransition(isForward = targetState.navigationDepth >= initialState.navigationDepth)
             },
             modifier = Modifier.fillMaxSize(),
-            label = "loginStep",
+            label = "loginState",
         ) { plan ->
             LoginRenderer(plan, context)
         }
@@ -83,13 +87,13 @@ internal fun LoginRenderingHost(
  * The step is cleared when this leaves the composition, so a stale step is never left behind.
  */
 @Composable
-private fun PublishToStream(stream: MfaStepStream, viewModel: LoginFlowViewModel, step: LoginStep) {
-    val engine = (step as? LoginStep.Mfa)?.engine
+private fun PublishToStream(stream: MfaStepStream, viewModel: LoginFlowViewModel, step: LoginState) {
+    val engine = (step as? LoginState.Mfa)?.engine
     LaunchedEffect(stream, engine) {
         if (engine == null) {
             stream.showStep(null)
         } else {
-            stream.mirror(engine, onLeave = { viewModel.send(LoginEvent.LeaveMfa) })
+            stream.mirror(engine, onLeave = { viewModel.send(LoginIntent.LeaveMfa) })
         }
     }
     LaunchedEffect(stream, viewModel) { viewModel.mfaResult.collect(stream::finish) }
