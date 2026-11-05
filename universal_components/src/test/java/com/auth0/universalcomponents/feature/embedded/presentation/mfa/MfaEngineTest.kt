@@ -230,7 +230,7 @@ class MfaEngineTest {
     }
 
     @Test
-    fun `chose another device while a check is in flight - a terminal failure it brings still ends MFA with its real error`() =
+    fun `chose another device while a check is in flight - a denial it brings still ends MFA with its real reason`() =
         runTest {
             val answer = CompletableDeferred<Result<PushStatus, MfaError>>()
             coEvery { repository.checkPushStatus() } coAnswers { answer.await() }
@@ -239,7 +239,7 @@ class MfaEngineTest {
 
             engine.onIntent(MfaIntent.ChooseAnotherFactor)
             runCurrent()
-            answer.complete(Result.Error(MfaError.Rejected(null)))
+            answer.complete(Result.Success(PushStatus.Rejected))
             runCurrent()
 
             assertThat(engine.step.value).isEqualTo(MfaStep.Failed(MfaError.Rejected(null)))
@@ -253,7 +253,7 @@ class MfaEngineTest {
             coEvery { repository.checkPushStatus() } returnsMany List(MfaReducer.QUIET_RETRIES + 2) { network } +
                 Result.Success(PENDING)
             val engine = started(PHONE)
-            engine.onAppForeground(false)
+            engine.onAppBackgrounded()
 
             repeat(MfaReducer.QUIET_RETRIES + 2) { waitFor(POLL) }
 
@@ -262,7 +262,7 @@ class MfaEngineTest {
             coVerify(exactly = MfaReducer.QUIET_RETRIES + 2) { repository.checkPushStatus() }
 
             // Back in the app the wait is cut short: the next check runs now, not after the interval.
-            engine.onAppForeground(true)
+            engine.onAppForegrounded()
             runCurrent()
             coVerify(exactly = MfaReducer.QUIET_RETRIES + 3) { repository.checkPushStatus() }
         }

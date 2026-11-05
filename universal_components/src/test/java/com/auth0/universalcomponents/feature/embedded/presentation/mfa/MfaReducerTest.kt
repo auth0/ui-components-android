@@ -199,12 +199,20 @@ class MfaReducerTest {
 
     @Test
     fun `check fails for good - ends MFA at once`() {
-        val rejected = MfaError.Rejected(null)
+        val expired = MfaError.TokenExpired(null)
 
-        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.CheckFailed(rejected))
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.CheckFailed(expired))
 
-        assertThat(update.step).isEqualTo(MfaStep.Failed(rejected))
-        assertThat(update.effect).isEqualTo(MfaEffect.Failed(rejected))
+        assertThat(update.step).isEqualTo(MfaStep.Failed(expired))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(expired))
+    }
+
+    @Test
+    fun `push denied - ends MFA at once with the rejection`() {
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.PushRejected)
+
+        assertThat(update.step).isEqualTo(MfaStep.Failed(MfaError.Rejected(null)))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(MfaError.Rejected(null)))
     }
 
     @Test
@@ -219,14 +227,14 @@ class MfaReducerTest {
     }
 
     @Test
-    fun `terminal error from a check the user left - still ends MFA with the real error, not a later session ended`() {
+    fun `denial from a check the user left - still ends MFA with the real reason, not a later session ended`() {
         val rejected = MfaError.Rejected(null)
         listOf(
             MfaStep.ChooseFactor(TWO),
             MfaStep.SendingChallenge(TWO, TABLET),
             waiting(TWO, PHONE).copy(phase = PushPhase.Resending),
         ).forEach { step ->
-            val update = twoDevices.handleOutcome(step, MfaOutcome.CheckFailed(rejected))
+            val update = twoDevices.handleOutcome(step, MfaOutcome.PushRejected)
 
             assertThat(update.step).isEqualTo(MfaStep.Failed(rejected))
             assertThat(update.effect).isEqualTo(MfaEffect.Failed(rejected))

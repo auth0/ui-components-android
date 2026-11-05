@@ -29,4 +29,7 @@ internal sealed interface PushStatus {
 
     /** Approved, and the sign-in needs one more factor: [factors] are the next round's that these screens support. */
     data class AnotherFactor(val factors: List<MfaFactor>) : PushStatus
+
+    /** The user denied the push. It's their answer, not a failure, so it isn't an error. */
+    data object Rejected : PushStatus
 }

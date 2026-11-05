@@ -147,9 +147,15 @@ class MfaRepositoryImplTest {
     }
 
     @Test
+    fun `checkPushStatus - user denies the push - is an answer, not an error`() = runTest {
+        every { client.verifyOob() } returns failingWith(EmbeddedAuthError.AuthorizationRejected, statusCode = 403)
+
+        assertThat(repository.checkPushStatus()).isEqualTo(Result.Success(PushStatus.Rejected))
+    }
+
+    @Test
     fun `checkPushStatus - SDK errors - named as iOS names them`() = runTest {
         mapOf(
-            EmbeddedAuthError.AuthorizationRejected to MfaError.Rejected::class.java,
             EmbeddedAuthError.ChallengeExpired to MfaError.TokenExpired::class.java,
             EmbeddedAuthError.NoEligibleFactors to MfaError.NoEligibleFactors::class.java,
             // The session is gone, e.g. a late approval already finished it: never the SDK's developer text.

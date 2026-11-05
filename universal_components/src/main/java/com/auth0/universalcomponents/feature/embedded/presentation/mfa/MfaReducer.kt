@@ -47,6 +47,9 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
         // Even after the user moved on: they did approve, so they're signed in. The host shows the success screen.
         is MfaOutcome.SignedIn -> MfaUpdate(step, effect = MfaEffect.Authenticated(outcome.credentials))
         is MfaOutcome.AnotherFactor -> nextRound(step, outcome.factors)
+        // Even after the user moved on: the server has closed the session, whichever device asked, so MFA ends with
+        // the real reason rather than a later "session ended".
+        MfaOutcome.PushRejected -> end(MfaError.Rejected(null))
         is MfaOutcome.SendFailed -> sendFailed(step, outcome.error)
         is MfaOutcome.CheckFailed -> checkFailed(step, outcome)
     }

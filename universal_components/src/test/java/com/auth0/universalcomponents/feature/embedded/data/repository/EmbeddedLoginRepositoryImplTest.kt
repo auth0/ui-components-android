@@ -243,7 +243,7 @@ class EmbeddedLoginRepositoryImplTest {
 
             val failure = repository.verifyOtp(CODE).failure()
 
-            assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired(emptyList()))
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired.NoUsableFactor)
         }
     }
 
@@ -253,7 +253,7 @@ class EmbeddedLoginRepositoryImplTest {
 
         val failure = repository.verifyOtp(CODE).failure()
 
-        assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired(emptyList()))
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired.NoUsableFactor)
     }
 
     // endregion

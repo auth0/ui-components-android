@@ -1,6 +1,8 @@
 package com.auth0.universalcomponents.feature.embedded.data.repository
 
+import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
+import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.data.mapper.toMfaFactors
@@ -54,8 +56,17 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
                 else -> unexpected("A push check was answered as a wrong code")
             }
 
-            is StepAnswer.Failed -> Result.Error(checked.mfaError)
+            is StepAnswer.Failed -> if (checked.isRejected) {
+                Logger.i(TAG, "Push denied by the user")
+                Result.Success(PushStatus.Rejected)
+            } else {
+                Result.Error(checked.mfaError)
+            }
         }
+
+    /** The server says the user denied the push: an answer to the check, not a failure of it. */
+    private val StepAnswer.Failed.isRejected: Boolean
+        get() = (error as? EmbeddedAuthException)?.error == EmbeddedAuthError.AuthorizationRejected
 
     /** The "check the push" step the server offered, with the wait it wants before the next check. */
     private fun StepAnswer.Next.verifyOob(): NextAction.VerifyOob? =

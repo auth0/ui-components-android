@@ -79,13 +79,15 @@ internal class EmbeddedLoginRepositoryImpl(
                 if (factors.isEmpty()) {
                     val offered = verified.actions.map { it.capability.value }
                     Logger.w(TAG, "No usable second factor; the server offered $offered")
+                    Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired.NoUsableFactor))
+                } else {
+                    Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired(factors)))
                 }
-                Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired(factors)))
             }
 
             // The server can also say outright that the account has no usable second factor: MFA tells the user.
             is StepAnswer.Failed -> if (verified.isNoEligibleFactors) {
-                Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired(emptyList())))
+                Result.Error(LoginFailure(EmbeddedLoginError.MfaRequired.NoUsableFactor))
             } else {
                 Result.Error(verified.failure)
             }

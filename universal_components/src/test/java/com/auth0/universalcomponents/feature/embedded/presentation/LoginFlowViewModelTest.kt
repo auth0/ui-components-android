@@ -226,7 +226,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `mfa - Start over tapped twice - leaves MFA once, and the second tap does not leave the login`() = runTest {
-        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(MfaError.Rejected(null))
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Success(PushStatus.Rejected)
         startAtMfa(PHONE)
         viewModel.send(LoginEvent.LeaveMfa)
         viewModel.send(LoginEvent.LeaveMfa)
@@ -304,7 +304,7 @@ class LoginFlowViewModelTest {
 
     @Test
     fun `mfa - ends with an error - its screen stays until Back, which starts over with the email kept`() = runTest {
-        coEvery { mfaRepository.checkPushStatus() } returns Result.Error(MfaError.Rejected(null))
+        coEvery { mfaRepository.checkPushStatus() } returns Result.Success(PushStatus.Rejected)
         startAtMfa(PHONE)
 
         assertThat(mfaStep()).isEqualTo(MfaStep.Failed(MfaError.Rejected(null)))

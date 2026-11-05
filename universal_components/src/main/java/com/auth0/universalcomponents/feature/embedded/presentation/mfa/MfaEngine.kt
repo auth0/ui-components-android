@@ -57,8 +57,8 @@ internal class MfaEngine(
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
 
-    /** False while the app is in the background; only the main thread reads or sets it. */
-    private var inForeground = true
+    /** True while the app is in the background; only the main thread reads or sets it. */
+    private var isInBackground = false
 
     /** Set by the first [start]; the step alone can't tell, since the list looks the same before and after. */
     private var isStarted = false
@@ -76,14 +76,21 @@ internal class MfaEngine(
     fun back() = onIntent(MfaIntent.Back)
 
     /**
-     * Told by whoever draws MFA when the app leaves or returns to the foreground. Checks carry on in the background,
-     * but a network failure there doesn't count against the push, and on return a waiting push is checked at once.
+     * Told by whoever draws MFA when the app leaves the foreground. Checks carry on, but a network failure while in
+     * the background doesn't count against the push.
      */
-    fun onAppForeground(isForeground: Boolean) {
-        if (!job.isActive) return
-        val wasInBackground = !inForeground
-        inForeground = isForeground
-        if (isForeground && wasInBackground) applyUpdate(reducer.handleAppForegrounded(_step.value))
+    fun onAppBackgrounded() {
+        isInBackground = true
+    }
+
+    /**
+     * Told when the app returns to the foreground: the user may have approved in another app meanwhile, so a waiting
+     * push is checked at once instead of after the rest of its wait. Does nothing if the app never left.
+     */
+    fun onAppForegrounded() {
+        if (!isInBackground) return
+        isInBackground = false
+        applyUpdate(reducer.handleAppForegrounded(_step.value))
     }
 
     /** False once MFA has ended, one way or another; the host then owns what is left on screen. */
@@ -146,12 +153,13 @@ internal class MfaEngine(
     private suspend fun checkPushStatus(): MfaOutcome {
         val checked = repository.checkPushStatus()
         // Read when the answer arrives: that is when a failure is judged.
-        val whileInBackground = !inForeground
+        val whileInBackground = isInBackground
         return checked.toOutcome({ MfaOutcome.CheckFailed(it, whileInBackground) }) { status ->
             when (status) {
                 is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
                 is PushStatus.Pending -> MfaOutcome.PushPending(status)
                 is PushStatus.AnotherFactor -> MfaOutcome.AnotherFactor(status.factors)
+                PushStatus.Rejected -> MfaOutcome.PushRejected
             }
         }
     }

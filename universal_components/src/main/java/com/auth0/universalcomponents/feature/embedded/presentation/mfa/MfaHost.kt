@@ -30,8 +30,8 @@ import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 internal fun MfaHost(engine: MfaEngine, onLeave: () -> Unit, modifier: Modifier = Modifier) {
     val step by engine.step.collectAsStateWithLifecycle()
     // The app's lifecycle, so a network failure while the user approves in another app doesn't count against the push.
-    LifecycleEventEffect(Lifecycle.Event.ON_START) { engine.onAppForeground(true) }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { engine.onAppForeground(false) }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { engine.onAppForegrounded() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { engine.onAppBackgrounded() }
     AnimatedContent(
         targetState = step,
         contentKey = { it.transitionIdentity },

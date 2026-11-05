@@ -27,7 +27,16 @@ internal sealed interface EmbeddedLoginError {
      * screens support, maybe none. The flow hands over to MFA, which decides what to show, so this one never reaches
      * the error screen.
      */
-    data class MfaRequired(val factors: List<MfaFactor>) : EmbeddedLoginError
+    data class MfaRequired(val factors: List<MfaFactor>) : EmbeddedLoginError {
+
+        companion object {
+            /**
+             * A second factor is required, but none can be used here: the server said the account has no eligible
+             * factor, or offered only ones these screens don't support. MFA ends on its "not available" screen.
+             */
+            val NoUsableFactor = MfaRequired(emptyList())
+        }
+    }
 
     /** The sign-in session ended or expired, so it has to start over; the server or SDK no longer knows it. */
     data object SessionExpired : EmbeddedLoginError

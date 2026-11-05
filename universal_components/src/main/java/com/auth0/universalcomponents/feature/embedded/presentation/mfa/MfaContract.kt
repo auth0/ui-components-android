@@ -109,6 +109,9 @@ internal sealed interface MfaOutcome {
 
     data class SignedIn(val credentials: Credentials) : MfaOutcome
 
+    /** The user denied the push. */
+    data object PushRejected : MfaOutcome
+
     /** Approved, and the server asks for one more factor: [factors] are the next round's. */
     data class AnotherFactor(val factors: List<MfaFactor>) : MfaOutcome
 
