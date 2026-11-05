@@ -3,6 +3,7 @@ package com.auth0.universalcomponents.feature.mfachallenge.data.repository
 import com.auth0.android.embedded.EmbeddedAuthClient
 import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
+import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
@@ -154,7 +155,13 @@ class MfaRepositoryImplTest {
     fun `checkPushStatus - user denies the push - is an answer, not an error`() = runTest {
         every { client.verifyOob() } returns failingWith(EmbeddedAuthError.AuthorizationRejected, statusCode = 403)
 
-        assertThat(repository.checkPushStatus()).isEqualTo(Result.Success(PushStatus.Rejected))
+        val answer = repository.checkPushStatus()
+
+        assertThat(answer).isInstanceOf(Result.Success::class.java)
+        val status = (answer as Result.Success).data
+        assertThat(status).isInstanceOf(PushStatus.Rejected::class.java)
+        // The SDK reply stays behind it, for an app that wants the details.
+        assertThat((status as PushStatus.Rejected).cause).isInstanceOf(EmbeddedAuthException::class.java)
     }
 
     @Test

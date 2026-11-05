@@ -52,7 +52,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
         is MfaOutcome.AnotherFactor -> nextRound(state, outcome.factors)
         // Even after the user moved on: the server has closed the session, whichever device asked, so MFA ends with
         // the real reason rather than a later "session ended".
-        MfaOutcome.PushRejected -> end(MfaError.Rejected(null))
+        is MfaOutcome.PushRejected -> fail(MfaError.Rejected(outcome.cause))
         is MfaOutcome.SendFailed -> sendFailed(state, outcome.error)
         is MfaOutcome.CheckFailed -> checkFailed(state, outcome)
     }

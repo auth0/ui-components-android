@@ -61,7 +61,7 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
 
             is StepAnswer.Failed -> if (checked.isRejected) {
                 Logger.i(TAG, "Push denied by the user")
-                Result.Success(PushStatus.Rejected)
+                Result.Success(PushStatus.Rejected(checked.error))
             } else {
                 Result.Error(checked.mfaError)
             }

@@ -161,7 +161,7 @@ internal class MfaEngine(
                 is PushStatus.Approved -> MfaOutcome.SignedIn(status.credentials)
                 is PushStatus.Pending -> MfaOutcome.PushPending(status)
                 is PushStatus.AnotherFactor -> MfaOutcome.AnotherFactor(status.factors)
-                PushStatus.Rejected -> MfaOutcome.PushRejected
+                is PushStatus.Rejected -> MfaOutcome.PushRejected(status.cause)
             }
         }
     }

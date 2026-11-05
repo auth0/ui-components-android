@@ -219,17 +219,29 @@ class MfaReducerTest {
 
     @Test
     fun `denial from a check the user left - still ends MFA with the real reason, not a later session ended`() {
-        val rejected = MfaError.Rejected(null)
         listOf(
             MfaState.ChooseFactor(TWO),
             MfaState.SendingChallenge(TWO, TABLET),
             waiting(TWO, PHONE).copy(phase = PushPhase.Resending),
         ).forEach { state ->
-            val update = twoDevices.handleOutcome(state, MfaOutcome.PushRejected)
+            val update = twoDevices.handleOutcome(state, MfaOutcome.PushRejected(DENIED_CAUSE))
 
-            assertThat(update.state).isEqualTo(MfaState.Failed(rejected))
-            assertThat(update.effect).isEqualTo(MfaEffect.Failed(rejected))
+            assertRejected(update)
         }
+    }
+
+    @Test
+    fun `push denied - ends MFA at once, keeping the SDK reply as the cause`() {
+        val update = oneDevice.handleOutcome(checking(ONE, PHONE), MfaOutcome.PushRejected(DENIED_CAUSE))
+
+        assertRejected(update)
+    }
+
+    private fun assertRejected(update: MfaUpdate) {
+        val failed = update.state as MfaState.Failed
+        assertThat(failed.error).isInstanceOf(MfaError.Rejected::class.java)
+        assertThat(failed.error.cause).isSameInstanceAs(DENIED_CAUSE)
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(failed.error))
     }
 
     @Test
@@ -533,6 +545,7 @@ class MfaReducerTest {
         val ONE = MfaRound(1, listOf(PHONE))
         val TWO = MfaRound(1, listOf(PHONE, TABLET))
         val NETWORK = MfaError.Network(null)
+        val DENIED_CAUSE = IllegalStateException("denied")
         const val POLL = 3_000L
         const val SLOWER = 5_000L
     }
