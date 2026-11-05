@@ -310,11 +310,11 @@ fun MFASettingsScreen() {
 
 ## Embedded Login
 
-> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.1` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP on the connection you pass in.
+> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.1` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP, and optionally Phone (SMS) OTP with a phone provider, on the connection you pass in.
 
 ### Display the Embedded Login Screen
 
-`EmbeddedLoginScreen` runs the full native sign-in flow inside your app: email entry, then the one-time code, then multi-factor authentication when the tenant's policy asks for more. It signs in with the `Auth0` account you passed to `Auth0UniversalComponents.initialize(...)`, so initialize the library first. The library stores nothing: when the user is signed in it hands the credentials to `onAuthenticated`, once, and your app keeps them where it keeps its session:
+`EmbeddedLoginScreen` runs the full native sign-in flow inside your app: email entry (with "Continue with Phone" when the tenant also offers a phone number), then the one-time code, then multi-factor authentication when the tenant's policy asks for more. It signs in with the `Auth0` account you passed to `Auth0UniversalComponents.initialize(...)`, so initialize the library first. The library stores nothing: when the user is signed in it hands the credentials to `onAuthenticated`, once, and your app keeps them where it keeps its session:
 
 ```kotlin
 @Composable
@@ -334,7 +334,7 @@ fun LoginScreen(
 }
 ```
 
-On code entry, Back returns to email entry; during MFA, Back works as described below. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
+On code entry, Back returns to the email or phone entry it came from, and phone entry returns to email entry; during MFA, Back works as described below. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
 
 ### Multi-Factor Authentication
 
@@ -473,9 +473,10 @@ Adding `onMfaError` or `mfa` is source-compatible, but your app must be recompil
 
 - **A wrong or expired code appears inline,** under the code field, and the user stays on code entry. After an expired code, **Resend** opens at once.
 - **Resend opens 60 seconds after each code is sent;** until then the button counts down.
-- **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email entry (with the email kept) if not. If the first load failed, it loads again.
+- **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email or phone entry (with what was typed kept) if not. If the first load failed, it loads again.
 - **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen. During MFA, Back is ignored only while a push or code is being sent again or a typed code is being checked.
-- **If the connection doesn't offer Email OTP,** the flow shows a screen saying no sign-in methods are available.
+- **If the connection offers neither Email OTP nor Phone OTP,** the flow shows a screen saying no sign-in methods are available.
+- **Phone sign-in:** the user picks the country and types the number, which is sent in international form (for example `+14233530900`). The code arrives by text message, or by a call when that is all the server can do for the number. Email always comes first; the phone screen is reached from "Continue with Phone" and Back returns to email.
 - **The sign-in session lives in memory.** Rotation is safe, but if Android ends the app while the user is signing in, the flow starts again from email entry when the app reopens.
 
 ## Support

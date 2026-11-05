@@ -16,8 +16,11 @@ internal interface EmbeddedLoginRepository {
     /** Opens a login session and returns the sign-in methods the server offers. */
     suspend fun discover(): Result<List<LoginOption>, LoginFailure>
 
-    /** Sends a code to [email]; a resend or an edited email opens a new session first. */
-    suspend fun startEmailOtp(email: String): EmptyResult<LoginFailure>
+    /**
+     * Sends a code to [identifier], an email address or an E.164 phone number as [method] says; a resend or an edited
+     * identifier opens a new session first. A phone gets a text message, or a call when the server offers no text.
+     */
+    suspend fun startOtp(method: LoginOption, identifier: String): EmptyResult<LoginFailure>
 
     /**
      * Verifies a code the user received. A correct code signs in, or fails with [EmbeddedLoginError.MfaRequired]

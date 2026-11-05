@@ -75,6 +75,7 @@ class EmbeddedLoginRepositoryImplTest {
                 setOf(
                     EmbeddedCapability.IDENTIFY_EMAIL,
                     EmbeddedCapability.CHALLENGE_EMAIL,
+                    EmbeddedCapability.IDENTIFY_PHONE,
                     EmbeddedCapability.VERIFY_OTP,
                     EmbeddedCapability.CHALLENGE_PUSH,
                     EmbeddedCapability.CHALLENGE_PHONE,
@@ -98,11 +99,29 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `discover - unsupported method offered - returns it as unsupported`() = runTest {
-        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.IdentifyPhone)
+    fun `discover - phone offered - returns a phone code option`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns
+            step(NextAction.IdentifyEmail, NextAction.IdentifyPhone)
 
         assertThat(repository.discover())
-            .isEqualTo(Result.Success(listOf(LoginOption.Unsupported(NextAction.IdentifyPhone.capability.value))))
+            .isEqualTo(Result.Success(listOf(LoginOption.EmailOtp, LoginOption.PhoneOtp)))
+    }
+
+    @Test
+    fun `discover - code already being sent by text or call - returns a phone code option`() = runTest {
+        listOf(OtpChannel.SMS, OtpChannel.VOICE).forEach { channel ->
+            every { client.authorize(CONNECTION, any(), any(), any()) } returns step(verifyOtp(channel, null))
+
+            assertThat(repository.discover()).isEqualTo(Result.Success(listOf(LoginOption.PhoneOtp)))
+        }
+    }
+
+    @Test
+    fun `discover - unsupported method offered - returns it as unsupported`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.VerifyRecoveryCode)
+
+        assertThat(repository.discover())
+            .isEqualTo(Result.Success(listOf(LoginOption.Unsupported(NextAction.VerifyRecoveryCode.capability.value))))
     }
 
     @Test
@@ -116,60 +135,151 @@ class EmbeddedLoginRepositoryImplTest {
 
     // endregion
 
-    // region startEmailOtp
+    // region startOtp
 
     @Test
-    fun `startEmailOtp - right after discover - reuses that session`() = runTest {
+    fun `startOtp - email - right after discover - reuses that session`() = runTest {
         repository.discover()
-        repository.startEmailOtp(EMAIL)
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
 
         verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
     }
 
     @Test
-    fun `startEmailOtp - resend - opens a new session first`() = runTest {
+    fun `startOtp - email - resend - opens a new session first`() = runTest {
         repository.discover()
-        repository.startEmailOtp(EMAIL)
-        repository.startEmailOtp(EMAIL)
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
 
         verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
     }
 
     @Test
-    fun `startEmailOtp - email challenge offered - asks the server to send the code`() = runTest {
+    fun `startOtp - email - email challenge offered - asks the server to send the code`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 2))
 
-        assertThat(repository.startEmailOtp(EMAIL)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
 
         verify(exactly = 1) { client.challengeEmail(2) }
     }
 
     @Test
-    fun `startEmailOtp - code already sent - doesn't send another`() = runTest {
+    fun `startOtp - email - code already sent - doesn't send another`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL))
 
-        assertThat(repository.startEmailOtp(EMAIL)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
 
         verify(exactly = 0) { client.challengeEmail(any()) }
     }
 
     @Test
-    fun `startEmailOtp - sending the code fails - returns that failure`() = runTest {
+    fun `startOtp - email - sending the code fails - returns that failure`() = runTest {
         every { client.challengeEmail(any()) } returns failingWith(EmbeddedAuthError.TooManyAttempts)
 
-        val failure = repository.startEmailOtp(EMAIL).failure()
+        val failure = repository.startOtp(LoginOption.EmailOtp, EMAIL).failure()
 
         assertThat(failure.error).isEqualTo(EmbeddedLoginError.TooManyAttempts)
     }
 
     @Test
-    fun `startEmailOtp - no way to send a code - fails with code not sent`() = runTest {
+    fun `startOtp - email - no way to send a code - fails with code not sent`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.IdentifyPhone)
 
-        val failure = repository.startEmailOtp(EMAIL).failure()
+        val failure = repository.startOtp(LoginOption.EmailOtp, EMAIL).failure()
 
-        assertThat(failure.error).isEqualTo(EmbeddedLoginError.CodeNotSent)
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.CodeNotSent(LoginOption.EmailOtp))
         verify(exactly = 0) { client.challengeEmail(any()) }
+    }
+
+    @Test
+    fun `startOtp - phone - identifies by phone and texts the code`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, TEXT, VOICE))
+        every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns step(verifyOtp(OtpChannel.SMS, MASKED_PHONE))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+
+        verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.TEXT) }
+        verify(exactly = 0) { client.challengeEmail(any()) }
+    }
+
+    @Test
+    fun `startOtp - phone that only takes calls - calls it`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, VOICE))
+        every { client.challengePhone(3, PhoneDeliveryMethod.VOICE) } returns step(verifyOtp(OtpChannel.VOICE, null))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+
+        verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.VOICE) }
+    }
+
+    @Test
+    fun `startOtp - phone with no way named - texts it, as the SDK does`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3))
+        every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns step(verifyOtp(OtpChannel.SMS, null))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+
+        verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.TEXT) }
+    }
+
+    @Test
+    fun `startOtp - phone code already sent - doesn't send another`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(verifyOtp(OtpChannel.SMS, MASKED_PHONE))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+
+        verify(exactly = 0) { client.challengePhone(any(), any()) }
+    }
+
+    @Test
+    fun `startOtp - phone, sending the code fails - returns that failure`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, TEXT))
+        every { client.challengePhone(any(), any()) } returns failingWith(EmbeddedAuthError.TooManyAttempts)
+
+        val failure = repository.startOtp(LoginOption.PhoneOtp, PHONE).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.TooManyAttempts)
+    }
+
+    @Test
+    fun `startOtp - phone, no way to send a code - fails with code not sent for the phone`() = runTest {
+        // Only an email code is on offer, so a phone code would never come.
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengeEmail(at = 0))
+
+        val failure = repository.startOtp(LoginOption.PhoneOtp, PHONE).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.CodeNotSent(LoginOption.PhoneOtp))
+        verify(exactly = 0) { client.challengePhone(any(), any()) }
+    }
+
+    @Test
+    fun `startOtp - server refuses the phone number - fails as an invalid phone, not the generic error`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns
+            failingWith(EmbeddedAuthError.InvalidRequest, description = "Invalid phone format.", statusCode = 400)
+
+        val failure = repository.startOtp(LoginOption.PhoneOtp, PHONE).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidIdentifier(LoginOption.PhoneOtp))
+    }
+
+    @Test
+    fun `startOtp - server refuses the email - fails as an invalid email`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns
+            failingWith(EmbeddedAuthError.InvalidRequest, statusCode = 400)
+
+        val failure = repository.startOtp(LoginOption.EmailOtp, EMAIL).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidIdentifier(LoginOption.EmailOtp))
+    }
+
+    @Test
+    fun `startOtp - a method these screens can't drive - fails with code not sent and calls nothing`() = runTest {
+        val unsupported = LoginOption.Unsupported("verify-recovery-code")
+
+        val failure = repository.startOtp(unsupported, PHONE).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.CodeNotSent(unsupported))
+        verify(exactly = 0) { client.authorize(any(), any(), any(), any()) }
     }
 
     // endregion
@@ -396,12 +506,18 @@ class EmbeddedLoginRepositoryImplTest {
     private fun challengeEmail(at: Int): NextAction.ChallengeEmail =
         sdkInstance(Int::class.java to at, String::class.java to EMAIL)
 
+    private fun challengePhone(at: Int, vararg ways: PhoneDeliveryMethod): NextAction.ChallengePhone =
+        sdkInstance(Int::class.java to at, String::class.java to MASKED_PHONE, List::class.java to ways.toList())
+
     private fun verifyOtp(channel: OtpChannel, destination: String?): NextAction.VerifyOtp =
         sdkInstance(OtpChannel::class.java to channel, String::class.java to destination)
 
     private companion object {
+        val TEXT = PhoneDeliveryMethod.TEXT
+        val VOICE = PhoneDeliveryMethod.VOICE
         const val CONNECTION = "email"
         const val EMAIL = "jane@example.com"
+        const val PHONE = "+14233530900"
         const val MASKED_EMAIL = "j***@example.com"
         const val MASKED_PHONE = "+1***1234"
         const val DEVICE = "Jane's phone"

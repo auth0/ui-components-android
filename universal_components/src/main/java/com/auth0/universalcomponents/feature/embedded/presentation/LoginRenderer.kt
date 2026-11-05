@@ -4,9 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginNoMethodsScreen
+import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginPhoneScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginSuccessScreen
 import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
@@ -26,10 +28,17 @@ internal sealed interface ScreenPlan {
 
     data object Loading : ScreenPlan
 
-    data class Identifier(val email: String, val isSubmitting: Boolean = false) : ScreenPlan
+    /** The email or phone entry, as [method] says; [otherMethod] is the one "Continue with" switches to, if any. */
+    data class Identifier(
+        val value: String,
+        val method: LoginOption = LoginOption.EmailOtp,
+        val otherMethod: LoginOption? = null,
+        val isSubmitting: Boolean = false,
+    ) : ScreenPlan
 
     data class OtpCode(
         val identifier: String,
+        val method: LoginOption = LoginOption.EmailOtp,
         val error: EmbeddedLoginError? = null,
         val isSubmitting: Boolean = false,
         val isResending: Boolean = false,
@@ -54,7 +63,8 @@ internal sealed interface ScreenPlan {
 internal val ScreenPlan.transitionIdentity: String
     get() = when (this) {
         ScreenPlan.Loading -> "loading"
-        is ScreenPlan.Identifier -> "identifier"
+        // One per method: switching between them slides, and neither screen keeps the other's typing.
+        is ScreenPlan.Identifier -> "identifier:$method"
         is ScreenPlan.OtpCode -> "otpCode"
         is ScreenPlan.Mfa -> "mfa"
         ScreenPlan.Authenticated -> "authenticated"
@@ -66,17 +76,21 @@ internal val ScreenPlan.transitionIdentity: String
 internal val ScreenPlan.navigationDepth: Int
     get() = when (this) {
         ScreenPlan.Loading -> 0
-        is ScreenPlan.Identifier, ScreenPlan.NoMethods -> 1
-        is ScreenPlan.OtpCode -> 2
-        is ScreenPlan.Mfa -> 3
+        ScreenPlan.NoMethods -> 1
+        // The secondary method is reached from the primary one, so it sits one deeper.
+        is ScreenPlan.Identifier -> if (method == LoginOption.EmailOtp) 1 else 2
+        is ScreenPlan.OtpCode -> 3
+        is ScreenPlan.Mfa -> 4
         ScreenPlan.Authenticated, is ScreenPlan.Failed -> 5
     }
 
 internal fun plan(step: LoginState): ScreenPlan = when (step) {
     LoginState.Loading -> ScreenPlan.Loading
-    is LoginState.CollectOtpIdentifier -> ScreenPlan.Identifier(step.email, step.isSubmitting)
+    is LoginState.CollectOtpIdentifier ->
+        ScreenPlan.Identifier(step.value, step.method, step.otherMethod, step.isSubmitting)
     is LoginState.CollectOtpCode -> ScreenPlan.OtpCode(
         identifier = step.identifier,
+        method = step.method,
         error = step.error,
         isSubmitting = step.isSubmitting,
         isResending = step.isResending,
@@ -95,18 +109,31 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
     when (plan) {
         ScreenPlan.Loading -> FlowLoadingScreen()
 
-        is ScreenPlan.Identifier -> LoginEmailScreen(
-            email = plan.email,
-            isLoading = plan.isSubmitting,
-            onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(it)) },
-        )
+        is ScreenPlan.Identifier -> when (plan.method) {
+            LoginOption.PhoneOtp -> LoginPhoneScreen(
+                phone = plan.value,
+                isLoading = plan.isSubmitting,
+                onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(plan.method, it)) },
+            )
+
+            else -> LoginEmailScreen(
+                email = plan.value,
+                isLoading = plan.isSubmitting,
+                onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(plan.method, it)) },
+                onContinueWithPhone = plan.otherMethod?.let { other ->
+                    {
+                        context.dispatch(LoginIntent.SwitchMethod(other))
+                    }
+                },
+            )
+        }
 
         is ScreenPlan.OtpCode -> LoginCodeScreen(
             subtitle = stringResource(R.string.embedded_login_code_from, plan.identifier),
             isLoading = plan.isSubmitting,
             isResending = plan.isResending,
             resendSecondsLeft = plan.resendSecondsLeft,
-            errorMessage = plan.error?.text(),
+            errorMessage = plan.error?.text(plan.method),
             onVerify = { context.dispatch(LoginIntent.SubmitOtp(it)) },
             onEdit = context.back,
             onResend = { context.dispatch(LoginIntent.Resend) },
@@ -131,18 +158,40 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
     }
 }
 
-/** Our words for each error; the server's own when it explained one we don't know. */
+/**
+ * Our words for each error; the server's own when it explained one we don't know. [method] is where the code went,
+ * for the words that name it.
+ */
 @Composable
-internal fun EmbeddedLoginError.text(): String = when (this) {
+internal fun EmbeddedLoginError.text(method: LoginOption = LoginOption.EmailOtp): String = when (this) {
     EmbeddedLoginError.ConnectionMissing -> stringResource(R.string.embedded_login_error_connection_missing)
     EmbeddedLoginError.Network -> stringResource(R.string.embedded_login_error_network)
-    EmbeddedLoginError.CodeNotSent -> stringResource(R.string.embedded_login_error_code_not_sent)
-    EmbeddedLoginError.InvalidCode -> stringResource(R.string.embedded_login_error_invalid_code)
+    is EmbeddedLoginError.CodeNotSent -> stringResource(
+        if (this.method == LoginOption.PhoneOtp) {
+            R.string.embedded_login_error_code_not_sent_phone
+        } else {
+            R.string.embedded_login_error_code_not_sent
+        },
+    )
+    EmbeddedLoginError.InvalidCode -> stringResource(
+        if (method == LoginOption.PhoneOtp) {
+            R.string.embedded_login_error_invalid_code_phone
+        } else {
+            R.string.embedded_login_error_invalid_code
+        },
+    )
     EmbeddedLoginError.CodeExpired -> stringResource(R.string.embedded_login_error_code_expired)
     EmbeddedLoginError.TooManyWrongCodes -> stringResource(R.string.embedded_login_error_too_many_wrong_codes)
     EmbeddedLoginError.TooManyAttempts -> stringResource(R.string.embedded_login_error_too_many_attempts)
     EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
     EmbeddedLoginError.SessionExpired -> stringResource(R.string.embedded_login_error_session_expired)
+    is EmbeddedLoginError.InvalidIdentifier -> stringResource(
+        if (this.method == LoginOption.PhoneOtp) {
+            R.string.embedded_login_error_invalid_phone_format
+        } else {
+            R.string.embedded_login_error_invalid_email_format
+        },
+    )
     is EmbeddedLoginError.Server -> text
     // Handed over to MFA before any screen shows it; the generic text is only a safe fallback.
     is EmbeddedLoginError.MfaRequired,

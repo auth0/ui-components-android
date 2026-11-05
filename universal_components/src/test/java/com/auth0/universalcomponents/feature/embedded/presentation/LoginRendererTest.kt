@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.google.common.truth.Truth.assertThat
 import io.mockk.mockk
@@ -13,7 +14,7 @@ class LoginRendererTest {
         val error = EmbeddedLoginError.Server("Your account is blocked.")
         val expected = mapOf(
             LoginState.Loading to ScreenPlan.Loading,
-            LoginState.CollectOtpIdentifier(EMAIL) to ScreenPlan.Identifier(EMAIL),
+            LoginState.CollectOtpIdentifier(value = EMAIL) to ScreenPlan.Identifier(EMAIL),
             LoginState.CollectOtpCode(EMAIL) to ScreenPlan.OtpCode(EMAIL),
             LoginState.Authenticated to ScreenPlan.Authenticated,
             LoginState.Failed(error) to ScreenPlan.Failed(error),
@@ -25,17 +26,17 @@ class LoginRendererTest {
     @Test
     fun `plan - input steps - carry their error, busy state and countdown to the screen`() {
         val expected = mapOf(
-            LoginState.CollectOtpIdentifier(EMAIL, isSubmitting = true) to
+            LoginState.CollectOtpIdentifier(value = EMAIL, isSubmitting = true) to
                 ScreenPlan.Identifier(EMAIL, isSubmitting = true),
             LoginState.CollectOtpCode(
                 EMAIL,
-                EmbeddedLoginError.InvalidCode,
+                error = EmbeddedLoginError.InvalidCode,
                 isSubmitting = true,
                 isResending = true,
                 resendSecondsLeft = 42,
             ) to ScreenPlan.OtpCode(
                 EMAIL,
-                EmbeddedLoginError.InvalidCode,
+                error = EmbeddedLoginError.InvalidCode,
                 isSubmitting = true,
                 isResending = true,
                 resendSecondsLeft = 42,
@@ -48,14 +49,15 @@ class LoginRendererTest {
     fun `plan - second factor - hands MFA its engine to draw from`() {
         val engine = mockk<MfaEngine>()
 
-        assertThat(plan(LoginState.Mfa(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine))
+        assertThat(plan(LoginState.Mfa(engine, EMAIL, LoginOption.EmailOtp))).isEqualTo(ScreenPlan.Mfa(engine))
     }
 
     @Test
     fun `plan - waiting for the app after MFA ended - is MFA's own plan, told to wait`() {
         val engine = mockk<MfaEngine>()
 
-        assertThat(plan(LoginState.AwaitingApp(engine, EMAIL))).isEqualTo(ScreenPlan.Mfa(engine, isAwaitingApp = true))
+        assertThat(plan(LoginState.AwaitingApp(engine, EMAIL, LoginOption.EmailOtp)))
+            .isEqualTo(ScreenPlan.Mfa(engine, isAwaitingApp = true))
     }
 
     @Test
@@ -84,10 +86,29 @@ class LoginRendererTest {
     }
 
     @Test
+    fun `transitionIdentity - email and phone entry - are different screens, so switching slides`() {
+        assertThat(ScreenPlan.Identifier(EMAIL).transitionIdentity)
+            .isNotEqualTo(ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp).transitionIdentity)
+    }
+
+    @Test
+    fun `plan - phone steps - carry the method and the way to switch`() {
+        val expected = mapOf(
+            LoginState.CollectOtpIdentifier(LoginOption.EmailOtp, EMAIL, otherMethod = LoginOption.PhoneOtp) to
+                ScreenPlan.Identifier(EMAIL, LoginOption.EmailOtp, otherMethod = LoginOption.PhoneOtp),
+            LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, PHONE) to
+                ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp),
+            LoginState.CollectOtpCode(PHONE, LoginOption.PhoneOtp) to ScreenPlan.OtpCode(PHONE, LoginOption.PhoneOtp),
+        )
+        expected.forEach { (step, plan) -> assertThat(plan(step)).isEqualTo(plan) }
+    }
+
+    @Test
     fun `navigationDepth - moving forward through the flow - pushes`() {
         val depths = listOf(
             ScreenPlan.Loading,
             ScreenPlan.Identifier(EMAIL),
+            ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp),
             ScreenPlan.OtpCode(EMAIL),
             ScreenPlan.Mfa(mockk()),
             ScreenPlan.Authenticated,
@@ -98,5 +119,6 @@ class LoginRendererTest {
 
     private companion object {
         const val EMAIL = "jane@example.com"
+        const val PHONE = "+14233530900"
     }
 }
