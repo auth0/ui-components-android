@@ -259,6 +259,33 @@ class MfaEngineTest {
     }
 
     @Test
+    fun `chose a phone while a check is in flight - the check starts a new round - the code waiting behind it is dropped`() =
+        runTest {
+            val check = CompletableDeferred<Result<PushStatus, MfaError>>()
+            val turnAtSdk = CompletableDeferred<Unit>()
+            var codeWentOut = false
+            coEvery { repository.checkPushStatus() } coAnswers { check.await() }
+            coEvery { repository.sendPhoneCode(any()) } coAnswers {
+                turnAtSdk.await()
+                codeWentOut = true
+                Result.Success(true)
+            }
+            val engine = started(PHONE, SMS, select = PHONE)
+            waitFor(POLL)
+
+            engine.onIntent(MfaIntent.ChooseAnotherFactor)
+            engine.onIntent(MfaIntent.SelectFactor(SMS))
+            runCurrent()
+            check.complete(Result.Success(PushStatus.AnotherFactor(listOf(SMS))))
+            runCurrent()
+            turnAtSdk.complete(Unit)
+            runCurrent()
+
+            assertThat(engine.state.value).isEqualTo(MfaState.ChooseFactor(MfaRound(2, listOf(SMS))))
+            assertThat(codeWentOut).isFalse()
+        }
+
+    @Test
     fun `chose another device while a check is in flight - a denial it brings still ends MFA with its real reason`() =
         runTest {
             val answer = CompletableDeferred<Result<PushStatus, MfaError>>()
@@ -471,8 +498,8 @@ class MfaEngineTest {
      * straight away.
      */
     private fun TestScope.started(
-        vararg factors: MfaFactor.Push,
-        select: MfaFactor.Push? = null,
+        vararg factors: MfaFactor,
+        select: MfaFactor? = null,
         timeSource: TimeSource = TimeSource.Monotonic,
     ): MfaEngine {
         val engine = MfaEngine(

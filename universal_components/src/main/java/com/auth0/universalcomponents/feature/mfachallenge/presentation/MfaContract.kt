@@ -186,11 +186,11 @@ internal sealed interface MfaCommand {
     data object CheckPush : MfaCommand
 
     /**
-     * Cancels the wait before the next check, and a push still waiting for its turn at the SDK, so a push the user has
-     * left behind is never sent. A call already on its way still finishes: the SDK can't stop it, and its answer is
-     * dropped.
+     * Cancels the wait before the next check, and a push or phone code still waiting for its turn at the SDK, so one
+     * the user has left behind is never sent. A call already on its way still finishes: the SDK can't stop it, and its
+     * answer is dropped.
      */
-    data object CancelPushWork : MfaCommand
+    data object CancelChallengeWork : MfaCommand
 
     /** Waits one second, then counts the resend wait of the push or code on show down by one. */
     data object CountDownResend : MfaCommand

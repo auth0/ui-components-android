@@ -82,7 +82,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      */
     fun handleAppForegrounded(state: MfaState): MfaUpdate =
         if (state is MfaState.PushWaiting && state.phase == PushPhase.Waiting) {
-            MfaUpdate(state.copy(phase = PushPhase.Checking), listOf(MfaCommand.CancelPushWork, MfaCommand.CheckPush))
+            MfaUpdate(state.copy(phase = PushPhase.Checking), listOf(MfaCommand.CancelChallengeWork, MfaCommand.CheckPush))
         } else {
             MfaUpdate(state)
         }
@@ -220,7 +220,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     private fun nextRound(state: MfaState, factors: List<MfaFactor>): MfaUpdate {
         val round = state.roundOrNull ?: return MfaUpdate(state)
         val next = beginRound(MfaRound(round.number + 1, factors))
-        return next.copy(commands = listOf(MfaCommand.CancelPushWork) + next.commands)
+        return next.copy(commands = listOf(MfaCommand.CancelChallengeWork) + next.commands)
     }
 
     /** A send fails the flow only while it's the one on show: the first push or code, or a resend. */
@@ -250,12 +250,12 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     }
 
     private fun showList(round: MfaRound): MfaUpdate =
-        MfaUpdate(MfaState.ChooseFactor(round), listOf(MfaCommand.CancelPushWork))
+        MfaUpdate(MfaState.ChooseFactor(round), listOf(MfaCommand.CancelChallengeWork))
 
     /** A resend replaces the checks until it's out; an answer to a check still on its way is handled as it comes. */
     private fun resend(state: MfaState.PushWaiting): MfaUpdate = MfaUpdate(
         state.copy(phase = PushPhase.Resending, canResend = false),
-        listOf(MfaCommand.CancelPushWork, MfaCommand.SendPush(state.factor)),
+        listOf(MfaCommand.CancelChallengeWork, MfaCommand.SendPush(state.factor)),
     )
 
     /** The code goes out again; until it's out the user can neither type nor leave the screen. */

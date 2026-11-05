@@ -264,7 +264,7 @@ class MfaReducerTest {
         val update = oneDevice.handleAppForegrounded(waiting(ONE, PHONE))
 
         assertThat(update.state).isEqualTo(checking(ONE, PHONE))
-        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork, MfaCommand.CheckPush).inOrder()
+        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork, MfaCommand.CheckPush).inOrder()
     }
 
     @Test
@@ -284,7 +284,7 @@ class MfaReducerTest {
         val update = twoDevices.handleOutcome(checking(TWO, PHONE), MfaOutcome.AnotherFactor(listOf(PHONE, TABLET)))
 
         assertThat(update.state).isEqualTo(MfaState.ChooseFactor(MfaRound(2, listOf(PHONE, TABLET))))
-        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork)
     }
 
     @Test
@@ -293,7 +293,7 @@ class MfaReducerTest {
         val round2 = MfaRound(2, listOf(TABLET))
 
         assertThat(update.state).isEqualTo(MfaState.ChooseFactor(round2))
-        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork)
         assertThat(round2.isAdditional).isTrue()
 
         val picked = oneDevice.handleIntent(update.state, MfaIntent.SelectFactor(TABLET))
@@ -361,7 +361,7 @@ class MfaReducerTest {
         assertThat(update.state).isEqualTo(
             waiting(ONE, PHONE).copy(phase = PushPhase.Resending, canResend = false, resendSecondsLeft = 0),
         )
-        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork, MfaCommand.SendPush(PHONE)).inOrder()
+        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork, MfaCommand.SendPush(PHONE)).inOrder()
     }
 
     @Test
@@ -425,7 +425,7 @@ class MfaReducerTest {
         val update = twoDevices.handleIntent(checking(TWO, PHONE), MfaIntent.ChooseAnotherFactor)
 
         assertThat(update.state).isEqualTo(MfaState.ChooseFactor(TWO))
-        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork)
     }
 
     @Test
@@ -466,7 +466,7 @@ class MfaReducerTest {
         val update = twoDevices.handleIntent(waiting(TWO, PHONE), MfaIntent.Back)
 
         assertThat(update.state).isEqualTo(MfaState.ChooseFactor(TWO))
-        assertThat(update.commands).containsExactly(MfaCommand.CancelPushWork)
+        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork)
         assertThat(update.effect).isNull()
     }
 

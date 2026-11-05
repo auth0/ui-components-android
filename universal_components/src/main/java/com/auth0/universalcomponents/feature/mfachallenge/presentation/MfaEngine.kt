@@ -57,6 +57,12 @@ internal class MfaEngine(
      */
     private var pushSendJob: Job? = null
 
+    /**
+     * The phone code being sent, tracked for the same reason: when a check that was still on its way ends the round,
+     * a code queued behind it is for a screen the user never sees, so it is dropped rather than texted or called.
+     */
+    private var phoneSendJob: Job? = null
+
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
 
@@ -132,11 +138,14 @@ internal class MfaEngine(
                 }
             }
 
-            // Not tracked like the push: nothing replaces a code on its way, since the screen stays off limits until
-            // it is out, and leaving ends the whole run.
-            is MfaCommand.SendPhoneCode -> scope.launch {
-                val sent = repository.sendPhoneCode(command.factor)
-                onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PhoneCodeSent(canResend = it) })
+            // Nothing replaces a code on its way, since the screen stays off limits until it is out, but a new round
+            // replaces the whole menu, so [MfaCommand.CancelChallengeWork] drops a code that is still waiting.
+            is MfaCommand.SendPhoneCode -> {
+                phoneSendJob?.cancel()
+                phoneSendJob = scope.launch {
+                    val sent = repository.sendPhoneCode(command.factor)
+                    onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PhoneCodeSent(canResend = it) })
+                }
             }
 
             is MfaCommand.VerifyCode -> scope.launch {
@@ -164,9 +173,10 @@ internal class MfaEngine(
             // the user picked another device isn't lost. The reducer drops answers that no longer fit the screen.
             MfaCommand.CheckPush -> scope.launch { onOutcome(checkPushStatus()) }
 
-            MfaCommand.CancelPushWork -> {
+            MfaCommand.CancelChallengeWork -> {
                 pushCheckTimer?.cancel()
                 pushSendJob?.cancel()
+                phoneSendJob?.cancel()
             }
 
             MfaCommand.CountDownResend -> countDownResend()
