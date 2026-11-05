@@ -82,7 +82,10 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      */
     fun handleAppForegrounded(state: MfaState): MfaUpdate =
         if (state is MfaState.PushWaiting && state.phase == PushPhase.Waiting) {
-            MfaUpdate(state.copy(phase = PushPhase.Checking), listOf(MfaCommand.CancelChallengeWork, MfaCommand.CheckPush))
+            MfaUpdate(
+                state.copy(phase = PushPhase.Checking),
+                listOf(MfaCommand.CancelChallengeWork, MfaCommand.CheckPush),
+            )
         } else {
             MfaUpdate(state)
         }

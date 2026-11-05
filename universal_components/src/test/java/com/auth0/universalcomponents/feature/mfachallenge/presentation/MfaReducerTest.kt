@@ -361,7 +361,9 @@ class MfaReducerTest {
         assertThat(update.state).isEqualTo(
             waiting(ONE, PHONE).copy(phase = PushPhase.Resending, canResend = false, resendSecondsLeft = 0),
         )
-        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork, MfaCommand.SendPush(PHONE)).inOrder()
+        assertThat(update.commands)
+            .containsExactly(MfaCommand.CancelChallengeWork, MfaCommand.SendPush(PHONE))
+            .inOrder()
     }
 
     @Test
