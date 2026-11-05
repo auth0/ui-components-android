@@ -11,6 +11,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -42,8 +43,9 @@ internal fun OTPInputField(
 
     // The cursor always sits after the last digit. The plain-string overload starts it at the front whenever the screen
     // is rebuilt with a code already typed (a rotation, say), where Backspace would delete nothing.
+    val field = remember(value) { TextFieldValue(text = value, selection = TextRange(value.length)) }
     BasicTextField(
-        value = TextFieldValue(text = value, selection = TextRange(value.length)),
+        value = field,
         onValueChange = { if (it.text != value) onValueChange(it.text) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = Modifier

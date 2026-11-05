@@ -126,16 +126,22 @@ class MfaMessages private constructor(
 
         /** For a code sent by a call; takes the phone number as the server hides it. */
         var descriptionVoice: ((phoneNumber: String) -> String)? = null
+
+        /** The label above the code boxes. */
+        var codeLabel: String? = null
         var verifyButton: String? = null
 
         /** Under the code field after the server refused a code. */
         var wrongCode: String? = null
         var verifyAnotherWay: String? = null
 
-        /** How the factor looks in the list for a code sent by text; takes the phone number. */
+        /**
+         * The first line of the factor's tile in the list for a code sent by text. Takes the phone number as the server
+         * hides it. The default words ignore it: the standard list shows the number on the second line.
+         */
         var rowText: ((phoneNumber: String) -> String)? = null
 
-        /** How the factor looks in the list for a code sent by a call; takes the phone number. */
+        /** The same, for a code sent by a call. */
         var rowVoice: ((phoneNumber: String) -> String)? = null
         internal val resend = Resend()
 

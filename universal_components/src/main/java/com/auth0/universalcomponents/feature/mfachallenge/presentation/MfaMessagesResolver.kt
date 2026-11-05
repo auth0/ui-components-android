@@ -126,11 +126,20 @@ private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMf
     return ResolvedMfaMessages.PhoneChallenge(
         title = word(title, R.string.auth0_mfa_phone_challenge_title),
         description = description ?: { number ->
-            resources.getString(R.string.auth0_mfa_phone_challenge_description, number.lastDigits())
+            if (number.hasDigits()) {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description, number.forDisplay())
+            } else {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description_hidden)
+            }
         },
         descriptionVoice = descriptionVoice ?: { number ->
-            resources.getString(R.string.auth0_mfa_phone_challenge_description_voice, number.lastDigits())
+            if (number.hasDigits()) {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description_voice, number.forDisplay())
+            } else {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description_voice_hidden)
+            }
         },
+        codeLabel = word(codeLabel, R.string.auth0_mfa_phone_challenge_code_label),
         verifyButton = word(verifyButton, R.string.auth0_mfa_phone_challenge_verify_button),
         wrongCode = word(wrongCode, R.string.auth0_mfa_phone_challenge_wrong_code),
         resend = ResolvedMfaMessages.PhoneChallenge.Resend(
@@ -145,7 +154,18 @@ private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMf
     )
 }
 
-/** The server hides most of a phone number (`XXXXXXXXX0128`), so the default words name it by its last digits. */
-private fun String.lastDigits(): String = filter(Char::isDigit).takeLast(LAST_DIGITS).ifEmpty { this }
+/**
+ * The server hides most of a phone number (`XXXXXXXXX0128`, or with `*` or other look-alikes). The default words keep
+ * the digits and the usual phone marks and draw every other character as one `*`, as the design does, so the hidden part
+ * is a single glyph: a mix of characters would show at different sizes and heights. The lines that show the number also
+ * turn off the font's contextual alternates (`NO_CONTEXTUAL_ALTERNATES`).
+ */
+internal fun String.forDisplay(): String =
+    map { if (it.isDigit() || it in PHONE_MARKS) it else HIDDEN_DIGIT }.joinToString("")
 
-private const val LAST_DIGITS = 4
+private const val PHONE_MARKS = "+-() ."
+
+private const val HIDDEN_DIGIT = '*'
+
+/** A number the server hid completely (`*********`) has nothing to show, so the default words don't name it. */
+internal fun String.hasDigits(): Boolean = any(Char::isDigit)

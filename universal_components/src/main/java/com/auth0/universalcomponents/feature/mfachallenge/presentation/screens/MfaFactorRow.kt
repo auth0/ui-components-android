@@ -77,7 +77,7 @@ internal fun MfaFactorRow(
             if (!subtitle.isNullOrBlank()) {
                 Text(
                     text = subtitle,
-                    style = Auth0Theme.typography.bodySmall,
+                    style = Auth0Theme.typography.bodySmall.copy(fontFeatureSettings = NO_CONTEXTUAL_ALTERNATES),
                     color = colors.textDefault,
                 )
             }

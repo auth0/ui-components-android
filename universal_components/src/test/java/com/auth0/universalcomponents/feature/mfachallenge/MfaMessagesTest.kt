@@ -129,14 +129,35 @@ class MfaMessagesTest {
         val words = MfaMessages().resolve(resources).phoneChallenge
 
         assertThat(words.title).isEqualTo(default(R.string.auth0_mfa_phone_challenge_title))
-        assertThat(words.description("***9239"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "9239"))
-        assertThat(words.descriptionVoice("***9239"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "9239"))
+        assertThat(words.codeLabel).isEqualTo(default(R.string.auth0_mfa_phone_challenge_code_label))
+        // The server hides a number with X (or *); the screen draws each hidden digit as the same *, as the design does.
+        assertThat(words.description("XXXXXXXXX0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "*********0128"))
+        assertThat(words.descriptionVoice("XXXXXXXXX0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "*********0128"))
+        assertThat(words.description("*****0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "*****0128"))
+        // Whatever the server uses to hide a digit ends up as the same *, so the hidden part is one size.
+        assertThat(words.description("∗＊X●0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "****0128"))
+        assertThat(words.description("+1 (XXX) XXX-0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "+1 (***) ***-0128"))
         // The list row names the way the code comes, as the design does; an app can add the number itself.
         assertThat(words.rowText("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_text))
         assertThat(words.rowVoice("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_voice))
         assertThat(words.resend.cooldown(30)).isEqualTo(default(R.string.auth0_mfa_phone_challenge_resend_cooldown, 30))
+    }
+
+    @Test
+    fun `phone challenge - a number the server hid completely - is not named in the default words`() {
+        val words = MfaMessages().resolve(resources).phoneChallenge
+
+        listOf("*********", "XXXXXXXXX", "").forEach { hidden ->
+            assertThat(words.description(hidden))
+                .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_hidden))
+            assertThat(words.descriptionVoice(hidden))
+                .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice_hidden))
+        }
     }
 
     @Test

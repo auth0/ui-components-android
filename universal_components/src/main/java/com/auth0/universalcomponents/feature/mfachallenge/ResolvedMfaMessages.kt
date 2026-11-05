@@ -62,10 +62,12 @@ class ResolvedMfaMessages internal constructor(
         class Resend internal constructor(val button: String, val cooldown: (seconds: Int) -> String)
     }
 
+    @Suppress("LongParameterList") // one word per line of the screen; they belong together
     class PhoneChallenge internal constructor(
         val title: String,
         val description: (phoneNumber: String) -> String,
         val descriptionVoice: (phoneNumber: String) -> String,
+        val codeLabel: String,
         val verifyButton: String,
         val wrongCode: String,
         val resend: Resend,

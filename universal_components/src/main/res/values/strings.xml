@@ -154,8 +154,11 @@
     <string name="auth0_mfa_push_challenge_resend_cooldown">Resend in %1$d sec…</string>
     <string name="auth0_mfa_push_challenge_verify_another_way">Verify another way</string>
     <string name="auth0_mfa_phone_challenge_title">Enter the 6-digit code</string>
-    <string name="auth0_mfa_phone_challenge_description">Sent to the number ending in XX-%1$s</string>
-    <string name="auth0_mfa_phone_challenge_description_voice">Calling the number ending in XX-%1$s</string>
+    <string name="auth0_mfa_phone_challenge_description">We’ve sent a code to %1$s</string>
+    <string name="auth0_mfa_phone_challenge_description_voice">We’re calling %1$s with a code</string>
+    <string name="auth0_mfa_phone_challenge_description_hidden">We’ve sent a code to your phone</string>
+    <string name="auth0_mfa_phone_challenge_description_voice_hidden">We’re calling your phone with a code</string>
+    <string name="auth0_mfa_phone_challenge_code_label">One-Time Passcode</string>
     <string name="auth0_mfa_phone_challenge_verify_button">Verify</string>
     <string name="auth0_mfa_phone_challenge_wrong_code">Invalid code. Please check the code and try again.</string>
     <string name="auth0_mfa_phone_challenge_resend_button">Resend code</string>

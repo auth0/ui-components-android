@@ -11,11 +11,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** The page title, with an optional subtitle and "Edit" action. [bottomSpacing] overrides the gap to the content. */
+/**
+ * The page title, with an optional subtitle and "Edit" action. [bottomSpacing] overrides the gap to the content.
+ * [subtitleFontFeatures] sets OpenType features for the subtitle only, such as `'calt' 0`.
+ */
 @Composable
 internal fun FlowScreenHeader(
     title: String,
@@ -24,6 +28,7 @@ internal fun FlowScreenHeader(
     editLabel: String? = null,
     onEdit: (() -> Unit)? = null,
     bottomSpacing: Dp? = null,
+    subtitleFontFeatures: String? = null,
 ) {
     val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
@@ -35,7 +40,7 @@ internal fun FlowScreenHeader(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = subtitle,
-                    style = typography.body,
+                    style = typography.body.withFeatures(subtitleFontFeatures),
                     color = colors.textDefault,
                     modifier = Modifier.weight(1f, fill = false),
                 )
@@ -58,3 +63,6 @@ internal fun FlowScreenHeader(
         Spacer(Modifier.height(gap))
     }
 }
+
+private fun TextStyle.withFeatures(features: String?): TextStyle =
+    if (features == null) this else copy(fontFeatureSettings = features)

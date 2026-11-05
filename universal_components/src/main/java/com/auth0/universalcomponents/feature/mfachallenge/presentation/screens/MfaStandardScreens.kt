@@ -3,7 +3,9 @@ package com.auth0.universalcomponents.feature.mfachallenge.presentation.screens
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -34,6 +36,8 @@ import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.forDisplay
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.hasDigits
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
 import com.auth0.universalcomponents.presentation.ui.components.OTPInputField
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
@@ -198,9 +202,12 @@ internal fun MfaPhoneChallengeScreen(
                     PhoneDelivery.Text -> words.description(model.phoneNumber)
                     PhoneDelivery.Voice -> words.descriptionVoice(model.phoneNumber)
                 },
+                subtitleFontFeatures = NO_CONTEXTUAL_ALTERNATES,
             )
         },
         content = {
+            Text(text = words.codeLabel, style = Auth0Theme.typography.label, color = Auth0Theme.colors.textBold)
+            Spacer(Modifier.height(dimensions.spacingMd))
             // Held to phone-sized boxes: they grow with the width, and would balloon in landscape.
             Box(modifier = Modifier.widthIn(max = maxWidth)) {
                 OTPInputField(
@@ -292,6 +299,12 @@ internal fun MfaErrorScreen(
     )
 }
 
+/**
+ * Inter swaps a `*` or a bullet next to digits for a raised, larger "case" form, but only for the few nearest the
+ * digits, so a hidden number (`*********0128`) would show two sizes. Lines that show one turn that feature off.
+ */
+internal const val NO_CONTEXTUAL_ALTERNATES = "'calt' 0"
+
 /** How many digits the code has. */
 private const val CODE_LENGTH = 6
 
@@ -333,14 +346,14 @@ private fun MfaWaitingForApproval(caption: String, device: String) {
 
 /**
  * What a row says. A named device leads, with the factor's name under it; a device with no name shows the factor's name
- * with its description under it. A phone leads with how its code is sent, to its number. A factor this version has no
- * words for shows just its own title.
+ * with its description under it. A phone leads with how its code is sent, with its number under it (left out when the
+ * server hid every digit). A factor this version has no words for shows just its own title.
  */
 private fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
     if (factor == MfaFactorId.Phone && delivery != null) {
         val phone = messages.phoneChallenge
         val label = if (delivery == PhoneDelivery.Voice) phone.rowVoice(title) else phone.rowText(title)
-        return ResolvedMfaMessages.Message(label, subtitle.orEmpty())
+        return ResolvedMfaMessages.Message(label, if (title.hasDigits()) title.forDisplay() else "")
     }
     if (factor != MfaFactorId.Push) return ResolvedMfaMessages.Message(title, subtitle.orEmpty())
     val kind = messages.pushChallenge.row

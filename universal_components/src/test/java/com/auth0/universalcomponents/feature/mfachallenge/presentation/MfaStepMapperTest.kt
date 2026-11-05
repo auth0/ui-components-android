@@ -152,8 +152,10 @@ class MfaStepMapperTest {
         listOf(text, voice).forEach { row ->
             assertThat(row.factor).isEqualTo(MfaFactorId.Phone)
             assertThat(row.title).isEqualTo("***9239")
-            assertThat(row.icon).isEqualTo(R.drawable.ic_mfa_sms)
         }
+        // A text shows the message icon, a call the handset.
+        assertThat(text.icon).isEqualTo(R.drawable.ic_mfa_sms)
+        assertThat(voice.icon).isEqualTo(R.drawable.ic_mfa_voice)
         assertThat(text.delivery).isEqualTo(PhoneDelivery.Text)
         assertThat(voice.delivery).isEqualTo(PhoneDelivery.Voice)
     }

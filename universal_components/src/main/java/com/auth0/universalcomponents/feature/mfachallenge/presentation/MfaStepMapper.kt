@@ -104,7 +104,8 @@ private fun MfaFactor.row() = AuthenticatorListModel.Row(
     subtitle = null,
     icon = when (this) {
         is MfaFactor.Push -> R.drawable.ic_device
-        is MfaFactor.Phone -> R.drawable.ic_mfa_sms
+        is MfaFactor.Phone ->
+            if (delivery == PhoneDeliveryMethod.VOICE) R.drawable.ic_mfa_voice else R.drawable.ic_mfa_sms
     },
     delivery = (this as? MfaFactor.Phone)?.delivery?.toDelivery(),
 )
