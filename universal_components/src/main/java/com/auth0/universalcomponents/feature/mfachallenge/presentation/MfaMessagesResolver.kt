@@ -115,5 +115,57 @@ internal fun MfaMessages.resolve(resources: Resources): ResolvedMfaMessages {
             ),
             verifyAnotherWay = word(push.verifyAnotherWay, R.string.auth0_mfa_push_challenge_verify_another_way),
         ),
+        phoneChallenge = phoneChallenge.resolve(resources),
     )
 }
+
+/** The words of the phone code screen and its list rows, resolved the same way as the rest. */
+private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMfaMessages.PhoneChallenge {
+    fun word(override: String?, @StringRes id: Int) = override ?: resources.getString(id)
+
+    return ResolvedMfaMessages.PhoneChallenge(
+        title = word(title, R.string.auth0_mfa_phone_challenge_title),
+        description = description ?: { number ->
+            if (number.hasDigits()) {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description, number.forDisplay())
+            } else {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description_hidden)
+            }
+        },
+        descriptionVoice = descriptionVoice ?: { number ->
+            if (number.hasDigits()) {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description_voice, number.forDisplay())
+            } else {
+                resources.getString(R.string.auth0_mfa_phone_challenge_description_voice_hidden)
+            }
+        },
+        codeLabel = word(codeLabel, R.string.auth0_mfa_phone_challenge_code_label),
+        verifyButton = word(verifyButton, R.string.auth0_mfa_phone_challenge_verify_button),
+        wrongCode = word(wrongCode, R.string.auth0_mfa_phone_challenge_wrong_code),
+        resend = ResolvedMfaMessages.PhoneChallenge.Resend(
+            button = word(resend.button, R.string.auth0_mfa_phone_challenge_resend_button),
+            cooldown = resend.cooldown ?: { seconds ->
+                resources.getString(R.string.auth0_mfa_phone_challenge_resend_cooldown, seconds)
+            },
+        ),
+        verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_phone_challenge_verify_another_way),
+        rowText = rowText ?: { resources.getString(R.string.auth0_mfa_phone_challenge_row_text) },
+        rowVoice = rowVoice ?: { resources.getString(R.string.auth0_mfa_phone_challenge_row_voice) },
+    )
+}
+
+/**
+ * The server hides most of a phone number (`XXXXXXXXX0128`, or with `*` or other look-alikes). The default words keep
+ * the digits and the usual phone marks and draw every other character as one `*`, as the design does, so the hidden part
+ * is a single glyph: a mix of characters would show at different sizes and heights. The lines that show the number also
+ * turn off the font's contextual alternates (`NO_CONTEXTUAL_ALTERNATES`).
+ */
+internal fun String.forDisplay(): String =
+    map { if (it.isDigit() || it in PHONE_MARKS) it else HIDDEN_DIGIT }.joinToString("")
+
+private const val PHONE_MARKS = "+-() ."
+
+private const val HIDDEN_DIGIT = '*'
+
+/** A number the server hid completely (`*********`) has nothing to show, so the default words don't name it. */
+internal fun String.hasDigits(): Boolean = any(Char::isDigit)

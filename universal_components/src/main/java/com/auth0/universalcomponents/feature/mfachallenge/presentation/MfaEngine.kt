@@ -2,6 +2,7 @@ package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
 import com.auth0.universalcomponents.utils.logging.Logger
@@ -51,10 +52,18 @@ internal class MfaEngine(
     private var pushCheckTimer: Job? = null
 
     /**
-     * The push being sent, from the moment it waits its turn at the SDK. Cancelling it drops a push the user has left
-     * (it is never sent if it hasn't started), and a call already on its way finishes but is not heard.
+     * The push check on its way, if any. A send waits for it to be answered and heard before it starts (see [send]),
+     * because the answer may start a new round that the send was not meant for.
      */
-    private var pushSendJob: Job? = null
+    private var checkJob: Job? = null
+
+    /**
+     * The push or code being sent, whichever factor it is, from the moment it waits for a check on its way. Only one is
+     * ever out at a time: the screen stays off limits until it is, and a new round or the list drops it. Cancelling it
+     * drops a send the user has left (it never starts if it hasn't), and a call already on its way finishes but is not
+     * heard.
+     */
+    private var sendJob: Job? = null
 
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
@@ -121,14 +130,28 @@ internal class MfaEngine(
 
     private fun runCommand(command: MfaCommand) {
         when (command) {
-            // A check still on its way finishes first: the repository runs one SDK step at a time. A send that is
-            // replaced, or abandoned, is cancelled, so an old push can't answer for a newer one.
-            is MfaCommand.SendPush -> {
-                pushSendJob?.cancel()
-                pushSendJob = scope.launch {
-                    val sent = repository.sendPush(command.factor)
-                    onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
-                }
+            // A send that is replaced, or abandoned, is cancelled, so an old one can't answer for a newer one.
+            is MfaCommand.SendPush -> send {
+                val sent = repository.sendPush(command.factor)
+                onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
+            }
+
+            is MfaCommand.SendPhoneCode -> send {
+                val sent = repository.sendPhoneCode(command.factor)
+                onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PhoneCodeSent(canResend = it) })
+            }
+
+            is MfaCommand.VerifyCode -> scope.launch {
+                val verified = repository.verifyCode(command.code)
+                onOutcome(
+                    verified.toOutcome(MfaOutcome::CodeFailed) { status ->
+                        when (status) {
+                            is CodeStatus.Verified -> MfaOutcome.SignedIn(status.credentials)
+                            CodeStatus.WrongCode -> MfaOutcome.CodeRejected
+                            is CodeStatus.AnotherFactor -> MfaOutcome.AnotherFactor(status.factors)
+                        }
+                    },
+                )
             }
 
             is MfaCommand.SchedulePushCheck -> {
@@ -141,14 +164,29 @@ internal class MfaEngine(
 
             // Not tied to the wait, so leaving the push screen never cuts a check off: an approval that lands after
             // the user picked another device isn't lost. The reducer drops answers that no longer fit the screen.
-            MfaCommand.CheckPush -> scope.launch { onOutcome(checkPushStatus()) }
+            MfaCommand.CheckPush -> checkJob = scope.launch { onOutcome(checkPushStatus()) }
 
-            MfaCommand.CancelPushWork -> {
+            MfaCommand.CancelChallengeWork -> {
                 pushCheckTimer?.cancel()
-                pushSendJob?.cancel()
+                sendJob?.cancel()
             }
 
             MfaCommand.CountDownResend -> countDownResend()
+        }
+    }
+
+    /**
+     * Starts a send, dropping any earlier one, once the check on its way, if any, has been answered and its answer
+     * applied. The SDK runs one step at a time, but waiting in its queue is not enough: the queue hands the send its
+     * turn before the check's answer reaches us, and a send that has started can't be recalled. The answer may start a
+     * new round, which cancels the send while it waits here, so nothing goes out for a screen the user never sees.
+     */
+    private fun send(call: suspend () -> Unit) {
+        sendJob?.cancel()
+        val check = checkJob
+        sendJob = scope.launch {
+            check?.join()
+            call()
         }
     }
 

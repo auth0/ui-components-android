@@ -60,6 +60,11 @@ class MfaScreens private constructor(
             replace(MfaFactorId.Push) { model, messages -> if (model is PushChallengeModel) content(model, messages) }
         }
 
+        /** Typing the code that was sent to a phone, by text or by a call. */
+        fun phoneChallenge(content: @Composable (PhoneChallengeModel, ResolvedMfaMessages) -> Unit) {
+            replace(MfaFactorId.Phone) { model, messages -> if (model is PhoneChallengeModel) content(model, messages) }
+        }
+
         internal fun build() = MfaScreens(authenticatorList, error, factors.toMap())
     }
 }

@@ -12,11 +12,13 @@ import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
 import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
+import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaAuthenticatorListScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaErrorScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaLoadingScreen
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaPhoneChallengeScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaPushChallengeScreen
 import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 
@@ -92,6 +94,7 @@ private fun MfaStepContent(step: MfaStep, configuration: MfaConfiguration, messa
             } else {
                 when (val model = step.step.model) {
                     is PushChallengeModel -> MfaPushChallengeScreen(model, messages = messages)
+                    is PhoneChallengeModel -> MfaPhoneChallengeScreen(model, messages = messages)
                 }
             }
         }
@@ -117,6 +120,7 @@ private val MfaState?.transitionIdentity: String
         is MfaState.ChooseFactor -> "list:${round.number}"
         is MfaState.SendingChallenge -> if (round.showsList) "list:${round.number}" else "sending:${round.number}"
         is MfaState.PushWaiting -> "push:${round.number}"
+        is MfaState.PhoneCode -> "phone:${round.number}"
         is MfaState.Failed -> "failed"
     }
 
@@ -130,6 +134,7 @@ private val MfaState?.navigationDepth: Int
         is MfaState.ChooseFactor -> round.depth
         is MfaState.SendingChallenge -> round.depth
         is MfaState.PushWaiting -> round.depth + 1
+        is MfaState.PhoneCode -> round.depth + 1
         is MfaState.Failed -> Int.MAX_VALUE
     }
 

@@ -105,14 +105,15 @@ internal class EmbeddedLoginRepositoryImpl(
         const val TAG = "EmbeddedRepository"
 
         /**
-         * What these screens can drive, told to the server so it only offers those: the emailed code, then push.
-         * The same as iOS, which sends only what is plugged in.
+         * What these screens can drive, told to the server so it only offers those: the emailed code, then a push or a
+         * code sent to a phone.
          */
         val CAPABILITIES = setOf(
             EmbeddedCapability.IDENTIFY_EMAIL,
             EmbeddedCapability.CHALLENGE_EMAIL,
             EmbeddedCapability.VERIFY_OTP,
             EmbeddedCapability.CHALLENGE_PUSH,
+            EmbeddedCapability.CHALLENGE_PHONE,
             EmbeddedCapability.VERIFY_OOB,
         )
     }

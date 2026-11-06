@@ -1,7 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.presentation.screens
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,8 +39,9 @@ internal fun LoginCodeScreen(
     onResend: (() -> Unit)? = null,
 ) {
     var code by rememberSaveable { mutableStateOf("") }
+    // Hidden once the user types after a refused code, shown again by the next Verify. Kept across a rotation, so a
+    // line the user already dismissed does not come back.
     var hideError by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(errorMessage) { if (errorMessage != null) hideError = false }
     val activeError = errorMessage.takeUnless { hideError }
 
     FlowStepLayout(
@@ -70,7 +70,10 @@ internal fun LoginCodeScreen(
         primaryAction = {
             FlowPrimaryButton(
                 title = stringResource(R.string.embedded_login_verify),
-                onClick = { onVerify(code) },
+                onClick = {
+                    hideError = false
+                    onVerify(code)
+                },
                 isLoading = isLoading,
                 enabled = code.length == digitCount && !isLoading && !isResending,
             )
