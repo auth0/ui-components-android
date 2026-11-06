@@ -59,10 +59,18 @@ internal class EmbeddedLoginRepositoryImpl(
         isDiscoverySessionUnused = false
         val identified = steps.run { identify(identifier, identifierType) }
         if (identified is StepAnswer.Failed) {
-            // A rejected address or number can be fixed by the user, so it is not the generic failure.
-            val isRejected = (identified.error as? EmbeddedAuthException)?.error == EmbeddedAuthError.InvalidRequest
+            // A rejected address or number can be fixed by the user, so it is not the generic failure. The SDK has no
+            // error just for it: this step takes only the identifier, so a malformed request is taken to be about it,
+            // and the server's own words go to the log through the cause.
+            val rejection = (identified.error as? EmbeddedAuthException)?.takeIf {
+                it.error == EmbeddedAuthError.InvalidRequest
+            }
             return Result.Error(
-                if (isRejected) LoginFailure(EmbeddedLoginError.InvalidIdentifier(method)) else identified.failure,
+                if (rejection != null) {
+                    LoginFailure(EmbeddedLoginError.InvalidIdentifier(method), cause = rejection)
+                } else {
+                    identified.failure
+                },
             )
         }
         val nextActions = identified.nextActions

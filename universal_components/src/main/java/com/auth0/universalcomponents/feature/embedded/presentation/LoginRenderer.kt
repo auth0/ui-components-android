@@ -15,6 +15,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaHost
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
+import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 
 /** What a screen needs from the host, without knowing about the ViewModel. */
 internal class RenderContext(
@@ -34,6 +35,7 @@ internal sealed interface ScreenPlan {
         val method: LoginOption = LoginOption.EmailOtp,
         val otherMethod: LoginOption? = null,
         val isSubmitting: Boolean = false,
+        val country: Country? = null,
     ) : ScreenPlan
 
     data class OtpCode(
@@ -87,7 +89,7 @@ internal val ScreenPlan.navigationDepth: Int
 internal fun plan(step: LoginState): ScreenPlan = when (step) {
     LoginState.Loading -> ScreenPlan.Loading
     is LoginState.CollectOtpIdentifier ->
-        ScreenPlan.Identifier(step.value, step.method, step.otherMethod, step.isSubmitting)
+        ScreenPlan.Identifier(step.value, step.method, step.otherMethod, step.isSubmitting, step.country)
     is LoginState.CollectOtpCode -> ScreenPlan.OtpCode(
         identifier = step.identifier,
         method = step.method,
@@ -112,8 +114,11 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
         is ScreenPlan.Identifier -> when (plan.method) {
             LoginOption.PhoneOtp -> LoginPhoneScreen(
                 phone = plan.value,
+                country = plan.country,
                 isLoading = plan.isSubmitting,
-                onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(plan.method, it)) },
+                onContinue = { number, country ->
+                    context.dispatch(LoginIntent.SubmitIdentifier(plan.method, number, country))
+                },
             )
 
             else -> LoginEmailScreen(

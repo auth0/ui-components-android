@@ -16,6 +16,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaIntent
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaRound
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaState
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.PushPhase
+import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -302,6 +303,33 @@ class LoginFlowViewModelTest {
 
         assertThat(viewModel.loginState.value)
             .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER))
+    }
+
+    @Test
+    fun `submit phone - with a country - going back to edit shows that country again`() = runTest {
+        startAtPhone()
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER, CANADA))
+        runCurrent()
+
+        viewModel.goBack()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, country = CANADA))
+    }
+
+    @Test
+    fun `submit phone - with a country, fails for good - retry shows that country again`() = runTest {
+        startAtPhone()
+        val error = EmbeddedLoginError.CodeNotSent(LoginOption.PhoneOtp)
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } returns failure(error)
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER, CANADA))
+        advanceUntilIdle()
+
+        viewModel.send(LoginIntent.Retry)
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, country = CANADA))
     }
 
     @Test
@@ -1026,6 +1054,9 @@ class LoginFlowViewModelTest {
         const val COOLDOWN_SECONDS = 60
         const val ONE_SECOND_MILLIS = 1_000L
         const val PUSH_POLL_MS = 3_000L
+
+        // Shares +1 with the United States, the case a guess from the dial code gets wrong.
+        val CANADA = Country("Canada", "+1", "🇨🇦")
         val PHONE = MfaFactor.Push(0, "Jane's phone")
         val REJECTED = MfaError.Rejected()
         val TABLET = MfaFactor.Push(1, "Jane's tablet")

@@ -33,6 +33,7 @@ import com.auth0.universalcomponents.presentation.ui.mfa.phone.CountrySelectorSh
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.forIso
 import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.utils.ValidationUtil
+import java.util.Locale
 
 /** E.164 allows 15 digits in all, the country code included. */
 private const val MAX_PHONE_DIGITS = 15
@@ -40,33 +41,45 @@ private const val MAX_PHONE_DIGITS = 15
 /** How many digits the number may have after [Country]'s dial code (which starts with a "+"). */
 private fun Country.maxNumberDigits(): Int = MAX_PHONE_DIGITS - (phoneCode.length - 1)
 
-/** The country the field starts on, as in the design. */
-private const val DEFAULT_COUNTRY_ISO = "US"
+/** The country the field starts on when the device's is not in the list, as in the design. */
+private const val FALLBACK_COUNTRY_ISO = "US"
+
+/** The country the device is set to, or the one in [FALLBACK_COUNTRY_ISO] when the list has none like it. */
+private fun deviceCountry(): Country =
+    Country.forIso(Locale.getDefault().country)
+        ?: Country.forIso(FALLBACK_COUNTRY_ISO)
+        ?: Country.countries.first()
 
 /**
  * Collects the phone number the code is sent to. [onContinue] receives it in E.164 form (`+14233530900`) once it looks
- * valid; [phone] pre-fills the field in that same form, so Edit and Try again keep what was typed. The country starts
- * as the United States; a pre-filled number picks its own.
+ * valid, and the country it was typed with. [phone] pre-fills the field in that same form and [country] is the one
+ * it was typed with, so Edit and Try again keep what was typed. With no [country], the field starts on the device's.
  */
 @Composable
 internal fun LoginPhoneScreen(
-    onContinue: (String) -> Unit,
+    onContinue: (number: String, country: Country) -> Unit,
     modifier: Modifier = Modifier,
     title: String = stringResource(R.string.embedded_login_phone_title),
     phone: String = "",
+    country: Country? = null,
     isLoading: Boolean = false,
 ) {
-    val defaultCountry = remember { Country.forIso(DEFAULT_COUNTRY_ISO) ?: Country.countries.first() }
     // The countries are a fixed list, so a position survives a rotation where a Country could not.
-    val (initialCountry, initialNumber) = remember { splitPhone(phone, defaultCountry) }
+    val (initialCountry, initialNumber) = remember {
+        if (country != null) country to phone.removePrefix(country.phoneCode) else splitPhone(phone, deviceCountry())
+    }
     var countryIndex by rememberSaveable { mutableIntStateOf(Country.countries.indexOf(initialCountry)) }
     var number by rememberSaveable { mutableStateOf(initialNumber) }
     var isInvalidPhone by rememberSaveable { mutableStateOf(false) }
     var isPickingCountry by rememberSaveable { mutableStateOf(false) }
-    val country = Country.countries[countryIndex]
+    val selected = Country.countries[countryIndex]
 
     val submit = {
-        if (ValidationUtil.isValidPhoneNumber(number)) onContinue(country.phoneCode + number) else isInvalidPhone = true
+        if (ValidationUtil.isValidPhoneNumber(number)) {
+            onContinue(selected.phoneCode + number, selected)
+        } else {
+            isInvalidPhone = true
+        }
     }
 
     FlowStepLayout(
@@ -77,14 +90,14 @@ internal fun LoginPhoneScreen(
             LoginInputField(
                 value = number,
                 onValueChange = {
-                    number = it.filter(Char::isDigit).take(country.maxNumberDigits())
+                    number = it.filter(Char::isDigit).take(selected.maxNumberDigits())
                     isInvalidPhone = false
                 },
                 isInvalid = isInvalidPhone,
                 enabled = !isLoading,
                 keyboardType = KeyboardType.Phone,
                 placeholder = stringResource(R.string.phone_number_placeholder),
-                leading = { CountryChip(country, enabled = !isLoading, onClick = { isPickingCountry = true }) },
+                leading = { CountryChip(selected, enabled = !isLoading, onClick = { isPickingCountry = true }) },
                 onDone = submit,
             )
             if (isInvalidPhone) LoginInlineError(stringResource(R.string.embedded_login_error_invalid_phone))

@@ -260,6 +260,9 @@ class EmbeddedLoginRepositoryImplTest {
         val failure = repository.startOtp(LoginOption.PhoneOtp, PHONE).failure()
 
         assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidIdentifier(LoginOption.PhoneOtp))
+        // Kept, so the log shows what the server said.
+        assertThat(failure.cause).isInstanceOf(EmbeddedAuthException::class.java)
+        assertThat((failure.cause as EmbeddedAuthException).description).isEqualTo("Invalid phone format.")
     }
 
     @Test

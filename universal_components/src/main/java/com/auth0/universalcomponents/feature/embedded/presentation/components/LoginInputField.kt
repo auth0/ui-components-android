@@ -45,7 +45,7 @@ internal fun LoginInputField(
     enabled: Boolean = true,
     keyboardType: KeyboardType = KeyboardType.Email,
     placeholder: String? = null,
-    leading: (@Composable () -> Unit)? = null,
+    leading: @Composable () -> Unit = {},
     onDone: () -> Unit = {},
 ) {
     val colors = Auth0Theme.colors
@@ -97,7 +97,7 @@ internal fun LoginInputField(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = Auth0Theme.sizes.padding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                leading?.invoke()
+                leading()
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
                     if (value.isEmpty() && placeholder != null) {
                         Text(text = placeholder, style = Auth0Theme.typography.body, color = colors.textDisabled)

@@ -17,6 +17,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaR
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEffect
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaReducer
+import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -71,6 +72,9 @@ internal class LoginFlowViewModel(
     /** Whether the server also offers a phone, so the first screen can offer to switch to it. */
     private var isPhoneOffered = false
 
+    /** The country the phone number was last submitted with, so every way back to its screen shows it again. */
+    private var typedCountry: Country? = null
+
     fun send(event: LoginIntent) {
         val current = _loginState.value
         when (event) {
@@ -82,6 +86,7 @@ internal class LoginFlowViewModel(
 
             is LoginIntent.SubmitIdentifier ->
                 if (current is LoginState.CollectOtpIdentifier && current.method == event.method) {
+                    typedCountry = event.country
                     launchStep { sendCode(event.method, event.value, isResend = false) }
                 }
 
@@ -305,6 +310,7 @@ internal class LoginFlowViewModel(
             value = value,
             otherMethod = LoginOption.PhoneOtp.takeIf { isPhoneOffered && method == primaryMethod && method != it },
             isSubmitting = isSubmitting,
+            country = typedCountry.takeIf { method == LoginOption.PhoneOtp && value.isNotEmpty() },
         )
 
     /** The full-screen error. Logged once here, with its cause, so a failure in a live app can be traced. */

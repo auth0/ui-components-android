@@ -6,6 +6,7 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
+import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 
 /**
  * Where the login flow is, with everything its screen shows. The ViewModel moves between steps;
@@ -21,14 +22,16 @@ internal sealed interface LoginState {
 
     /**
      * The screen asking for the email or the phone number a code goes to, as [method] says. [value] pre-fills the field
-     * (a phone number in E.164 form), so Edit and Try again keep what was typed. [otherMethod] is the one "Continue
-     * with" switches to; null hides it. [isSubmitting] spins Continue while the code is being sent.
+     * (a phone number in E.164 form) and [country] is the one it was typed with, so Edit and Try again keep what was
+     * typed; null when nothing was typed yet. [otherMethod] is the one "Continue with" switches to; null hides it.
+     * [isSubmitting] spins Continue while the code is being sent.
      */
     data class CollectOtpIdentifier(
         val method: LoginOption = LoginOption.EmailOtp,
         val value: String = "",
         val otherMethod: LoginOption? = null,
         val isSubmitting: Boolean = false,
+        val country: Country? = null,
     ) : LoginState
 
     /**
@@ -71,8 +74,15 @@ internal sealed interface LoginIntent {
 
     data object Start : LoginIntent
 
-    /** [method] is the screen it was typed on, so a tap that outlives a switch to the other method is dropped. */
-    data class SubmitIdentifier(val method: LoginOption, val value: String) : LoginIntent
+    /**
+     * [method] is the screen it was typed on, so a tap that outlives a switch to the other method is dropped.
+     * [country] is the one picked for a phone number, so the screen can show it again.
+     */
+    data class SubmitIdentifier(
+        val method: LoginOption,
+        val value: String,
+        val country: Country? = null,
+    ) : LoginIntent
 
     /** "Continue with …" on the first screen. Counts only there, and not while a code is being sent. */
     data class SwitchMethod(val method: LoginOption) : LoginIntent

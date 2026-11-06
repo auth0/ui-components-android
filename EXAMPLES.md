@@ -334,7 +334,7 @@ fun LoginScreen(
 }
 ```
 
-On code entry, Back returns to the email or phone entry it came from, and phone entry returns to email entry; during MFA, Back works as described below. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
+On code entry, Back returns to the email or phone entry it came from, and when the tenant offers email too, phone entry returns to email entry; during MFA, Back works as described below. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
 
 ### Multi-Factor Authentication
 
@@ -476,7 +476,7 @@ Adding `onMfaError` or `mfa` is source-compatible, but your app must be recompil
 - **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email or phone entry (with what was typed kept) if not. If the first load failed, it loads again.
 - **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen. During MFA, Back is ignored only while a push or code is being sent again or a typed code is being checked.
 - **If the connection offers neither Email OTP nor Phone OTP,** the flow shows a screen saying no sign-in methods are available.
-- **Phone sign-in:** the user picks the country and types the number, which is sent in international form (for example `+14233530900`). The code arrives by text message, or by a call when that is all the server can do for the number. Email always comes first; the phone screen is reached from "Continue with Phone" and Back returns to email.
+- **Phone sign-in:** the user picks the country and types the number, which is sent in international form (for example `+14233530900`). The code arrives by text message, or by a call when that is all the server can do for the number. The country starts as the one the device is set to (the United States if the list has none like it), and the one the user picked is kept for Edit and Try again. When the tenant offers email too, email comes first: the phone screen is reached from "Continue with Phone" and Back returns to email. When phone is the only method, it is the first screen and Back calls `onExit`.
 - **The sign-in session lives in memory.** Rotation is safe, but if Android ends the app while the user is signing in, the flow starts again from email entry when the app reopens.
 
 ## Support
