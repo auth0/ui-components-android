@@ -360,7 +360,7 @@ private fun PhoneTextField(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CountrySelectorSheet(
+internal fun CountrySelectorSheet(
     countries: List<Country>,
     onCountrySelected: (Country) -> Unit,
     onDismiss: () -> Unit
@@ -373,11 +373,13 @@ private fun CountrySelectorSheet(
     val sheetState = rememberModalBottomSheetState()
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredCountries = remember(searchQuery) {
+    // A to Z by name, whatever order the list comes in (it is kept by ISO code).
+    val sortedCountries = remember(countries) { countries.sortedBy { it.name } }
+    val filteredCountries = remember(searchQuery, sortedCountries) {
         if (searchQuery.isEmpty()) {
-            countries
+            sortedCountries
         } else {
-            countries.filter {
+            sortedCountries.filter {
                 it.name.startsWith(searchQuery, ignoreCase = true) ||
                     it.phoneCode.startsWith(searchQuery)
             }
@@ -449,7 +451,7 @@ private fun CountrySelectorSheet(
 }
 
 @Composable
-private fun CountryItem(
+internal fun CountryItem(
     country: Country,
     onClick: () -> Unit
 ) {

@@ -10,8 +10,11 @@ internal sealed interface EmbeddedLoginError {
 
     data object Network : EmbeddedLoginError
 
-    /** The server offered no way to email a code, for example because only another method fits that user. */
-    data object CodeNotSent : EmbeddedLoginError
+    /** The server offered no way to send a code by [method], for example because only another method fits that user. */
+    data class CodeNotSent(val method: LoginOption) : EmbeddedLoginError
+
+    /** The server refused the email address or phone number as typed (for example a number that is too short). */
+    data class InvalidIdentifier(val method: LoginOption) : EmbeddedLoginError
 
     data object InvalidCode : EmbeddedLoginError
 

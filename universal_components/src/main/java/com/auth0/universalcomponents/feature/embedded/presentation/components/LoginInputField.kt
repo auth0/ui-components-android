@@ -3,12 +3,14 @@ package com.auth0.universalcomponents.feature.embedded.presentation.components
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,7 +32,8 @@ import com.auth0.universalcomponents.presentation.ui.flow.flowSurface
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
- * A single-line text field for the identifier; takes focus when it first appears.
+ * A single-line text field for the identifier; takes focus when it first appears. [leading] sits before the text (the
+ * country of a phone number) and [placeholder] shows while the field is empty.
  * The cursor starts at the end, so a pre-filled value (after Edit or Try again) is ready to edit.
  */
 @Composable
@@ -41,6 +44,8 @@ internal fun LoginInputField(
     isInvalid: Boolean = false,
     enabled: Boolean = true,
     keyboardType: KeyboardType = KeyboardType.Email,
+    placeholder: String? = null,
+    leading: @Composable () -> Unit = {},
     onDone: () -> Unit = {},
 ) {
     val colors = Auth0Theme.colors
@@ -88,11 +93,17 @@ internal fun LoginInputField(
             .focusRequester(focusRequester)
             .flowSurface(shape, isFocused = isFocused, isError = isInvalid),
         decorationBox = { innerTextField ->
-            Box(
-                modifier = Modifier.padding(horizontal = Auth0Theme.sizes.padding),
-                contentAlignment = Alignment.CenterStart,
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Auth0Theme.sizes.padding),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                innerTextField()
+                leading()
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                    if (value.isEmpty() && placeholder != null) {
+                        Text(text = placeholder, style = Auth0Theme.typography.body, color = colors.textDisabled)
+                    }
+                    innerTextField()
+                }
             }
         },
     )

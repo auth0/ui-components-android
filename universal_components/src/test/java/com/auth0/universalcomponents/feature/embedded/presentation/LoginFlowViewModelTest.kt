@@ -16,6 +16,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaIntent
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaRound
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaState
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.PushPhase
+import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
@@ -55,7 +56,7 @@ class LoginFlowViewModelTest {
         Dispatchers.setMain(testDispatcher)
         repository = mockk()
         coEvery { repository.discover() } returns Result.Success(listOf(LoginOption.EmailOtp))
-        coEvery { repository.startEmailOtp(any()) } returns Result.Success(Unit)
+        coEvery { repository.startOtp(any(), any()) } returns Result.Success(Unit)
         mfaRepository = mockk()
         coEvery { mfaRepository.sendPush(any()) } returns Result.Success(PushStatus.Pending(PUSH_POLL_MS, canResend = true))
         // A push nobody answers, unless a test says otherwise, so MFA stays on screen.
@@ -136,12 +137,13 @@ class LoginFlowViewModelTest {
     fun `submit email - while sending - stays on email with Continue spinning`() = runTest {
         startAtEmail()
         val sent = CompletableDeferred<Unit>()
-        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { Result.Success(sent.await()) }
+        coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } coAnswers { Result.Success(sent.await()) }
 
-        viewModel.send(LoginIntent.SubmitIdentifier(EMAIL))
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         runCurrent()
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL, isSubmitting = true))
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL, isSubmitting = true))
         sent.complete(Unit)
         advanceUntilIdle()
     }
@@ -150,36 +152,249 @@ class LoginFlowViewModelTest {
     fun `submit email - code sent - asks for the code, with the resend countdown started`() = runTest {
         startAtEmail()
 
-        viewModel.send(LoginIntent.SubmitIdentifier(EMAIL))
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         runCurrent()
 
         assertThat(viewModel.loginState.value)
             .isEqualTo(LoginState.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS))
-        coVerify(exactly = 1) { repository.startEmailOtp(EMAIL) }
+        coVerify(exactly = 1) { repository.startOtp(LoginOption.EmailOtp, EMAIL) }
     }
 
     @Test
     fun `submit email - fails for good - retry returns to email with the typed email`() = runTest {
         startAtEmail()
-        coEvery { repository.startEmailOtp(EMAIL) } returns failure(EmbeddedLoginError.Unknown("debug output"))
-        viewModel.send(LoginIntent.SubmitIdentifier(EMAIL))
+        coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } returns failure(EmbeddedLoginError.Unknown("debug output"))
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         advanceUntilIdle()
         assertThat(viewModel.loginState.value).isInstanceOf(LoginState.Failed::class.java)
 
         viewModel.send(LoginIntent.Retry)
         advanceUntilIdle()
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     @Test
     fun `submit email - not on the email step - is ignored`() = runTest {
         startAtCode()
 
-        viewModel.send(LoginIntent.SubmitIdentifier(OTHER_EMAIL))
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, OTHER_EMAIL))
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { repository.startEmailOtp(OTHER_EMAIL) }
+        coVerify(exactly = 0) { repository.startOtp(LoginOption.EmailOtp, OTHER_EMAIL) }
+    }
+
+    // endregion
+
+    // region phone
+
+    @Test
+    fun `start - email and phone offered - starts on email, with the way to the phone`() = runTest {
+        startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp)
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(otherMethod = LoginOption.PhoneOtp))
+    }
+
+    @Test
+    fun `start - phone listed before email - email is still the first screen`() = runTest {
+        startWithMethods(LoginOption.PhoneOtp, LoginOption.EmailOtp)
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(otherMethod = LoginOption.PhoneOtp))
+    }
+
+    @Test
+    fun `start - only phone offered - starts on phone, with nothing to switch to`() = runTest {
+        startWithMethods(LoginOption.PhoneOtp)
+
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp))
+    }
+
+    @Test
+    fun `switch - to phone - shows phone entry, which has no way to switch back`() = runTest {
+        startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp)
+
+        viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
+
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp))
+    }
+
+    @Test
+    fun `switch - while the email code is being sent - is ignored`() = runTest {
+        startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp)
+        val sent = CompletableDeferred<Unit>()
+        coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } coAnswers { Result.Success(sent.await()) }
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
+        runCurrent()
+
+        viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
+        sent.complete(Unit)
+        runCurrent()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS))
+    }
+
+    @Test
+    fun `switch - phone not offered, or not on the first screen - is ignored`() = runTest {
+        startAtEmail()
+        viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier())
+
+        startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp, restart = true)
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
+        advanceUntilIdle()
+        viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
+
+        assertThat(viewModel.loginState.value).isInstanceOf(LoginState.CollectOtpCode::class.java)
+    }
+
+    @Test
+    fun `submit phone - code sent - asks for the code, sent to that number`() = runTest {
+        startAtPhone()
+
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        runCurrent()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpCode(NUMBER, LoginOption.PhoneOtp, resendSecondsLeft = COOLDOWN_SECONDS))
+        coVerify(exactly = 1) { repository.startOtp(LoginOption.PhoneOtp, NUMBER) }
+    }
+
+    @Test
+    fun `submit - typed on the email screen after the switch to phone - is dropped`() = runTest {
+        startAtPhone()
+
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.startOtp(any(), any()) }
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp))
+    }
+
+    @Test
+    fun `submit phone - fails for good - retry returns to phone with the number kept`() = runTest {
+        startAtPhone()
+        val error = EmbeddedLoginError.CodeNotSent(LoginOption.PhoneOtp)
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } returns failure(error)
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        advanceUntilIdle()
+        assertThat(viewModel.loginState.value).isInstanceOf(LoginState.Failed::class.java)
+
+        viewModel.send(LoginIntent.Retry)
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER))
+    }
+
+    @Test
+    fun `submit phone - server refuses the number - shows it full-screen, retry returns to phone with the number kept`() = runTest {
+        startAtPhone()
+        val error = EmbeddedLoginError.InvalidIdentifier(LoginOption.PhoneOtp)
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } returns failure(error)
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        advanceUntilIdle()
+        assertThat(viewModel.loginState.value).isInstanceOf(LoginState.Failed::class.java)
+
+        viewModel.send(LoginIntent.Retry)
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER))
+    }
+
+    @Test
+    fun `submit phone - with a country - going back to edit shows that country again`() = runTest {
+        startAtPhone()
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER, CANADA))
+        runCurrent()
+
+        viewModel.goBack()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, country = CANADA))
+    }
+
+    @Test
+    fun `submit phone - with a country, fails for good - retry shows that country again`() = runTest {
+        startAtPhone()
+        val error = EmbeddedLoginError.CodeNotSent(LoginOption.PhoneOtp)
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } returns failure(error)
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER, CANADA))
+        advanceUntilIdle()
+
+        viewModel.send(LoginIntent.Retry)
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, country = CANADA))
+    }
+
+    @Test
+    fun `resend - phone code - sends to the same number again`() = runTest {
+        startAtPhoneCode()
+
+        viewModel.send(LoginIntent.Resend)
+        runCurrent()
+
+        coVerify(exactly = 2) { repository.startOtp(LoginOption.PhoneOtp, NUMBER) }
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpCode(NUMBER, LoginOption.PhoneOtp, resendSecondsLeft = COOLDOWN_SECONDS))
+    }
+
+    @Test
+    fun `back - phone code, then phone entry, then email - steps back one screen at a time and then leaves`() = runTest {
+        startAtPhoneCode()
+
+        assertThat(viewModel.goBack()).isTrue()
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER))
+
+        assertThat(viewModel.goBack()).isTrue()
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(otherMethod = LoginOption.PhoneOtp))
+
+        assertThat(viewModel.goBack()).isFalse()
+    }
+
+    @Test
+    fun `back - phone entry as the only method - leaves the flow`() = runTest {
+        startWithMethods(LoginOption.PhoneOtp)
+
+        assertThat(viewModel.goBack()).isFalse()
+    }
+
+    @Test
+    fun `back - while the phone code is being sent - stays in the flow`() = runTest {
+        startAtPhone()
+        val sent = CompletableDeferred<Unit>()
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } coAnswers { Result.Success(sent.await()) }
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        runCurrent()
+
+        assertThat(viewModel.goBack()).isTrue()
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, isSubmitting = true))
+
+        sent.complete(Unit)
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginState.value).isInstanceOf(LoginState.CollectOtpCode::class.java)
+    }
+
+    @Test
+    fun `second factor after a phone code - start over - returns to phone entry with the number`() = runTest {
+        startAtPhoneCode()
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.MfaRequired(listOf(TABLET)))
+        viewModel.send(LoginIntent.SubmitOtp(CODE))
+        advanceUntilIdle()
+
+        viewModel.send(LoginIntent.LeaveMfa)
+
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER))
     }
 
     // endregion
@@ -235,7 +450,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginIntent.LeaveMfa)
         viewModel.send(LoginIntent.LeaveMfa)
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
         // Back from here would exit the login (false); had the second tap been Back, the screen would be gone.
         assertThat(viewModel.goBack()).isFalse()
     }
@@ -248,7 +463,7 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         // Back on the list leaves MFA; had login handled it, the list would still be on show.
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     @Test
@@ -272,9 +487,9 @@ class LoginFlowViewModelTest {
 
             assertThat(viewModel.goBack()).isTrue()
             advanceUntilIdle()
-            assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+            assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
 
-            viewModel.send(LoginIntent.SubmitIdentifier(EMAIL))
+            viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
             advanceUntilIdle()
             viewModel.send(LoginIntent.SubmitOtp(CODE))
             advanceUntilIdle()
@@ -310,7 +525,7 @@ class LoginFlowViewModelTest {
         assertThat((viewModel.loginState.value as LoginState.Mfa).engine.isRunning).isFalse()
 
         assertThat(viewModel.goBack()).isTrue()
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     // region app told about MFA errors
@@ -351,7 +566,7 @@ class LoginFlowViewModelTest {
 
         // From there, "Start over" still returns to email entry with the email kept.
         viewModel.send(LoginIntent.LeaveMfa)
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     @Test
@@ -394,7 +609,7 @@ class LoginFlowViewModelTest {
         viewModel.goBack()
         advanceUntilIdle()
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
         assertThat(reported).isEmpty()
         job.cancel()
     }
@@ -419,7 +634,7 @@ class LoginFlowViewModelTest {
 
         assertThat(viewModel.goBack()).isTrue()
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     @Test
@@ -429,7 +644,7 @@ class LoginFlowViewModelTest {
 
         viewModel.send(LoginIntent.MfaErrorAnswered(MfaErrorHandling.NotHandled))
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     // endregion
@@ -491,7 +706,7 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
         assertThat(viewModel.mfaResult.value).isNotNull()
 
-        viewModel.send(LoginIntent.SubmitIdentifier(EMAIL))
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         advanceUntilIdle()
         viewModel.send(LoginIntent.SubmitOtp(CODE))
         advanceUntilIdle()
@@ -553,7 +768,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginIntent.Retry)
         advanceUntilIdle()
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     @Test
@@ -605,7 +820,7 @@ class LoginFlowViewModelTest {
     fun `resend - while sending - keeps the code step with only the resend row busy`() = runTest {
         startAtCode()
         val sent = CompletableDeferred<Unit>()
-        coEvery { repository.startEmailOtp(EMAIL) } coAnswers { Result.Success(sent.await()) }
+        coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } coAnswers { Result.Success(sent.await()) }
 
         viewModel.send(LoginIntent.Resend)
         runCurrent()
@@ -616,20 +831,20 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpCode(EMAIL))
-        coVerify(exactly = 2) { repository.startEmailOtp(EMAIL) }
+        coVerify(exactly = 2) { repository.startOtp(LoginOption.EmailOtp, EMAIL) }
     }
 
     @Test
     fun `resend - fails for good - shows it full-screen, retry returns to email`() = runTest {
         startAtCode()
         val error = EmbeddedLoginError.Unknown("debug output")
-        coEvery { repository.startEmailOtp(EMAIL) } returns failure(error)
+        coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } returns failure(error)
 
         viewModel.send(LoginIntent.Resend)
         advanceUntilIdle()
 
         assertThat(viewModel.loginState.value)
-            .isEqualTo(LoginState.Failed(error, retryTo = LoginState.CollectOtpIdentifier(EMAIL)))
+            .isEqualTo(LoginState.Failed(error, retryTo = LoginState.CollectOtpIdentifier(value = EMAIL)))
     }
 
     @Test
@@ -650,7 +865,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginIntent.Resend)
         runCurrent()
 
-        coVerify(exactly = 1) { repository.startEmailOtp(EMAIL) }
+        coVerify(exactly = 1) { repository.startOtp(LoginOption.EmailOtp, EMAIL) }
     }
 
     // endregion
@@ -685,7 +900,7 @@ class LoginFlowViewModelTest {
         viewModel.goBack()
         advanceUntilIdle()
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     // endregion
@@ -726,7 +941,7 @@ class LoginFlowViewModelTest {
         startAtCode()
 
         assertThat(viewModel.goBack()).isTrue()
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     @Test
@@ -738,7 +953,7 @@ class LoginFlowViewModelTest {
 
         viewModel.goBack()
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(EMAIL))
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL))
     }
 
     @Test
@@ -772,6 +987,29 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
     }
 
+    /** Starts with the server offering [methods] in that order; [restart] begins again after an earlier start. */
+    private fun TestScope.startWithMethods(vararg methods: LoginOption, restart: Boolean = false) {
+        coEvery { repository.discover() } returns Result.Success(methods.toList())
+        if (restart) {
+            viewModel.goBack()
+            viewModel.goBack()
+        }
+        startAtEmail()
+    }
+
+    /** On the phone entry, reached from the email screen. */
+    private fun TestScope.startAtPhone() {
+        startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp)
+        viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
+    }
+
+    /** On the code step of a phone number, with the resend countdown run out. */
+    private fun TestScope.startAtPhoneCode() {
+        startAtPhone()
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        advanceUntilIdle()
+    }
+
     /** On MFA with [factors] on offer, after a correct code. */
     private fun TestScope.startAtMfa(vararg factors: MfaFactor) {
         startAtCode()
@@ -794,14 +1032,14 @@ class LoginFlowViewModelTest {
     /** On the code step with the resend countdown already run out. */
     private fun TestScope.startAtCode() {
         startAtEmail()
-        viewModel.send(LoginIntent.SubmitIdentifier(EMAIL))
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         advanceUntilIdle()
     }
 
     /** On the code step with the resend countdown just started. */
     private fun TestScope.startAtCodeCountingDown() {
         startAtEmail()
-        viewModel.send(LoginIntent.SubmitIdentifier(EMAIL))
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         runCurrent()
     }
 
@@ -811,10 +1049,14 @@ class LoginFlowViewModelTest {
     private companion object {
         const val EMAIL = "jane@example.com"
         const val OTHER_EMAIL = "john@example.com"
+        const val NUMBER = "+14233530900"
         const val CODE = "123456"
         const val COOLDOWN_SECONDS = 60
         const val ONE_SECOND_MILLIS = 1_000L
         const val PUSH_POLL_MS = 3_000L
+
+        // Shares +1 with the United States, the case a guess from the dial code gets wrong.
+        val CANADA = Country("Canada", "+1", "🇨🇦")
         val PHONE = MfaFactor.Push(0, "Jane's phone")
         val REJECTED = MfaError.Rejected()
         val TABLET = MfaFactor.Push(1, "Jane's tablet")

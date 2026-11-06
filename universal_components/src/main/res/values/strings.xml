@@ -113,6 +113,9 @@
     <string name="embedded_login_email_title">Enter your email to get started</string>
     <string name="embedded_login_email_label">Email</string>
     <string name="embedded_login_continue">Continue</string>
+    <string name="embedded_login_continue_with_phone">Continue with Phone</string>
+    <string name="embedded_login_or">OR</string>
+    <string name="embedded_login_phone_title">Enter your phone number to get started</string>
     <string name="embedded_login_code_title">Enter the 6-digit code</string>
     <string name="embedded_login_code_from">From %1$s</string>
     <string name="embedded_login_code_edit">Edit</string>
@@ -130,8 +133,13 @@
     <string name="embedded_login_error_network">We couldn\'t reach the server. Check your internet connection and try again.</string>
     <string name="embedded_login_error_connection_missing">No connection is configured to start sign-in with.</string>
     <string name="embedded_login_error_invalid_email">Please enter a valid email address.</string>
+    <string name="embedded_login_error_invalid_phone">Please enter a valid phone number.</string>
+    <string name="embedded_login_error_invalid_phone_format">Invalid phone format. Please check the number and try again.</string>
+    <string name="embedded_login_error_invalid_email_format">Invalid email format. Please check the address and try again.</string>
     <string name="embedded_login_error_code_not_sent">We couldn\'t send a code to this email. Check the address and try again.</string>
+    <string name="embedded_login_error_code_not_sent_phone">We couldn\'t send your code. Please confirm the phone number is correct and try again.</string>
     <string name="embedded_login_error_invalid_code">Invalid Code. Please double check the code sent to your email.</string>
+    <string name="embedded_login_error_invalid_code_phone">Invalid Code. Please double check the code sent to your phone.</string>
     <string name="embedded_login_error_code_expired">Your code expired. Tap Resend Code to get a new one.</string>
     <string name="embedded_login_error_too_many_attempts">Too many attempts. Please try again later.</string>
     <string name="embedded_login_error_too_many_wrong_codes">Too many incorrect codes. Please try again later.</string>

@@ -7,6 +7,7 @@ import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
 import com.auth0.android.embedded.authorize.OtpType
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
 import com.auth0.universalcomponents.data.embeddedauth.INVALID_CODE_REASONS
@@ -24,7 +25,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFacto
 import com.auth0.universalcomponents.utils.logging.Logger
 
 /**
- * The first factor against the SDK: authorize → identify → challengeEmail → verifyOtp.
+ * The first factor against the SDK: authorize → identify → challengeEmail or challengePhone → verifyOtp.
  * Each step before the last answers with `insufficient_authorization` and the next actions to take.
  * [connection] is fixed for the whole flow; every resend, edited email and Try again opens a new session with it.
  * [steps] holds the client and its session, so MFA continues on the same instance.
@@ -34,7 +35,7 @@ internal class EmbeddedLoginRepositoryImpl(
     private val connection: String,
 ) : EmbeddedLoginRepository {
 
-    /** Lets the first [startEmailOtp] reuse the session [discover] opened. */
+    /** Lets the first [startOtp] reuse the session [discover] opened. */
     private var isDiscoverySessionUnused = false
 
     override suspend fun discover(): Result<List<LoginOption>, LoginFailure> {
@@ -45,29 +46,75 @@ internal class EmbeddedLoginRepositoryImpl(
         return Result.Success(opened.nextActions.map { it.toLoginOption() })
     }
 
-    override suspend fun startEmailOtp(email: String): EmptyResult<LoginFailure> {
+    override suspend fun startOtp(method: LoginOption, identifier: String): EmptyResult<LoginFailure> {
+        val identifierType = when (method) {
+            LoginOption.EmailOtp -> IdentifierType.EMAIL
+            LoginOption.PhoneOtp -> IdentifierType.PHONE
+            is LoginOption.Unsupported -> return Result.Error(LoginFailure(EmbeddedLoginError.CodeNotSent(method)))
+        }
         if (!isDiscoverySessionUnused) {
             val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
             if (opened is StepAnswer.Failed) return Result.Error(opened.failure)
         }
         isDiscoverySessionUnused = false
-        val identified = steps.run { identify(email, IdentifierType.EMAIL) }
-        if (identified is StepAnswer.Failed) return Result.Error(identified.failure)
+        val identified = steps.run { identify(identifier, identifierType) }
+        if (identified is StepAnswer.Failed) {
+            // A rejected address or number can be fixed by the user, so it is not the generic failure. The SDK has no
+            // error just for it: this step takes only the identifier, so a malformed request is taken to be about it,
+            // and the server's own words go to the log through the cause.
+            val rejection = (identified.error as? EmbeddedAuthException)?.takeIf {
+                it.error == EmbeddedAuthError.InvalidRequest
+            }
+            return Result.Error(
+                if (rejection != null) {
+                    LoginFailure(EmbeddedLoginError.InvalidIdentifier(method), cause = rejection)
+                } else {
+                    identified.failure
+                },
+            )
+        }
         val nextActions = identified.nextActions
+        val sent = when (method) {
+            LoginOption.PhoneOtp -> sendPhoneCode(nextActions)
+            else -> sendEmailCode(nextActions)
+        }
+        return when (sent) {
+            // No code is on its way, so the code screen would wait for nothing.
+            null -> {
+                Logger.w(TAG, "No $method code was sent; the server offered ${nextActions.map { it.capability.value }}")
+                Result.Error(LoginFailure(EmbeddedLoginError.CodeNotSent(method)))
+            }
+
+            is StepAnswer.Failed -> Result.Error(sent.failure)
+            else -> Result.Success(Unit)
+        }
+    }
+
+    /** The step that sends the email code; null when the server offers none, [ALREADY_SENT] when it went out itself. */
+    private suspend fun sendEmailCode(nextActions: List<NextAction>): StepAnswer<*>? {
         val challenge = nextActions.firstNotNullOfOrNull { it as? NextAction.ChallengeEmail }
         return when {
-            challenge != null -> {
-                val sent = steps.run { challengeEmail(challenge.index) }
-                if (sent is StepAnswer.Failed) Result.Error(sent.failure) else Result.Success(Unit)
+            challenge != null -> steps.run { challengeEmail(challenge.index) }
+            nextActions.any { it is NextAction.VerifyOtp && it.channel == OtpChannel.EMAIL } -> ALREADY_SENT
+            else -> null
+        }
+    }
+
+    /**
+     * As [sendEmailCode], for a phone: a text message, or a call when that is all the server can do for the number
+     * (a list with no way named is a text, as in the SDK).
+     */
+    private suspend fun sendPhoneCode(nextActions: List<NextAction>): StepAnswer<*>? {
+        val phone = nextActions.firstNotNullOfOrNull { it as? NextAction.ChallengePhone }
+        return when {
+            phone != null -> {
+                val ways = phone.deliveryMethods.ifEmpty { listOf(PhoneDeliveryMethod.TEXT) }
+                val way = if (PhoneDeliveryMethod.TEXT in ways) PhoneDeliveryMethod.TEXT else ways.first()
+                steps.run { challengePhone(phone.index, way) }
             }
 
-            nextActions.any { it is NextAction.VerifyOtp && it.channel == OtpChannel.EMAIL } -> Result.Success(Unit)
-
-            // No code is on its way, so the code screen would wait for nothing.
-            else -> {
-                Logger.w(TAG, "No email code was sent; the server offered ${nextActions.map { it.capability.value }}")
-                Result.Error(LoginFailure(EmbeddedLoginError.CodeNotSent))
-            }
+            nextActions.any { it is NextAction.VerifyOtp && it.channel in PHONE_CHANNELS } -> ALREADY_SENT
+            else -> null
         }
     }
 
@@ -104,13 +151,19 @@ internal class EmbeddedLoginRepositoryImpl(
     private companion object {
         const val TAG = "EmbeddedRepository"
 
+        /** For a code the server sent on its own, as it said in its menu: nothing is left to do. */
+        val ALREADY_SENT: StepAnswer<Unit> = StepAnswer.Done(Unit)
+
+        val PHONE_CHANNELS = setOf(OtpChannel.SMS, OtpChannel.VOICE)
+
         /**
-         * What these screens can drive, told to the server so it only offers those: the emailed code, then a push or a
-         * code sent to a phone.
+         * What these screens can drive, told to the server so it only offers those: a code sent to an email or a phone,
+         * then a push or a code sent to a phone. The same as iOS, which sends only what is plugged in.
          */
         val CAPABILITIES = setOf(
             EmbeddedCapability.IDENTIFY_EMAIL,
             EmbeddedCapability.CHALLENGE_EMAIL,
+            EmbeddedCapability.IDENTIFY_PHONE,
             EmbeddedCapability.VERIFY_OTP,
             EmbeddedCapability.CHALLENGE_PUSH,
             EmbeddedCapability.CHALLENGE_PHONE,

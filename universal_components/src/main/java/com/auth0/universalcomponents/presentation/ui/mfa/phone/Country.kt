@@ -275,3 +275,10 @@ private fun countryCodeToEmojiFlag(countryCode: String): String =
         .uppercase()
         .map { char -> Character.codePointAt("$char", 0) + EMOJI_UNICODE }
         .joinToString("") { String(Character.toChars(it)) }
+
+/** The country with the two-letter ISO code [iso] (any case), or null when the list has none. */
+internal fun Country.Companion.forIso(iso: String): Country? {
+    if (iso.length != 2) return null
+    val flag = countryCodeToEmojiFlag(iso)
+    return countries.firstOrNull { it.flagEmoji == flag }
+}
