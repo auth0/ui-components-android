@@ -37,7 +37,8 @@ internal fun OTPInputField(
     length: Int = 6,
     isError: Boolean = false,
     onValueChange: (String) -> Unit,
-    focusRequester: FocusRequester
+    focusRequester: FocusRequester,
+    modifier: Modifier = Modifier,
 ) {
     val dimensions = Auth0Theme.dimensions
 
@@ -48,7 +49,7 @@ internal fun OTPInputField(
         value = field,
         onValueChange = { if (it.text != value) onValueChange(it.text) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .focusRequester(focusRequester),
         decorationBox = {

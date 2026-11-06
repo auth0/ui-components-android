@@ -343,7 +343,7 @@ When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLogin
 - **Approved, or the code is right:** the credentials go to `onAuthenticated`. If the policy asks for another factor, the list returns headed **One more step**, with no limit on the number of steps.
 - **A wrong phone code** stays on the screen, inline, so the user can type another. **Resend** opens 60 seconds after each send.
 - **Declined, expired, session ended, too many attempts or no connection:** a screen with its own message and **Start over**, which returns to email entry with the email kept.
-- **Verify another way** (several factors) returns to the list. **Back** does the same from a factor screen, and returns to email entry from the list, or from a factor screen in the first step when there is only one factor. While a code or a resend is being sent, or a code is being checked, it does nothing.
+- **Verify another way** (several factors) returns to the list. **Back** does the same from a factor screen, and returns to email entry from the list, or from a factor screen in the first step when there is only one factor. While a code or a push is being sent again, or a typed code is being checked, it does nothing.
 - **No factor this flow can run:** a **Verification method not available** screen shows, unless your app takes over with `onMfaError`.
 - **Push checks right away** when the app returns to the foreground, so approving on the same phone signs in without waiting for the next check.
 

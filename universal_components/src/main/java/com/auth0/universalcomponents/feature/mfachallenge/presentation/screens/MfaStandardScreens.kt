@@ -219,6 +219,8 @@ internal fun MfaPhoneChallengeScreen(
                         hideError = true
                     },
                     focusRequester = focusRequester,
+                    // The visible label is a separate node, so TalkBack would land on an unnamed edit box.
+                    modifier = Modifier.semantics { contentDescription = words.codeLabel },
                 )
             }
             if (showsError) {
