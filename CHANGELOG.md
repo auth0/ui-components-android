@@ -1,5 +1,12 @@
 # Change Log
 
+## [1.0.0-beta.3](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.3) (2026-11-06)
+[Full Changelog](https://github.com/auth0/ui-components-android/compare/1.0.0-beta.2...1.0.0-beta.3)
+
+**Added**
+- Sign in with a phone number (SMS code) as a first factor [\#62](https://github.com/auth0/ui-components-android/pull/62) ([pacific-ring](https://github.com/pacific-ring))
+- Add a phone code (text or voice call) as an MFA factor [\#61](https://github.com/auth0/ui-components-android/pull/61) ([pacific-ring](https://github.com/pacific-ring))
+
 ## [1.0.0-beta.2](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.2) (2026-11-03)
 [Full Changelog](https://github.com/auth0/ui-components-android/compare/1.0.0-beta.1...1.0.0-beta.2)
 
