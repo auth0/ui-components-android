@@ -226,7 +226,7 @@ internal fun MfaEmailChallengeScreen(
     MfaCodeEntry(
         words = CodeEntryWords(
             title = words.title,
-            subtitle = if (model.address.isBlank()) words.descriptionUnnamed else words.description(model.address),
+            subtitle = words.subtitleFor(model.address),
             codeLabel = words.codeLabel,
             verifyButton = words.verifyButton,
             wrongCode = words.wrongCode,
@@ -248,6 +248,10 @@ internal fun MfaEmailChallengeScreen(
         modifier = modifier,
     )
 }
+
+/** The line under the title: the address the code went to, or, when the server gave none, that it went by email. */
+internal fun ResolvedMfaMessages.EmailChallenge.subtitleFor(address: String): String =
+    if (address.isBlank()) descriptionUnnamed else description(address)
 
 /** The words of a code screen; each factor's screen fills them from its own messages. */
 private class CodeEntryWords(
@@ -314,9 +318,12 @@ private fun MfaCodeEntry(
                     value = code,
                     length = CODE_LENGTH,
                     isError = showsError,
+                    // The digits on show are the ones being checked, and a wrong-code answer should still be seen.
                     onValueChange = {
-                        code = it.filter(Char::isDigit).take(CODE_LENGTH)
-                        hideError = true
+                        if (!isBusy) {
+                            code = it.filter(Char::isDigit).take(CODE_LENGTH)
+                            hideError = true
+                        }
                     },
                     focusRequester = focusRequester,
                     // The visible label is a separate node, so TalkBack would land on an unnamed edit box.
@@ -356,7 +363,11 @@ private fun MfaCodeEntry(
                             } else {
                                 words.resendButton
                             },
-                            onClick = { controls.resend() },
+                            onClick = {
+                                // The old code is no use once a new one is on its way.
+                                code = ""
+                                controls.resend()
+                            },
                             enabled = controls.resendAvailableIn == 0 && !isBusy,
                             style = Auth0Theme.typography.body,
                         )
@@ -452,7 +463,7 @@ private fun MfaWaitingForApproval(caption: String, device: String) {
  * server hid every digit); an email leads with its name, with its address under it. A factor this version has no words
  * for shows just its own title.
  */
-private fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
+internal fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
     if (factor == MfaFactorId.Phone && delivery != null) {
         val phone = messages.phoneChallenge
         val label = if (delivery == PhoneDelivery.Voice) phone.rowVoice(title) else phone.rowText(title)

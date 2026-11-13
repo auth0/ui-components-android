@@ -16,8 +16,6 @@ package com.auth0.universalcomponents.feature.mfachallenge
  *     errors { rejected { title = "Denied" } }
  * }
  * ```
- *
- * The key paths are the same as on iOS.
  */
 class MfaMessages private constructor(
     internal val authenticatorList: AuthenticatorList,

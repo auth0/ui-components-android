@@ -243,11 +243,45 @@ class MfaRepositoryImplTest {
     }
 
     @Test
+    fun `sendPhoneCode - this phone is no longer offered this way - says resend isn't allowed`() = runTest {
+        // Another phone still on offer is not this one.
+        every { client.challengePhone(SMS.index, PhoneDeliveryMethod.TEXT) } returns
+            step(verifyOtp(OtpChannel.SMS), challengePhone(index = SMS.index + 1))
+        assertThat(repository.sendPhoneCode(SMS)).isEqualTo(Result.Success(false))
+
+        // Nor is this phone by another way: it can no longer be texted, though it can still be called.
+        every { client.challengePhone(SMS.index, PhoneDeliveryMethod.TEXT) } returns
+            step(verifyOtp(OtpChannel.SMS), challengePhone(ways = listOf(PhoneDeliveryMethod.VOICE)))
+        assertThat(repository.sendPhoneCode(SMS)).isEqualTo(Result.Success(false))
+    }
+
+    @Test
+    fun `sendPhoneCode - the server names no way - reads it as a text`() = runTest {
+        every { client.challengePhone(SMS.index, PhoneDeliveryMethod.TEXT) } returns
+            step(verifyOtp(OtpChannel.SMS), challengePhone(ways = emptyList()))
+        assertThat(repository.sendPhoneCode(SMS)).isEqualTo(Result.Success(true))
+
+        every { client.challengePhone(SMS.index, PhoneDeliveryMethod.VOICE) } returns
+            step(verifyOtp(OtpChannel.VOICE), challengePhone(ways = emptyList()))
+        assertThat(repository.sendPhoneCode(CALL)).isEqualTo(Result.Success(false))
+    }
+
+    @Test
     fun `sendPhoneCode - nothing to verify it with, or it signed in - fails as unexpected`() = runTest {
         every { client.challengePhone(any(), any()) } returns step(NextAction.VerifyRecoveryCode)
         assertThat(repository.sendPhoneCode(SMS).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
 
         every { client.challengePhone(any(), any()) } returns FakeRequestImpl(response = null)
+        assertThat(repository.sendPhoneCode(SMS).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+    }
+
+    @Test
+    fun `sendPhoneCode - only another way of verifying is asked for - fails as unexpected`() = runTest {
+        // A user with an authenticator app is asked for its code in every answer: it doesn't show a code went out.
+        every { client.challengePhone(any(), any()) } returns step(verifyOtp(OtpChannel.TOTP), challengePhone())
+        assertThat(repository.sendPhoneCode(SMS).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+        every { client.challengePhone(any(), any()) } returns step(verifyOtp(OtpChannel.EMAIL), challengePhone())
         assertThat(repository.sendPhoneCode(SMS).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
     }
 
@@ -349,6 +383,16 @@ class MfaRepositoryImplTest {
     }
 
     @Test
+    fun `sendEmailCode - only another way of verifying is asked for - fails as unexpected`() = runTest {
+        // A user with an authenticator app is asked for its code in every answer: it doesn't show a code went out.
+        every { client.challengeEmail(any()) } returns step(verifyOtp(OtpChannel.TOTP), challengeEmail())
+        assertThat(repository.sendEmailCode(EMAIL).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+        every { client.challengeEmail(any()) } returns step(verifyOtp(OtpChannel.SMS), challengeEmail())
+        assertThat(repository.sendEmailCode(EMAIL).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+    }
+
+    @Test
     fun `sendEmailCode - the server refuses - fails in MFA's terms, with the SDK error as cause`() = runTest {
         every { client.challengeEmail(any()) } returns failingWith(EmbeddedAuthError.TooManyAttempts)
 
@@ -392,11 +436,14 @@ class MfaRepositoryImplTest {
     private fun challengeEmail(index: Int = EMAIL.index, address: String = EMAIL.address): NextAction.ChallengeEmail =
         sdkInstance(Int::class.java to index, String::class.java to address)
 
-    /** The phone [SMS] and [CALL] are made from, which the server offers both ways. */
-    private fun challengePhone(): NextAction.ChallengePhone = sdkInstance(
-        Int::class.java to SMS.index,
+    /** The phone [SMS] and [CALL] are made from, which the server by default offers both ways. */
+    private fun challengePhone(
+        index: Int = SMS.index,
+        ways: List<PhoneDeliveryMethod> = listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE),
+    ): NextAction.ChallengePhone = sdkInstance(
+        Int::class.java to index,
         String::class.java to SMS.maskedNumber,
-        List::class.java to listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE),
+        List::class.java to ways,
     )
 
     private fun verifyOob(pollInMs: Int): NextAction.VerifyOob = sdkInstance(Int::class.java to pollInMs)

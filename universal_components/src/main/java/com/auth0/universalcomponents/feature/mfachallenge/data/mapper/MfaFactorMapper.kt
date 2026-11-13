@@ -14,14 +14,17 @@ import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 internal fun List<NextAction>.toMfaFactors(): List<MfaFactor> = flatMap { action ->
     when (action) {
         is NextAction.ChallengePush -> listOf(MfaFactor.Push(action.index, action.name))
-        is NextAction.ChallengePhone ->
-            action.deliveryMethods.ifEmpty { listOf(PhoneDeliveryMethod.TEXT) }.distinct().map { delivery ->
-                MfaFactor.Phone(action.index, action.identifier, delivery)
-            }
+        is NextAction.ChallengePhone -> action.ways.map { delivery ->
+            MfaFactor.Phone(action.index, action.identifier, delivery)
+        }
         is NextAction.ChallengeEmail -> listOf(MfaFactor.Email(action.index, action.identifier))
         else -> emptyList()
     }
 }.sortedBy { it.listRank }
+
+/** The ways the server can reach this phone: a text when it names none, as the SDK does. */
+internal val NextAction.ChallengePhone.ways: List<PhoneDeliveryMethod>
+    get() = deliveryMethods.ifEmpty { listOf(PhoneDeliveryMethod.TEXT) }.distinct()
 
 /** Where a factor sits in the list: lower first. */
 private val MfaFactor.listRank: Int
