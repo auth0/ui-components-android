@@ -338,10 +338,10 @@ On code entry, Back returns to the email or phone entry it came from, and when t
 
 ### Multi-Factor Authentication
 
-When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLoginScreen` moves into MFA in place; nothing extra is needed in your app. Today it runs a push notification or a code sent to a phone, by text message or voice call. With several factors, the user picks one from a list first. Other factors aren't supported in this flow yet.
+When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLoginScreen` moves into MFA in place; nothing extra is needed in your app. Today it runs a push notification, or a code sent to a phone (by text message or voice call) or to an email address. With several factors, the user picks one from a list first. Other factors aren't supported in this flow yet.
 
 - **Approved, or the code is right:** the credentials go to `onAuthenticated`. If the policy asks for another factor, the list returns headed **One more step**, with no limit on the number of steps.
-- **A wrong phone code** stays on the screen, inline, so the user can type another. **Resend** opens 60 seconds after each send.
+- **A wrong phone or email code** stays on the screen, inline, so the user can type another. **Resend** opens 60 seconds after each send.
 - **Declined, expired, session ended, too many attempts or no connection:** a screen with its own message and **Start over**, which returns to email entry with the email kept.
 - **Verify another way** (several factors) returns to the list. **Back** does the same from a factor screen, and returns to email entry from the list, or from a factor screen in the first step when there is only one factor. While a code or a push is being sent again, or a typed code is being checked, it does nothing.
 - **No factor this flow can run:** a **Verification method not available** screen shows, unless your app takes over with `onMfaError`.
@@ -376,7 +376,7 @@ If you return `Handled`, your app owns what happens next, including when what yo
 
 #### Change the words
 
-Every word has a default string resource named `auth0_mfa_<group>_<key>`, for example `auth0_mfa_push_challenge_title`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value such as the device name, use `MfaMessages`; anything you leave unset keeps its default. The groups are `authenticatorList`, `loading`, `errors`, `pushChallenge` and `phoneChallenge`.
+Every word has a default string resource named `auth0_mfa_<group>_<key>`, for example `auth0_mfa_push_challenge_title`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value such as the device name, use `MfaMessages`; anything you leave unset keeps its default. The groups are `authenticatorList`, `loading`, `errors`, `pushChallenge`, `phoneChallenge` and `emailChallenge`.
 
 ```kotlin
 // Built once: a new MfaMessages on every recomposition would make the words resolve again.
@@ -389,6 +389,11 @@ val mfa = remember {
             }
             phoneChallenge {
                 resend { cooldown = { seconds -> "Send again in $seconds s" } }
+            }
+            emailChallenge {
+                // The address as the server hides it, such as j***@example.com. When it gives none, the line
+                // under the title is `descriptionUnnamed`.
+                description = { address -> "We emailed a code to $address." }
             }
             errors { rejected { title = "Sign-in denied" } }
         },
@@ -428,9 +433,9 @@ mfa = MfaConfiguration(
 )
 ```
 
-`canResend` says whether the server still allows another send. `resendAvailableIn` is the seconds left before it may be sent, and 0 when it can be tapped now. The flow owns that countdown, so calling `resend()` early does nothing; a replacement only has to show it (the model is published again each second while it counts down).
+`canResend` says whether the server still allows another send. `resendAvailableIn` is the seconds left before it may be sent, and 0 when it can be tapped now. The flow owns that countdown, so calling `resend()` early does nothing; a replacement only has to show it (the model is published again each second while it counts down). On a code screen (phone or email), `submit(code)` does nothing unless the code is exactly 6 digits, so a replacement may enable its button on any input.
 
-The factor list (`authenticatorList`), the phone code screen (`phoneChallenge`) and the error screen (`error`) are replaced the same way. There is no screen to replace for loading. Models hold data only, and every action defaults to doing nothing, so they are easy to build for a preview or a test of your own screen. Build the words with `ResolvedMfaMessages.from(context)`, passing `MfaMessages { ... }` as the second argument to include your own.
+The factor list (`authenticatorList`), the phone code screen (`phoneChallenge`), the email code screen (`emailChallenge`) and the error screen (`error`) are replaced the same way. There is no screen to replace for loading. Models hold data only, and every action defaults to doing nothing, so they are easy to build for a preview or a test of your own screen. Build the words with `ResolvedMfaMessages.from(context)`, passing `MfaMessages { ... }` as the second argument to include your own.
 
 #### Draw every MFA screen yourself (headless)
 
@@ -453,6 +458,7 @@ Box {
         is MfaStep.Factor -> when (val model = current.step.model) {
             is PushChallengeModel -> MyPush(model)
             is PhoneChallengeModel -> MyPhone(model)
+            is EmailChallengeModel -> MyEmail(model)
             else -> Unit
         }
         is MfaStep.Error -> MyError(current.model)

@@ -14,6 +14,7 @@ class ResolvedMfaMessages internal constructor(
     val errors: Errors,
     val pushChallenge: PushChallenge,
     val phoneChallenge: PhoneChallenge,
+    val emailChallenge: EmailChallenge,
 ) {
 
     companion object {
@@ -74,6 +75,21 @@ class ResolvedMfaMessages internal constructor(
         val verifyAnotherWay: String,
         val rowText: (phoneNumber: String) -> String,
         val rowVoice: (phoneNumber: String) -> String,
+    ) {
+        class Resend internal constructor(val button: String, val cooldown: (seconds: Int) -> String)
+    }
+
+    @Suppress("LongParameterList") // one word per line of the screen; they belong together
+    class EmailChallenge internal constructor(
+        val row: Message,
+        val title: String,
+        val description: (address: String) -> String,
+        val descriptionUnnamed: String,
+        val codeLabel: String,
+        val verifyButton: String,
+        val wrongCode: String,
+        val resend: Resend,
+        val verifyAnotherWay: String,
     ) {
         class Resend internal constructor(val button: String, val cooldown: (seconds: Int) -> String)
     }

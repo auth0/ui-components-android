@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.auth0.universalcomponents.feature.mfachallenge.EmailChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
 import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
@@ -16,6 +17,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaAuthenticatorListScreen
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaEmailChallengeScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaErrorScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaLoadingScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaPhoneChallengeScreen
@@ -95,6 +97,7 @@ private fun MfaStepContent(step: MfaStep, configuration: MfaConfiguration, messa
                 when (val model = step.step.model) {
                     is PushChallengeModel -> MfaPushChallengeScreen(model, messages = messages)
                     is PhoneChallengeModel -> MfaPhoneChallengeScreen(model, messages = messages)
+                    is EmailChallengeModel -> MfaEmailChallengeScreen(model, messages = messages)
                 }
             }
         }
@@ -120,7 +123,7 @@ private val MfaState?.transitionIdentity: String
         is MfaState.ChooseFactor -> "list:${round.number}"
         is MfaState.SendingChallenge -> if (round.showsList) "list:${round.number}" else "sending:${round.number}"
         is MfaState.PushWaiting -> "push:${round.number}"
-        is MfaState.PhoneCode -> "phone:${round.number}"
+        is MfaState.CodeEntry -> "code:${round.number}"
         is MfaState.Failed -> "failed"
     }
 
@@ -134,7 +137,7 @@ private val MfaState?.navigationDepth: Int
         is MfaState.ChooseFactor -> round.depth
         is MfaState.SendingChallenge -> round.depth
         is MfaState.PushWaiting -> round.depth + 1
-        is MfaState.PhoneCode -> round.depth + 1
+        is MfaState.CodeEntry -> round.depth + 1
         is MfaState.Failed -> Int.MAX_VALUE
     }
 

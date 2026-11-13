@@ -21,6 +21,9 @@ internal interface MfaRepository {
     /** Sends the code to the phone; the answer is true while the server still offers to send it again. */
     suspend fun sendPhoneCode(factor: MfaFactor.Phone): Result<Boolean, MfaError>
 
-    /** Sends the code the user typed for the phone code that went out last. */
+    /** Sends the code to the email address; the answer is true while the server still offers that address. */
+    suspend fun sendEmailCode(factor: MfaFactor.Email): Result<Boolean, MfaError>
+
+    /** Sends the code the user typed for the code, phone or email, that went out last. */
     suspend fun verifyCode(code: String): Result<CodeStatus, MfaError>
 }

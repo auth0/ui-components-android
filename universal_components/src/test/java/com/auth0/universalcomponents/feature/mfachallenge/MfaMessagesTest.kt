@@ -178,6 +178,44 @@ class MfaMessagesTest {
     }
 
     @Test
+    fun `email challenge - nothing set - every word is the string resource's, with the address filled in`() {
+        val words = MfaMessages().resolve(resources).emailChallenge
+
+        assertThat(words.title).isEqualTo(default(R.string.auth0_mfa_email_challenge_title))
+        assertThat(words.description("j***@example.com"))
+            .isEqualTo(default(R.string.auth0_mfa_email_challenge_description, "j***@example.com"))
+        assertThat(words.descriptionUnnamed)
+            .isEqualTo(default(R.string.auth0_mfa_email_challenge_description_unnamed))
+        assertThat(words.codeLabel).isEqualTo(default(R.string.auth0_mfa_email_challenge_code_label))
+        assertThat(words.verifyButton).isEqualTo(default(R.string.auth0_mfa_email_challenge_verify_button))
+        assertThat(words.wrongCode).isEqualTo(default(R.string.auth0_mfa_email_challenge_wrong_code))
+        assertThat(words.row.title).isEqualTo(default(R.string.auth0_mfa_email_challenge_row_title))
+        assertThat(words.row.description).isEqualTo(default(R.string.auth0_mfa_email_challenge_row_description))
+        assertThat(words.resend.button).isEqualTo(default(R.string.auth0_mfa_email_challenge_resend_button))
+        assertThat(words.resend.cooldown(30)).isEqualTo(default(R.string.auth0_mfa_email_challenge_resend_cooldown, 30))
+    }
+
+    @Test
+    fun `email challenge - some set - replaces those, the others keep their defaults`() {
+        val words = MfaMessages {
+            emailChallenge {
+                title = "Check your inbox"
+                description = { address -> "Mailed to $address" }
+                row { title = "Email" }
+                resend { cooldown = { seconds -> "Wait $seconds" } }
+            }
+        }.resolve(resources).emailChallenge
+
+        assertThat(words.title).isEqualTo("Check your inbox")
+        assertThat(words.description("j***@example.com")).isEqualTo("Mailed to j***@example.com")
+        assertThat(words.row.title).isEqualTo("Email")
+        assertThat(words.row.description).isEqualTo(default(R.string.auth0_mfa_email_challenge_row_description))
+        assertThat(words.resend.cooldown(5)).isEqualTo("Wait 5")
+        assertThat(words.resend.button).isEqualTo(default(R.string.auth0_mfa_email_challenge_resend_button))
+        assertThat(words.verifyAnotherWay).isEqualTo(default(R.string.auth0_mfa_email_challenge_verify_another_way))
+    }
+
+    @Test
     fun `a word with a percent sign - is read as it is, never formatted`() {
         val sure = mockk<Resources>()
         every { sure.getString(any<Int>()) } returns "100% sure"

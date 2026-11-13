@@ -4,6 +4,7 @@ import com.auth0.android.embedded.EmbeddedAuthError
 import com.auth0.android.embedded.EmbeddedAuthError.InsufficientAuthorization.Reason
 import com.auth0.android.embedded.EmbeddedAuthException
 import com.auth0.android.embedded.authorize.NextAction
+import com.auth0.android.embedded.authorize.OtpChannel
 import com.auth0.android.embedded.authorize.OtpType
 import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
 import com.auth0.universalcomponents.data.embeddedauth.INVALID_CODE_REASONS
@@ -12,6 +13,7 @@ import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.mfaError
 import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFactors
+import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.ways
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
@@ -75,17 +77,35 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
         get() = (error as? EmbeddedAuthException)?.error == EmbeddedAuthError.AuthorizationRejected
 
     override suspend fun sendPhoneCode(factor: MfaFactor.Phone): Result<Boolean, MfaError> =
-        when (val sent = steps.run { challengePhone(factor.index, factor.delivery) }) {
-            // The code is out once the server asks for it to be verified.
-            is StepAnswer.Next ->
-                if (sent.actions.any { it is NextAction.VerifyOtp }) {
-                    Result.Success(sent.actions.any { it is NextAction.ChallengePhone })
-                } else {
-                    unexpected("The code was sent without a way to verify it")
-                }
-            is StepAnswer.Failed -> Result.Error(sent.mfaError)
-            is StepAnswer.Done -> unexpected("Sending a code signed in")
+        steps.run { challengePhone(factor.index, factor.delivery) }.toCodeSent(PHONE_CHANNELS) { actions ->
+            // This phone, this way: another phone, or this one by another way, is not the code just sent.
+            actions.any { it is NextAction.ChallengePhone && it.index == factor.index && factor.delivery in it.ways }
         }
+
+    override suspend fun sendEmailCode(factor: MfaFactor.Email): Result<Boolean, MfaError> =
+        steps.run { challengeEmail(factor.index) }.toCodeSent(EMAIL_CHANNELS) { actions ->
+            actions.any { it is NextAction.ChallengeEmail && it.index == factor.index }
+        }
+
+    /**
+     * The code is out once the server asks for it to be verified on one of [channels]. A user with an authenticator app
+     * is asked for its code in every answer, so a request to verify on any other channel says nothing about this code.
+     * [offersAgain] reads from the answer's menu whether the server still offers to send it again, which differs for a
+     * phone and an email address.
+     */
+    private fun StepAnswer<Void?>.toCodeSent(
+        channels: Set<OtpChannel>,
+        offersAgain: (List<NextAction>) -> Boolean,
+    ): Result<Boolean, MfaError> = when (this) {
+        is StepAnswer.Next ->
+            if (actions.any { it is NextAction.VerifyOtp && it.channel in channels }) {
+                Result.Success(offersAgain(actions))
+            } else {
+                unexpected("The code was sent without a way to verify it")
+            }
+        is StepAnswer.Failed -> Result.Error(mfaError)
+        is StepAnswer.Done -> unexpected("Sending a code signed in")
+    }
 
     override suspend fun verifyCode(code: String): Result<CodeStatus, MfaError> =
         when (val verified = steps.run { verifyOtp(code, OtpType.OOB) }) {
@@ -125,5 +145,11 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
 
     private companion object {
         private const val TAG = "MfaRepository"
+
+        /** Where the server asks for the code it sent to a phone, whether it was texted or spoken. */
+        val PHONE_CHANNELS = setOf(OtpChannel.SMS, OtpChannel.VOICE)
+
+        /** Where the server asks for the code it sent to an email address. */
+        val EMAIL_CHANNELS = setOf(OtpChannel.EMAIL)
     }
 }

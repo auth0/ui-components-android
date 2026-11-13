@@ -116,6 +116,7 @@ internal fun MfaMessages.resolve(resources: Resources): ResolvedMfaMessages {
             verifyAnotherWay = word(push.verifyAnotherWay, R.string.auth0_mfa_push_challenge_verify_another_way),
         ),
         phoneChallenge = phoneChallenge.resolve(resources),
+        emailChallenge = emailChallenge.resolve(resources),
     )
 }
 
@@ -151,6 +152,33 @@ private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMf
         verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_phone_challenge_verify_another_way),
         rowText = rowText ?: { resources.getString(R.string.auth0_mfa_phone_challenge_row_text) },
         rowVoice = rowVoice ?: { resources.getString(R.string.auth0_mfa_phone_challenge_row_voice) },
+    )
+}
+
+/** The words of the email code screen and its list row, resolved the same way as the rest. */
+private fun MfaMessages.EmailChallenge.resolve(resources: Resources): ResolvedMfaMessages.EmailChallenge {
+    fun word(override: String?, @StringRes id: Int) = override ?: resources.getString(id)
+
+    return ResolvedMfaMessages.EmailChallenge(
+        row = ResolvedMfaMessages.Message(
+            word(row.title, R.string.auth0_mfa_email_challenge_row_title),
+            word(row.description, R.string.auth0_mfa_email_challenge_row_description),
+        ),
+        title = word(title, R.string.auth0_mfa_email_challenge_title),
+        description = description ?: { address ->
+            resources.getString(R.string.auth0_mfa_email_challenge_description, address)
+        },
+        descriptionUnnamed = word(descriptionUnnamed, R.string.auth0_mfa_email_challenge_description_unnamed),
+        codeLabel = word(codeLabel, R.string.auth0_mfa_email_challenge_code_label),
+        verifyButton = word(verifyButton, R.string.auth0_mfa_email_challenge_verify_button),
+        wrongCode = word(wrongCode, R.string.auth0_mfa_email_challenge_wrong_code),
+        resend = ResolvedMfaMessages.EmailChallenge.Resend(
+            button = word(resend.button, R.string.auth0_mfa_email_challenge_resend_button),
+            cooldown = resend.cooldown ?: { seconds ->
+                resources.getString(R.string.auth0_mfa_email_challenge_resend_cooldown, seconds)
+            },
+        ),
+        verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_email_challenge_verify_another_way),
     )
 }
 

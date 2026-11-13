@@ -327,7 +327,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, push first and each kind in the server's order`() = runTest {
+    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, listed push, text, voice, email`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
             challengeEmail(at = 0),
             sdkInstance<NextAction.ChallengePhone>(
@@ -350,6 +350,7 @@ class EmbeddedLoginRepositoryImplTest {
                     MfaFactor.Push(3, OTHER_DEVICE),
                     MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.TEXT),
                     MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.VOICE),
+                    MfaFactor.Email(0, EMAIL),
                 ),
             ),
         )
@@ -360,10 +361,9 @@ class EmbeddedLoginRepositoryImplTest {
         listOf(
             verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
             verifyOtp(OtpChannel.SMS, null),
-            // Second factors other than push and a phone code aren't supported yet.
+            // Second factors other than push, a phone code and an email code aren't supported yet.
             verifyOtp(OtpChannel.TOTP, null),
             NextAction.VerifyRecoveryCode,
-            challengeEmail(at = 0),
         ).forEach { nextAction ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns step(nextAction)
 

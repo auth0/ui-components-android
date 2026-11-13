@@ -16,8 +16,6 @@ package com.auth0.universalcomponents.feature.mfachallenge
  *     errors { rejected { title = "Denied" } }
  * }
  * ```
- *
- * The key paths are the same as on iOS.
  */
 class MfaMessages private constructor(
     internal val authenticatorList: AuthenticatorList,
@@ -25,6 +23,7 @@ class MfaMessages private constructor(
     internal val errors: Errors,
     internal val pushChallenge: PushChallenge,
     internal val phoneChallenge: PhoneChallenge,
+    internal val emailChallenge: EmailChallenge,
 ) {
 
     /** A title and a description, either of which can be changed. */
@@ -155,6 +154,43 @@ class MfaMessages private constructor(
         }
     }
 
+    /** Typing the code that was sent to an email address. */
+    class EmailChallenge internal constructor() {
+        internal val row = Message()
+
+        var title: String? = null
+
+        /** Takes the email address as the server hides it. */
+        var description: ((address: String) -> String)? = null
+
+        /** For a code sent when the server gave no address. */
+        var descriptionUnnamed: String? = null
+
+        /** The label above the code boxes. */
+        var codeLabel: String? = null
+        var verifyButton: String? = null
+
+        /** Under the code field after the server refused a code. */
+        var wrongCode: String? = null
+        var verifyAnotherWay: String? = null
+        internal val resend = Resend()
+
+        fun resend(configure: Resend.() -> Unit) = resend.configure()
+
+        /**
+         * How the factor looks in the list. The title is the factor's name, with the address under it; the description
+         * sits there instead when the server gave no address.
+         */
+        fun row(configure: Message.() -> Unit) = row.configure()
+
+        class Resend internal constructor() {
+            var button: String? = null
+
+            /** Takes the seconds left until Resend opens. */
+            var cooldown: ((seconds: Int) -> String)? = null
+        }
+    }
+
     companion object {
 
         /**
@@ -173,6 +209,7 @@ class MfaMessages private constructor(
         private val errors = Errors()
         private val pushChallenge = PushChallenge()
         private val phoneChallenge = PhoneChallenge()
+        private val emailChallenge = EmailChallenge()
 
         fun authenticatorList(configure: AuthenticatorList.() -> Unit) = authenticatorList.configure()
 
@@ -184,6 +221,9 @@ class MfaMessages private constructor(
 
         fun phoneChallenge(configure: PhoneChallenge.() -> Unit) = phoneChallenge.configure()
 
-        internal fun build() = MfaMessages(authenticatorList, loading, errors, pushChallenge, phoneChallenge)
+        fun emailChallenge(configure: EmailChallenge.() -> Unit) = emailChallenge.configure()
+
+        internal fun build() =
+            MfaMessages(authenticatorList, loading, errors, pushChallenge, phoneChallenge, emailChallenge)
     }
 }
