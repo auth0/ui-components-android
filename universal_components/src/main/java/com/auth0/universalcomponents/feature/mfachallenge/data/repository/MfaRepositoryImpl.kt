@@ -75,17 +75,31 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
         get() = (error as? EmbeddedAuthException)?.error == EmbeddedAuthError.AuthorizationRejected
 
     override suspend fun sendPhoneCode(factor: MfaFactor.Phone): Result<Boolean, MfaError> =
-        when (val sent = steps.run { challengePhone(factor.index, factor.delivery) }) {
-            // The code is out once the server asks for it to be verified.
-            is StepAnswer.Next ->
-                if (sent.actions.any { it is NextAction.VerifyOtp }) {
-                    Result.Success(sent.actions.any { it is NextAction.ChallengePhone })
-                } else {
-                    unexpected("The code was sent without a way to verify it")
-                }
-            is StepAnswer.Failed -> Result.Error(sent.mfaError)
-            is StepAnswer.Done -> unexpected("Sending a code signed in")
+        steps.run { challengePhone(factor.index, factor.delivery) }.toCodeSent { actions ->
+            actions.any { it is NextAction.ChallengePhone }
         }
+
+    override suspend fun sendEmailCode(factor: MfaFactor.Email): Result<Boolean, MfaError> =
+        steps.run { challengeEmail(factor.index) }.toCodeSent { actions ->
+            actions.any { it is NextAction.ChallengeEmail && it.index == factor.index }
+        }
+
+    /**
+     * The code is out once the server asks for it to be verified. [offersAgain] reads from the answer's menu whether the
+     * server still offers to send it again, which differs for a phone and an email address.
+     */
+    private fun StepAnswer<Void?>.toCodeSent(
+        offersAgain: (List<NextAction>) -> Boolean,
+    ): Result<Boolean, MfaError> = when (this) {
+        is StepAnswer.Next ->
+            if (actions.any { it is NextAction.VerifyOtp }) {
+                Result.Success(offersAgain(actions))
+            } else {
+                unexpected("The code was sent without a way to verify it")
+            }
+        is StepAnswer.Failed -> Result.Error(mfaError)
+        is StepAnswer.Done -> unexpected("Sending a code signed in")
+    }
 
     override suspend fun verifyCode(code: String): Result<CodeStatus, MfaError> =
         when (val verified = steps.run { verifyOtp(code, OtpType.OOB) }) {

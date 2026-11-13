@@ -15,6 +15,8 @@ class MfaReducerTest {
     private val twoDevices = MfaReducer(listOf(PHONE, TABLET))
     private val smsOnly = MfaReducer(listOf(SMS))
     private val smsOrPush = MfaReducer(listOf(SMS, PHONE))
+    private val emailOnly = MfaReducer(listOf(EMAIL))
+    private val emailOrPush = MfaReducer(listOf(EMAIL, PHONE))
 
     // region start
 
@@ -537,7 +539,7 @@ class MfaReducerTest {
 
     @Test
     fun `phone code sent - shows the code screen and starts the resend wait`() {
-        val update = smsOnly.handleOutcome(MfaState.SendingChallenge(BY_SMS, SMS), MfaOutcome.PhoneCodeSent(true))
+        val update = smsOnly.handleOutcome(MfaState.SendingChallenge(BY_SMS, SMS), MfaOutcome.CodeSent(true))
 
         assertThat(update.state).isEqualTo(codeReady(BY_SMS))
         assertThat(update.commands).containsExactly(MfaCommand.CountDownResend)
@@ -547,14 +549,14 @@ class MfaReducerTest {
     fun `phone code sent - after the user left that screen - is dropped`() {
         val list = MfaState.ChooseFactor(SMS_OR_PUSH)
 
-        assertThat(smsOrPush.handleOutcome(list, MfaOutcome.PhoneCodeSent(true))).isEqualTo(MfaUpdate(list))
+        assertThat(smsOrPush.handleOutcome(list, MfaOutcome.CodeSent(true))).isEqualTo(MfaUpdate(list))
     }
 
     @Test
     fun `phone code send fails - the first one, or a resend - ends MFA, and a stale one is dropped`() {
         val sending = smsOnly.handleOutcome(MfaState.SendingChallenge(BY_SMS, SMS), MfaOutcome.SendFailed(NETWORK))
         val resending = smsOnly.handleOutcome(
-            codeReady(BY_SMS).copy(phase = PhoneCodePhase.Resending),
+            codeReady(BY_SMS).copy(phase = CodePhase.Resending),
             MfaOutcome.SendFailed(NETWORK),
         )
         val stale = smsOnly.handleOutcome(codeReady(BY_SMS), MfaOutcome.SendFailed(NETWORK))
@@ -568,14 +570,25 @@ class MfaReducerTest {
     fun `submit - a typed code - is checked, and the screen waits`() {
         val update = smsOnly.handleIntent(codeReady(BY_SMS), MfaIntent.SubmitCode("123456"))
 
-        assertThat(update.state).isEqualTo(codeReady(BY_SMS).copy(phase = PhoneCodePhase.Verifying))
+        assertThat(update.state).isEqualTo(codeReady(BY_SMS).copy(phase = CodePhase.Verifying))
         assertThat(update.commands).containsExactly(MfaCommand.VerifyCode("123456"))
     }
 
     @Test
+    fun `submit - a code that is not whole - is never sent, for a phone or an email`() {
+        val phone = codeReady(BY_SMS)
+        val email = emailReady(BY_EMAIL)
+
+        listOf("", " ", "12345", "1234567", "12345a", "12 456").forEach { code ->
+            assertThat(smsOnly.handleIntent(phone, MfaIntent.SubmitCode(code))).isEqualTo(MfaUpdate(phone))
+            assertThat(emailOnly.handleIntent(email, MfaIntent.SubmitCode(code))).isEqualTo(MfaUpdate(email))
+        }
+    }
+
+    @Test
     fun `submit - nothing typed, a check already on its way, or off the code screen - does nothing`() {
-        val verifying = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Verifying)
-        val resending = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Resending)
+        val verifying = codeReady(BY_SMS).copy(phase = CodePhase.Verifying)
+        val resending = codeReady(BY_SMS).copy(phase = CodePhase.Resending)
         val list = MfaState.ChooseFactor(SMS_OR_PUSH)
 
         val ready = codeReady(BY_SMS)
@@ -588,19 +601,19 @@ class MfaReducerTest {
 
     @Test
     fun `wrong code - stays on the screen with the line shown, and typing again clears it`() {
-        val verifying = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Verifying)
+        val verifying = codeReady(BY_SMS).copy(phase = CodePhase.Verifying)
 
         val rejected = smsOnly.handleOutcome(verifying, MfaOutcome.CodeRejected)
         val again = smsOnly.handleIntent(rejected.state, MfaIntent.SubmitCode("654321"))
 
         assertThat(rejected.state).isEqualTo(codeReady(BY_SMS).copy(isWrongCode = true))
         assertThat(rejected.effect).isNull()
-        assertThat((again.state as MfaState.PhoneCode).isWrongCode).isFalse()
+        assertThat((again.state as MfaState.CodeEntry).isWrongCode).isFalse()
     }
 
     @Test
     fun `code check fails - expired, too many tries, network - ends MFA with that error`() {
-        val verifying = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Verifying)
+        val verifying = codeReady(BY_SMS).copy(phase = CodePhase.Verifying)
         val expired = MfaError.TokenExpired()
 
         val update = smsOnly.handleOutcome(verifying, MfaOutcome.CodeFailed(expired))
@@ -622,7 +635,7 @@ class MfaReducerTest {
     @Test
     fun `right code - signs in, from the code screen`() {
         val credentials = mockk<Credentials>()
-        val verifying = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Verifying)
+        val verifying = codeReady(BY_SMS).copy(phase = CodePhase.Verifying)
 
         val update = smsOnly.handleOutcome(verifying, MfaOutcome.SignedIn(credentials))
 
@@ -631,7 +644,7 @@ class MfaReducerTest {
 
     @Test
     fun `right code - and the server asks for one more factor - starts the next round`() {
-        val verifying = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Verifying)
+        val verifying = codeReady(BY_SMS).copy(phase = CodePhase.Verifying)
 
         val update = smsOnly.handleOutcome(verifying, MfaOutcome.AnotherFactor(listOf(PHONE)))
 
@@ -643,7 +656,7 @@ class MfaReducerTest {
         val update = smsOnly.handleIntent(codeReady(BY_SMS, secondsLeft = 0), MfaIntent.Resend)
 
         assertThat(update.state).isEqualTo(
-            codeReady(BY_SMS, secondsLeft = 0).copy(phase = PhoneCodePhase.Resending, canResend = false),
+            codeReady(BY_SMS, secondsLeft = 0).copy(phase = CodePhase.Resending, canResend = false),
         )
         assertThat(update.commands).containsExactly(MfaCommand.SendPhoneCode(SMS))
     }
@@ -652,7 +665,7 @@ class MfaReducerTest {
     fun `resend code - wait not over, not offered, or a check on its way - does nothing`() {
         val waitingOut = codeReady(BY_SMS)
         val notOffered = codeReady(BY_SMS, secondsLeft = 0, canResend = false)
-        val verifying = codeReady(BY_SMS, secondsLeft = 0).copy(phase = PhoneCodePhase.Verifying)
+        val verifying = codeReady(BY_SMS, secondsLeft = 0).copy(phase = CodePhase.Verifying)
 
         listOf(waitingOut, notOffered, verifying).forEach { state ->
             assertThat(smsOnly.handleIntent(state, MfaIntent.Resend)).isEqualTo(MfaUpdate(state))
@@ -661,9 +674,9 @@ class MfaReducerTest {
 
     @Test
     fun `resend code sent - ready again with a new wait, and the wrong-code line gone`() {
-        val resending = codeReady(BY_SMS, secondsLeft = 0).copy(phase = PhoneCodePhase.Resending, isWrongCode = true)
+        val resending = codeReady(BY_SMS, secondsLeft = 0).copy(phase = CodePhase.Resending, isWrongCode = true)
 
-        val update = smsOnly.handleOutcome(resending, MfaOutcome.PhoneCodeSent(canResend = false))
+        val update = smsOnly.handleOutcome(resending, MfaOutcome.CodeSent(canResend = false))
 
         assertThat(update.state).isEqualTo(codeReady(BY_SMS, canResend = false))
         assertThat(update.commands).containsExactly(MfaCommand.CountDownResend)
@@ -675,9 +688,9 @@ class MfaReducerTest {
         val last = smsOnly.handleSecondPassed(one.state)
         val done = smsOnly.handleSecondPassed(last.state)
 
-        assertThat((one.state as MfaState.PhoneCode).resendSecondsLeft).isEqualTo(1)
+        assertThat((one.state as MfaState.CodeEntry).resendSecondsLeft).isEqualTo(1)
         assertThat(one.commands).containsExactly(MfaCommand.CountDownResend)
-        assertThat((last.state as MfaState.PhoneCode).resendSecondsLeft).isEqualTo(0)
+        assertThat((last.state as MfaState.CodeEntry).resendSecondsLeft).isEqualTo(0)
         assertThat(last.commands).isEmpty()
         assertThat(done).isEqualTo(MfaUpdate(last.state))
     }
@@ -692,8 +705,8 @@ class MfaReducerTest {
     @Test
     fun `verify another way - with one factor, or while a code is being checked or sent - does nothing`() {
         val alone = codeReady(BY_SMS)
-        val verifying = codeReady(SMS_OR_PUSH).copy(phase = PhoneCodePhase.Verifying)
-        val resending = codeReady(SMS_OR_PUSH).copy(phase = PhoneCodePhase.Resending)
+        val verifying = codeReady(SMS_OR_PUSH).copy(phase = CodePhase.Verifying)
+        val resending = codeReady(SMS_OR_PUSH).copy(phase = CodePhase.Resending)
 
         listOf(alone, verifying, resending).forEach { state ->
             assertThat(smsOrPush.handleIntent(state, MfaIntent.ChooseAnotherFactor)).isEqualTo(MfaUpdate(state))
@@ -711,13 +724,92 @@ class MfaReducerTest {
 
     @Test
     fun `back - while a code is being checked or sent - is ignored, but Cancel still leaves`() {
-        val verifying = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Verifying)
-        val resending = codeReady(BY_SMS).copy(phase = PhoneCodePhase.Resending)
+        val verifying = codeReady(BY_SMS).copy(phase = CodePhase.Verifying)
+        val resending = codeReady(BY_SMS).copy(phase = CodePhase.Resending)
 
         listOf(verifying, resending).forEach { state ->
             assertThat(smsOnly.handleIntent(state, MfaIntent.Back)).isEqualTo(MfaUpdate(state))
             assertThat(smsOnly.handleIntent(state, MfaIntent.Cancel).effect).isEqualTo(MfaEffect.Restart)
         }
+    }
+
+    // endregion
+
+    // region email code
+
+    @Test
+    fun `email - the only factor - sends its code first, with no screen of its own until it's out`() {
+        val update = emailOnly.start()
+
+        assertThat(update.state).isEqualTo(MfaState.SendingChallenge(BY_EMAIL, EMAIL))
+        assertThat(update.commands).containsExactly(MfaCommand.SendEmailCode(EMAIL))
+    }
+
+    @Test
+    fun `email - picked from the list - sends its code, with the list kept`() {
+        val update = emailOrPush.handleIntent(MfaState.ChooseFactor(EMAIL_OR_PUSH), MfaIntent.SelectFactor(EMAIL))
+
+        assertThat(update.state).isEqualTo(MfaState.SendingChallenge(EMAIL_OR_PUSH, EMAIL))
+        assertThat(update.commands).containsExactly(MfaCommand.SendEmailCode(EMAIL))
+    }
+
+    @Test
+    fun `email code sent - shows the code screen for that address and starts the resend wait`() {
+        val update = emailOnly.handleOutcome(MfaState.SendingChallenge(BY_EMAIL, EMAIL), MfaOutcome.CodeSent(true))
+
+        assertThat(update.state).isEqualTo(emailReady(BY_EMAIL))
+        assertThat(update.commands).containsExactly(MfaCommand.CountDownResend)
+    }
+
+    @Test
+    fun `email code - typed, wrong, then right - follows the same rules as a phone code`() {
+        val submitted = emailOnly.handleIntent(emailReady(BY_EMAIL), MfaIntent.SubmitCode("123456"))
+        val rejected = emailOnly.handleOutcome(submitted.state, MfaOutcome.CodeRejected)
+        val credentials = mockk<Credentials>()
+        val signedIn = emailOnly.handleOutcome(submitted.state, MfaOutcome.SignedIn(credentials))
+
+        assertThat(submitted.state).isEqualTo(emailReady(BY_EMAIL).copy(phase = CodePhase.Verifying))
+        assertThat(submitted.commands).containsExactly(MfaCommand.VerifyCode("123456"))
+        assertThat(rejected.state).isEqualTo(emailReady(BY_EMAIL).copy(isWrongCode = true))
+        assertThat(signedIn.effect).isEqualTo(MfaEffect.Authenticated(credentials))
+    }
+
+    @Test
+    fun `email code - resend - sends the code to the same address again`() {
+        val update = emailOnly.handleIntent(emailReady(BY_EMAIL, secondsLeft = 0), MfaIntent.Resend)
+
+        assertThat(update.state).isEqualTo(
+            emailReady(BY_EMAIL, secondsLeft = 0).copy(phase = CodePhase.Resending, canResend = false),
+        )
+        assertThat(update.commands).containsExactly(MfaCommand.SendEmailCode(EMAIL))
+    }
+
+    @Test
+    fun `email code - verify another way and back - go to the list with a choice, else start the sign-in over`() {
+        val switched = emailOrPush.handleIntent(emailReady(EMAIL_OR_PUSH), MfaIntent.ChooseAnotherFactor)
+        val back = emailOrPush.handleIntent(emailReady(EMAIL_OR_PUSH), MfaIntent.Back)
+        val alone = emailOnly.handleIntent(emailReady(BY_EMAIL), MfaIntent.Back)
+
+        assertThat(switched.state).isEqualTo(MfaState.ChooseFactor(EMAIL_OR_PUSH))
+        assertThat(back.state).isEqualTo(MfaState.ChooseFactor(EMAIL_OR_PUSH))
+        assertThat(alone.effect).isEqualTo(MfaEffect.Restart)
+    }
+
+    @Test
+    fun `email code send fails - the first one, or a resend - ends MFA, and a stale one is dropped`() {
+        val sending = emailOnly.handleOutcome(
+            MfaState.SendingChallenge(BY_EMAIL, EMAIL),
+            MfaOutcome.SendFailed(NETWORK),
+        )
+        val resending = emailOnly.handleOutcome(
+            emailReady(BY_EMAIL).copy(phase = CodePhase.Resending),
+            MfaOutcome.SendFailed(NETWORK),
+        )
+        val stale = emailOnly.handleOutcome(emailReady(BY_EMAIL), MfaOutcome.SendFailed(NETWORK))
+
+        assertThat(sending.state).isEqualTo(MfaState.Failed(NETWORK))
+        assertThat(resending.state).isEqualTo(MfaState.Failed(NETWORK))
+        assertThat(stale).isEqualTo(MfaUpdate(emailReady(BY_EMAIL)))
     }
 
     // endregion
@@ -751,13 +843,17 @@ class MfaReducerTest {
         round: MfaRound,
         secondsLeft: Int = MfaReducer.RESEND_COOLDOWN_SECONDS,
         canResend: Boolean = true,
-    ) = MfaState.PhoneCode(
+    ) = MfaState.CodeEntry(
         round = round,
         factor = SMS,
-        phase = PhoneCodePhase.Ready,
+        phase = CodePhase.Ready,
         canResend = canResend,
         resendSecondsLeft = secondsLeft,
     )
+
+    /** On the code screen for an email address right after the code went out. */
+    private fun emailReady(round: MfaRound, secondsLeft: Int = MfaReducer.RESEND_COOLDOWN_SECONDS) =
+        codeReady(round, secondsLeft).copy(factor = EMAIL)
 
     private fun checking(round: MfaRound, factor: MfaFactor.Push) =
         waiting(round, factor).copy(phase = PushPhase.Checking)
@@ -770,6 +866,9 @@ class MfaReducerTest {
         val SMS = MfaFactor.Phone(3, "***9239", PhoneDeliveryMethod.TEXT)
         val BY_SMS = MfaRound(1, listOf(SMS))
         val SMS_OR_PUSH = MfaRound(1, listOf(SMS, PHONE))
+        val EMAIL = MfaFactor.Email(5, "j***@example.com")
+        val BY_EMAIL = MfaRound(1, listOf(EMAIL))
+        val EMAIL_OR_PUSH = MfaRound(1, listOf(EMAIL, PHONE))
         val NETWORK = MfaError.Network(null)
         val DENIED_CAUSE = IllegalStateException("denied")
         const val POLL = 3_000L

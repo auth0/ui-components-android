@@ -31,7 +31,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             MfaIntent.ChooseAnotherFactor -> when {
                 state is MfaState.PushWaiting && state.round.canSwitch && state.phase != PushPhase.Resending ->
                     showList(state.round)
-                state is MfaState.PhoneCode && state.round.canSwitch && state.phase == PhoneCodePhase.Ready ->
+                state is MfaState.CodeEntry && state.round.canSwitch && state.phase == CodePhase.Ready ->
                     showList(state.round)
                 else -> unchanged
             }
@@ -43,15 +43,16 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
 
             MfaIntent.Resend -> when {
                 state is MfaState.PushWaiting && state.canResendNow -> resend(state)
-                state is MfaState.PhoneCode && state.canResendNow -> resendCode(state)
+                state is MfaState.CodeEntry && state.canResendNow -> resendCode(state)
                 else -> unchanged
             }
 
-            // Only a code that is ready for one, and not an empty one.
+            // Only a code that is ready for one, and only a whole one: the standard screen never sends less, and a
+            // replaced screen is held to the same rule, as on iOS.
             is MfaIntent.SubmitCode ->
-                if (state is MfaState.PhoneCode && state.phase == PhoneCodePhase.Ready && intent.code.isNotBlank()) {
+                if (state is MfaState.CodeEntry && state.phase == CodePhase.Ready && intent.code.isWholeCode()) {
                     MfaUpdate(
-                        state.copy(phase = PhoneCodePhase.Verifying, isWrongCode = false),
+                        state.copy(phase = CodePhase.Verifying, isWrongCode = false),
                         listOf(MfaCommand.VerifyCode(intent.code)),
                     )
                 } else {
@@ -63,7 +64,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     fun handleOutcome(state: MfaState, outcome: MfaOutcome): MfaUpdate = when (outcome) {
         is MfaOutcome.PushSent -> pushSent(state, outcome.pending)
         is MfaOutcome.PushPending -> pushPending(state, outcome.pending)
-        is MfaOutcome.PhoneCodeSent -> phoneCodeSent(state, outcome.canResend)
+        is MfaOutcome.CodeSent -> codeSent(state, outcome.canResend)
         MfaOutcome.CodeRejected -> codeRejected(state)
         is MfaOutcome.CodeFailed -> codeFailed(state, outcome.error)
         // Even after the user moved on: they did approve, so they're signed in. The host shows the success screen.
@@ -105,14 +106,14 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     fun handleSecondPassed(state: MfaState, seconds: Int = 1): MfaUpdate {
         val secondsLeft = when (state) {
             is MfaState.PushWaiting -> state.resendSecondsLeft
-            is MfaState.PhoneCode -> state.resendSecondsLeft
+            is MfaState.CodeEntry -> state.resendSecondsLeft
             else -> 0
         }
         if (secondsLeft == 0) return MfaUpdate(state)
         val left = (secondsLeft - maxOf(1, seconds)).coerceAtLeast(0)
         val counted = when (state) {
             is MfaState.PushWaiting -> state.copy(resendSecondsLeft = left)
-            is MfaState.PhoneCode -> state.copy(resendSecondsLeft = left)
+            is MfaState.CodeEntry -> state.copy(resendSecondsLeft = left)
             else -> state
         }
         return MfaUpdate(counted, if (left > 0) listOf(MfaCommand.CountDownResend) else emptyList())
@@ -132,8 +133,13 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     /** The challenge goes out first; its screen shows once it's out. */
     private fun select(round: MfaRound, factor: MfaFactor): MfaUpdate = when (factor) {
         is MfaFactor.Push -> MfaUpdate(MfaState.SendingChallenge(round, factor), listOf(MfaCommand.SendPush(factor)))
-        is MfaFactor.Phone ->
-            MfaUpdate(MfaState.SendingChallenge(round, factor), listOf(MfaCommand.SendPhoneCode(factor)))
+        is MfaFactor.Code -> MfaUpdate(MfaState.SendingChallenge(round, factor), listOf(sendCode(factor)))
+    }
+
+    /** Each way a code travels has its own call; the code the user types back is checked the same way for all. */
+    private fun sendCode(factor: MfaFactor.Code): MfaCommand = when (factor) {
+        is MfaFactor.Phone -> MfaCommand.SendPhoneCode(factor)
+        is MfaFactor.Email -> MfaCommand.SendEmailCode(factor)
     }
 
     /** A first push, or a resend, is out: the checks and the resend wait start. */
@@ -181,18 +187,18 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     }
 
     /** A first code, or a resend, is out: the resend wait starts and the user may type. */
-    private fun phoneCodeSent(state: MfaState, canResend: Boolean): MfaUpdate {
+    private fun codeSent(state: MfaState, canResend: Boolean): MfaUpdate {
         val ready = when {
-            state is MfaState.SendingChallenge && state.factor is MfaFactor.Phone -> MfaState.PhoneCode(
+            state is MfaState.SendingChallenge && state.factor is MfaFactor.Code -> MfaState.CodeEntry(
                 round = state.round,
                 factor = state.factor,
-                phase = PhoneCodePhase.Ready,
+                phase = CodePhase.Ready,
                 canResend = canResend,
                 resendSecondsLeft = RESEND_COOLDOWN_SECONDS,
             )
 
-            state is MfaState.PhoneCode && state.phase == PhoneCodePhase.Resending -> state.copy(
-                phase = PhoneCodePhase.Ready,
+            state is MfaState.CodeEntry && state.phase == CodePhase.Resending -> state.copy(
+                phase = CodePhase.Ready,
                 canResend = canResend,
                 resendSecondsLeft = RESEND_COOLDOWN_SECONDS,
                 isWrongCode = false,
@@ -206,15 +212,15 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
 
     /** A wrong code is not the end: the user may type another, and the screen says so. */
     private fun codeRejected(state: MfaState): MfaUpdate =
-        if (state is MfaState.PhoneCode && state.phase == PhoneCodePhase.Verifying) {
-            MfaUpdate(state.copy(phase = PhoneCodePhase.Ready, isWrongCode = true))
+        if (state is MfaState.CodeEntry && state.phase == CodePhase.Verifying) {
+            MfaUpdate(state.copy(phase = CodePhase.Ready, isWrongCode = true))
         } else {
             MfaUpdate(state)
         }
 
     /** Any other failure of the code check, such as an expired code, ends MFA, if the check is still the one on show. */
     private fun codeFailed(state: MfaState, error: MfaError): MfaUpdate =
-        if (state is MfaState.PhoneCode && state.phase == PhoneCodePhase.Verifying) fail(error) else MfaUpdate(state)
+        if (state is MfaState.CodeEntry && state.phase == CodePhase.Verifying) fail(error) else MfaUpdate(state)
 
     /**
      * The user approved and the sign-in needs one more factor: the next round starts with the server's new menu,
@@ -230,7 +236,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     private fun sendFailed(state: MfaState, error: MfaError): MfaUpdate {
         val isOnShow = state is MfaState.SendingChallenge ||
             (state is MfaState.PushWaiting && state.phase == PushPhase.Resending) ||
-            (state is MfaState.PhoneCode && state.phase == PhoneCodePhase.Resending)
+            (state is MfaState.CodeEntry && state.phase == CodePhase.Resending)
         return if (isOnShow) fail(error) else MfaUpdate(state)
     }
 
@@ -262,9 +268,9 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     )
 
     /** The code goes out again; until it's out the user can neither type nor leave the screen. */
-    private fun resendCode(state: MfaState.PhoneCode): MfaUpdate = MfaUpdate(
-        state.copy(phase = PhoneCodePhase.Resending, canResend = false),
-        listOf(MfaCommand.SendPhoneCode(state.factor)),
+    private fun resendCode(state: MfaState.CodeEntry): MfaUpdate = MfaUpdate(
+        state.copy(phase = CodePhase.Resending, canResend = false),
+        listOf(sendCode(state.factor)),
     )
 
     /**
@@ -280,8 +286,8 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             state.round.showsList -> showList(state.round)
             else -> restart(state)
         }
-        is MfaState.PhoneCode -> when {
-            state.phase != PhoneCodePhase.Ready -> MfaUpdate(state)
+        is MfaState.CodeEntry -> when {
+            state.phase != CodePhase.Ready -> MfaUpdate(state)
             state.round.showsList -> showList(state.round)
             else -> restart(state)
         }
@@ -302,21 +308,27 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
         get() = phase != PushPhase.Resending && canResend && resendSecondsLeft == 0
 
     /** The code is out, the server still offers another, and the resend wait is over. */
-    private val MfaState.PhoneCode.canResendNow: Boolean
-        get() = phase == PhoneCodePhase.Ready && canResend && resendSecondsLeft == 0
+    private val MfaState.CodeEntry.canResendNow: Boolean
+        get() = phase == CodePhase.Ready && canResend && resendSecondsLeft == 0
 
     private val MfaState.roundOrNull: MfaRound?
         get() = when (this) {
             is MfaState.ChooseFactor -> round
             is MfaState.SendingChallenge -> round
             is MfaState.PushWaiting -> round
-            is MfaState.PhoneCode -> round
+            is MfaState.CodeEntry -> round
             is MfaState.Failed -> null
         }
+
+    /** Six digits, the length the code boxes take. */
+    private fun String.isWholeCode(): Boolean = length == CODE_LENGTH && all(Char::isDigit)
 
     companion object {
         /** The same wait as resending an emailed code. */
         const val RESEND_COOLDOWN_SECONDS = 60
+
+        /** How many digits a code has. */
+        private const val CODE_LENGTH = 6
 
         /** Checks in a row that may fail on the network before MFA ends, as on iOS. */
         const val QUIET_RETRIES = 3

@@ -64,14 +64,14 @@ internal sealed interface MfaState {
     ) : MfaState
 
     /**
-     * A code went to the phone and waits to be typed. [phase] says what is on its way; [isWrongCode] is true after the
-     * server refused the last code. [canResend] is the server's say; Resend opens once [resendSecondsLeft] also reaches
-     * zero.
+     * A code went to the phone or the email address of [factor] and waits to be typed. [phase] says what is on its way;
+     * [isWrongCode] is true after the server refused the last code. [canResend] is the server's say; Resend opens once
+     * [resendSecondsLeft] also reaches zero.
      */
-    data class PhoneCode(
+    data class CodeEntry(
         val round: MfaRound,
-        val factor: MfaFactor.Phone,
-        val phase: PhoneCodePhase,
+        val factor: MfaFactor.Code,
+        val phase: CodePhase,
         val canResend: Boolean,
         val resendSecondsLeft: Int,
         val isWrongCode: Boolean = false,
@@ -95,7 +95,7 @@ internal sealed interface PushPhase {
 }
 
 /** What is on its way for the code screen on show; only one at a time. */
-internal enum class PhoneCodePhase {
+internal enum class CodePhase {
 
     /** Nothing: the user may type a code. */
     Ready,
@@ -124,7 +124,7 @@ internal sealed interface MfaIntent {
     /** Sends the code the user typed. */
     data class SubmitCode(val code: String) : MfaIntent
 
-    /** Sends the push, or the code, to the same device or phone again. */
+    /** Sends the push, or the code, to the same device, phone or address again. */
     data object Resend : MfaIntent
 }
 
@@ -149,7 +149,7 @@ internal sealed interface MfaOutcome {
     data class AnotherFactor(val factors: List<MfaFactor>) : MfaOutcome
 
     /** The code is out; [canResend] says whether the server still offers to send it again. */
-    data class PhoneCodeSent(val canResend: Boolean) : MfaOutcome
+    data class CodeSent(val canResend: Boolean) : MfaOutcome
 
     /** The server did not accept the typed code. */
     data object CodeRejected : MfaOutcome
@@ -177,6 +177,8 @@ internal sealed interface MfaCommand {
 
     data class SendPhoneCode(val factor: MfaFactor.Phone) : MfaCommand
 
+    data class SendEmailCode(val factor: MfaFactor.Email) : MfaCommand
+
     data class VerifyCode(val code: String) : MfaCommand
 
     /** Waits [afterMs], then says the next check is due; the reducer decides whether it still is. */
@@ -186,7 +188,7 @@ internal sealed interface MfaCommand {
     data object CheckPush : MfaCommand
 
     /**
-     * Cancels the wait before the next check, and a push or phone code still waiting for its turn at the SDK, so one
+     * Cancels the wait before the next check, and a push or code still waiting for its turn at the SDK, so one
      * the user has left behind is never sent. A call already on its way still finishes: the SDK can't stop it, and its
      * answer is dropped.
      */

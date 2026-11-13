@@ -316,8 +316,81 @@ class MfaRepositoryImplTest {
 
     // endregion
 
-    private fun verifyOtp(channel: OtpChannel): NextAction.VerifyOtp =
-        sdkInstance(OtpChannel::class.java to channel, String::class.java to SMS.maskedNumber)
+    // region email code
+
+    @Test
+    fun `sendEmailCode - sent - emails that address and says the server still offers it`() = runTest {
+        every { client.challengeEmail(EMAIL.index) } returns
+            step(verifyOtp(OtpChannel.EMAIL, EMAIL.address), challengeEmail())
+
+        assertThat(repository.sendEmailCode(EMAIL)).isEqualTo(Result.Success(true))
+
+        verify(exactly = 1) { client.challengeEmail(EMAIL.index) }
+    }
+
+    @Test
+    fun `sendEmailCode - this address is no longer offered - says resend isn't allowed`() = runTest {
+        every { client.challengeEmail(EMAIL.index) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL.address))
+        assertThat(repository.sendEmailCode(EMAIL)).isEqualTo(Result.Success(false))
+
+        // Another address still on offer is not this one.
+        every { client.challengeEmail(EMAIL.index) } returns
+            step(verifyOtp(OtpChannel.EMAIL, EMAIL.address), challengeEmail(index = EMAIL.index + 1))
+        assertThat(repository.sendEmailCode(EMAIL)).isEqualTo(Result.Success(false))
+    }
+
+    @Test
+    fun `sendEmailCode - nothing to verify it with, or it signed in - fails as unexpected`() = runTest {
+        every { client.challengeEmail(any()) } returns step(NextAction.VerifyRecoveryCode)
+        assertThat(repository.sendEmailCode(EMAIL).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+        every { client.challengeEmail(any()) } returns FakeRequestImpl(response = null)
+        assertThat(repository.sendEmailCode(EMAIL).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+    }
+
+    @Test
+    fun `sendEmailCode - the server refuses - fails in MFA's terms, with the SDK error as cause`() = runTest {
+        every { client.challengeEmail(any()) } returns failingWith(EmbeddedAuthError.TooManyAttempts)
+
+        val error = repository.sendEmailCode(EMAIL).mfaError()
+
+        assertThat(error).isInstanceOf(MfaError.TooManyAttempts::class.java)
+        assertThat(error.cause).isNotNull()
+    }
+
+    @Test
+    fun `verifyCode - an email code, right - signs in the same way as a phone code`() = runTest {
+        val credentials = mockk<Credentials>()
+        every { client.verifyOtp("654321", OtpType.OOB) } returns FakeRequestImpl(response = credentials)
+
+        assertThat(repository.verifyCode("654321")).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
+    }
+
+    @Test
+    fun `an email in the menu - is listed after the phone ways, one factor per address`() = runTest {
+        val other = MfaFactor.Email(8, "w***@example.com")
+        every { client.verifyOtp(any(), any()) } returns step(
+            challengeEmail(),
+            challengePush(),
+            challengePhone(),
+            challengeEmail(other.index, other.address),
+            reason = Reason.NONE,
+        )
+
+        val status = repository.verifyCode("123456")
+
+        assertThat(status).isEqualTo(
+            Result.Success(CodeStatus.AnotherFactor(listOf(PHONE, SMS, CALL, EMAIL, other))),
+        )
+    }
+
+    // endregion
+
+    private fun verifyOtp(channel: OtpChannel, destination: String = SMS.maskedNumber): NextAction.VerifyOtp =
+        sdkInstance(OtpChannel::class.java to channel, String::class.java to destination)
+
+    private fun challengeEmail(index: Int = EMAIL.index, address: String = EMAIL.address): NextAction.ChallengeEmail =
+        sdkInstance(Int::class.java to index, String::class.java to address)
 
     /** The phone [SMS] and [CALL] are made from, which the server offers both ways. */
     private fun challengePhone(): NextAction.ChallengePhone = sdkInstance(
@@ -340,6 +413,7 @@ class MfaRepositoryImplTest {
         val PHONE = MfaFactor.Push(2, "Jane's phone")
         val SMS = MfaFactor.Phone(4, "***9239", PhoneDeliveryMethod.TEXT)
         val CALL = SMS.copy(delivery = PhoneDeliveryMethod.VOICE)
+        val EMAIL = MfaFactor.Email(6, "j***@example.com")
         const val POLL_MS = 3_000
         const val SLOWER_MS = 5_000
     }

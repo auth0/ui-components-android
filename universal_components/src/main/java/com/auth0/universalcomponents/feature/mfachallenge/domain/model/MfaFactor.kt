@@ -5,7 +5,7 @@ import com.auth0.android.result.Credentials
 
 /**
  * A second way to prove who the user is, offered by the server once the first factor passed.
- * Push and a code sent to a phone are supported for now; more factors are added here one at a time.
+ * Push and a code sent to a phone or an email are supported for now; more factors are added here one at a time.
  */
 internal sealed interface MfaFactor {
 
@@ -13,10 +13,22 @@ internal sealed interface MfaFactor {
     data class Push(val index: Int, val deviceName: String) : MfaFactor
 
     /**
+     * A factor whose proof is a code the user types. They share one screen state, so the rules for a wrong code, Back,
+     * "Verify another way" and Resend are written once.
+     */
+    sealed interface Code : MfaFactor
+
+    /**
      * A code sent to a phone, by [delivery]. [index] is the server's handle for the phone and [maskedNumber] is the number
      * as the server hides it. A phone that can be texted and called is two factors, one per way, so each is its own row.
      */
-    data class Phone(val index: Int, val maskedNumber: String, val delivery: PhoneDeliveryMethod) : MfaFactor
+    data class Phone(val index: Int, val maskedNumber: String, val delivery: PhoneDeliveryMethod) : Code
+
+    /**
+     * A code sent to an email address. [index] is the server's handle for the address and [address] is the address as the
+     * server hides it, maybe blank.
+     */
+    data class Email(val index: Int, val address: String) : Code
 }
 
 /** Where a push stands after the server answered: sending it, or one check of it. */

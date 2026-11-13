@@ -4,11 +4,13 @@ import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListHeader
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListModel
+import com.auth0.universalcomponents.feature.mfachallenge.EmailChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ErrorModel
 import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaExit
 import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorId
+import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorStep
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
@@ -53,28 +55,52 @@ internal fun MfaState.toMfaStep(onIntent: (MfaIntent) -> Unit, onLeave: () -> Un
             ),
         )
 
-        is MfaState.PhoneCode -> MfaStep.Factor(
+        is MfaState.CodeEntry -> MfaStep.Factor(
             MfaFactorStep(
-                factor = MfaFactorId.Phone,
+                factor = state.factor.factorId,
                 round = state.round.number,
-                model = PhoneChallengeModel(
-                    phoneNumber = state.factor.maskedNumber,
-                    delivery = state.factor.delivery.toDelivery(),
-                    isWrongCode = state.isWrongCode,
-                    isVerifying = state.phase == PhoneCodePhase.Verifying,
-                    isResending = state.phase == PhoneCodePhase.Resending,
-                    canResend = state.canResend,
-                    resendAvailableIn = state.resendSecondsLeft,
-                    canSwitch = state.round.canSwitch,
-                    submit = { code -> onIntent(MfaIntent.SubmitCode(code)) },
-                    resend = { onIntent(MfaIntent.Resend) },
-                    switchFactor = { onIntent(MfaIntent.ChooseAnotherFactor) },
-                    cancel = cancel,
-                ),
+                model = state.toModel(onIntent, cancel),
             ),
         )
 
         is MfaState.Failed -> MfaStep.Error(ErrorModel(state.error, MfaExit.StartOver, leave = onLeave))
+    }
+}
+
+/** The code screen's model: the same actions for a code sent to a phone or to an email address. */
+private fun MfaState.CodeEntry.toModel(onIntent: (MfaIntent) -> Unit, cancel: () -> Unit): MfaFactorModel {
+    val submit = { code: String -> onIntent(MfaIntent.SubmitCode(code)) }
+    val resend = { onIntent(MfaIntent.Resend) }
+    val switchFactor = { onIntent(MfaIntent.ChooseAnotherFactor) }
+    return when (val factor = factor) {
+        is MfaFactor.Phone -> PhoneChallengeModel(
+            phoneNumber = factor.maskedNumber,
+            delivery = factor.delivery.toDelivery(),
+            isWrongCode = isWrongCode,
+            isVerifying = phase == CodePhase.Verifying,
+            isResending = phase == CodePhase.Resending,
+            canResend = canResend,
+            resendAvailableIn = resendSecondsLeft,
+            canSwitch = round.canSwitch,
+            submit = submit,
+            resend = resend,
+            switchFactor = switchFactor,
+            cancel = cancel,
+        )
+
+        is MfaFactor.Email -> EmailChallengeModel(
+            address = factor.address,
+            isWrongCode = isWrongCode,
+            isVerifying = phase == CodePhase.Verifying,
+            isResending = phase == CodePhase.Resending,
+            canResend = canResend,
+            resendAvailableIn = resendSecondsLeft,
+            canSwitch = round.canSwitch,
+            submit = submit,
+            resend = resend,
+            switchFactor = switchFactor,
+            cancel = cancel,
+        )
     }
 }
 
@@ -100,12 +126,14 @@ private fun MfaFactor.row() = AuthenticatorListModel.Row(
     title = when (this) {
         is MfaFactor.Push -> deviceName
         is MfaFactor.Phone -> maskedNumber
+        is MfaFactor.Email -> address
     },
     subtitle = null,
     icon = when (this) {
         is MfaFactor.Push -> R.drawable.ic_device
         is MfaFactor.Phone ->
             if (delivery == PhoneDeliveryMethod.VOICE) R.drawable.ic_mfa_voice else R.drawable.ic_mfa_sms
+        is MfaFactor.Email -> R.drawable.ic_mfa_email
     },
     delivery = (this as? MfaFactor.Phone)?.delivery?.toDelivery(),
 )
@@ -114,16 +142,18 @@ private val MfaFactor.factorId: MfaFactorId
     get() = when (this) {
         is MfaFactor.Push -> MfaFactorId.Push
         is MfaFactor.Phone -> MfaFactorId.Phone
+        is MfaFactor.Email -> MfaFactorId.Email
     }
 
 /**
- * One row per device, and per way a phone is reached: the server's handle for the device tells two phones with push
- * apart, and a phone that can be texted and called is two rows.
+ * One row per device, per way a phone is reached, and per email address: the server's handle for the device tells two
+ * phones with push apart, and a phone that can be texted and called is two rows.
  */
 private val MfaFactor.rowId: String
     get() = when (this) {
         is MfaFactor.Push -> "${MfaFactorId.Push.value}:$index"
         is MfaFactor.Phone -> "${MfaFactorId.Phone.value}:$index:${delivery.name}"
+        is MfaFactor.Email -> "${MfaFactorId.Email.value}:$index"
     }
 
 private fun PhoneDeliveryMethod.toDelivery() = when (this) {

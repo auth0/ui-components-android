@@ -65,6 +65,11 @@ class MfaScreens private constructor(
             replace(MfaFactorId.Phone) { model, messages -> if (model is PhoneChallengeModel) content(model, messages) }
         }
 
+        /** Typing the code that was sent to an email address. */
+        fun emailChallenge(content: @Composable (EmailChallengeModel, ResolvedMfaMessages) -> Unit) {
+            replace(MfaFactorId.Email) { model, messages -> if (model is EmailChallengeModel) content(model, messages) }
+        }
+
         internal fun build() = MfaScreens(authenticatorList, error, factors.toMap())
     }
 }

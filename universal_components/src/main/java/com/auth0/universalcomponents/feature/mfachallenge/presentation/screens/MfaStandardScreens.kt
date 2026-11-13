@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListHeader
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListModel
+import com.auth0.universalcomponents.feature.mfachallenge.EmailChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ErrorModel
 import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
@@ -181,16 +182,118 @@ internal fun MfaPhoneChallengeScreen(
     messages: ResolvedMfaMessages,
     modifier: Modifier = Modifier,
 ) {
-    val dimensions = Auth0Theme.dimensions
     val words = messages.phoneChallenge
+    MfaCodeEntry(
+        words = CodeEntryWords(
+            title = words.title,
+            subtitle = when (model.delivery) {
+                PhoneDelivery.Text -> words.description(model.phoneNumber)
+                PhoneDelivery.Voice -> words.descriptionVoice(model.phoneNumber)
+            },
+            codeLabel = words.codeLabel,
+            verifyButton = words.verifyButton,
+            wrongCode = words.wrongCode,
+            resendButton = words.resend.button,
+            resendCooldown = words.resend.cooldown,
+            verifyAnotherWay = words.verifyAnotherWay,
+        ),
+        controls = CodeEntryControls(
+            isWrongCode = model.isWrongCode,
+            isVerifying = model.isVerifying,
+            isResending = model.isResending,
+            canResend = model.canResend,
+            resendAvailableIn = model.resendAvailableIn,
+            canSwitch = model.canSwitch,
+            submit = model.submit,
+            resend = model.resend,
+            switchFactor = model.switchFactor,
+        ),
+        modifier = modifier,
+    )
+}
+
+/**
+ * Typing the code that went to [EmailChallengeModel.address]. It follows the phone code screen's rules; when the server
+ * gave no address, the line under the title says the code went by email without naming it.
+ */
+@Composable
+internal fun MfaEmailChallengeScreen(
+    model: EmailChallengeModel,
+    messages: ResolvedMfaMessages,
+    modifier: Modifier = Modifier,
+) {
+    val words = messages.emailChallenge
+    MfaCodeEntry(
+        words = CodeEntryWords(
+            title = words.title,
+            subtitle = if (model.address.isBlank()) words.descriptionUnnamed else words.description(model.address),
+            codeLabel = words.codeLabel,
+            verifyButton = words.verifyButton,
+            wrongCode = words.wrongCode,
+            resendButton = words.resend.button,
+            resendCooldown = words.resend.cooldown,
+            verifyAnotherWay = words.verifyAnotherWay,
+        ),
+        controls = CodeEntryControls(
+            isWrongCode = model.isWrongCode,
+            isVerifying = model.isVerifying,
+            isResending = model.isResending,
+            canResend = model.canResend,
+            resendAvailableIn = model.resendAvailableIn,
+            canSwitch = model.canSwitch,
+            submit = model.submit,
+            resend = model.resend,
+            switchFactor = model.switchFactor,
+        ),
+        modifier = modifier,
+    )
+}
+
+/** The words of a code screen; each factor's screen fills them from its own messages. */
+private class CodeEntryWords(
+    val title: String,
+    val subtitle: String,
+    val codeLabel: String,
+    val verifyButton: String,
+    val wrongCode: String,
+    val resendButton: String,
+    val resendCooldown: (seconds: Int) -> String,
+    val verifyAnotherWay: String,
+)
+
+/** What a code screen shows and does, whichever factor's code it takes. */
+private class CodeEntryControls(
+    val isWrongCode: Boolean,
+    val isVerifying: Boolean,
+    val isResending: Boolean,
+    val canResend: Boolean,
+    val resendAvailableIn: Int,
+    val canSwitch: Boolean,
+    val submit: (code: String) -> Unit,
+    val resend: () -> Unit,
+    val switchFactor: () -> Unit,
+)
+
+/**
+ * The body every code screen shares: the six boxes, a wrong-code line, Verify, and Resend and "Verify another way" when
+ * [CodeEntryControls.canResend] and [CodeEntryControls.canSwitch] allow them. The title's second line turns off the
+ * font's contextual alternates, since it may show a hidden number or address (`*********0128`, `s***@example.com`).
+ */
+@Composable
+private fun MfaCodeEntry(
+    words: CodeEntryWords,
+    controls: CodeEntryControls,
+    modifier: Modifier = Modifier,
+) {
+    val dimensions = Auth0Theme.dimensions
     var code by rememberSaveable { mutableStateOf("") }
     // Hidden once the user types after a refused code, shown again by the next Verify. Kept across a rotation, so a
     // line the user already dismissed does not come back.
     var hideError by rememberSaveable { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    val isBusy = model.isVerifying || model.isResending
-    val showsError = model.isWrongCode && !hideError
+    val isBusy = controls.isVerifying || controls.isResending
+    val showsError = controls.isWrongCode && !hideError
     val maxWidth = Auth0Theme.sizes.otpFieldWidth * CODE_LENGTH + dimensions.spacingXs * (CODE_LENGTH - 1)
 
     FlowStepLayout(
@@ -198,10 +301,7 @@ internal fun MfaPhoneChallengeScreen(
         pageDescription = {
             FlowScreenHeader(
                 title = words.title,
-                subtitle = when (model.delivery) {
-                    PhoneDelivery.Text -> words.description(model.phoneNumber)
-                    PhoneDelivery.Voice -> words.descriptionVoice(model.phoneNumber)
-                },
+                subtitle = words.subtitle,
                 subtitleFontFeatures = NO_CONTEXTUAL_ALTERNATES,
             )
         },
@@ -240,31 +340,31 @@ internal fun MfaPhoneChallengeScreen(
                 title = words.verifyButton,
                 onClick = {
                     hideError = false
-                    model.submit(code)
+                    controls.submit(code)
                 },
-                isLoading = model.isVerifying,
+                isLoading = controls.isVerifying,
                 enabled = code.length == CODE_LENGTH && !isBusy,
             )
         },
-        secondaryAction = if (model.canResend || model.canSwitch) {
+        secondaryAction = if (controls.canResend || controls.canSwitch) {
             {
                 Column(verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)) {
-                    if (model.canResend) {
+                    if (controls.canResend) {
                         FlowTextButton(
-                            title = if (model.resendAvailableIn > 0) {
-                                words.resend.cooldown(model.resendAvailableIn)
+                            title = if (controls.resendAvailableIn > 0) {
+                                words.resendCooldown(controls.resendAvailableIn)
                             } else {
-                                words.resend.button
+                                words.resendButton
                             },
-                            onClick = { model.resend() },
-                            enabled = model.resendAvailableIn == 0 && !isBusy,
+                            onClick = { controls.resend() },
+                            enabled = controls.resendAvailableIn == 0 && !isBusy,
                             style = Auth0Theme.typography.body,
                         )
                     }
-                    if (model.canSwitch) {
+                    if (controls.canSwitch) {
                         FlowTextButton(
                             title = words.verifyAnotherWay,
-                            onClick = { model.switchFactor() },
+                            onClick = { controls.switchFactor() },
                             enabled = !isBusy,
                         )
                     }
@@ -349,13 +449,19 @@ private fun MfaWaitingForApproval(caption: String, device: String) {
 /**
  * What a row says. A named device leads, with the factor's name under it; a device with no name shows the factor's name
  * with its description under it. A phone leads with how its code is sent, with its number under it (left out when the
- * server hid every digit). A factor this version has no words for shows just its own title.
+ * server hid every digit); an email leads with its name, with its address under it. A factor this version has no words
+ * for shows just its own title.
  */
 private fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
     if (factor == MfaFactorId.Phone && delivery != null) {
         val phone = messages.phoneChallenge
         val label = if (delivery == PhoneDelivery.Voice) phone.rowVoice(title) else phone.rowText(title)
         return ResolvedMfaMessages.Message(label, if (title.hasDigits()) title.forDisplay() else "")
+    }
+    if (factor == MfaFactorId.Email) {
+        // The factor's name leads, with the address under it; with no address, its description takes that place.
+        val kind = messages.emailChallenge.row
+        return if (title.isBlank()) kind else ResolvedMfaMessages.Message(kind.title, title)
     }
     if (factor != MfaFactorId.Push) return ResolvedMfaMessages.Message(title, subtitle.orEmpty())
     val kind = messages.pushChallenge.row

@@ -32,6 +32,20 @@ class MfaScreensTest {
     }
 
     @Test
+    fun `typed shortcuts - phone and email - are kept under their own ids`() {
+        val phone = MfaScreens { phoneChallenge { _, _ -> } }
+        val email = MfaScreens { emailChallenge { _, _ -> } }
+        val both = MfaScreens {
+            phoneChallenge { _, _ -> }
+            emailChallenge { _, _ -> }
+        }
+
+        assertThat(phone.factors.keys).containsExactly(MfaFactorId.Phone)
+        assertThat(email.factors.keys).containsExactly(MfaFactorId.Email)
+        assertThat(both.factors.keys).containsExactly(MfaFactorId.Phone, MfaFactorId.Email)
+    }
+
+    @Test
     fun `replace - several screens - are all kept`() {
         val screens = MfaScreens {
             authenticatorList { _, _ -> }

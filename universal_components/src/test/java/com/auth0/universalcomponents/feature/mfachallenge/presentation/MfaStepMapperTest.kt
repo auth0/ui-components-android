@@ -4,6 +4,7 @@ import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListHeader
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListModel
+import com.auth0.universalcomponents.feature.mfachallenge.EmailChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaExit
 import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorId
@@ -120,8 +121,8 @@ class MfaStepMapperTest {
 
     @Test
     fun `phone code - being checked, or sent again - says so`() {
-        val verifying = codeReady(TWO_WITH_SMS).copy(phase = PhoneCodePhase.Verifying)
-        val resending = codeReady(TWO_WITH_SMS).copy(phase = PhoneCodePhase.Resending, canResend = false)
+        val verifying = codeReady(TWO_WITH_SMS).copy(phase = CodePhase.Verifying)
+        val resending = codeReady(TWO_WITH_SMS).copy(phase = CodePhase.Resending, canResend = false)
 
         val checked = (toStep(verifying) as MfaStep.Factor).step.model as PhoneChallengeModel
         val sent = (toStep(resending) as MfaStep.Factor).step.model as PhoneChallengeModel
@@ -175,6 +176,80 @@ class MfaStepMapperTest {
             MfaIntent.ChooseAnotherFactor,
             MfaIntent.Cancel,
         ).inOrder()
+    }
+
+    @Test
+    fun `email code - the model carries the address, and the wait states`() {
+        val state = emailReady(TWO_WITH_EMAIL).copy(resendSecondsLeft = 42, isWrongCode = true)
+
+        val factor = (toStep(state) as MfaStep.Factor).step
+        val model = factor.model as EmailChallengeModel
+
+        assertThat(factor.factor).isEqualTo(MfaFactorId.Email)
+        assertThat(factor.round).isEqualTo(1)
+        assertThat(model.address).isEqualTo("j***@example.com")
+        assertThat(model.isWrongCode).isTrue()
+        assertThat(model.canResend).isTrue()
+        assertThat(model.resendAvailableIn).isEqualTo(42)
+        assertThat(model.canSwitch).isTrue()
+        assertThat(model.isVerifying).isFalse()
+        assertThat(model.isResending).isFalse()
+    }
+
+    @Test
+    fun `email code - being checked, or sent again - says so`() {
+        val verifying = emailReady(TWO_WITH_EMAIL).copy(phase = CodePhase.Verifying)
+        val resending = emailReady(TWO_WITH_EMAIL).copy(phase = CodePhase.Resending, canResend = false)
+
+        val checked = (toStep(verifying) as MfaStep.Factor).step.model as EmailChallengeModel
+        val sent = (toStep(resending) as MfaStep.Factor).step.model as EmailChallengeModel
+
+        assertThat(checked.isVerifying).isTrue()
+        assertThat(sent.isResending).isTrue()
+        assertThat(sent.canResend).isFalse()
+    }
+
+    @Test
+    fun `email code - the only factor - cannot switch`() {
+        val model = (toStep(emailReady(MfaRound(1, listOf(EMAIL)))) as MfaStep.Factor).step.model as EmailChallengeModel
+
+        assertThat(model.canSwitch).isFalse()
+    }
+
+    @Test
+    fun `email code - the taps - come back as intents`() {
+        val model = (toStep(emailReady(TWO_WITH_EMAIL)) as MfaStep.Factor).step.model as EmailChallengeModel
+
+        model.submit("123456")
+        model.resend()
+        model.switchFactor()
+        model.cancel()
+
+        assertThat(intents).containsExactly(
+            MfaIntent.SubmitCode("123456"),
+            MfaIntent.Resend,
+            MfaIntent.ChooseAnotherFactor,
+            MfaIntent.Cancel,
+        ).inOrder()
+    }
+
+    @Test
+    fun `list - email addresses - are one row each, named by the address, with the mail icon`() {
+        val step = toStep(MfaState.ChooseFactor(MfaRound(1, listOf(EMAIL, OTHER_EMAIL)))) as MfaStep.AuthenticatorList
+
+        assertThat(step.model.rows).containsExactly(
+            AuthenticatorListModel.Row("email:5", MfaFactorId.Email, "j***@example.com", null, R.drawable.ic_mfa_email),
+            AuthenticatorListModel.Row("email:6", MfaFactorId.Email, "w***@example.com", null, R.drawable.ic_mfa_email),
+        ).inOrder()
+    }
+
+    @Test
+    fun `select - an email row - picks that address`() {
+        val step = toStep(MfaState.ChooseFactor(MfaRound(1, listOf(EMAIL, OTHER_EMAIL)))) as MfaStep.AuthenticatorList
+
+        step.model.select("email:6")
+
+        assertThat(intents).containsExactly(MfaIntent.SelectFactor(OTHER_EMAIL))
     }
 
     @Test
@@ -246,13 +321,15 @@ class MfaStepMapperTest {
 
     // endregion
 
-    private fun codeReady(round: MfaRound) = MfaState.PhoneCode(
+    private fun codeReady(round: MfaRound) = MfaState.CodeEntry(
         round = round,
         factor = SMS,
-        phase = PhoneCodePhase.Ready,
+        phase = CodePhase.Ready,
         canResend = true,
         resendSecondsLeft = 0,
     )
+
+    private fun emailReady(round: MfaRound) = codeReady(round).copy(factor = EMAIL)
 
     private fun waiting(round: MfaRound, factor: MfaFactor.Push) = MfaState.PushWaiting(
         round = round,
@@ -271,6 +348,9 @@ class MfaStepMapperTest {
         val SMS = MfaFactor.Phone(3, "***9239", PhoneDeliveryMethod.TEXT)
         val CALL = SMS.copy(delivery = PhoneDeliveryMethod.VOICE)
         val TWO_WITH_SMS = MfaRound(1, listOf(SMS, PHONE))
+        val EMAIL = MfaFactor.Email(5, "j***@example.com")
+        val OTHER_EMAIL = MfaFactor.Email(6, "w***@example.com")
+        val TWO_WITH_EMAIL = MfaRound(1, listOf(EMAIL, PHONE))
         const val POLL = 3_000L
     }
 }

@@ -32,6 +32,28 @@ class MfaStepTest {
     }
 
     @Test
+    fun `factor id - email - is named email, and compares by its value`() {
+        assertThat(MfaFactorId.Email.value).isEqualTo("email")
+        assertThat(MfaFactorId("email")).isEqualTo(MfaFactorId.Email)
+        assertThat(MfaFactorId.Email).isNotEqualTo(MfaFactorId.Phone)
+    }
+
+    @Test
+    fun `email model - built for a preview or a test - needs only the address, and its actions are safe to call`() {
+        val email = EmailChallengeModel(address = "j***@example.com")
+
+        assertThat(email.isWrongCode).isFalse()
+        assertThat(email.canResend).isFalse()
+        assertThat(email.canSwitch).isFalse()
+        assertThat(email.resendAvailableIn).isEqualTo(0)
+        assertThat(MfaFactorStep(MfaFactorId.Email, email).round).isEqualTo(1)
+        email.submit("123456")
+        email.resend()
+        email.switchFactor()
+        email.cancel()
+    }
+
+    @Test
     fun `stream - a result - is kept until the next flow clears it`() {
         val stream = MfaStepStream()
 
@@ -46,6 +68,7 @@ class MfaStepTest {
     fun `constructors - the shortest form of each model - stays, so a field added later does not break a compiled app`() {
         // Only the models without a value-class parameter: Kotlin mangles the constructors of the others.
         PushChallengeModel::class.java.getConstructor(String::class.java)
+        EmailChallengeModel::class.java.getConstructor(String::class.java)
         AuthenticatorListModel::class.java.getConstructor(AuthenticatorListHeader::class.java, List::class.java)
         ErrorModel::class.java.getConstructor(MfaError::class.java)
         LoadingModel::class.java.getConstructor()

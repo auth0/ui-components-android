@@ -1,11 +1,16 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.mfachallenge.EmailChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
+import com.auth0.universalcomponents.feature.mfachallenge.MfaFactorId
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
+import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaRepository
@@ -130,7 +135,48 @@ class MfaStepStreamMirrorTest {
         assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
     }
 
-    private fun TestScope.started(vararg factors: MfaFactor.Push, select: MfaFactor.Push? = null): MfaEngine {
+    @Test
+    fun `phone code - the stream shows its model, and a code typed in the app's own screen signs in`() = runTest {
+        val credentials = mockk<Credentials>()
+        coEvery { repository.sendPhoneCode(SMS) } returns Result.Success(true)
+        coEvery { repository.verifyCode("123456") } returns Result.Success(CodeStatus.Verified(credentials))
+        started(SMS)
+
+        val step = (stream.step.value as MfaStep.Factor).step
+        val model = step.model as PhoneChallengeModel
+        assertThat(step.factor).isEqualTo(MfaFactorId.Phone)
+        assertThat(model.phoneNumber).isEqualTo("***9239")
+        assertThat(model.resendAvailableIn).isEqualTo(RESEND_SECONDS)
+
+        model.submit("123456")
+        runCurrent()
+
+        assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+    }
+
+    @Test
+    fun `email code - the stream shows its model, a wrong code and the countdown reach it`() = runTest {
+        coEvery { repository.sendEmailCode(EMAIL) } returns Result.Success(true)
+        coEvery { repository.verifyCode("111111") } returns Result.Success(CodeStatus.WrongCode)
+        started(EMAIL)
+
+        val step = (stream.step.value as MfaStep.Factor).step
+        val model = step.model as EmailChallengeModel
+        assertThat(step.factor).isEqualTo(MfaFactorId.Email)
+        assertThat(model.address).isEqualTo("j***@example.com")
+        assertThat(model.isWrongCode).isFalse()
+
+        model.submit("111111")
+        runCurrent()
+        advanceTimeBy(2_000)
+        runCurrent()
+
+        val after = (stream.step.value as MfaStep.Factor).step.model as EmailChallengeModel
+        assertThat(after.isWrongCode).isTrue()
+        assertThat(after.resendAvailableIn).isEqualTo(RESEND_SECONDS - 2)
+    }
+
+    private fun TestScope.started(vararg factors: MfaFactor, select: MfaFactor? = null): MfaEngine {
         val engine = MfaEngine(
             reducer = MfaReducer(factors.toList()),
             repository = repository,
@@ -149,6 +195,8 @@ class MfaStepStreamMirrorTest {
     private companion object {
         val PHONE = MfaFactor.Push(0, "Jane's phone")
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
+        val SMS = MfaFactor.Phone(3, "***9239", PhoneDeliveryMethod.TEXT)
+        val EMAIL = MfaFactor.Email(5, "j***@example.com")
         const val POLL = 3_000L
         const val RESEND_SECONDS = 60
     }

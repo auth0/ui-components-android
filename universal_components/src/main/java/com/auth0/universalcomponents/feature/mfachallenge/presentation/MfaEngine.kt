@@ -138,7 +138,12 @@ internal class MfaEngine(
 
             is MfaCommand.SendPhoneCode -> send {
                 val sent = repository.sendPhoneCode(command.factor)
-                onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PhoneCodeSent(canResend = it) })
+                onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.CodeSent(canResend = it) })
+            }
+
+            is MfaCommand.SendEmailCode -> send {
+                val sent = repository.sendEmailCode(command.factor)
+                onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.CodeSent(canResend = it) })
             }
 
             is MfaCommand.VerifyCode -> scope.launch {
