@@ -1,32 +1,30 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation.screens
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import com.auth0.universalcomponents.feature.embedded.presentation.components.CODE_LENGTH
+import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginCodeField
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListHeader
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListModel
+import com.auth0.universalcomponents.feature.mfachallenge.CodeChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.EmailChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ErrorModel
 import com.auth0.universalcomponents.feature.mfachallenge.LoadingModel
@@ -37,10 +35,11 @@ import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
+import com.auth0.universalcomponents.feature.mfachallenge.SentCodeChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.TotpChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.forDisplay
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.hasDigits
 import com.auth0.universalcomponents.presentation.ui.components.CircularLoader
-import com.auth0.universalcomponents.presentation.ui.components.OTPInputField
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
@@ -184,6 +183,7 @@ internal fun MfaPhoneChallengeScreen(
 ) {
     val words = messages.phoneChallenge
     MfaCodeEntry(
+        model = model,
         words = CodeEntryWords(
             title = words.title,
             subtitle = when (model.delivery) {
@@ -193,20 +193,9 @@ internal fun MfaPhoneChallengeScreen(
             codeLabel = words.codeLabel,
             verifyButton = words.verifyButton,
             wrongCode = words.wrongCode,
-            resendButton = words.resend.button,
-            resendCooldown = words.resend.cooldown,
+            noConnection = words.noConnection,
             verifyAnotherWay = words.verifyAnotherWay,
-        ),
-        controls = CodeEntryControls(
-            isWrongCode = model.isWrongCode,
-            isVerifying = model.isVerifying,
-            isResending = model.isResending,
-            canResend = model.canResend,
-            resendAvailableIn = model.resendAvailableIn,
-            canSwitch = model.canSwitch,
-            submit = model.submit,
-            resend = model.resend,
-            switchFactor = model.switchFactor,
+            sent = SentCodeWords(words.expiredCode, words.tooManyRequests, words.resend.button, words.resend.cooldown),
         ),
         modifier = modifier,
     )
@@ -224,26 +213,42 @@ internal fun MfaEmailChallengeScreen(
 ) {
     val words = messages.emailChallenge
     MfaCodeEntry(
+        model = model,
         words = CodeEntryWords(
             title = words.title,
             subtitle = words.subtitleFor(model.address),
             codeLabel = words.codeLabel,
             verifyButton = words.verifyButton,
             wrongCode = words.wrongCode,
-            resendButton = words.resend.button,
-            resendCooldown = words.resend.cooldown,
+            noConnection = words.noConnection,
             verifyAnotherWay = words.verifyAnotherWay,
+            sent = SentCodeWords(words.expiredCode, words.tooManyRequests, words.resend.button, words.resend.cooldown),
         ),
-        controls = CodeEntryControls(
-            isWrongCode = model.isWrongCode,
-            isVerifying = model.isVerifying,
-            isResending = model.isResending,
-            canResend = model.canResend,
-            resendAvailableIn = model.resendAvailableIn,
-            canSwitch = model.canSwitch,
-            submit = model.submit,
-            resend = model.resend,
-            switchFactor = model.switchFactor,
+        modifier = modifier,
+    )
+}
+
+/**
+ * Typing the code the user's authenticator app shows. It follows the phone code screen's rules, except that nothing was
+ * sent: there is no destination in the line under the title, and nothing to resend or to expire.
+ */
+@Composable
+internal fun MfaTotpChallengeScreen(
+    model: TotpChallengeModel,
+    messages: ResolvedMfaMessages,
+    modifier: Modifier = Modifier,
+) {
+    val words = messages.totpChallenge
+    MfaCodeEntry(
+        model = model,
+        words = CodeEntryWords(
+            title = words.title,
+            subtitle = words.description,
+            codeLabel = words.codeLabel,
+            verifyButton = words.verifyButton,
+            wrongCode = words.wrongCode,
+            noConnection = words.noConnection,
+            verifyAnotherWay = words.verifyAnotherWay,
         ),
         modifier = modifier,
     )
@@ -260,33 +265,32 @@ private class CodeEntryWords(
     val codeLabel: String,
     val verifyButton: String,
     val wrongCode: String,
-    val resendButton: String,
-    val resendCooldown: (seconds: Int) -> String,
+    val noConnection: String,
     val verifyAnotherWay: String,
-)
-
-/** What a code screen shows and does, whichever factor's code it takes. */
-private class CodeEntryControls(
-    val isWrongCode: Boolean,
-    val isVerifying: Boolean,
-    val isResending: Boolean,
-    val canResend: Boolean,
-    val resendAvailableIn: Int,
-    val canSwitch: Boolean,
-    val submit: (code: String) -> Unit,
-    val resend: () -> Unit,
-    val switchFactor: () -> Unit,
+    val sent: SentCodeWords? = null,
 )
 
 /**
- * The body every code screen shares: the six boxes, a wrong-code line, Verify, and Resend and "Verify another way" when
- * [CodeEntryControls.canResend] and [CodeEntryControls.canSwitch] allow them. The title's second line turns off the
- * font's contextual alternates, since it may show a hidden number or address (`*********0128`, `s***@example.com`).
+ * The words only a code the server sends has: it can expire, a resend can be refused as too many, and it can be sent
+ * again. The screen of a code nothing sends, such as an authenticator app's, is given none.
+ */
+private class SentCodeWords(
+    val expiredCode: String,
+    val tooManyRequests: String,
+    val resendButton: String,
+    val resendCooldown: (seconds: Int) -> String,
+)
+
+/**
+ * The body every code screen shares, drawn from the model: the six boxes, one line under them (no connection, too many
+ * requests, an expired code, or a wrong code, in that order), Verify, and Resend and "Verify another way" when the
+ * model allows them. The title's second line turns off the font's contextual alternates, since it may show a hidden
+ * number or address (`*********0128`, `s***@example.com`).
  */
 @Composable
 private fun MfaCodeEntry(
+    model: CodeChallengeModel,
     words: CodeEntryWords,
-    controls: CodeEntryControls,
     modifier: Modifier = Modifier,
 ) {
     val dimensions = Auth0Theme.dimensions
@@ -294,11 +298,23 @@ private fun MfaCodeEntry(
     // Hidden once the user types after a refused code, shown again by the next Verify. Kept across a rotation, so a
     // line the user already dismissed does not come back.
     var hideError by rememberSaveable { mutableStateOf(false) }
-    val focusRequester = remember { FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
-    val isBusy = controls.isVerifying || controls.isResending
-    val showsError = controls.isWrongCode && !hideError
-    val maxWidth = Auth0Theme.sizes.otpFieldWidth * CODE_LENGTH + dimensions.spacingXs * (CODE_LENGTH - 1)
+    // Only a code the server sends can be sent again, or expire.
+    val sent = model as? SentCodeChallengeModel
+    val sentWords = words.sent
+    val isBusy = model.isVerifying || sent?.isResending == true
+    val isExpired = sent?.isCodeExpired == true
+    val showsError = model.isWrongCode && !hideError
+    // Resend is on offer only for a code the server sends, while the server still offers another.
+    val resendOffer = if (sent != null && sentWords != null && sent.canResend) sent to sentWords else null
+    // A request that got no answer, or an expired code, stays on show until the next request starts, and the boxes
+    // don't turn red for either: the code is right as typed.
+    val problem = when {
+        model.requestError is MfaError.TooManyAttempts -> sentWords?.tooManyRequests
+        model.requestError != null -> words.noConnection
+        isExpired -> sentWords?.expiredCode
+        showsError -> words.wrongCode
+        else -> null
+    }
 
     FlowStepLayout(
         modifier = modifier,
@@ -312,27 +328,22 @@ private fun MfaCodeEntry(
         content = {
             Text(text = words.codeLabel, style = Auth0Theme.typography.label, color = Auth0Theme.colors.textBold)
             Spacer(Modifier.height(dimensions.spacingMd))
-            // Held to phone-sized boxes: they grow with the width, and would balloon in landscape.
-            Box(modifier = Modifier.widthIn(max = maxWidth)) {
-                OTPInputField(
-                    value = code,
-                    length = CODE_LENGTH,
-                    isError = showsError,
-                    // The digits on show are the ones being checked, and a wrong-code answer should still be seen.
-                    onValueChange = {
-                        if (!isBusy) {
-                            code = it.filter(Char::isDigit).take(CODE_LENGTH)
-                            hideError = true
-                        }
-                    },
-                    focusRequester = focusRequester,
-                    // The visible label is a separate node, so TalkBack would land on an unnamed edit box.
-                    modifier = Modifier.semantics { contentDescription = words.codeLabel },
-                )
-            }
-            if (showsError) {
+            LoginCodeField(
+                code = code,
+                // The digits on show are the ones being checked, and a wrong-code answer should still be seen.
+                onCodeChange = {
+                    if (!isBusy) {
+                        code = it
+                        hideError = true
+                    }
+                },
+                isError = showsError,
+                // The visible label is a separate node, so TalkBack would land on an unnamed edit box.
+                modifier = Modifier.semantics { contentDescription = words.codeLabel },
+            )
+            if (problem != null) {
                 Text(
-                    text = words.wrongCode,
+                    text = problem,
                     style = Auth0Theme.typography.bodySmall,
                     color = Auth0Theme.colors.textOnError,
                     modifier = Modifier
@@ -347,35 +358,36 @@ private fun MfaCodeEntry(
                 title = words.verifyButton,
                 onClick = {
                     hideError = false
-                    controls.submit(code)
+                    model.submit(code)
                 },
-                isLoading = controls.isVerifying,
-                enabled = code.length == CODE_LENGTH && !isBusy,
+                isLoading = model.isVerifying,
+                enabled = code.length == CODE_LENGTH && !isBusy && !isExpired,
             )
         },
-        secondaryAction = if (controls.canResend || controls.canSwitch) {
+        secondaryAction = if (resendOffer != null || model.canSwitch) {
             {
                 Column(verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd)) {
-                    if (controls.canResend) {
+                    if (resendOffer != null) {
+                        val (offered, resendWords) = resendOffer
                         FlowTextButton(
-                            title = if (controls.resendAvailableIn > 0) {
-                                words.resendCooldown(controls.resendAvailableIn)
+                            title = if (offered.resendAvailableIn > 0) {
+                                resendWords.resendCooldown(offered.resendAvailableIn)
                             } else {
-                                words.resendButton
+                                resendWords.resendButton
                             },
                             onClick = {
                                 // The old code is no use once a new one is on its way.
                                 code = ""
-                                controls.resend()
+                                offered.resend()
                             },
-                            enabled = controls.resendAvailableIn == 0 && !isBusy,
+                            enabled = offered.resendAvailableIn == 0 && !isBusy,
                             style = Auth0Theme.typography.body,
                         )
                     }
-                    if (controls.canSwitch) {
+                    if (model.canSwitch) {
                         FlowTextButton(
                             title = words.verifyAnotherWay,
-                            onClick = { controls.switchFactor() },
+                            onClick = { model.switchFactor() },
                             enabled = !isBusy,
                         )
                     }
@@ -418,9 +430,6 @@ internal fun MfaErrorScreen(
  */
 internal const val NO_CONTEXTUAL_ALTERNATES = "'calt' 0"
 
-/** How many digits the code has. */
-private const val CODE_LENGTH = 6
-
 /** The longest explanation from the server the error screen shows; it is untranslated text we did not write. */
 internal const val MAX_SERVER_EXPLANATION = 200
 
@@ -460,8 +469,8 @@ private fun MfaWaitingForApproval(caption: String, device: String) {
 /**
  * What a row says. A named device leads, with the factor's name under it; a device with no name shows the factor's name
  * with its description under it. A phone leads with how its code is sent, with its number under it (left out when the
- * server hid every digit); an email leads with its name, with its address under it. A factor this version has no words
- * for shows just its own title.
+ * server hid every digit); an email leads with its name, with its address under it; an authenticator app is always its
+ * name with its description under it. A factor this version has no words for shows just its own title.
  */
 internal fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
     if (factor == MfaFactorId.Phone && delivery != null) {
@@ -474,6 +483,8 @@ internal fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): Re
         val kind = messages.emailChallenge.row
         return if (title.isBlank()) kind else ResolvedMfaMessages.Message(kind.title, title)
     }
+    // The user's own app has no name or number: the row is always the factor's name with its description.
+    if (factor == MfaFactorId.Totp) return messages.totpChallenge.row
     if (factor != MfaFactorId.Push) return ResolvedMfaMessages.Message(title, subtitle.orEmpty())
     val kind = messages.pushChallenge.row
     return if (title.isBlank()) kind else ResolvedMfaMessages.Message(title, kind.title)

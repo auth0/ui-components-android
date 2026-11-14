@@ -12,7 +12,9 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.clearAllMocks
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.spyk
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
@@ -440,12 +442,12 @@ class MfaEngineTest {
         assertThat((engine.state.value as MfaState.CodeEntry).phase).isEqualTo(CodePhase.Ready)
         coVerify(exactly = 1) { repository.sendPhoneCode(SMS) }
         waitFor(ONE_SECOND)
-        assertThat((engine.state.value as MfaState.CodeEntry).resendSecondsLeft).isEqualTo(COOLDOWN - 1)
+        assertThat((engine.state.value as MfaState.CodeEntry).resend?.secondsLeft).isEqualTo(COOLDOWN - 1)
     }
 
     @Test
     fun `a wrong code - stays on the screen, and the user can type another`() = runTest {
-        coEvery { repository.verifyCode("111111") } returns Result.Success(CodeStatus.WrongCode)
+        coEvery { repository.verifyCode(SMS, "111111") } returns Result.Success(CodeStatus.WrongCode)
         val engine = startedWithCode()
 
         engine.onIntent(MfaIntent.SubmitCode("111111"))
@@ -458,7 +460,7 @@ class MfaEngineTest {
     @Test
     fun `the right code - tells the host the user is signed in`() = runTest {
         val credentials = mockk<Credentials>()
-        coEvery { repository.verifyCode("123456") } returns Result.Success(CodeStatus.Verified(credentials))
+        coEvery { repository.verifyCode(SMS, "123456") } returns Result.Success(CodeStatus.Verified(credentials))
         val engine = startedWithCode()
 
         engine.onIntent(MfaIntent.SubmitCode("123456"))
@@ -468,9 +470,10 @@ class MfaEngineTest {
     }
 
     @Test
-    fun `an expired code - ends MFA with the error`() = runTest {
+    fun `an expired code - when no other can be sent - ends MFA with the error`() = runTest {
         val expired = MfaError.TokenExpired()
-        coEvery { repository.verifyCode(any()) } returns Result.Error(expired)
+        coEvery { repository.sendPhoneCode(any()) } returns Result.Success(false)
+        coEvery { repository.verifyCode(any(), any()) } returns Result.Error(expired)
         val engine = startedWithCode()
 
         engine.onIntent(MfaIntent.SubmitCode("123456"))
@@ -481,6 +484,82 @@ class MfaEngineTest {
     }
 
     @Test
+    fun `an expired code - when the server offers another - stays, and the code sent again signs in`() = runTest {
+        val credentials = mockk<Credentials>()
+        coEvery { repository.verifyCode(SMS, "111111") } returns Result.Error(MfaError.TokenExpired())
+        coEvery { repository.verifyCode(SMS, "222222") } returns Result.Success(CodeStatus.Verified(credentials))
+        val engine = startedWithCode()
+
+        engine.onIntent(MfaIntent.SubmitCode("111111"))
+        runCurrent()
+
+        assertThat((engine.state.value as MfaState.CodeEntry).isCodeExpired).isTrue()
+        assertThat(effects).isEmpty()
+
+        // After an expiry Resend is open at once, and the new code clears it.
+        engine.onIntent(MfaIntent.Resend)
+        runCurrent()
+        coVerify(exactly = 2) { repository.sendPhoneCode(SMS) }
+        assertThat((engine.state.value as MfaState.CodeEntry).isCodeExpired).isFalse()
+
+        engine.onIntent(MfaIntent.SubmitCode("222222"))
+        runCurrent()
+        assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+    }
+
+    @Test
+    fun `a resend that gets no answer - leaves the code on show, and Resend can be tried again after the wait`() =
+        runTest {
+            val offline = MfaError.Network()
+            coEvery { repository.sendPhoneCode(SMS) } returnsMany
+                listOf(Result.Success(true), Result.Error(offline), Result.Success(true))
+            val engine = startedWithCode()
+            waitFor(COOLDOWN * ONE_SECOND)
+
+            engine.onIntent(MfaIntent.Resend)
+            runCurrent()
+
+            val stays = engine.state.value as MfaState.CodeEntry
+            assertThat(stays.requestError).isSameInstanceAs(offline)
+            assertThat(stays.resend?.secondsLeft).isEqualTo(COOLDOWN)
+            assertThat(effects).isEmpty()
+            assertThat(engine.isRunning).isTrue()
+
+            waitFor(COOLDOWN * ONE_SECOND)
+            engine.onIntent(MfaIntent.Resend)
+            runCurrent()
+
+            coVerify(exactly = 3) { repository.sendPhoneCode(SMS) }
+            assertThat((engine.state.value as MfaState.CodeEntry).requestError).isNull()
+        }
+
+    @Test
+    fun `the connection drops while a code is checked - stays on the screen, and the same code signs in once back`() =
+        runTest {
+            val offline = MfaError.Network()
+            val credentials = mockk<Credentials>()
+            coEvery { repository.verifyCode(SMS, "123456") } returnsMany listOf(
+                Result.Error(offline),
+                Result.Success(CodeStatus.Verified(credentials)),
+            )
+            val engine = startedWithCode()
+
+            engine.onIntent(MfaIntent.SubmitCode("123456"))
+            runCurrent()
+
+            val shown = engine.state.value as MfaState.CodeEntry
+            assertThat(shown.phase).isEqualTo(CodePhase.Ready)
+            assertThat(shown.requestError).isSameInstanceAs(offline)
+            assertThat(effects).isEmpty()
+            assertThat(engine.isRunning).isTrue()
+
+            engine.onIntent(MfaIntent.SubmitCode("123456"))
+            runCurrent()
+
+            assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+        }
+
+    @Test
     fun `resend - after the wait - sends the code again and starts a new wait`() = runTest {
         val engine = startedWithCode()
         waitFor(COOLDOWN * ONE_SECOND)
@@ -489,7 +568,7 @@ class MfaEngineTest {
         runCurrent()
 
         coVerify(exactly = 2) { repository.sendPhoneCode(SMS) }
-        assertThat((engine.state.value as MfaState.CodeEntry).resendSecondsLeft).isEqualTo(COOLDOWN)
+        assertThat((engine.state.value as MfaState.CodeEntry).resend?.secondsLeft).isEqualTo(COOLDOWN)
     }
 
     // endregion
@@ -505,13 +584,13 @@ class MfaEngineTest {
         coVerify(exactly = 1) { repository.sendEmailCode(EMAIL) }
         coVerify(exactly = 0) { repository.sendPhoneCode(any()) }
         waitFor(ONE_SECOND)
-        assertThat((engine.state.value as MfaState.CodeEntry).resendSecondsLeft).isEqualTo(COOLDOWN - 1)
+        assertThat((engine.state.value as MfaState.CodeEntry).resend?.secondsLeft).isEqualTo(COOLDOWN - 1)
     }
 
     @Test
     fun `an email code - the right one - tells the host the user is signed in`() = runTest {
         val credentials = mockk<Credentials>()
-        coEvery { repository.verifyCode("123456") } returns Result.Success(CodeStatus.Verified(credentials))
+        coEvery { repository.verifyCode(EMAIL, "123456") } returns Result.Success(CodeStatus.Verified(credentials))
         val engine = startedWithCode(EMAIL)
 
         engine.onIntent(MfaIntent.SubmitCode("123456"))
@@ -522,7 +601,7 @@ class MfaEngineTest {
 
     @Test
     fun `an email code - a wrong one - stays on the screen, and the user can type another`() = runTest {
-        coEvery { repository.verifyCode("111111") } returns Result.Success(CodeStatus.WrongCode)
+        coEvery { repository.verifyCode(EMAIL, "111111") } returns Result.Success(CodeStatus.WrongCode)
         val engine = startedWithCode(EMAIL)
 
         engine.onIntent(MfaIntent.SubmitCode("111111"))
@@ -541,7 +620,7 @@ class MfaEngineTest {
 
         assertThat(effects).containsExactly(MfaEffect.Failed(error))
         assertThat(engine.isRunning).isFalse()
-        coVerify(exactly = 0) { repository.verifyCode(any()) }
+        coVerify(exactly = 0) { repository.verifyCode(any(), any()) }
     }
 
     @Test
@@ -554,10 +633,134 @@ class MfaEngineTest {
 
         coVerify(exactly = 2) { repository.sendEmailCode(EMAIL) }
         coVerify(exactly = 0) { repository.sendPhoneCode(any()) }
-        assertThat((engine.state.value as MfaState.CodeEntry).resendSecondsLeft).isEqualTo(COOLDOWN)
+        assertThat((engine.state.value as MfaState.CodeEntry).resend?.secondsLeft).isEqualTo(COOLDOWN)
     }
 
     // endregion
+
+    // region authenticator app
+
+    @Test
+    fun `an authenticator app - its screen shows at once, and nothing is sent`() = runTest {
+        val engine = startedWithCode(APP)
+
+        assertThat(steps).containsExactly(
+            MfaState.CodeEntry(BY_APP, APP, CodePhase.Ready, resend = null),
+        )
+        assertThat(engine.isRunning).isTrue()
+        coVerify(exactly = 0) { repository.sendPush(any()) }
+        coVerify(exactly = 0) { repository.sendPhoneCode(any()) }
+        coVerify(exactly = 0) { repository.sendEmailCode(any()) }
+        waitFor(COOLDOWN * ONE_SECOND)
+        assertThat((engine.state.value as MfaState.CodeEntry).resend).isNull()
+    }
+
+    @Test
+    fun `an authenticator app code - the right one - is checked for the app, and tells the host`() = runTest {
+        val credentials = mockk<Credentials>()
+        coEvery { repository.verifyCode(APP, "123456") } returns Result.Success(CodeStatus.Verified(credentials))
+        val engine = startedWithCode(APP)
+
+        engine.onIntent(MfaIntent.SubmitCode("123456"))
+        runCurrent()
+
+        assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+        coVerify(exactly = 1) { repository.verifyCode(APP, "123456") }
+    }
+
+    @Test
+    fun `an authenticator app code - a wrong one - stays on the screen, and the user can type another`() = runTest {
+        coEvery { repository.verifyCode(APP, "111111") } returns Result.Success(CodeStatus.WrongCode)
+        val engine = startedWithCode(APP)
+
+        engine.onIntent(MfaIntent.SubmitCode("111111"))
+        runCurrent()
+
+        val shown = engine.state.value as MfaState.CodeEntry
+        assertThat(shown.isWrongCode).isTrue()
+        assertThat(shown.phase).isEqualTo(CodePhase.Ready)
+        assertThat(effects).isEmpty()
+    }
+
+    @Test
+    fun `a code check - waits for a push check on its way, then goes out`() = runTest {
+        val checkAnswer = CompletableDeferred<Result<PushStatus, MfaError>>()
+        coEvery { repository.checkPushStatus() } coAnswers { checkAnswer.await() }
+        coEvery { repository.verifyCode(APP, "123456") } returns Result.Success(CodeStatus.WrongCode)
+        val engine = onTheAppWithAPushCheckOut()
+
+        engine.onIntent(MfaIntent.SubmitCode("123456"))
+        runCurrent()
+
+        // The push check has not been answered, so the code is not sent yet.
+        coVerify(exactly = 0) { repository.verifyCode(any(), any()) }
+
+        checkAnswer.complete(Result.Success(PENDING))
+        runCurrent()
+
+        coVerify(exactly = 1) { repository.verifyCode(APP, "123456") }
+        assertThat((engine.state.value as MfaState.CodeEntry).isWrongCode).isTrue()
+    }
+
+    @Test
+    fun `a code check - never goes out when the push check on its way starts a new round`() = runTest {
+        val checkAnswer = CompletableDeferred<Result<PushStatus, MfaError>>()
+        coEvery { repository.checkPushStatus() } coAnswers { checkAnswer.await() }
+        val engine = onTheAppWithAPushCheckOut()
+
+        engine.onIntent(MfaIntent.SubmitCode("123456"))
+        runCurrent()
+        checkAnswer.complete(Result.Success(PushStatus.AnotherFactor(listOf(TABLET))))
+        runCurrent()
+
+        // The code was typed for the first round; the second round's session must not be asked about it.
+        coVerify(exactly = 0) { repository.verifyCode(any(), any()) }
+        val shown = engine.state.value as MfaState.ChooseFactor
+        assertThat(shown.round).isEqualTo(MfaRound(2, listOf(TABLET)))
+        assertThat(effects).isEmpty()
+    }
+
+    @Test
+    fun `a code check already out - is not cut off when the work is cancelled, so a right code still signs in`() =
+        runTest {
+            val credentials = mockk<Credentials>()
+            val answer = CompletableDeferred<Result<CodeStatus, MfaError>>()
+            coEvery { repository.verifyCode(APP, "123456") } coAnswers { answer.await() }
+            // No screen cancels work while a code is being checked, so the cancel is forced from the reducer.
+            val reducer = spyk(MfaReducer(listOf(APP)))
+            val engine = MfaEngine(reducer, repository, backgroundScope, onEffect = { effects += it })
+            engine.start()
+            engine.onIntent(MfaIntent.SubmitCode("123456"))
+            runCurrent()
+            coVerify(exactly = 1) { repository.verifyCode(APP, "123456") }
+
+            every { reducer.handleIntent(any(), MfaIntent.Back) } answers {
+                MfaUpdate(firstArg(), listOf(MfaCommand.CancelChallengeWork))
+            }
+            engine.back()
+            runCurrent()
+            answer.complete(Result.Success(CodeStatus.Verified(credentials)))
+            runCurrent()
+
+            assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+        }
+
+    // endregion
+
+    /**
+     * Starts MFA with a push and an authenticator app, sends the push, lets its check go out (and stay unanswered,
+     * through the caller's `checkPushStatus` stub), and moves to the app's screen.
+     */
+    private fun TestScope.onTheAppWithAPushCheckOut(): MfaEngine {
+        val engine = started(PHONE, APP, select = PHONE)
+        waitFor(POLL)
+        coVerify(exactly = 1) { repository.checkPushStatus() }
+        engine.onIntent(MfaIntent.ChooseAnotherFactor)
+        engine.onIntent(MfaIntent.SelectFactor(APP))
+        runCurrent()
+        assertThat(engine.state.value).isInstanceOf(MfaState.CodeEntry::class.java)
+        return engine
+    }
 
     /**
      * Starts MFA, recording every step it shows, and lets the push for [select] go out; with one factor it's picked
@@ -622,6 +825,8 @@ class MfaEngineTest {
         val BY_SMS = MfaRound(1, listOf(SMS))
         val EMAIL = MfaFactor.Email(5, "j***@example.com")
         val BY_EMAIL = MfaRound(1, listOf(EMAIL))
+        val APP = MfaFactor.AuthenticatorApp
+        val BY_APP = MfaRound(1, listOf(APP))
         const val POLL = 3_000L
         const val SLOWER = 5_000L
         val PENDING = PushStatus.Pending(POLL, canResend = true)

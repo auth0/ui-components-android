@@ -7,7 +7,7 @@ import com.auth0.universalcomponents.data.embeddedauth.serverDescription
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 
 /**
- * Names the SDK error in MFA's terms, as iOS does. IP blocks, consent and the like have no case of their own, so
+ * Names the SDK error in MFA's terms. IP blocks, consent and the like have no case of their own, so
  * they're [MfaError.Unexpected], with the server's words when it gave some.
  */
 internal fun EmbeddedAuthException.toMfaError(): MfaError = when (error) {

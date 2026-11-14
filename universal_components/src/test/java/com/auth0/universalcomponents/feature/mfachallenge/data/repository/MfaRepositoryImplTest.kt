@@ -169,7 +169,7 @@ class MfaRepositoryImplTest {
     }
 
     @Test
-    fun `checkPushStatus - SDK errors - named as iOS names them`() = runTest {
+    fun `checkPushStatus - SDK errors - named in MFA's terms`() = runTest {
         mapOf(
             EmbeddedAuthError.ChallengeExpired to MfaError.TokenExpired::class.java,
             EmbeddedAuthError.NoEligibleFactors to MfaError.NoEligibleFactors::class.java,
@@ -300,7 +300,7 @@ class MfaRepositoryImplTest {
         val credentials = mockk<Credentials>()
         every { client.verifyOtp("123456", OtpType.OOB) } returns FakeRequestImpl(response = credentials)
 
-        assertThat(repository.verifyCode("123456")).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
+        assertThat(repository.verifyCode(SMS, "123456")).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
     }
 
     @Test
@@ -308,7 +308,7 @@ class MfaRepositoryImplTest {
         listOf(Reason.INVALID_CODE, Reason.INVALID_IDENTIFIER_OR_CODE).forEach { reason ->
             every { client.verifyOtp(any(), any()) } returns step(verifyOtp(OtpChannel.SMS), reason = reason)
 
-            assertThat(repository.verifyCode("000000")).isEqualTo(Result.Success(CodeStatus.WrongCode))
+            assertThat(repository.verifyCode(SMS, "000000")).isEqualTo(Result.Success(CodeStatus.WrongCode))
         }
     }
 
@@ -316,7 +316,7 @@ class MfaRepositoryImplTest {
     fun `verifyCode - right code and the policy asks for another factor - returns the next round's menu`() = runTest {
         every { client.verifyOtp(any(), any()) } returns step(challengePush(), challengePhone(), reason = Reason.NONE)
 
-        val status = repository.verifyCode("123456")
+        val status = repository.verifyCode(SMS, "123456")
 
         assertThat(status).isEqualTo(
             Result.Success(CodeStatus.AnotherFactor(listOf(PHONE, SMS, CALL))),
@@ -326,10 +326,10 @@ class MfaRepositoryImplTest {
     @Test
     fun `verifyCode - any other answer, or a failure - is unexpected, or the mapped error`() = runTest {
         every { client.verifyOtp(any(), any()) } returns step(verifyOtp(OtpChannel.SMS), reason = Reason.SLOW_DOWN)
-        assertThat(repository.verifyCode("123456").mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+        assertThat(repository.verifyCode(SMS, "123456").mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
 
         every { client.verifyOtp(any(), any()) } returns failingWith(EmbeddedAuthError.ChallengeExpired)
-        assertThat(repository.verifyCode("123456").mfaError()).isInstanceOf(MfaError.TokenExpired::class.java)
+        assertThat(repository.verifyCode(SMS, "123456").mfaError()).isInstanceOf(MfaError.TokenExpired::class.java)
     }
 
     @Test
@@ -341,7 +341,7 @@ class MfaRepositoryImplTest {
         )
         every { client.verifyOtp(any(), any()) } returns step(noneNamed, reason = Reason.NONE)
 
-        val status = repository.verifyCode("123456")
+        val status = repository.verifyCode(SMS, "123456")
 
         assertThat(status).isEqualTo(
             Result.Success(CodeStatus.AnotherFactor(listOf(MfaFactor.Phone(7, "***0000", PhoneDeliveryMethod.TEXT)))),
@@ -407,7 +407,7 @@ class MfaRepositoryImplTest {
         val credentials = mockk<Credentials>()
         every { client.verifyOtp("654321", OtpType.OOB) } returns FakeRequestImpl(response = credentials)
 
-        assertThat(repository.verifyCode("654321")).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
+        assertThat(repository.verifyCode(EMAIL, "654321")).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
     }
 
     @Test
@@ -421,12 +421,74 @@ class MfaRepositoryImplTest {
             reason = Reason.NONE,
         )
 
-        val status = repository.verifyCode("123456")
+        val status = repository.verifyCode(EMAIL, "123456")
 
         assertThat(status).isEqualTo(
             Result.Success(CodeStatus.AnotherFactor(listOf(PHONE, SMS, CALL, EMAIL, other))),
         )
     }
+
+    // endregion
+
+    // region authenticator app
+
+    @Test
+    fun `verifyCode - an authenticator app code, right - is checked as a time-based code and signs in`() = runTest {
+        val credentials = mockk<Credentials>()
+        every { client.verifyOtp("123456", OtpType.TOTP) } returns FakeRequestImpl(response = credentials)
+
+        assertThat(repository.verifyCode(APP, "123456")).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
+
+        verify(exactly = 0) { client.verifyOtp(any(), OtpType.OOB) }
+    }
+
+    @Test
+    fun `verifyCode - an authenticator app code, wrong - is not an error, the user types another`() = runTest {
+        listOf(Reason.INVALID_CODE, Reason.INVALID_IDENTIFIER_OR_CODE).forEach { reason ->
+            every { client.verifyOtp(any(), OtpType.TOTP) } returns step(verifyOtp(OtpChannel.TOTP), reason = reason)
+
+            assertThat(repository.verifyCode(APP, "000000")).isEqualTo(Result.Success(CodeStatus.WrongCode))
+        }
+    }
+
+    @Test
+    fun `verifyCode - an authenticator app code, right and the policy asks for another factor - returns the menu`() =
+        runTest {
+            every { client.verifyOtp(any(), OtpType.TOTP) } returns
+                step(challengePush(), challengePhone(), reason = Reason.NONE)
+
+            assertThat(repository.verifyCode(APP, "123456"))
+                .isEqualTo(Result.Success(CodeStatus.AnotherFactor(listOf(PHONE, SMS, CALL))))
+        }
+
+    @Test
+    fun `verifyCode - an authenticator app code, any other answer, or a failure - is unexpected, or the mapped error`() =
+        runTest {
+            every { client.verifyOtp(any(), any()) } returns
+                step(verifyOtp(OtpChannel.TOTP), reason = Reason.SLOW_DOWN)
+            assertThat(repository.verifyCode(APP, "123456").mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+            every { client.verifyOtp(any(), any()) } returns failingWith(EmbeddedAuthError.TooManyAttempts)
+            val refused = repository.verifyCode(APP, "123456").mfaError()
+            assertThat(refused).isInstanceOf(MfaError.TooManyAttempts::class.java)
+        }
+
+    @Test
+    fun `an authenticator app in the menu - is one factor, listed after a push, however often it is asked for`() =
+        runTest {
+            every { client.verifyOtp(any(), any()) } returns step(
+                verifyOtp(OtpChannel.TOTP),
+                challengePhone(),
+                challengePush(),
+                verifyOtp(OtpChannel.TOTP),
+                // A request for a code the server sent is not an authenticator app.
+                verifyOtp(OtpChannel.EMAIL),
+                reason = Reason.NONE,
+            )
+
+            assertThat(repository.verifyCode(SMS, "123456"))
+                .isEqualTo(Result.Success(CodeStatus.AnotherFactor(listOf(PHONE, APP, SMS, CALL))))
+        }
 
     // endregion
 
@@ -461,6 +523,7 @@ class MfaRepositoryImplTest {
         val SMS = MfaFactor.Phone(4, "***9239", PhoneDeliveryMethod.TEXT)
         val CALL = SMS.copy(delivery = PhoneDeliveryMethod.VOICE)
         val EMAIL = MfaFactor.Email(6, "j***@example.com")
+        val APP = MfaFactor.AuthenticatorApp
         const val POLL_MS = 3_000
         const val SLOWER_MS = 5_000
     }

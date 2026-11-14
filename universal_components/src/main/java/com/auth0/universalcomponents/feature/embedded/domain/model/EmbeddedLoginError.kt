@@ -26,6 +26,12 @@ internal sealed interface EmbeddedLoginError {
 
     data object TooManyLogins : EmbeddedLoginError
 
+    /** The server blocked this device's address for now. */
+    data object IpBlocked : EmbeddedLoginError
+
+    /** The sign-in needs a consent that can't be given in the app. */
+    data object ConsentRequired : EmbeddedLoginError
+
     /**
      * The code was right, but the server wants a second factor first; [factors] are the ones it offered that these
      * screens support, maybe none. The flow hands over to MFA, which decides what to show, so this one never reaches

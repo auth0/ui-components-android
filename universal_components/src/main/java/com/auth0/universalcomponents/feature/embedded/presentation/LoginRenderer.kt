@@ -189,6 +189,8 @@ internal fun EmbeddedLoginError.text(method: LoginOption = LoginOption.EmailOtp)
     EmbeddedLoginError.TooManyWrongCodes -> stringResource(R.string.embedded_login_error_too_many_wrong_codes)
     EmbeddedLoginError.TooManyAttempts -> stringResource(R.string.embedded_login_error_too_many_attempts)
     EmbeddedLoginError.TooManyLogins -> stringResource(R.string.embedded_login_error_too_many_logins)
+    EmbeddedLoginError.IpBlocked -> stringResource(R.string.embedded_login_error_ip_blocked)
+    EmbeddedLoginError.ConsentRequired -> stringResource(R.string.embedded_login_error_consent_required)
     EmbeddedLoginError.SessionExpired -> stringResource(R.string.embedded_login_error_session_expired)
     is EmbeddedLoginError.InvalidIdentifier -> stringResource(
         if (this.method == LoginOption.PhoneOtp) {

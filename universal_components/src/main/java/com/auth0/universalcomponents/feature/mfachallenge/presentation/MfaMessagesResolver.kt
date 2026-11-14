@@ -117,6 +117,7 @@ internal fun MfaMessages.resolve(resources: Resources): ResolvedMfaMessages {
         ),
         phoneChallenge = phoneChallenge.resolve(resources),
         emailChallenge = emailChallenge.resolve(resources),
+        totpChallenge = totpChallenge.resolve(resources),
     )
 }
 
@@ -143,6 +144,9 @@ private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMf
         codeLabel = word(codeLabel, R.string.auth0_mfa_phone_challenge_code_label),
         verifyButton = word(verifyButton, R.string.auth0_mfa_phone_challenge_verify_button),
         wrongCode = word(wrongCode, R.string.auth0_mfa_phone_challenge_wrong_code),
+        expiredCode = word(expiredCode, R.string.auth0_mfa_phone_challenge_expired_code),
+        noConnection = word(noConnection, R.string.auth0_mfa_phone_challenge_no_connection),
+        tooManyRequests = word(tooManyRequests, R.string.auth0_mfa_phone_challenge_too_many_requests),
         resend = ResolvedMfaMessages.PhoneChallenge.Resend(
             button = word(resend.button, R.string.auth0_mfa_phone_challenge_resend_button),
             cooldown = resend.cooldown ?: { seconds ->
@@ -172,6 +176,9 @@ private fun MfaMessages.EmailChallenge.resolve(resources: Resources): ResolvedMf
         codeLabel = word(codeLabel, R.string.auth0_mfa_email_challenge_code_label),
         verifyButton = word(verifyButton, R.string.auth0_mfa_email_challenge_verify_button),
         wrongCode = word(wrongCode, R.string.auth0_mfa_email_challenge_wrong_code),
+        expiredCode = word(expiredCode, R.string.auth0_mfa_email_challenge_expired_code),
+        noConnection = word(noConnection, R.string.auth0_mfa_email_challenge_no_connection),
+        tooManyRequests = word(tooManyRequests, R.string.auth0_mfa_email_challenge_too_many_requests),
         resend = ResolvedMfaMessages.EmailChallenge.Resend(
             button = word(resend.button, R.string.auth0_mfa_email_challenge_resend_button),
             cooldown = resend.cooldown ?: { seconds ->
@@ -179,6 +186,25 @@ private fun MfaMessages.EmailChallenge.resolve(resources: Resources): ResolvedMf
             },
         ),
         verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_email_challenge_verify_another_way),
+    )
+}
+
+/** The words of the authenticator app code screen and its list row, resolved the same way as the rest. */
+private fun MfaMessages.TotpChallenge.resolve(resources: Resources): ResolvedMfaMessages.TotpChallenge {
+    fun word(override: String?, @StringRes id: Int) = override ?: resources.getString(id)
+
+    return ResolvedMfaMessages.TotpChallenge(
+        row = ResolvedMfaMessages.Message(
+            word(row.title, R.string.auth0_mfa_totp_challenge_row_title),
+            word(row.description, R.string.auth0_mfa_totp_challenge_row_description),
+        ),
+        title = word(title, R.string.auth0_mfa_totp_challenge_title),
+        description = word(description, R.string.auth0_mfa_totp_challenge_description),
+        codeLabel = word(codeLabel, R.string.auth0_mfa_totp_challenge_code_label),
+        verifyButton = word(verifyButton, R.string.auth0_mfa_totp_challenge_verify_button),
+        wrongCode = word(wrongCode, R.string.auth0_mfa_totp_challenge_wrong_code),
+        noConnection = word(noConnection, R.string.auth0_mfa_totp_challenge_no_connection),
+        verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_totp_challenge_verify_another_way),
     )
 }
 

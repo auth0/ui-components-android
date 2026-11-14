@@ -4,6 +4,7 @@ import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListHeader
 import com.auth0.universalcomponents.feature.mfachallenge.AuthenticatorListModel
+import com.auth0.universalcomponents.feature.mfachallenge.CodeChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.EmailChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaExit
@@ -12,6 +13,8 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.SentCodeChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.TotpChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
@@ -103,7 +106,7 @@ class MfaStepMapperTest {
 
     @Test
     fun `phone code - the model carries the number, how the code came, and the wait states`() {
-        val state = codeReady(TWO_WITH_SMS).copy(resendSecondsLeft = 42, isWrongCode = true)
+        val state = codeReady(TWO_WITH_SMS).copy(resend = RESEND_WAITING, isWrongCode = true)
 
         val factor = (toStep(state) as MfaStep.Factor).step
         val model = factor.model as PhoneChallengeModel
@@ -122,7 +125,7 @@ class MfaStepMapperTest {
     @Test
     fun `phone code - being checked, or sent again - says so`() {
         val verifying = codeReady(TWO_WITH_SMS).copy(phase = CodePhase.Verifying)
-        val resending = codeReady(TWO_WITH_SMS).copy(phase = CodePhase.Resending, canResend = false)
+        val resending = codeReady(TWO_WITH_SMS).copy(phase = CodePhase.Resending, resend = RESEND_SENT)
 
         val checked = (toStep(verifying) as MfaStep.Factor).step.model as PhoneChallengeModel
         val sent = (toStep(resending) as MfaStep.Factor).step.model as PhoneChallengeModel
@@ -180,7 +183,7 @@ class MfaStepMapperTest {
 
     @Test
     fun `email code - the model carries the address, and the wait states`() {
-        val state = emailReady(TWO_WITH_EMAIL).copy(resendSecondsLeft = 42, isWrongCode = true)
+        val state = emailReady(TWO_WITH_EMAIL).copy(resend = RESEND_WAITING, isWrongCode = true)
 
         val factor = (toStep(state) as MfaStep.Factor).step
         val model = factor.model as EmailChallengeModel
@@ -199,7 +202,7 @@ class MfaStepMapperTest {
     @Test
     fun `email code - being checked, or sent again - says so`() {
         val verifying = emailReady(TWO_WITH_EMAIL).copy(phase = CodePhase.Verifying)
-        val resending = emailReady(TWO_WITH_EMAIL).copy(phase = CodePhase.Resending, canResend = false)
+        val resending = emailReady(TWO_WITH_EMAIL).copy(phase = CodePhase.Resending, resend = RESEND_SENT)
 
         val checked = (toStep(verifying) as MfaStep.Factor).step.model as EmailChallengeModel
         val sent = (toStep(resending) as MfaStep.Factor).step.model as EmailChallengeModel
@@ -207,6 +210,62 @@ class MfaStepMapperTest {
         assertThat(checked.isVerifying).isTrue()
         assertThat(sent.isResending).isTrue()
         assertThat(sent.canResend).isFalse()
+    }
+
+    @Test
+    fun `code screens - a connection error - reaches the model of a phone, an email and an authenticator app`() {
+        val offline = MfaError.Network()
+
+        val phone = (toStep(codeReady(TWO_WITH_SMS).copy(requestError = offline)) as MfaStep.Factor).step.model
+        val email = (toStep(emailReady(TWO_WITH_EMAIL).copy(requestError = offline)) as MfaStep.Factor).step.model
+        val app = (toStep(appReady(TWO_WITH_APP).copy(requestError = offline)) as MfaStep.Factor).step.model
+
+        assertThat((phone as PhoneChallengeModel).requestError).isSameInstanceAs(offline)
+        assertThat((email as EmailChallengeModel).requestError).isSameInstanceAs(offline)
+        assertThat((app as TotpChallengeModel).requestError).isSameInstanceAs(offline)
+    }
+
+    @Test
+    fun `code screens - an expired code - reaches the phone and email models, and Resend opens at once`() {
+        val expired = codeReady(TWO_WITH_SMS).copy(resend = RESEND_OPEN, isCodeExpired = true)
+
+        val phone = (toStep(expired) as MfaStep.Factor).step.model as PhoneChallengeModel
+        val email = (toStep(expired.copy(factor = EMAIL)) as MfaStep.Factor).step.model as EmailChallengeModel
+
+        assertThat(phone.isCodeExpired).isTrue()
+        assertThat(phone.canResend).isTrue()
+        assertThat(phone.resendAvailableIn).isEqualTo(0)
+        assertThat(email.isCodeExpired).isTrue()
+    }
+
+    @Test
+    fun `code screens - a resend refused as too many - reaches the model as the reason`() {
+        val refused = MfaError.TooManyAttempts()
+
+        val phone = (toStep(codeReady(TWO_WITH_SMS).copy(requestError = refused)) as MfaStep.Factor).step.model
+
+        assertThat((phone as SentCodeChallengeModel).requestError).isSameInstanceAs(refused)
+    }
+
+    @Test
+    fun `code screens - every code factor's model - is a code challenge, and only a sent code is also resendable`() {
+        val phone = (toStep(codeReady(TWO_WITH_SMS)) as MfaStep.Factor).step.model
+        val email = (toStep(emailReady(TWO_WITH_EMAIL)) as MfaStep.Factor).step.model
+        val app = (toStep(appReady(TWO_WITH_APP)) as MfaStep.Factor).step.model
+
+        assertThat(phone).isInstanceOf(SentCodeChallengeModel::class.java)
+        assertThat(email).isInstanceOf(SentCodeChallengeModel::class.java)
+        assertThat(app).isInstanceOf(CodeChallengeModel::class.java)
+        assertThat(app).isNotInstanceOf(SentCodeChallengeModel::class.java)
+    }
+
+    @Test
+    fun `code screens - no connection error - leave the model's error empty`() {
+        val phone = (toStep(codeReady(TWO_WITH_SMS)) as MfaStep.Factor).step.model as PhoneChallengeModel
+        val app = (toStep(appReady(TWO_WITH_APP)) as MfaStep.Factor).step.model as TotpChallengeModel
+
+        assertThat(phone.requestError).isNull()
+        assertThat(app.requestError).isNull()
     }
 
     @Test
@@ -250,6 +309,70 @@ class MfaStepMapperTest {
         step.model.select("email:6")
 
         assertThat(intents).containsExactly(MfaIntent.SelectFactor(OTHER_EMAIL))
+    }
+
+    @Test
+    fun `app code - the model carries the wrong-code and switch states`() {
+        val state = appReady(TWO_WITH_APP).copy(isWrongCode = true)
+
+        val factor = (toStep(state) as MfaStep.Factor).step
+        val model = factor.model as TotpChallengeModel
+
+        assertThat(factor.factor).isEqualTo(MfaFactorId.Totp)
+        assertThat(factor.round).isEqualTo(1)
+        assertThat(model.isWrongCode).isTrue()
+        assertThat(model.canSwitch).isTrue()
+        assertThat(model.isVerifying).isFalse()
+    }
+
+    @Test
+    fun `app code - being checked - says so`() {
+        val verifying = appReady(TWO_WITH_APP).copy(phase = CodePhase.Verifying)
+
+        val model = (toStep(verifying) as MfaStep.Factor).step.model as TotpChallengeModel
+
+        assertThat(model.isVerifying).isTrue()
+    }
+
+    @Test
+    fun `app code - the only factor - cannot switch`() {
+        val model = (toStep(appReady(MfaRound(1, listOf(APP)))) as MfaStep.Factor).step.model as TotpChallengeModel
+
+        assertThat(model.canSwitch).isFalse()
+    }
+
+    @Test
+    fun `app code - the taps - come back as intents`() {
+        val model = (toStep(appReady(TWO_WITH_APP)) as MfaStep.Factor).step.model as TotpChallengeModel
+
+        model.submit("123456")
+        model.switchFactor()
+        model.cancel()
+
+        assertThat(intents).containsExactly(
+            MfaIntent.SubmitCode("123456"),
+            MfaIntent.ChooseAnotherFactor,
+            MfaIntent.Cancel,
+        ).inOrder()
+    }
+
+    @Test
+    fun `list - the authenticator app - is one row with no name of its own, and the app icon`() {
+        val step = toStep(MfaState.ChooseFactor(TWO_WITH_APP)) as MfaStep.AuthenticatorList
+
+        assertThat(step.model.rows).containsExactly(
+            AuthenticatorListModel.Row("totp", MfaFactorId.Totp, "", null, R.drawable.ic_authenticator),
+            AuthenticatorListModel.Row("push:0", MfaFactorId.Push, "Jane's phone", null, R.drawable.ic_device),
+        ).inOrder()
+    }
+
+    @Test
+    fun `select - the authenticator app row - picks it`() {
+        val step = toStep(MfaState.ChooseFactor(TWO_WITH_APP)) as MfaStep.AuthenticatorList
+
+        step.model.select("totp")
+
+        assertThat(intents).containsExactly(MfaIntent.SelectFactor(APP))
     }
 
     @Test
@@ -325,11 +448,13 @@ class MfaStepMapperTest {
         round = round,
         factor = SMS,
         phase = CodePhase.Ready,
-        canResend = true,
-        resendSecondsLeft = 0,
+        resend = RESEND_OPEN,
     )
 
     private fun emailReady(round: MfaRound) = codeReady(round).copy(factor = EMAIL)
+
+    /** Nothing is sent to an authenticator app, so it never offers Resend. */
+    private fun appReady(round: MfaRound) = codeReady(round).copy(factor = APP, resend = null)
 
     private fun waiting(round: MfaRound, factor: MfaFactor.Push) = MfaState.PushWaiting(
         round = round,
@@ -351,6 +476,17 @@ class MfaStepMapperTest {
         val EMAIL = MfaFactor.Email(5, "j***@example.com")
         val OTHER_EMAIL = MfaFactor.Email(6, "w***@example.com")
         val TWO_WITH_EMAIL = MfaRound(1, listOf(EMAIL, PHONE))
+        val APP = MfaFactor.AuthenticatorApp
+        val TWO_WITH_APP = MfaRound(1, listOf(APP, PHONE))
+
+        /** A resend on offer, with 42 seconds of wait left. */
+        val RESEND_WAITING = CodeResend(isOffered = true, secondsLeft = 42)
+
+        /** A resend that is going out, or was just used: not on offer. */
+        val RESEND_SENT = CodeResend(isOffered = false, secondsLeft = 0)
+
+        /** A resend the server offers, with no wait left. */
+        val RESEND_OPEN = CodeResend(isOffered = true, secondsLeft = 0)
         const val POLL = 3_000L
     }
 }

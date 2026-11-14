@@ -16,12 +16,14 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.ResolvedMfaMessages
+import com.auth0.universalcomponents.feature.mfachallenge.TotpChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaAuthenticatorListScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaEmailChallengeScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaErrorScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaLoadingScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaPhoneChallengeScreen
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaPushChallengeScreen
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.MfaTotpChallengeScreen
 import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 
 /**
@@ -98,6 +100,7 @@ private fun MfaStepContent(step: MfaStep, configuration: MfaConfiguration, messa
                     is PushChallengeModel -> MfaPushChallengeScreen(model, messages = messages)
                     is PhoneChallengeModel -> MfaPhoneChallengeScreen(model, messages = messages)
                     is EmailChallengeModel -> MfaEmailChallengeScreen(model, messages = messages)
+                    is TotpChallengeModel -> MfaTotpChallengeScreen(model, messages = messages)
                 }
             }
         }

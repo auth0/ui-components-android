@@ -15,6 +15,7 @@ class ResolvedMfaMessages internal constructor(
     val pushChallenge: PushChallenge,
     val phoneChallenge: PhoneChallenge,
     val emailChallenge: EmailChallenge,
+    val totpChallenge: TotpChallenge,
 ) {
 
     companion object {
@@ -71,6 +72,9 @@ class ResolvedMfaMessages internal constructor(
         val codeLabel: String,
         val verifyButton: String,
         val wrongCode: String,
+        val expiredCode: String,
+        val noConnection: String,
+        val tooManyRequests: String,
         val resend: Resend,
         val verifyAnotherWay: String,
         val rowText: (phoneNumber: String) -> String,
@@ -88,9 +92,23 @@ class ResolvedMfaMessages internal constructor(
         val codeLabel: String,
         val verifyButton: String,
         val wrongCode: String,
+        val expiredCode: String,
+        val noConnection: String,
+        val tooManyRequests: String,
         val resend: Resend,
         val verifyAnotherWay: String,
     ) {
         class Resend internal constructor(val button: String, val cooldown: (seconds: Int) -> String)
     }
+
+    class TotpChallenge internal constructor(
+        val row: Message,
+        val title: String,
+        val description: String,
+        val codeLabel: String,
+        val verifyButton: String,
+        val wrongCode: String,
+        val noConnection: String,
+        val verifyAnotherWay: String,
+    )
 }

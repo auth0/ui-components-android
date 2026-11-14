@@ -17,6 +17,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.TotpChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 
 /**
@@ -67,10 +68,13 @@ internal fun MfaState.toMfaStep(onIntent: (MfaIntent) -> Unit, onLeave: () -> Un
     }
 }
 
-/** The code screen's model: the same actions for a code sent to a phone or to an email address. */
+/**
+ * The code screen's model: the same actions for a code sent to a phone or to an email address, and for the one an
+ * authenticator app shows, which has no Resend.
+ */
 private fun MfaState.CodeEntry.toModel(onIntent: (MfaIntent) -> Unit, cancel: () -> Unit): MfaFactorModel {
     val submit = { code: String -> onIntent(MfaIntent.SubmitCode(code)) }
-    val resend = { onIntent(MfaIntent.Resend) }
+    val resendTapped = { onIntent(MfaIntent.Resend) }
     val switchFactor = { onIntent(MfaIntent.ChooseAnotherFactor) }
     return when (val factor = factor) {
         is MfaFactor.Phone -> PhoneChallengeModel(
@@ -79,13 +83,15 @@ private fun MfaState.CodeEntry.toModel(onIntent: (MfaIntent) -> Unit, cancel: ()
             isWrongCode = isWrongCode,
             isVerifying = phase == CodePhase.Verifying,
             isResending = phase == CodePhase.Resending,
-            canResend = canResend,
-            resendAvailableIn = resendSecondsLeft,
+            canResend = resend?.isOffered == true,
+            resendAvailableIn = resend?.secondsLeft ?: 0,
             canSwitch = round.canSwitch,
             submit = submit,
-            resend = resend,
+            resend = resendTapped,
             switchFactor = switchFactor,
             cancel = cancel,
+            requestError = requestError,
+            isCodeExpired = isCodeExpired,
         )
 
         is MfaFactor.Email -> EmailChallengeModel(
@@ -93,13 +99,25 @@ private fun MfaState.CodeEntry.toModel(onIntent: (MfaIntent) -> Unit, cancel: ()
             isWrongCode = isWrongCode,
             isVerifying = phase == CodePhase.Verifying,
             isResending = phase == CodePhase.Resending,
-            canResend = canResend,
-            resendAvailableIn = resendSecondsLeft,
+            canResend = resend?.isOffered == true,
+            resendAvailableIn = resend?.secondsLeft ?: 0,
             canSwitch = round.canSwitch,
             submit = submit,
-            resend = resend,
+            resend = resendTapped,
             switchFactor = switchFactor,
             cancel = cancel,
+            requestError = requestError,
+            isCodeExpired = isCodeExpired,
+        )
+
+        MfaFactor.AuthenticatorApp -> TotpChallengeModel(
+            isWrongCode = isWrongCode,
+            isVerifying = phase == CodePhase.Verifying,
+            canSwitch = round.canSwitch,
+            submit = submit,
+            switchFactor = switchFactor,
+            cancel = cancel,
+            requestError = requestError,
         )
     }
 }
@@ -127,6 +145,8 @@ private fun MfaFactor.row() = AuthenticatorListModel.Row(
         is MfaFactor.Push -> deviceName
         is MfaFactor.Phone -> maskedNumber
         is MfaFactor.Email -> address
+        // The user's own app has no name to show: the row says what the factor is.
+        MfaFactor.AuthenticatorApp -> ""
     },
     subtitle = null,
     icon = when (this) {
@@ -134,6 +154,7 @@ private fun MfaFactor.row() = AuthenticatorListModel.Row(
         is MfaFactor.Phone ->
             if (delivery == PhoneDeliveryMethod.VOICE) R.drawable.ic_mfa_voice else R.drawable.ic_mfa_sms
         is MfaFactor.Email -> R.drawable.ic_mfa_email
+        MfaFactor.AuthenticatorApp -> R.drawable.ic_authenticator
     },
     delivery = (this as? MfaFactor.Phone)?.delivery?.toDelivery(),
 )
@@ -143,17 +164,19 @@ private val MfaFactor.factorId: MfaFactorId
         is MfaFactor.Push -> MfaFactorId.Push
         is MfaFactor.Phone -> MfaFactorId.Phone
         is MfaFactor.Email -> MfaFactorId.Email
+        MfaFactor.AuthenticatorApp -> MfaFactorId.Totp
     }
 
 /**
  * One row per device, per way a phone is reached, and per email address: the server's handle for the device tells two
- * phones with push apart, and a phone that can be texted and called is two rows.
+ * phones with push apart, and a phone that can be texted and called is two rows. The authenticator app is one row.
  */
 private val MfaFactor.rowId: String
     get() = when (this) {
         is MfaFactor.Push -> "${MfaFactorId.Push.value}:$index"
         is MfaFactor.Phone -> "${MfaFactorId.Phone.value}:$index:${delivery.name}"
         is MfaFactor.Email -> "${MfaFactorId.Email.value}:$index"
+        MfaFactor.AuthenticatorApp -> MfaFactorId.Totp.value
     }
 
 private fun PhoneDeliveryMethod.toDelivery() = when (this) {
@@ -167,7 +190,7 @@ private fun PhoneDeliveryMethod.toDelivery() = when (this) {
  * [engine] as intents; the error screen's way out is [onLeave].
  *
  * When no factor can be used there is no step to publish, whatever the app answered: the app is told through
- * `onMfaError` and the result, and the login draws the "not available" screen if the app didn't take over, as on iOS.
+ * `onMfaError` and the result, and the login draws the "not available" screen if the app didn't take over.
  */
 internal suspend fun MfaStepStream.mirror(engine: MfaEngine, onLeave: () -> Unit): Nothing {
     engine.state.collect { state ->

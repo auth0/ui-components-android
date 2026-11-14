@@ -338,11 +338,14 @@ On code entry, Back returns to the email or phone entry it came from, and when t
 
 ### Multi-Factor Authentication
 
-When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLoginScreen` moves into MFA in place; nothing extra is needed in your app. Today it runs a push notification, or a code sent to a phone (by text message or voice call) or to an email address. With several factors, the user picks one from a list first. Other factors aren't supported in this flow yet.
+When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLoginScreen` moves into MFA in place; nothing extra is needed in your app. Today it runs a push notification, a code sent to a phone (by text message or voice call) or to an email address, or the code from an authenticator app. With several factors, the user picks one from a list first. Other factors aren't supported in this flow yet.
 
 - **Approved, or the code is right:** the credentials go to `onAuthenticated`. If the policy asks for another factor, the list returns headed **One more step**, with no limit on the number of steps.
-- **A wrong phone or email code** stays on the screen, inline, so the user can type another. **Resend** opens 60 seconds after each send.
-- **Declined, expired, session ended, too many attempts or no connection:** a screen with its own message and **Start over**, which returns to email entry with the email kept.
+- **A wrong code** (phone, email or authenticator app) stays on the screen, inline, so the user can type another. **Resend** opens 60 seconds after each send. The authenticator app has nothing to send, so its screen opens at once and has no **Resend**.
+- **No answer while a typed code is being checked** (phone, email or authenticator app) stays on the screen with a "No connection" line under the boxes, and the same code can be sent again. It may be a dropped connection or a timeout after the server already had the code, so a second try can also be refused as wrong. The line stays until the next check starts.
+- **A code that expired** (phone or email), when the server offers another, stays on the screen with "Your code has expired. Resend another code and try again." Verify waits and **Resend** is open at once.
+- **A resend that gets no answer, or is refused as too many,** keeps the code already on the screen, with "No connection" or "Too many attempts" under the boxes. **Resend** opens again after the usual wait.
+- **Declined, session ended, too many attempts, a first code that could not be sent, or no connection at any other time:** a screen with its own message and **Start over**, which returns to email entry with the email kept.
 - **Verify another way** (several factors) returns to the list. **Back** does the same from a factor screen, and returns to email entry from the list, or from a factor screen in the first step when there is only one factor. While a code or a push is being sent again, or a typed code is being checked, it does nothing.
 - **No factor this flow can run:** a **Verification method not available** screen shows, unless your app takes over with `onMfaError`.
 - **Push checks right away** when the app returns to the foreground, so approving on the same phone signs in without waiting for the next check.
@@ -376,7 +379,7 @@ If you return `Handled`, your app owns what happens next, including when what yo
 
 #### Change the words
 
-Every word has a default string resource named `auth0_mfa_<group>_<key>`, for example `auth0_mfa_push_challenge_title`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value such as the device name, use `MfaMessages`; anything you leave unset keeps its default. The groups are `authenticatorList`, `loading`, `errors`, `pushChallenge`, `phoneChallenge` and `emailChallenge`.
+Every word has a default string resource named `auth0_mfa_<group>_<key>`, for example `auth0_mfa_push_challenge_title`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value such as the device name, use `MfaMessages`; anything you leave unset keeps its default. The groups are `authenticatorList`, `loading`, `errors`, `pushChallenge`, `phoneChallenge`, `emailChallenge` and `totpChallenge`.
 
 ```kotlin
 // Built once: a new MfaMessages on every recomposition would make the words resolve again.
@@ -394,6 +397,10 @@ val mfa = remember {
                 // The address as the server hides it, such as j***@example.com. When it gives none, the line
                 // under the title is `descriptionUnnamed`.
                 description = { address -> "We emailed a code to $address." }
+            }
+            totpChallenge {
+                // It names no app: the user's may be any.
+                description = "Open your authenticator app"
             }
             errors { rejected { title = "Sign-in denied" } }
         },
@@ -433,9 +440,9 @@ mfa = MfaConfiguration(
 )
 ```
 
-`canResend` says whether the server still allows another send. `resendAvailableIn` is the seconds left before it may be sent, and 0 when it can be tapped now. The flow owns that countdown, so calling `resend()` early does nothing; a replacement only has to show it (the model is published again each second while it counts down). On a code screen (phone or email), `submit(code)` does nothing unless the code is exactly 6 digits, so a replacement may enable its button on any input.
+`canResend` says whether the server still allows another send. `resendAvailableIn` is the seconds left before it may be sent, and 0 when it can be tapped now. The flow owns that countdown, so calling `resend()` early does nothing; a replacement only has to show it (the model is published again each second while it counts down). On a code screen (phone, email or authenticator app), `submit(code)` does nothing unless the code is exactly 6 digits, so a replacement may enable its button on any input. The authenticator app's model (`TotpChallengeModel`) has no destination and no resend, since nothing is sent. The three code models share `CodeChallengeModel`, and the two that send a code (phone, email) share `SentCodeChallengeModel`, so one screen of your own can serve them all. `requestError` is `MfaError.Network` when the last check or resend got no answer (the code is untouched and `submit` may send it again), or `MfaError.TooManyAttempts` when a resend was refused; draw the factor's `noConnection` or `tooManyRequests` words (or `requestError?.let { messages.errors.messageFor(it) }`). `isCodeExpired` is true when the code timed out and another can be sent: `submit` does nothing until Resend brings it. Both are cleared by the next request.
 
-The factor list (`authenticatorList`), the phone code screen (`phoneChallenge`), the email code screen (`emailChallenge`) and the error screen (`error`) are replaced the same way. There is no screen to replace for loading. Models hold data only, and every action defaults to doing nothing, so they are easy to build for a preview or a test of your own screen. Build the words with `ResolvedMfaMessages.from(context)`, passing `MfaMessages { ... }` as the second argument to include your own.
+The factor list (`authenticatorList`), the phone code screen (`phoneChallenge`), the email code screen (`emailChallenge`), the authenticator app screen (`totpChallenge`) and the error screen (`error`) are replaced the same way. There is no screen to replace for loading. Models hold data only, and every action defaults to doing nothing, so they are easy to build for a preview or a test of your own screen. Build the words with `ResolvedMfaMessages.from(context)`, passing `MfaMessages { ... }` as the second argument to include your own.
 
 #### Draw every MFA screen yourself (headless)
 
@@ -459,6 +466,7 @@ Box {
             is PushChallengeModel -> MyPush(model)
             is PhoneChallengeModel -> MyPhone(model)
             is EmailChallengeModel -> MyEmail(model)
+            is TotpChallengeModel -> MyTotp(model)
             else -> Unit
         }
         is MfaStep.Error -> MyError(current.model)

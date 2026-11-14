@@ -64,7 +64,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `discover - tells the server only what these screens can drive, as iOS does`() = runTest {
+    fun `discover - tells the server only what these screens can drive`() = runTest {
         repository.discover()
 
         verify {
@@ -327,7 +327,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, listed push, text, voice, email`() = runTest {
+    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, listed push, app, text, voice, email`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
             challengeEmail(at = 0),
             sdkInstance<NextAction.ChallengePhone>(
@@ -348,6 +348,7 @@ class EmbeddedLoginRepositoryImplTest {
                 listOf(
                     MfaFactor.Push(2, DEVICE),
                     MfaFactor.Push(3, OTHER_DEVICE),
+                    MfaFactor.AuthenticatorApp,
                     MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.TEXT),
                     MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.VOICE),
                     MfaFactor.Email(0, EMAIL),
@@ -357,12 +358,21 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
+    fun `verifyOtp - only an authenticator app is offered - fails as MFA required, so the user can type its code`() =
+        runTest {
+            every { client.verifyOtp(CODE, OtpType.OOB) } returns step(verifyOtp(OtpChannel.TOTP, null))
+
+            val failure = repository.verifyOtp(CODE).failure()
+
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired(listOf(MfaFactor.AuthenticatorApp)))
+        }
+
+    @Test
     fun `verifyOtp - only steps these screens can't drive - hands MFA no factors, so it says so`() = runTest {
         listOf(
             verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
             verifyOtp(OtpChannel.SMS, null),
-            // Second factors other than push, a phone code and an email code aren't supported yet.
-            verifyOtp(OtpChannel.TOTP, null),
+            // Second factors other than push, a phone code, an email code and an authenticator app aren't supported yet.
             NextAction.VerifyRecoveryCode,
         ).forEach { nextAction ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns step(nextAction)
@@ -434,8 +444,6 @@ class EmbeddedLoginRepositoryImplTest {
         listOf(
             EmbeddedAuthError.NoEligibleFactors to "no_eligible_factors",
             EmbeddedAuthError.AuthorizationRejected to "authorization_rejected",
-            EmbeddedAuthError.ConsentRequired to "consent_required",
-            EmbeddedAuthError.IpBlocked to "ip_blocked",
             EmbeddedAuthError.InvalidRequest to "Missing parameter: connection",
         ).forEach { (sdkError, description) ->
             every { client.authorize(CONNECTION, any(), any(), any()) } returns
@@ -444,6 +452,21 @@ class EmbeddedLoginRepositoryImplTest {
             val failure = repository.discover().failure()
 
             assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
+        }
+    }
+
+    @Test
+    fun `errors - the address is blocked, or the sign-in needs a consent - each has its own words`() = runTest {
+        listOf(
+            Triple(EmbeddedAuthError.IpBlocked, "ip_blocked", EmbeddedLoginError.IpBlocked),
+            Triple(EmbeddedAuthError.ConsentRequired, "consent_required", EmbeddedLoginError.ConsentRequired),
+        ).forEach { (sdkError, description, expected) ->
+            every { client.authorize(CONNECTION, any(), any(), any()) } returns
+                failingWith(sdkError, description = description)
+
+            val failure = repository.discover().failure()
+
+            assertThat(failure.error).isEqualTo(expected)
         }
     }
 
