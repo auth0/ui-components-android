@@ -282,10 +282,9 @@ private class SentCodeWords(
 )
 
 /**
- * The body every code screen shares, drawn from the model: the six boxes, one line under them (no connection, too many
- * requests, an expired code, or a wrong code, in that order), Verify, and Resend and "Verify another way" when the
- * model allows them. The title's second line turns off the font's contextual alternates, since it may show a hidden
- * number or address (`*********0128`, `s***@example.com`).
+ * The body every code screen shares, drawn from the model: the six boxes, one line under them, Verify, and Resend and
+ * "Verify another way" when the model allows them. The title's second line turns off the font's contextual
+ * alternates, since it may show a hidden number or address (`*********0128`, `s***@example.com`).
  */
 @Composable
 private fun MfaCodeEntry(
@@ -295,24 +294,25 @@ private fun MfaCodeEntry(
 ) {
     val dimensions = Auth0Theme.dimensions
     var code by rememberSaveable { mutableStateOf("") }
-    // Hidden once the user types after a refused code, shown again by the next Verify. Kept across a rotation, so a
-    // line the user already dismissed does not come back.
-    var hideError by rememberSaveable { mutableStateOf(false) }
+    // True once the user edits the code after the last answer: the line about that answer goes away, and comes back with
+    // the next one (Verify or Resend resets it). Kept across a rotation, so a dismissed line does not come back.
+    var hasEdited by rememberSaveable { mutableStateOf(false) }
     // Only a code the server sends can be sent again, or expire.
     val sent = model as? SentCodeChallengeModel
     val sentWords = words.sent
     val isBusy = model.isVerifying || sent?.isResending == true
     val isExpired = sent?.isCodeExpired == true
-    val showsError = model.isWrongCode && !hideError
     // Resend is on offer only for a code the server sends, while the server still offers another.
     val resendOffer = if (sent != null && sentWords != null && sent.canResend) sent to sentWords else null
-    // A request that got no answer, or an expired code, stays on show until the next request starts, and the boxes
-    // don't turn red for either: the code is right as typed.
-    val problem = when {
-        model.requestError is MfaError.TooManyAttempts -> sentWords?.tooManyRequests
-        model.requestError != null -> words.noConnection
+    // The line under the boxes. An expired code is the one line that stays after an edit: it is about the code that was
+    // sent, and Verify waits for a new one whatever is typed. The boxes turn red only for a wrong code.
+    val isFresh = !hasEdited
+    val showsWrongCode = isFresh && model.isWrongCode
+    val problemText = when {
+        isFresh && model.requestError is MfaError.TooManyAttempts -> sentWords?.tooManyRequests
+        isFresh && model.requestError != null -> words.noConnection
         isExpired -> sentWords?.expiredCode
-        showsError -> words.wrongCode
+        showsWrongCode -> words.wrongCode
         else -> null
     }
 
@@ -334,16 +334,16 @@ private fun MfaCodeEntry(
                 onCodeChange = {
                     if (!isBusy) {
                         code = it
-                        hideError = true
+                        hasEdited = true
                     }
                 },
-                isError = showsError,
+                isError = showsWrongCode,
                 // The visible label is a separate node, so TalkBack would land on an unnamed edit box.
                 modifier = Modifier.semantics { contentDescription = words.codeLabel },
             )
-            if (problem != null) {
+            if (problemText != null) {
                 Text(
-                    text = problem,
+                    text = problemText,
                     style = Auth0Theme.typography.bodySmall,
                     color = Auth0Theme.colors.textOnError,
                     modifier = Modifier
@@ -357,7 +357,7 @@ private fun MfaCodeEntry(
             FlowPrimaryButton(
                 title = words.verifyButton,
                 onClick = {
-                    hideError = false
+                    hasEdited = false
                     model.submit(code)
                 },
                 isLoading = model.isVerifying,
@@ -376,8 +376,9 @@ private fun MfaCodeEntry(
                                 resendWords.resendButton
                             },
                             onClick = {
-                                // The old code is no use once a new one is on its way.
+                                // The old code is no use once a new one is on its way, and what the resend answers is new.
                                 code = ""
+                                hasEdited = false
                                 offered.resend()
                             },
                             enabled = offered.resendAvailableIn == 0 && !isBusy,

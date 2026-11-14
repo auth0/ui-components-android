@@ -126,9 +126,9 @@ data class PushChallengeModel @JvmOverloads constructor(
  *
  * [requestError] says why the last check, or the last resend, got no answer while the screen stays up: a
  * [MfaError.Network] (the request may or may not have reached the server, so the same code may be tried again), or on a
- * resend a [MfaError.TooManyAttempts]. It is null otherwise, and cleared when the next request starts. Show
- * `requestError?.let { messages.errors.messageFor(it) }`, or the factor's own `noConnection` and `tooManyRequests`
- * words.
+ * resend a [MfaError.TooManyAttempts]. It is null otherwise, and cleared when the next request starts; the standard
+ * screens also hide its line as soon as the user edits the code. Show `requestError?.let { messages.errors.messageFor(it) }`,
+ * or the factor's own `noConnection` and `tooManyRequests` words.
  */
 sealed interface CodeChallengeModel : MfaFactorModel {
     val isWrongCode: Boolean
