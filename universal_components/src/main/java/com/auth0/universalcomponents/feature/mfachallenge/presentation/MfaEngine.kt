@@ -58,9 +58,9 @@ internal class MfaEngine(
     private var checkJob: Job? = null
 
     /**
-     * The call a factor is making, whichever factor it is: a push or code sent, or a typed code checked. Only one is ever
-     * out at a time: the screen stays off limits until it is, and a new round or the list drops it. See [request] for
-     * when it can be dropped and what happens to its answer.
+     * The call a factor is making, whichever factor it is: a push or code sent, a typed code checked, or a new recovery
+     * code confirmed. Only one is ever out at a time: the screen stays off limits until it is, and a new round or the
+     * list drops it. See [request] for when it can be dropped and what happens to its answer.
      */
     private var requestJob: Job? = null
 
@@ -147,15 +147,12 @@ internal class MfaEngine(
 
             is MfaCommand.VerifyCode -> request {
                 val verified = repository.verifyCode(command.factor, command.code)
-                onOutcome(
-                    verified.toOutcome(MfaOutcome::CodeFailed) { status ->
-                        when (status) {
-                            is CodeStatus.Verified -> MfaOutcome.SignedIn(status.credentials)
-                            CodeStatus.WrongCode -> MfaOutcome.CodeRejected
-                            is CodeStatus.AnotherFactor -> MfaOutcome.AnotherFactor(status.factors)
-                        }
-                    },
-                )
+                onOutcome(verified.toOutcome(MfaOutcome::CodeFailed) { it.asOutcome() })
+            }
+
+            MfaCommand.ConfirmRecoveryCode -> request {
+                val confirmed = repository.confirmRecoveryCode()
+                onOutcome(confirmed.toOutcome(MfaOutcome::CodeFailed) { it.asOutcome() })
             }
 
             is MfaCommand.SchedulePushCheck -> {
@@ -180,9 +177,10 @@ internal class MfaEngine(
     }
 
     /**
-     * The one lane every call a factor makes goes through (a push or code sent, a typed code checked), whatever the
-     * factor: the one rule lives here, so adding a factor never adds a waiting rule. The call starts, dropping any
-     * earlier one that is still waiting, once the push check on its way, if any, has been answered and its answer applied.
+     * The one lane every call a factor makes goes through (a push or code sent, a typed code checked, a new recovery
+     * code confirmed), whatever the factor: the one rule lives here, so adding a factor never adds a waiting rule. The
+     * call starts, dropping any earlier one that is still waiting, once the push check on its way, if any, has been
+     * answered and its answer applied.
      * The SDK runs one step at a time, but waiting in its queue is not enough: the queue hands the call its turn before
      * the check's answer reaches us, and the answer may start a new round that the call was not meant for. A new round
      * or the list cancels the call while it waits here, so nothing goes out for a screen the user never sees.
@@ -229,6 +227,14 @@ internal class MfaEngine(
             val passed = (startedAt.elapsedNow().inWholeMilliseconds + HALF_SECOND_MILLIS) / ONE_SECOND_MILLIS
             applyUpdate(reducer.handleSecondPassed(_state.value, seconds = passed.toInt()))
         }
+    }
+
+    /** What the server's answer to a typed code, or to the confirmation of a new recovery code, means for the flow. */
+    private fun CodeStatus.asOutcome(): MfaOutcome = when (this) {
+        is CodeStatus.Verified -> MfaOutcome.SignedIn(credentials)
+        CodeStatus.WrongCode -> MfaOutcome.CodeRejected
+        is CodeStatus.AnotherFactor -> MfaOutcome.AnotherFactor(factors)
+        is CodeStatus.Rotated -> MfaOutcome.RecoveryCodeRotated(newCode)
     }
 
     /** A failure is logged once here, with its cause, so it can be traced in a live app. */

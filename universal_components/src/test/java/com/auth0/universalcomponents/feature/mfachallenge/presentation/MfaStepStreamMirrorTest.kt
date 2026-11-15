@@ -10,6 +10,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.RecoveryCodeChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.TotpChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.CodeStatus
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
@@ -197,6 +198,30 @@ class MfaStepStreamMirrorTest {
         }
 
     @Test
+    fun `recovery code - the stream shows the code to save after a right one, and Continue in the app's own screen signs in`() =
+        runTest {
+            val credentials = mockk<Credentials>()
+            coEvery { repository.verifyCode(RECOVERY, "ABCD-1234") } returns Result.Success(CodeStatus.Rotated(NEW_CODE))
+            coEvery { repository.confirmRecoveryCode() } returns Result.Success(CodeStatus.Verified(credentials))
+            started(RECOVERY)
+            val entry = (stream.step.value as MfaStep.Factor).step
+            assertThat(entry.factor).isEqualTo(MfaFactorId.RecoveryCode)
+            assertThat((entry.model as RecoveryCodeChallengeModel).newCode).isNull()
+
+            (entry.model as RecoveryCodeChallengeModel).submit("ABCD-1234")
+            runCurrent()
+
+            val save = (stream.step.value as MfaStep.Factor).step.model as RecoveryCodeChallengeModel
+            assertThat(save.newCode).isEqualTo(NEW_CODE)
+            assertThat(effects).isEmpty()
+
+            save.confirm()
+            runCurrent()
+
+            assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+        }
+
+    @Test
     fun `authenticator app - a wrong code reaches the model, and Switch returns to the list`() = runTest {
         coEvery { repository.verifyCode(APP, "111111") } returns Result.Success(CodeStatus.WrongCode)
         started(PHONE, APP, select = APP)
@@ -236,6 +261,8 @@ class MfaStepStreamMirrorTest {
         val SMS = MfaFactor.Phone(3, "***9239", PhoneDeliveryMethod.TEXT)
         val EMAIL = MfaFactor.Email(5, "j***@example.com")
         val APP = MfaFactor.AuthenticatorApp
+        val RECOVERY = MfaFactor.RecoveryCode
+        const val NEW_CODE = "YHARATFUJJKZNV5N3X1L2ZEC"
         const val POLL = 3_000L
         const val RESEND_SECONDS = 60
     }

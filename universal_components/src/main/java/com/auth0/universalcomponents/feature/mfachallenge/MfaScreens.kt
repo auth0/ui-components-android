@@ -75,6 +75,13 @@ class MfaScreens private constructor(
             replace(MfaFactorId.Totp) { model, messages -> if (model is TotpChallengeModel) content(model, messages) }
         }
 
+        /** Typing a recovery code, and then saving the new one that replaces it. */
+        fun recoveryCodeChallenge(content: @Composable (RecoveryCodeChallengeModel, ResolvedMfaMessages) -> Unit) {
+            replace(MfaFactorId.RecoveryCode) { model, messages ->
+                if (model is RecoveryCodeChallengeModel) content(model, messages)
+            }
+        }
+
         internal fun build() = MfaScreens(authenticatorList, error, factors.toMap())
     }
 }

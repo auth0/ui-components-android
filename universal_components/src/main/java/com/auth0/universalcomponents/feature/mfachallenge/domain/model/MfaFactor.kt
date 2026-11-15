@@ -5,8 +5,8 @@ import com.auth0.android.result.Credentials
 
 /**
  * A second way to prove who the user is, offered by the server once the first factor passed.
- * Push, a code sent to a phone or an email, and the code of an authenticator app are supported for now; more factors are
- * added here one at a time.
+ * Push, a code sent to a phone or an email, the code of an authenticator app and a recovery code are supported for now;
+ * more factors are added here one at a time.
  */
 internal sealed interface MfaFactor {
 
@@ -42,6 +42,13 @@ internal sealed interface MfaFactor {
      * number to name: the server offers it as a code to type, and it is one factor however many apps the user has.
      */
     data object AuthenticatorApp : Code
+
+    /**
+     * One of the codes the user was given to keep for when the other ways are out of reach. Nothing is sent, and the
+     * server offers it as a code to type. It is the user's own, so there is nothing to name; using it replaces it with
+     * a new one, which the user must then save ([CodeStatus.Rotated]).
+     */
+    data object RecoveryCode : Code
 }
 
 /** Where a push stands after the server answered: sending it, or one check of it. */
@@ -76,4 +83,12 @@ internal sealed interface CodeStatus {
 
     /** The code was right and the sign-in needs one more factor: [factors] are the next round's that these screens support. */
     data class AnotherFactor(val factors: List<MfaFactor>) : CodeStatus
+
+    /**
+     * A recovery code was right, and so is used up: [newCode] replaces it and is shown once, for the user to save. The
+     * sign-in goes on only once they confirm it. A live secret, so it is never written out by [toString].
+     */
+    data class Rotated(val newCode: String) : CodeStatus {
+        override fun toString(): String = "Rotated"
+    }
 }

@@ -48,17 +48,19 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
                 else -> unchanged
             }
 
-            // Only a code that is ready for one, and only a whole one: the standard screen never sends less, and a
-            // replaced screen is held to the same rule.
-            is MfaIntent.SubmitCode ->
-                if (state is MfaState.CodeEntry && state.canSubmit && intent.code.isWholeCode()) {
+            // Only a code that is ready for one, and only a whole one (see [sendable]): the standard screen never sends
+            // less, and a replaced screen is held to the same rule.
+            is MfaIntent.SubmitCode -> when {
+                state !is MfaState.CodeEntry || !state.canSubmit -> unchanged
+                else -> state.factor.sendable(intent.code)?.let { code ->
                     MfaUpdate(
                         state.copy(phase = CodePhase.Verifying, isWrongCode = false, requestError = null),
-                        listOf(MfaCommand.VerifyCode(state.factor, intent.code)),
+                        listOf(MfaCommand.VerifyCode(state.factor, code)),
                     )
-                } else {
-                    unchanged
-                }
+                } ?: unchanged
+            }
+
+            MfaIntent.ConfirmRecoveryCode -> confirmRecoveryCode(state)
         }
     }
 
@@ -68,6 +70,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
         is MfaOutcome.CodeSent -> codeSent(state, outcome.canResend)
         MfaOutcome.CodeRejected -> codeRejected(state)
         is MfaOutcome.CodeFailed -> codeFailed(state, outcome.error)
+        is MfaOutcome.RecoveryCodeRotated -> recoveryCodeRotated(state, outcome.newCode)
         // Even after the user moved on: they did approve, so they're signed in. The host shows the success screen.
         is MfaOutcome.SignedIn -> MfaUpdate(state, effect = MfaEffect.Authenticated(outcome.credentials))
         is MfaOutcome.AnotherFactor -> nextRound(state, outcome.factors)
@@ -133,19 +136,12 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
 
     /**
      * The challenge goes out first; its screen shows once it's out. A code that nothing sends, such as an authenticator
-     * app's, has no challenge to wait for: its screen shows at once.
+     * app's or a recovery code, has no challenge to wait for: its screen shows at once.
      */
     private fun select(round: MfaRound, factor: MfaFactor): MfaUpdate = when (factor) {
         is MfaFactor.Push -> MfaUpdate(MfaState.SendingChallenge(round, factor), listOf(MfaCommand.SendPush(factor)))
         is MfaFactor.Sent -> MfaUpdate(MfaState.SendingChallenge(round, factor), listOf(sendCode(factor)))
-        MfaFactor.AuthenticatorApp -> MfaUpdate(
-            MfaState.CodeEntry(
-                round = round,
-                factor = MfaFactor.AuthenticatorApp,
-                phase = CodePhase.Ready,
-                resend = null,
-            ),
-        )
+        is MfaFactor.Code -> MfaUpdate(MfaState.CodeEntry(round, factor, CodePhase.Ready, resend = null))
     }
 
     /** Each way a code travels has its own call; the code the user types back is checked the same way for all. */
@@ -243,6 +239,7 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      * Any other failure ends MFA.
      */
     private fun codeFailed(state: MfaState, error: MfaError): MfaUpdate {
+        if (state is MfaState.SaveRecoveryCode) return confirmFailed(state, error)
         if (state !is MfaState.CodeEntry || state.phase != CodePhase.Verifying) return MfaUpdate(state)
         val resend = state.resend
         return when {
@@ -253,6 +250,36 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             else -> fail(error)
         }
     }
+
+    /**
+     * The recovery code just typed was right, so it is used up: its replacement is shown, and the sign-in waits for the
+     * user to save it. An answer for a screen that is no longer the one being checked is dropped, and the new code with
+     * it: a user who leaves while the check is on its way (Cancel) loses it, since nothing can recall a call already out.
+     */
+    private fun recoveryCodeRotated(state: MfaState, newCode: String): MfaUpdate =
+        if (state is MfaState.CodeEntry && state.isCheckingRecoveryCode) {
+            MfaUpdate(MfaState.SaveRecoveryCode(state.round, newCode))
+        } else {
+            MfaUpdate(state)
+        }
+
+    /**
+     * Telling the server the new recovery code is saved got no good answer. A dropped connection keeps the code on show,
+     * so Continue can be tapped again; any other failure ends MFA. Dropped when nothing is being confirmed.
+     */
+    private fun confirmFailed(state: MfaState.SaveRecoveryCode, error: MfaError): MfaUpdate = when {
+        !state.isConfirming -> MfaUpdate(state)
+        error is MfaError.Network -> MfaUpdate(state.copy(isConfirming = false, requestError = error))
+        else -> fail(error)
+    }
+
+    /** The new recovery code is saved: the server is told, once, and the sign-in finishes on its answer. */
+    private fun confirmRecoveryCode(state: MfaState): MfaUpdate =
+        if (state is MfaState.SaveRecoveryCode && !state.isConfirming) {
+            MfaUpdate(state.copy(isConfirming = true, requestError = null), listOf(MfaCommand.ConfirmRecoveryCode))
+        } else {
+            MfaUpdate(state)
+        }
 
     /**
      * The user approved and the sign-in needs one more factor: the next round starts with the server's new menu,
@@ -333,8 +360,8 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
      * The server can't step back, so Back stays on our side: from the push or the code to the list when there's a
      * choice, otherwise out of MFA to start over. A challenge still going out finishes on its own, and its answer is
      * dropped. Not while a resend is going out, for the reason "Verify another way" is not either: the push can't be
-     * taken back, and picking the device again from the list would send another; nor while a typed code is being
-     * checked. Cancel still leaves. Once MFA has ended, Back is the host's.
+     * taken back, and picking the device again from the list would send another; nor while a typed code, or the new
+     * recovery code, is being checked or confirmed. Cancel still leaves. Once MFA has ended, Back is the host's.
      */
     private fun goBack(state: MfaState): MfaUpdate = when (state) {
         is MfaState.PushWaiting -> when {
@@ -348,6 +375,9 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
             else -> restart(state)
         }
         is MfaState.ChooseFactor, is MfaState.SendingChallenge -> restart(state)
+        // The new recovery code is not picked up again: leaving starts the sign-in over, and the code is lost. Not while
+        // it is being confirmed, like a typed code being checked: that answer would sign the user in.
+        is MfaState.SaveRecoveryCode -> if (state.isConfirming) MfaUpdate(state) else restart(state)
         is MfaState.Failed -> MfaUpdate(state)
     }
 
@@ -371,14 +401,29 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
     private val MfaState.CodeEntry.canSubmit: Boolean
         get() = phase == CodePhase.Ready && !isCodeExpired
 
+    /** The recovery code just typed is on its way to be checked. */
+    private val MfaState.CodeEntry.isCheckingRecoveryCode: Boolean
+        get() = factor == MfaFactor.RecoveryCode && phase == CodePhase.Verifying
+
     private val MfaState.roundOrNull: MfaRound?
         get() = when (this) {
             is MfaState.ChooseFactor -> round
             is MfaState.SendingChallenge -> round
             is MfaState.PushWaiting -> round
             is MfaState.CodeEntry -> round
+            is MfaState.SaveRecoveryCode -> round
             is MfaState.Failed -> null
         }
+
+    /**
+     * What goes to the server for what the user typed, or null while it isn't a code yet. A code of digits is whole at
+     * six; a recovery code has no fixed length, so it is only cleaned of what a paste brings along and sent when
+     * something is left.
+     */
+    private fun MfaFactor.Code.sendable(typed: String): String? = when (this) {
+        MfaFactor.RecoveryCode -> typed.cleanedRecoveryCode().takeIf { it.isNotEmpty() }
+        is MfaFactor.Phone, is MfaFactor.Email, MfaFactor.AuthenticatorApp -> typed.takeIf { it.isWholeCode() }
+    }
 
     /** Six digits, 0 to 9 only (the server reads no other script's), the length the code boxes take. */
     private fun String.isWholeCode(): Boolean = length == CODE_LENGTH && all(Char::isAsciiDigit)
@@ -401,3 +446,12 @@ internal class MfaReducer(private val factors: List<MfaFactor>) {
         const val SLOW_DOWN_STEP_MS = 2_000L
     }
 }
+
+private val FORMAT_CHARACTERS = Regex("\\p{Cf}")
+
+/**
+ * A recovery code as the user means it. Pasting brings invisible characters along (zero-width spaces, direction marks,
+ * a byte-order mark): they look like nothing and make the server call the code wrong, so they go, and so does the space
+ * around the code. Case, hyphens and spaces inside the code are the user's and are kept.
+ */
+internal fun String.cleanedRecoveryCode(): String = replace(FORMAT_CHARACTERS, "").trim()

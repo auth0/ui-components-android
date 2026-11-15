@@ -77,6 +77,39 @@ class MfaStepTest {
     }
 
     @Test
+    fun `factor id - recovery code - is named recovery_code, and compares by its value`() {
+        assertThat(MfaFactorId.RecoveryCode.value).isEqualTo("recovery_code")
+        assertThat(MfaFactorId("recovery_code")).isEqualTo(MfaFactorId.RecoveryCode)
+        assertThat(MfaFactorId.RecoveryCode).isNotEqualTo(MfaFactorId.Totp)
+    }
+
+    @Test
+    fun `recovery code model - built for a preview or a test - needs no data, and its actions are safe to call`() {
+        val recovery = RecoveryCodeChallengeModel()
+
+        assertThat(recovery.newCode).isNull()
+        assertThat(recovery.isWrongCode).isFalse()
+        assertThat(recovery.isVerifying).isFalse()
+        assertThat(recovery.canSwitch).isFalse()
+        assertThat(recovery.requestError).isNull()
+        assertThat(MfaFactorStep(MfaFactorId.RecoveryCode, recovery).round).isEqualTo(1)
+        recovery.submit("ABCD-1234")
+        recovery.confirm()
+        recovery.switchFactor()
+        recovery.cancel()
+    }
+
+    @Test
+    fun `recovery code model - never writes the new code out, so logging or dumping it cannot leak it`() {
+        val recovery = RecoveryCodeChallengeModel(newCode = "YHARATFUJJKZNV5N3X1L2ZEC")
+
+        assertThat(recovery.toString()).doesNotContain("YHARATFUJJKZNV5N3X1L2ZEC")
+        assertThat(recovery.toString()).contains("hasNewCode=true")
+        val step = MfaFactorStep(MfaFactorId.RecoveryCode, recovery)
+        assertThat(step.toString()).doesNotContain("YHARATFUJJKZNV5N3X1L2ZEC")
+    }
+
+    @Test
     fun `stream - a result - is kept until the next flow clears it`() {
         val stream = MfaStepStream()
 
@@ -93,6 +126,7 @@ class MfaStepTest {
         PushChallengeModel::class.java.getConstructor(String::class.java)
         EmailChallengeModel::class.java.getConstructor(String::class.java)
         TotpChallengeModel::class.java.getConstructor()
+        RecoveryCodeChallengeModel::class.java.getConstructor()
         AuthenticatorListModel::class.java.getConstructor(AuthenticatorListHeader::class.java, List::class.java)
         ErrorModel::class.java.getConstructor(MfaError::class.java)
         LoadingModel::class.java.getConstructor()

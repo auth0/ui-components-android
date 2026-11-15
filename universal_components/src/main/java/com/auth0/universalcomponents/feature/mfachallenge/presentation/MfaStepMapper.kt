@@ -17,6 +17,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.RecoveryCodeChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.TotpChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
 
@@ -64,13 +65,28 @@ internal fun MfaState.toMfaStep(onIntent: (MfaIntent) -> Unit, onLeave: () -> Un
             ),
         )
 
+        // The new code on show: nothing to switch to, so that tap does nothing; Cancel leaves, and the code is lost.
+        is MfaState.SaveRecoveryCode -> MfaStep.Factor(
+            MfaFactorStep(
+                factor = MfaFactorId.RecoveryCode,
+                round = state.round.number,
+                model = RecoveryCodeChallengeModel(
+                    newCode = state.newCode,
+                    isVerifying = state.isConfirming,
+                    requestError = state.requestError,
+                    confirm = { onIntent(MfaIntent.ConfirmRecoveryCode) },
+                    cancel = cancel,
+                ),
+            ),
+        )
+
         is MfaState.Failed -> MfaStep.Error(ErrorModel(state.error, MfaExit.StartOver, leave = onLeave))
     }
 }
 
 /**
  * The code screen's model: the same actions for a code sent to a phone or to an email address, and for the one an
- * authenticator app shows, which has no Resend.
+ * authenticator app shows or a recovery code, which have no Resend.
  */
 private fun MfaState.CodeEntry.toModel(onIntent: (MfaIntent) -> Unit, cancel: () -> Unit): MfaFactorModel {
     val submit = { code: String -> onIntent(MfaIntent.SubmitCode(code)) }
@@ -119,6 +135,16 @@ private fun MfaState.CodeEntry.toModel(onIntent: (MfaIntent) -> Unit, cancel: ()
             cancel = cancel,
             requestError = requestError,
         )
+
+        MfaFactor.RecoveryCode -> RecoveryCodeChallengeModel(
+            isWrongCode = isWrongCode,
+            isVerifying = phase == CodePhase.Verifying,
+            requestError = requestError,
+            canSwitch = round.canSwitch,
+            submit = submit,
+            switchFactor = switchFactor,
+            cancel = cancel,
+        )
     }
 }
 
@@ -145,8 +171,8 @@ private fun MfaFactor.row() = AuthenticatorListModel.Row(
         is MfaFactor.Push -> deviceName
         is MfaFactor.Phone -> maskedNumber
         is MfaFactor.Email -> address
-        // The user's own app has no name to show: the row says what the factor is.
-        MfaFactor.AuthenticatorApp -> ""
+        // The user's own app and codes have no name to show: the row says what the factor is.
+        MfaFactor.AuthenticatorApp, MfaFactor.RecoveryCode -> ""
     },
     subtitle = null,
     icon = when (this) {
@@ -155,6 +181,7 @@ private fun MfaFactor.row() = AuthenticatorListModel.Row(
             if (delivery == PhoneDeliveryMethod.VOICE) R.drawable.ic_mfa_voice else R.drawable.ic_mfa_sms
         is MfaFactor.Email -> R.drawable.ic_mfa_email
         MfaFactor.AuthenticatorApp -> R.drawable.ic_authenticator
+        MfaFactor.RecoveryCode -> R.drawable.ic_recovery_code
     },
     delivery = (this as? MfaFactor.Phone)?.delivery?.toDelivery(),
 )
@@ -165,6 +192,7 @@ private val MfaFactor.factorId: MfaFactorId
         is MfaFactor.Phone -> MfaFactorId.Phone
         is MfaFactor.Email -> MfaFactorId.Email
         MfaFactor.AuthenticatorApp -> MfaFactorId.Totp
+        MfaFactor.RecoveryCode -> MfaFactorId.RecoveryCode
     }
 
 /**
@@ -177,6 +205,7 @@ private val MfaFactor.rowId: String
         is MfaFactor.Phone -> "${MfaFactorId.Phone.value}:$index:${delivery.name}"
         is MfaFactor.Email -> "${MfaFactorId.Email.value}:$index"
         MfaFactor.AuthenticatorApp -> MfaFactorId.Totp.value
+        MfaFactor.RecoveryCode -> MfaFactorId.RecoveryCode.value
     }
 
 private fun PhoneDeliveryMethod.toDelivery() = when (this) {

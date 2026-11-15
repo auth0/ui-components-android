@@ -16,6 +16,7 @@ class ResolvedMfaMessages internal constructor(
     val phoneChallenge: PhoneChallenge,
     val emailChallenge: EmailChallenge,
     val totpChallenge: TotpChallenge,
+    val recoveryCodeChallenge: RecoveryCodeChallenge,
 ) {
 
     companion object {
@@ -110,5 +111,26 @@ class ResolvedMfaMessages internal constructor(
         val wrongCode: String,
         val noConnection: String,
         val verifyAnotherWay: String,
+    )
+
+    @Suppress("LongParameterList") // one word per line of the screen; they belong together
+    class RecoveryCodeChallenge internal constructor(
+        val row: Message,
+        val title: String,
+        val description: String,
+        val codeLabel: String,
+        val placeholder: String,
+        val continueButton: String,
+        val wrongCode: String,
+        val noConnection: String,
+        val verifyAnotherWay: String,
+        val showCode: String,
+        val hideCode: String,
+        val saveTitle: String,
+        val saveDescription: String,
+        val saveHelper: String,
+        val savedConfirmation: String,
+        val copied: String,
+        val copyCode: String,
     )
 }

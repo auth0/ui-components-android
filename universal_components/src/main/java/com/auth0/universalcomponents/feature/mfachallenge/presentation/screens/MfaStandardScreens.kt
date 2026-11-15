@@ -470,8 +470,9 @@ private fun MfaWaitingForApproval(caption: String, device: String) {
 /**
  * What a row says. A named device leads, with the factor's name under it; a device with no name shows the factor's name
  * with its description under it. A phone leads with how its code is sent, with its number under it (left out when the
- * server hid every digit); an email leads with its name, with its address under it; an authenticator app is always its
- * name with its description under it. A factor this version has no words for shows just its own title.
+ * server hid every digit); an email leads with its name, with its address under it; an authenticator app and a recovery
+ * code are always their name with its description under it. A factor this version has no words for shows just its own
+ * title.
  */
 internal fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): ResolvedMfaMessages.Message {
     if (factor == MfaFactorId.Phone && delivery != null) {
@@ -484,8 +485,9 @@ internal fun AuthenticatorListModel.Row.words(messages: ResolvedMfaMessages): Re
         val kind = messages.emailChallenge.row
         return if (title.isBlank()) kind else ResolvedMfaMessages.Message(kind.title, title)
     }
-    // The user's own app has no name or number: the row is always the factor's name with its description.
+    // The user's own app and codes have no name or number: the row is always the factor's name with its description.
     if (factor == MfaFactorId.Totp) return messages.totpChallenge.row
+    if (factor == MfaFactorId.RecoveryCode) return messages.recoveryCodeChallenge.row
     if (factor != MfaFactorId.Push) return ResolvedMfaMessages.Message(title, subtitle.orEmpty())
     val kind = messages.pushChallenge.row
     return if (title.isBlank()) kind else ResolvedMfaMessages.Message(title, kind.title)

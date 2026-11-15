@@ -118,6 +118,7 @@ internal fun MfaMessages.resolve(resources: Resources): ResolvedMfaMessages {
         phoneChallenge = phoneChallenge.resolve(resources),
         emailChallenge = emailChallenge.resolve(resources),
         totpChallenge = totpChallenge.resolve(resources),
+        recoveryCodeChallenge = recoveryCodeChallenge.resolve(resources),
     )
 }
 
@@ -205,6 +206,34 @@ private fun MfaMessages.TotpChallenge.resolve(resources: Resources): ResolvedMfa
         wrongCode = word(wrongCode, R.string.auth0_mfa_totp_challenge_wrong_code),
         noConnection = word(noConnection, R.string.auth0_mfa_totp_challenge_no_connection),
         verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_totp_challenge_verify_another_way),
+    )
+}
+
+/** The words of the recovery code screens (typing it, then saving the new one) and its list row, resolved the same way. */
+private fun MfaMessages.RecoveryCodeChallenge.resolve(resources: Resources): ResolvedMfaMessages.RecoveryCodeChallenge {
+    fun word(override: String?, @StringRes id: Int) = override ?: resources.getString(id)
+
+    return ResolvedMfaMessages.RecoveryCodeChallenge(
+        row = ResolvedMfaMessages.Message(
+            word(row.title, R.string.auth0_mfa_recovery_code_challenge_row_title),
+            word(row.description, R.string.auth0_mfa_recovery_code_challenge_row_description),
+        ),
+        title = word(title, R.string.auth0_mfa_recovery_code_challenge_title),
+        description = word(description, R.string.auth0_mfa_recovery_code_challenge_description),
+        codeLabel = word(codeLabel, R.string.auth0_mfa_recovery_code_challenge_code_label),
+        placeholder = word(placeholder, R.string.auth0_mfa_recovery_code_challenge_placeholder),
+        continueButton = word(continueButton, R.string.auth0_mfa_recovery_code_challenge_continue_button),
+        wrongCode = word(wrongCode, R.string.auth0_mfa_recovery_code_challenge_wrong_code),
+        noConnection = word(noConnection, R.string.auth0_mfa_recovery_code_challenge_no_connection),
+        verifyAnotherWay = word(verifyAnotherWay, R.string.auth0_mfa_recovery_code_challenge_verify_another_way),
+        showCode = word(showCode, R.string.auth0_mfa_recovery_code_challenge_show_code),
+        hideCode = word(hideCode, R.string.auth0_mfa_recovery_code_challenge_hide_code),
+        saveTitle = word(saveTitle, R.string.auth0_mfa_recovery_code_challenge_save_title),
+        saveDescription = word(saveDescription, R.string.auth0_mfa_recovery_code_challenge_save_description),
+        saveHelper = word(saveHelper, R.string.auth0_mfa_recovery_code_challenge_save_helper),
+        savedConfirmation = word(savedConfirmation, R.string.auth0_mfa_recovery_code_challenge_saved_confirmation),
+        copied = word(copied, R.string.auth0_mfa_recovery_code_challenge_copied),
+        copyCode = word(copyCode, R.string.auth0_mfa_recovery_code_challenge_copy_code),
     )
 }
 

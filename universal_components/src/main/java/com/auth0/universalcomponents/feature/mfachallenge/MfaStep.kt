@@ -73,8 +73,9 @@ data class AuthenticatorListModel @JvmOverloads constructor(
      * factor's own name then (`messages.pushChallenge.row`); for a phone it is the number as the server hides it, and
      * [delivery] says how its code is sent (the standard list words the row from both); for an email it is the address
      * as the server hides it, and blank when the server gave none (`messages.emailChallenge.row`); for an authenticator
-     * app it is always blank (`messages.totpChallenge.row`). [subtitle] is null from this library: the standard list
-     * words its second line from the messages too. [icon] is a drawable of this library; null draws none.
+     * app (`messages.totpChallenge.row`) and a recovery code (`messages.recoveryCodeChallenge.row`) it is always blank.
+     * [subtitle] is null from this library: the standard list words its second line from the messages too. [icon] is a
+     * drawable of this library; null draws none.
      */
     @Immutable
     data class Row @JvmOverloads constructor(
@@ -90,7 +91,7 @@ data class AuthenticatorListModel @JvmOverloads constructor(
 /**
  * The screen of one factor. [model] is the factor's own model, picked by [factor] (a push gets a
  * [PushChallengeModel], a phone a [PhoneChallengeModel], an email an [EmailChallengeModel], an authenticator app a
- * [TotpChallengeModel]).
+ * [TotpChallengeModel], a recovery code a [RecoveryCodeChallengeModel]).
  */
 @Immutable
 data class MfaFactorStep @JvmOverloads constructor(
@@ -221,6 +222,43 @@ data class TotpChallengeModel @JvmOverloads constructor(
     override val requestError: MfaError? = null,
 ) : CodeChallengeModel
 
+/**
+ * A recovery code is typed, and then the new one that replaces it is saved. Nothing is sent to the user, so there is
+ * nothing to name and no Resend. It is not a [CodeChallengeModel]: a recovery code is text of no fixed length, not six
+ * digits, so a screen of your own for typed codes should not draw it as one.
+ *
+ * While [newCode] is null the user types a code: [submit] checks it, unless [isVerifying], and [isWrongCode] is true after
+ * the server refused the last one. Spaces around it, and the invisible characters a paste brings along, are dropped
+ * before it is sent; a blank code is ignored.
+ *
+ * Once the server accepts the code it is used up, and [newCode] is set: show it so the user can save it, and call
+ * [confirm] when they have, which signs them in (it does nothing while [isVerifying]). The standard screen holds Continue
+ * back until the user ticks that they saved it; a screen of your own decides that for itself. On this step [switchFactor]
+ * does nothing, as there is no other factor to go to. [cancel] and Back leave, and [newCode] is lost with them, as it is
+ * the only copy there is.
+ *
+ * [requestError] is [MfaError.Network] when the last request got no answer and the screen stays up: type the code again
+ * or call [confirm] again; it is null otherwise, and cleared when the next request starts. [newCode] is a live secret:
+ * never log it, and don't print or dump the model, whose description leaves it out.
+ */
+@Immutable
+data class RecoveryCodeChallengeModel @JvmOverloads constructor(
+    val newCode: String? = null,
+    val isWrongCode: Boolean = false,
+    val isVerifying: Boolean = false,
+    val requestError: MfaError? = null,
+    val canSwitch: Boolean = false,
+    val submit: (code: String) -> Unit = {},
+    val confirm: () -> Unit = {},
+    val switchFactor: () -> Unit = {},
+    val cancel: () -> Unit = {},
+) : MfaFactorModel {
+
+    override fun toString(): String =
+        "RecoveryCodeChallengeModel(hasNewCode=${newCode != null}, isWrongCode=$isWrongCode, isVerifying=$isVerifying, " +
+            "requestError=$requestError, canSwitch=$canSwitch)"
+}
+
 /** Why MFA ended is [error]; [exit] says where [leave] goes. */
 @Immutable
 data class ErrorModel @JvmOverloads constructor(
@@ -258,5 +296,8 @@ value class MfaFactorId(val value: String) {
 
         /** Type the code an authenticator app shows. */
         val Totp = MfaFactorId("totp")
+
+        /** Type a recovery code, then save the new one that replaces it. */
+        val RecoveryCode = MfaFactorId("recovery_code")
     }
 }

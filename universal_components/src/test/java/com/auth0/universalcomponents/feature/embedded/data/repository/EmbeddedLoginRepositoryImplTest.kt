@@ -80,6 +80,8 @@ class EmbeddedLoginRepositoryImplTest {
                     EmbeddedCapability.CHALLENGE_PUSH,
                     EmbeddedCapability.CHALLENGE_PHONE,
                     EmbeddedCapability.VERIFY_OOB,
+                    EmbeddedCapability.VERIFY_RECOVERY_CODE,
+                    EmbeddedCapability.CONFIRM_RECOVERY_CODE,
                 ),
             )
         }
@@ -118,10 +120,10 @@ class EmbeddedLoginRepositoryImplTest {
 
     @Test
     fun `discover - unsupported method offered - returns it as unsupported`() = runTest {
-        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.VerifyRecoveryCode)
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(UNSUPPORTED)
 
         assertThat(repository.discover())
-            .isEqualTo(Result.Success(listOf(LoginOption.Unsupported(NextAction.VerifyRecoveryCode.capability.value))))
+            .isEqualTo(Result.Success(listOf(LoginOption.Unsupported(UNSUPPORTED.capability.value))))
     }
 
     @Test
@@ -327,7 +329,7 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, listed push, app, text, voice, email`() = runTest {
+    fun `verifyOtp - second factors offered - fails as MFA required, with only the factors these screens drive, listed push, app, text, voice, email, recovery code`() = runTest {
         every { client.verifyOtp(CODE, OtpType.OOB) } returns step(
             challengeEmail(at = 0),
             sdkInstance<NextAction.ChallengePhone>(
@@ -338,6 +340,7 @@ class EmbeddedLoginRepositoryImplTest {
             sdkInstance<NextAction.ChallengePush>(Int::class.java to 2, String::class.java to DEVICE),
             verifyOtp(OtpChannel.TOTP, null),
             NextAction.VerifyRecoveryCode,
+            UNSUPPORTED,
             sdkInstance<NextAction.ChallengePush>(Int::class.java to 3, String::class.java to OTHER_DEVICE),
         )
 
@@ -352,6 +355,7 @@ class EmbeddedLoginRepositoryImplTest {
                     MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.TEXT),
                     MfaFactor.Phone(1, MASKED_PHONE, PhoneDeliveryMethod.VOICE),
                     MfaFactor.Email(0, EMAIL),
+                    MfaFactor.RecoveryCode,
                 ),
             ),
         )
@@ -368,12 +372,21 @@ class EmbeddedLoginRepositoryImplTest {
         }
 
     @Test
+    fun `verifyOtp - only a recovery code is offered - fails as MFA required, so the user can type it`() = runTest {
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns step(NextAction.VerifyRecoveryCode)
+
+        val failure = repository.verifyOtp(CODE).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired(listOf(MfaFactor.RecoveryCode)))
+    }
+
+    @Test
     fun `verifyOtp - only steps these screens can't drive - hands MFA no factors, so it says so`() = runTest {
         listOf(
             verifyOtp(OtpChannel.EMAIL, MASKED_EMAIL),
             verifyOtp(OtpChannel.SMS, null),
-            // Second factors other than push, a phone code, an email code and an authenticator app aren't supported yet.
-            NextAction.VerifyRecoveryCode,
+            // A step no screen here can drive.
+            UNSUPPORTED,
         ).forEach { nextAction ->
             every { client.verifyOtp(CODE, OtpType.OOB) } returns step(nextAction)
 
@@ -543,6 +556,9 @@ class EmbeddedLoginRepositoryImplTest {
         val VOICE = PhoneDeliveryMethod.VOICE
         const val CONNECTION = "email"
         const val EMAIL = "jane@example.com"
+
+        /** A step these screens have no way to drive: whatever the server may add after this version. */
+        val UNSUPPORTED = sdkInstance<NextAction.Unknown>(String::class.java to "future_step")
         const val PHONE = "+14233530900"
         const val MASKED_EMAIL = "j***@example.com"
         const val MASKED_PHONE = "+1***1234"

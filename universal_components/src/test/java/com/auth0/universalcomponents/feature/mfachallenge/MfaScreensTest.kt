@@ -53,6 +53,13 @@ class MfaScreensTest {
     }
 
     @Test
+    fun `typed shortcut - recovery code - is kept under its own id`() {
+        val recovery = MfaScreens { recoveryCodeChallenge { _, _ -> } }
+
+        assertThat(recovery.factors.keys).containsExactly(MfaFactorId.RecoveryCode)
+    }
+
+    @Test
     fun `replace - several screens - are all kept`() {
         val screens = MfaScreens {
             authenticatorList { _, _ -> }
