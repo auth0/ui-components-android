@@ -99,11 +99,16 @@ internal fun LoginInputField(
             .flowSurface(shape, isFocused = isFocused, isError = isInvalid),
         decorationBox = { innerTextField ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Auth0Theme.sizes.padding),
+                // No end padding on the row: the text keeps its own, so [trailing] (a 48 dp button) sits at the edge, as
+                // the copy button of a recovery code does.
+                modifier = Modifier.fillMaxWidth().padding(start = Auth0Theme.sizes.padding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 leading()
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                Box(
+                    modifier = Modifier.weight(1f).padding(end = Auth0Theme.sizes.padding),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
                     if (value.isEmpty() && placeholder != null) {
                         Text(text = placeholder, style = Auth0Theme.typography.body, color = colors.textDisabled)
                     }
