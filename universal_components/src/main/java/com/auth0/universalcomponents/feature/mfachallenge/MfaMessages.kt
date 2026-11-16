@@ -25,6 +25,7 @@ class MfaMessages private constructor(
     internal val phoneChallenge: PhoneChallenge,
     internal val emailChallenge: EmailChallenge,
     internal val totpChallenge: TotpChallenge,
+    internal val recoveryCodeChallenge: RecoveryCodeChallenge,
 ) {
 
     /** A title and a description, either of which can be changed. */
@@ -234,6 +235,61 @@ class MfaMessages private constructor(
         fun row(configure: Message.() -> Unit) = row.configure()
     }
 
+    /**
+     * Typing a recovery code, then saving the new one that replaces it. A recovery code is the user's own, so no
+     * words name a destination.
+     */
+    class RecoveryCodeChallenge internal constructor() {
+        internal val row = Message()
+
+        /** The first line of the screen where the code is typed. */
+        var title: String? = null
+
+        /** The line under the title. */
+        var description: String? = null
+
+        /** The label above the field, for the code being typed and for the new one. */
+        var codeLabel: String? = null
+
+        /** What the empty field says. */
+        var placeholder: String? = null
+
+        /** The button that checks the code, and the one that confirms the new code is saved. */
+        var continueButton: String? = null
+
+        /** Under the field after the server refused a code. */
+        var wrongCode: String? = null
+
+        /** Under the field, or under the new code, when the last request got no answer. */
+        var noConnection: String? = null
+        var verifyAnotherWay: String? = null
+
+        /** What a screen reader calls the eye that shows what was typed, and the one that hides it again. */
+        var showCode: String? = null
+        var hideCode: String? = null
+
+        /** The first line of the screen that shows the new code. */
+        var saveTitle: String? = null
+
+        /** The line under it. */
+        var saveDescription: String? = null
+
+        /** The small line under the new code. */
+        var saveHelper: String? = null
+
+        /** The box above Continue, which has to be ticked first. */
+        var savedConfirmation: String? = null
+
+        /** What shows after the new code is copied, where the system shows nothing of its own. */
+        var copied: String? = null
+
+        /** What a screen reader calls the copy button. */
+        var copyCode: String? = null
+
+        /** How the factor looks in the list: its name, with the description under it. */
+        fun row(configure: Message.() -> Unit) = row.configure()
+    }
+
     companion object {
 
         /**
@@ -254,6 +310,7 @@ class MfaMessages private constructor(
         private val phoneChallenge = PhoneChallenge()
         private val emailChallenge = EmailChallenge()
         private val totpChallenge = TotpChallenge()
+        private val recoveryCodeChallenge = RecoveryCodeChallenge()
 
         fun authenticatorList(configure: AuthenticatorList.() -> Unit) = authenticatorList.configure()
 
@@ -269,6 +326,8 @@ class MfaMessages private constructor(
 
         fun totpChallenge(configure: TotpChallenge.() -> Unit) = totpChallenge.configure()
 
+        fun recoveryCodeChallenge(configure: RecoveryCodeChallenge.() -> Unit) = recoveryCodeChallenge.configure()
+
         internal fun build() = MfaMessages(
             authenticatorList,
             loading,
@@ -277,6 +336,7 @@ class MfaMessages private constructor(
             phoneChallenge,
             emailChallenge,
             totpChallenge,
+            recoveryCodeChallenge,
         )
     }
 }

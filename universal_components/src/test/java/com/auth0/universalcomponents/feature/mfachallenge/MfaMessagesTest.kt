@@ -3,6 +3,7 @@ package com.auth0.universalcomponents.feature.mfachallenge
 import android.content.res.Resources
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.resolve
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.words
 import com.google.common.truth.Truth.assertThat
 import io.mockk.every
 import io.mockk.mockk
@@ -252,6 +253,51 @@ class MfaMessagesTest {
     }
 
     @Test
+    fun `recovery code challenge - nothing set - every word is the string resource's`() {
+        val words = MfaMessages().resolve(resources).recoveryCodeChallenge
+
+        assertThat(words.title).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_title))
+        assertThat(words.description).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_description))
+        assertThat(words.codeLabel).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_code_label))
+        assertThat(words.placeholder).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_placeholder))
+        assertThat(words.continueButton).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_continue_button))
+        assertThat(words.wrongCode).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_wrong_code))
+        assertThat(words.noConnection).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_no_connection))
+        assertThat(words.verifyAnotherWay)
+            .isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_verify_another_way))
+        assertThat(words.showCode).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_show_code))
+        assertThat(words.hideCode).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_hide_code))
+        assertThat(words.saveTitle).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_save_title))
+        assertThat(words.saveDescription)
+            .isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_save_description))
+        assertThat(words.saveHelper).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_save_helper))
+        assertThat(words.savedConfirmation)
+            .isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_saved_confirmation))
+        assertThat(words.copied).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_copied))
+        assertThat(words.copyCode).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_copy_code))
+        assertThat(words.row.title).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_row_title))
+        assertThat(words.row.description).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_row_description))
+    }
+
+    @Test
+    fun `recovery code challenge - some set - replaces those, the others keep their defaults`() {
+        val words = MfaMessages {
+            recoveryCodeChallenge {
+                saveDescription = "Keep it for when you lose your device"
+                savedConfirmation = "I have stored this code"
+                row { title = "Backup code" }
+            }
+        }.resolve(resources).recoveryCodeChallenge
+
+        assertThat(words.saveDescription).isEqualTo("Keep it for when you lose your device")
+        assertThat(words.savedConfirmation).isEqualTo("I have stored this code")
+        assertThat(words.row.title).isEqualTo("Backup code")
+        assertThat(words.row.description).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_row_description))
+        assertThat(words.saveTitle).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_save_title))
+        assertThat(words.continueButton).isEqualTo(default(R.string.auth0_mfa_recovery_code_challenge_continue_button))
+    }
+
+    @Test
     fun `code screens - the expired, no-connection and too-many words - default to the resources, and each can be replaced`() {
         val defaults = MfaMessages().resolve(resources).phoneChallenge
         assertThat(defaults.expiredCode).isEqualTo(default(R.string.auth0_mfa_phone_challenge_expired_code))
@@ -274,6 +320,37 @@ class MfaMessagesTest {
         // Another factor's words are its own.
         assertThat(words.emailChallenge.noConnection)
             .isEqualTo(default(R.string.auth0_mfa_email_challenge_no_connection))
+    }
+
+    private fun recoveryRow() =
+        AuthenticatorListModel.Row(id = "recovery_code", factor = MfaFactorId.RecoveryCode, title = "")
+
+    @Test
+    fun `recovery code row - has no name of its own - is the factor's name with its description under it`() {
+        val resolved = MfaMessages().resolve(resources)
+
+        val shown = recoveryRow().words(resolved)
+
+        assertThat(shown.title).isEqualTo(resolved.recoveryCodeChallenge.row.title)
+        assertThat(shown.description).isEqualTo(resolved.recoveryCodeChallenge.row.description)
+        assertThat(shown.description).isNotEmpty()
+    }
+
+    @Test
+    fun `recovery code row - the app's own words - replace both lines`() {
+        val custom = MfaMessages {
+            recoveryCodeChallenge {
+                row {
+                    title = "Backup code"
+                    description = "Use one of your saved codes"
+                }
+            }
+        }.resolve(resources)
+
+        val shown = recoveryRow().words(custom)
+
+        assertThat(shown.title).isEqualTo("Backup code")
+        assertThat(shown.description).isEqualTo("Use one of your saved codes")
     }
 
     @Test

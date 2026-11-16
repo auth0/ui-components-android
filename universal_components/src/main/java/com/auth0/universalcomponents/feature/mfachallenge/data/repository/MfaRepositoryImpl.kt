@@ -107,7 +107,15 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
     }
 
     override suspend fun verifyCode(factor: MfaFactor.Code, code: String): Result<CodeStatus, MfaError> =
-        when (val verified = steps.run { verifyOtp(code, factor.otpType) }) {
+        when (factor) {
+            MfaFactor.RecoveryCode -> verifyRecoveryCode(code)
+            // A code the server sent is out-of-band, and the one an authenticator app shows is time-based.
+            is MfaFactor.Phone, is MfaFactor.Email -> verifyOtp(code, OtpType.OOB)
+            MfaFactor.AuthenticatorApp -> verifyOtp(code, OtpType.TOTP)
+        }
+
+    private suspend fun verifyOtp(code: String, type: OtpType): Result<CodeStatus, MfaError> =
+        when (val verified = steps.run { verifyOtp(code, type) }) {
             is StepAnswer.Done -> Result.Success(CodeStatus.Verified(verified.value))
             is StepAnswer.Next -> when {
                 // A wrong code answers "not finished yet" like a further step does; only its reason tells them apart.
@@ -125,11 +133,38 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
             is StepAnswer.Failed -> Result.Error(verified.mfaError)
         }
 
-    /** A code the server sent is out-of-band, and the one an authenticator app shows is time-based. */
-    private val MfaFactor.Code.otpType: OtpType
-        get() = when (this) {
-            is MfaFactor.Phone, is MfaFactor.Email -> OtpType.OOB
-            MfaFactor.AuthenticatorApp -> OtpType.TOTP
+    /**
+     * A right recovery code never signs in: the server uses it up and answers "confirm the new one", so the answer that
+     * carries a new code is the success, and is read first. A wrong code answers "not finished yet" with its reason.
+     */
+    private suspend fun verifyRecoveryCode(code: String): Result<CodeStatus, MfaError> =
+        when (val verified = steps.run { verifyRecoveryCode(code) }) {
+            is StepAnswer.Next -> {
+                val rotated = verified.actions.firstNotNullOfOrNull { it as? NextAction.ConfirmRecoveryCode }
+                when {
+                    rotated != null -> Result.Success(CodeStatus.Rotated(rotated.newCode))
+                    verified.reason in INVALID_CODE_REASONS -> Result.Success(CodeStatus.WrongCode)
+                    else -> unexpected("A recovery code was answered with ${verified.reason}")
+                }
+            }
+
+            is StepAnswer.Done -> unexpected("A recovery code was accepted without a new one to save")
+            is StepAnswer.Failed -> Result.Error(verified.mfaError)
+        }
+
+    override suspend fun confirmRecoveryCode(): Result<CodeStatus, MfaError> =
+        when (val confirmed = steps.run { confirmRecoveryCode() }) {
+            is StepAnswer.Done -> Result.Success(CodeStatus.Verified(confirmed.value))
+            // Confirmed, and the policy asks for another factor: the answer carries the next round's menu.
+            is StepAnswer.Next ->
+                if (confirmed.reason == Reason.NONE) {
+                    Logger.i(TAG, "Recovery code confirmed; the server asks for another factor")
+                    Result.Success(CodeStatus.AnotherFactor(confirmed.actions.toMfaFactors()))
+                } else {
+                    unexpected("A recovery code was confirmed with ${confirmed.reason}")
+                }
+
+            is StepAnswer.Failed -> Result.Error(confirmed.mfaError)
         }
 
     /** The "check the push" step the server offered, with the wait it wants before the next check. */

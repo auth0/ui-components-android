@@ -747,16 +747,152 @@ class MfaEngineTest {
 
     // endregion
 
+    // region recovery code
+
+    @Test
+    fun `a recovery code - its screen shows at once, and nothing is sent`() = runTest {
+        val engine = startedWithCode(RECOVERY)
+
+        assertThat(steps).containsExactly(MfaState.CodeEntry(BY_RECOVERY, RECOVERY, CodePhase.Ready, resend = null))
+        assertThat(engine.isRunning).isTrue()
+        coVerify(exactly = 0) { repository.sendPush(any()) }
+        coVerify(exactly = 0) { repository.verifyCode(any(), any()) }
+    }
+
+    @Test
+    fun `a recovery code - the right one - shows the new code to save, and does not sign in`() = runTest {
+        coEvery { repository.verifyCode(RECOVERY, "ABCD-1234") } returns Result.Success(CodeStatus.Rotated(NEW_CODE))
+        val engine = startedWithCode(RECOVERY)
+
+        // What was typed goes out cleaned of what a paste brings along.
+        engine.onIntent(MfaIntent.SubmitCode(" ABCD-1234\n"))
+        runCurrent()
+
+        assertThat(engine.state.value).isEqualTo(MfaState.SaveRecoveryCode(BY_RECOVERY, NEW_CODE))
+        assertThat(effects).isEmpty()
+        coVerify(exactly = 1) { repository.verifyCode(RECOVERY, "ABCD-1234") }
+        coVerify(exactly = 0) { repository.confirmRecoveryCode() }
+    }
+
+    @Test
+    fun `a recovery code - a wrong one - stays on the screen, and the user can type another`() = runTest {
+        coEvery { repository.verifyCode(RECOVERY, "nope") } returns Result.Success(CodeStatus.WrongCode)
+        val engine = startedWithCode(RECOVERY)
+
+        engine.onIntent(MfaIntent.SubmitCode("nope"))
+        runCurrent()
+
+        val shown = engine.state.value as MfaState.CodeEntry
+        assertThat(shown.isWrongCode).isTrue()
+        assertThat(shown.phase).isEqualTo(CodePhase.Ready)
+    }
+
+    @Test
+    fun `the new recovery code - saved and confirmed - tells the host the user is signed in`() = runTest {
+        val credentials = mockk<Credentials>()
+        coEvery { repository.verifyCode(RECOVERY, any()) } returns Result.Success(CodeStatus.Rotated(NEW_CODE))
+        coEvery { repository.confirmRecoveryCode() } returns Result.Success(CodeStatus.Verified(credentials))
+        val engine = startedWithCode(RECOVERY)
+        engine.onIntent(MfaIntent.SubmitCode("ABCD-1234"))
+        runCurrent()
+
+        engine.onIntent(MfaIntent.ConfirmRecoveryCode)
+        runCurrent()
+
+        assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+        coVerify(exactly = 1) { repository.confirmRecoveryCode() }
+    }
+
+    @Test
+    fun `the new recovery code - confirmed and one more factor is asked for - starts the next round`() = runTest {
+        coEvery { repository.verifyCode(RECOVERY, any()) } returns Result.Success(CodeStatus.Rotated(NEW_CODE))
+        coEvery { repository.confirmRecoveryCode() } returns Result.Success(CodeStatus.AnotherFactor(listOf(TABLET)))
+        val engine = startedWithCode(RECOVERY)
+        engine.onIntent(MfaIntent.SubmitCode("ABCD-1234"))
+        runCurrent()
+
+        engine.onIntent(MfaIntent.ConfirmRecoveryCode)
+        runCurrent()
+
+        assertThat((engine.state.value as MfaState.ChooseFactor).round).isEqualTo(MfaRound(2, listOf(TABLET)))
+        assertThat(effects).isEmpty()
+    }
+
+    @Test
+    fun `the new recovery code - the connection drops on confirming - stays on the code, and confirms once back`() =
+        runTest {
+            val credentials = mockk<Credentials>()
+            coEvery { repository.verifyCode(RECOVERY, any()) } returns Result.Success(CodeStatus.Rotated(NEW_CODE))
+            coEvery { repository.confirmRecoveryCode() } returnsMany listOf(
+                Result.Error(MfaError.Network()),
+                Result.Success(CodeStatus.Verified(credentials)),
+            )
+            val engine = startedWithCode(RECOVERY)
+            engine.onIntent(MfaIntent.SubmitCode("ABCD-1234"))
+            runCurrent()
+
+            engine.onIntent(MfaIntent.ConfirmRecoveryCode)
+            runCurrent()
+
+            val shown = engine.state.value as MfaState.SaveRecoveryCode
+            assertThat(shown.newCode).isEqualTo(NEW_CODE)
+            assertThat(shown.isConfirming).isFalse()
+            assertThat(shown.requestError).isInstanceOf(MfaError.Network::class.java)
+            assertThat(effects).isEmpty()
+
+            engine.onIntent(MfaIntent.ConfirmRecoveryCode)
+            runCurrent()
+
+            assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+        }
+
+    @Test
+    fun `a recovery code check - waits for a push check on its way, then goes out`() = runTest {
+        val checkAnswer = CompletableDeferred<Result<PushStatus, MfaError>>()
+        coEvery { repository.checkPushStatus() } coAnswers { checkAnswer.await() }
+        coEvery { repository.verifyCode(RECOVERY, "ABCD-1234") } returns Result.Success(CodeStatus.WrongCode)
+        val engine = onTheAppWithAPushCheckOut(RECOVERY)
+
+        engine.onIntent(MfaIntent.SubmitCode("ABCD-1234"))
+        runCurrent()
+
+        coVerify(exactly = 0) { repository.verifyCode(any(), any()) }
+
+        checkAnswer.complete(Result.Success(PENDING))
+        runCurrent()
+
+        coVerify(exactly = 1) { repository.verifyCode(RECOVERY, "ABCD-1234") }
+    }
+
+    @Test
+    fun `a recovery code check - never goes out when the push check on its way starts a new round`() = runTest {
+        val checkAnswer = CompletableDeferred<Result<PushStatus, MfaError>>()
+        coEvery { repository.checkPushStatus() } coAnswers { checkAnswer.await() }
+        val engine = onTheAppWithAPushCheckOut(RECOVERY)
+
+        engine.onIntent(MfaIntent.SubmitCode("ABCD-1234"))
+        runCurrent()
+        checkAnswer.complete(Result.Success(PushStatus.AnotherFactor(listOf(TABLET))))
+        runCurrent()
+
+        // A recovery code is used up by the server that reads it, so one typed for round 1 must not reach round 2.
+        coVerify(exactly = 0) { repository.verifyCode(any(), any()) }
+        assertThat((engine.state.value as MfaState.ChooseFactor).round).isEqualTo(MfaRound(2, listOf(TABLET)))
+    }
+
+    // endregion
+
     /**
-     * Starts MFA with a push and an authenticator app, sends the push, lets its check go out (and stay unanswered,
-     * through the caller's `checkPushStatus` stub), and moves to the app's screen.
+     * Starts MFA with a push and a code that nothing sends ([code]: an authenticator app, by default), sends the push,
+     * lets its check go out (and stay unanswered, through the caller's `checkPushStatus` stub), and moves to the
+     * code's screen.
      */
-    private fun TestScope.onTheAppWithAPushCheckOut(): MfaEngine {
-        val engine = started(PHONE, APP, select = PHONE)
+    private fun TestScope.onTheAppWithAPushCheckOut(code: MfaFactor.Code = APP): MfaEngine {
+        val engine = started(PHONE, code, select = PHONE)
         waitFor(POLL)
         coVerify(exactly = 1) { repository.checkPushStatus() }
         engine.onIntent(MfaIntent.ChooseAnotherFactor)
-        engine.onIntent(MfaIntent.SelectFactor(APP))
+        engine.onIntent(MfaIntent.SelectFactor(code))
         runCurrent()
         assertThat(engine.state.value).isInstanceOf(MfaState.CodeEntry::class.java)
         return engine
@@ -827,6 +963,9 @@ class MfaEngineTest {
         val BY_EMAIL = MfaRound(1, listOf(EMAIL))
         val APP = MfaFactor.AuthenticatorApp
         val BY_APP = MfaRound(1, listOf(APP))
+        val RECOVERY = MfaFactor.RecoveryCode
+        val BY_RECOVERY = MfaRound(1, listOf(RECOVERY))
+        const val NEW_CODE = "YHARATFUJJKZNV5N3X1L2ZEC"
         const val POLL = 3_000L
         const val SLOWER = 5_000L
         val PENDING = PushStatus.Pending(POLL, canResend = true)

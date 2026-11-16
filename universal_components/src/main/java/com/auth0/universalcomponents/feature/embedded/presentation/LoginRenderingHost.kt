@@ -18,7 +18,10 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaError
 import com.auth0.universalcomponents.feature.mfachallenge.MfaErrorHandling
 import com.auth0.universalcomponents.feature.mfachallenge.MfaPresentation
 import com.auth0.universalcomponents.feature.mfachallenge.MfaStepStream
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaForegroundEffect
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaSecureWindow
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.isShowingNewRecoveryCode
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.mirror
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
@@ -38,6 +41,7 @@ internal fun LoginRenderingHost(
     mfa: MfaConfiguration = MfaConfiguration(),
 ) {
     val step by viewModel.loginState.collectAsStateWithLifecycle()
+    val engine = (step as? LoginState.Mfa)?.engine
     val currentOnAuthenticated by rememberUpdatedState(onAuthenticated)
     val currentOnExit by rememberUpdatedState(onExit)
     val currentOnMfaError by rememberUpdatedState(onMfaError)
@@ -50,14 +54,17 @@ internal fun LoginRenderingHost(
         }
     }
 
-    MfaForegroundEffect((step as? LoginState.Mfa)?.engine)
-    (mfa.presentation as? MfaPresentation.Headless)?.let { PublishToStream(it.stream, viewModel, step) }
+    MfaForegroundEffect(engine)
+    (mfa.presentation as? MfaPresentation.Headless)?.let { PublishToStream(it.stream, viewModel, engine) }
 
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
     BackHandler(onBack = onBack)
 
     val context = remember(viewModel, mfa) { RenderContext(dispatch = viewModel::send, back = onBack, mfa = mfa) }
 
+    // The new recovery code is a live secret, so the window is kept out of screenshots while it is on show. Here and not
+    // in MfaHost, so a headless app, which draws no MfaHost, is covered too.
+    if (engine.isShowingNewRecoveryCode()) MfaSecureWindow()
     LoginScreenFrame(onBack = onBack, modifier = modifier) {
         AnimatedContent(
             targetState = plan(step),
@@ -78,8 +85,7 @@ internal fun LoginRenderingHost(
  * The step is cleared when this leaves the composition, so a stale step is never left behind.
  */
 @Composable
-private fun PublishToStream(stream: MfaStepStream, viewModel: LoginFlowViewModel, step: LoginState) {
-    val engine = (step as? LoginState.Mfa)?.engine
+private fun PublishToStream(stream: MfaStepStream, viewModel: LoginFlowViewModel, engine: MfaEngine?) {
     LaunchedEffect(stream, engine) {
         if (engine == null) {
             stream.showStep(null)

@@ -67,7 +67,7 @@ class MfaRepositoryImplTest {
 
     @Test
     fun `sendPush - no wait to check it with - fails as unexpected`() = runTest {
-        every { client.challengePush(PHONE.index) } returns step(NextAction.VerifyRecoveryCode)
+        every { client.challengePush(PHONE.index) } returns step(UNSUPPORTED)
 
         assertThat(repository.sendPush(PHONE).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
     }
@@ -135,7 +135,7 @@ class MfaRepositoryImplTest {
     @Test
     fun `checkPushStatus - approved, and the server asks for another factor - returns the next menu`() = runTest {
         val tablet = challengePush(index = 1, name = "Jane's tablet")
-        every { client.verifyOob() } returns step(tablet, NextAction.VerifyRecoveryCode)
+        every { client.verifyOob() } returns step(tablet, UNSUPPORTED)
 
         assertThat(repository.checkPushStatus())
             .isEqualTo(Result.Success(PushStatus.AnotherFactor(listOf(MfaFactor.Push(1, "Jane's tablet")))))
@@ -143,7 +143,7 @@ class MfaRepositoryImplTest {
 
     @Test
     fun `checkPushStatus - another factor with none usable here - returns an empty menu, MFA decides`() = runTest {
-        every { client.verifyOob() } returns step(NextAction.VerifyRecoveryCode)
+        every { client.verifyOob() } returns step(UNSUPPORTED)
 
         assertThat(repository.checkPushStatus()).isEqualTo(Result.Success(PushStatus.AnotherFactor(emptyList())))
     }
@@ -268,7 +268,7 @@ class MfaRepositoryImplTest {
 
     @Test
     fun `sendPhoneCode - nothing to verify it with, or it signed in - fails as unexpected`() = runTest {
-        every { client.challengePhone(any(), any()) } returns step(NextAction.VerifyRecoveryCode)
+        every { client.challengePhone(any(), any()) } returns step(UNSUPPORTED)
         assertThat(repository.sendPhoneCode(SMS).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
 
         every { client.challengePhone(any(), any()) } returns FakeRequestImpl(response = null)
@@ -375,7 +375,7 @@ class MfaRepositoryImplTest {
 
     @Test
     fun `sendEmailCode - nothing to verify it with, or it signed in - fails as unexpected`() = runTest {
-        every { client.challengeEmail(any()) } returns step(NextAction.VerifyRecoveryCode)
+        every { client.challengeEmail(any()) } returns step(UNSUPPORTED)
         assertThat(repository.sendEmailCode(EMAIL).mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
 
         every { client.challengeEmail(any()) } returns FakeRequestImpl(response = null)
@@ -492,6 +492,107 @@ class MfaRepositoryImplTest {
 
     // endregion
 
+    // region recovery code
+
+    @Test
+    fun `verifyCode - a recovery code, right - is used up and the new code to save comes back, not a sign-in`() =
+        runTest {
+            every { client.verifyRecoveryCode("ABCD-1234") } returns step(confirmRecoveryCode(NEW_CODE))
+
+            assertThat(repository.verifyCode(RECOVERY, "ABCD-1234"))
+                .isEqualTo(Result.Success(CodeStatus.Rotated(NEW_CODE)))
+
+            verify(exactly = 0) { client.verifyOtp(any(), any()) }
+        }
+
+    @Test
+    fun `verifyCode - a recovery code, answered with a new code - reads the new code before the reason`() = runTest {
+        every { client.verifyRecoveryCode(any()) } returns
+            step(confirmRecoveryCode(NEW_CODE), reason = Reason.INVALID_CODE)
+
+        assertThat(repository.verifyCode(RECOVERY, "ABCD-1234"))
+            .isEqualTo(Result.Success(CodeStatus.Rotated(NEW_CODE)))
+    }
+
+    @Test
+    fun `verifyCode - a recovery code, wrong - is not an error, the user types another`() = runTest {
+        listOf(Reason.INVALID_CODE, Reason.INVALID_IDENTIFIER_OR_CODE).forEach { reason ->
+            every { client.verifyRecoveryCode(any()) } returns step(NextAction.VerifyRecoveryCode, reason = reason)
+
+            assertThat(repository.verifyCode(RECOVERY, "nope")).isEqualTo(Result.Success(CodeStatus.WrongCode))
+        }
+    }
+
+    @Test
+    fun `verifyCode - a recovery code, any other answer, signed in, or a failure - is unexpected, or the mapped error`() =
+        runTest {
+            every { client.verifyRecoveryCode(any()) } returns step(UNSUPPORTED, reason = Reason.SLOW_DOWN)
+            assertThat(repository.verifyCode(RECOVERY, "x").mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+            // Accepted with no new code to save: the user would be left without a recovery code.
+            every { client.verifyRecoveryCode(any()) } returns FakeRequestImpl(response = null)
+            assertThat(repository.verifyCode(RECOVERY, "x").mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+            every { client.verifyRecoveryCode(any()) } returns failingWith(EmbeddedAuthError.Network)
+            assertThat(repository.verifyCode(RECOVERY, "x").mfaError()).isInstanceOf(MfaError.Network::class.java)
+
+            every { client.verifyRecoveryCode(any()) } returns failingWith(EmbeddedAuthError.TooManyAttempts)
+            assertThat(repository.verifyCode(RECOVERY, "x").mfaError())
+                .isInstanceOf(MfaError.TooManyAttempts::class.java)
+        }
+
+    @Test
+    fun `confirmRecoveryCode - the server accepts - signs in`() = runTest {
+        val credentials = mockk<Credentials>()
+        every { client.confirmRecoveryCode() } returns FakeRequestImpl(response = credentials)
+
+        assertThat(repository.confirmRecoveryCode()).isEqualTo(Result.Success(CodeStatus.Verified(credentials)))
+    }
+
+    @Test
+    fun `confirmRecoveryCode - the policy asks for another factor - returns the next menu`() = runTest {
+        every { client.confirmRecoveryCode() } returns step(challengePush(), UNSUPPORTED, reason = Reason.NONE)
+
+        assertThat(repository.confirmRecoveryCode())
+            .isEqualTo(Result.Success(CodeStatus.AnotherFactor(listOf(PHONE))))
+    }
+
+    @Test
+    fun `confirmRecoveryCode - any other answer, or a failure - is unexpected, or the mapped error`() = runTest {
+        every { client.confirmRecoveryCode() } returns step(challengePush(), reason = Reason.INVALID_CODE)
+        assertThat(repository.confirmRecoveryCode().mfaError()).isInstanceOf(MfaError.Unexpected::class.java)
+
+        every { client.confirmRecoveryCode() } returns failingWith(EmbeddedAuthError.Network)
+        assertThat(repository.confirmRecoveryCode().mfaError()).isInstanceOf(MfaError.Network::class.java)
+
+        every { client.confirmRecoveryCode() } returns failingWith(EmbeddedAuthError.SessionExpired)
+        assertThat(repository.confirmRecoveryCode().mfaError()).isInstanceOf(MfaError.TokenInvalid::class.java)
+    }
+
+    @Test
+    fun `a recovery code in the menu - is one factor, listed last, and the new code's step is not a factor`() =
+        runTest {
+            every { client.verifyOtp(any(), any()) } returns step(
+                NextAction.VerifyRecoveryCode,
+                challengeEmail(),
+                verifyOtp(OtpChannel.TOTP),
+                challengePush(),
+                NextAction.VerifyRecoveryCode,
+                confirmRecoveryCode(NEW_CODE),
+                reason = Reason.NONE,
+            )
+
+            assertThat(repository.verifyCode(SMS, "123456"))
+                .isEqualTo(Result.Success(CodeStatus.AnotherFactor(listOf(PHONE, APP, EMAIL, RECOVERY))))
+        }
+
+    @Test
+    fun `the new recovery code - is never written out by the status`() {
+        assertThat(CodeStatus.Rotated(NEW_CODE).toString()).doesNotContain(NEW_CODE)
+    }
+
+    // endregion
+
     private fun verifyOtp(channel: OtpChannel, destination: String = SMS.maskedNumber): NextAction.VerifyOtp =
         sdkInstance(OtpChannel::class.java to channel, String::class.java to destination)
 
@@ -507,6 +608,9 @@ class MfaRepositoryImplTest {
         String::class.java to SMS.maskedNumber,
         List::class.java to ways,
     )
+
+    private fun confirmRecoveryCode(newCode: String): NextAction.ConfirmRecoveryCode =
+        sdkInstance(String::class.java to newCode)
 
     private fun verifyOob(pollInMs: Int): NextAction.VerifyOob = sdkInstance(Int::class.java to pollInMs)
 
@@ -524,6 +628,11 @@ class MfaRepositoryImplTest {
         val CALL = SMS.copy(delivery = PhoneDeliveryMethod.VOICE)
         val EMAIL = MfaFactor.Email(6, "j***@example.com")
         val APP = MfaFactor.AuthenticatorApp
+        val RECOVERY = MfaFactor.RecoveryCode
+        const val NEW_CODE = "YHARATFUJJKZNV5N3X1L2ZEC"
+
+        /** A step MFA has no screen for: whatever the server may add after this version. */
+        val UNSUPPORTED = sdkInstance<NextAction.Unknown>(String::class.java to "future_step")
         const val POLL_MS = 3_000
         const val SLOWER_MS = 5_000
     }

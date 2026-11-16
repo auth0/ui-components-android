@@ -26,7 +26,14 @@ internal interface MfaRepository {
 
     /**
      * Sends the code the user typed for [factor]: the one that went out to its phone or email, or the one its app shows,
-     * which needs no sending.
+     * which needs no sending. A right recovery code is used up, so it is answered with [CodeStatus.Rotated], never a
+     * sign-in.
      */
     suspend fun verifyCode(factor: MfaFactor.Code, code: String): Result<CodeStatus, MfaError>
+
+    /**
+     * The user has saved the new recovery code that [verifyCode] returned: finishes the sign-in. The answer is
+     * [CodeStatus.Verified], or [CodeStatus.AnotherFactor] when the policy asks for one more.
+     */
+    suspend fun confirmRecoveryCode(): Result<CodeStatus, MfaError>
 }

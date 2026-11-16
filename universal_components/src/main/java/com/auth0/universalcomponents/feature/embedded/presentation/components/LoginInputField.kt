@@ -28,13 +28,15 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.VisualTransformation
 import com.auth0.universalcomponents.presentation.ui.flow.flowSurface
 import com.auth0.universalcomponents.theme.Auth0Theme
 
 /**
  * A single-line text field for the identifier; takes focus when it first appears. [leading] sits before the text (the
  * country of a phone number) and [placeholder] shows while the field is empty.
- * The cursor starts at the end, so a pre-filled value (after Edit or Try again) is ready to edit.
+ * The cursor starts at the end, so a pre-filled value (after Edit or Try again) is ready to edit. [trailing] sits after
+ * the text (the eye of a hidden field), and [visualTransformation] draws what is typed as something else (dots).
  */
 @Composable
 internal fun LoginInputField(
@@ -46,6 +48,8 @@ internal fun LoginInputField(
     keyboardType: KeyboardType = KeyboardType.Email,
     placeholder: String? = null,
     leading: @Composable () -> Unit = {},
+    trailing: @Composable () -> Unit = {},
+    visualTransformation: VisualTransformation = VisualTransformation.None,
     onDone: () -> Unit = {},
 ) {
     val colors = Auth0Theme.colors
@@ -74,6 +78,7 @@ internal fun LoginInputField(
         },
         enabled = enabled,
         singleLine = true,
+        visualTransformation = visualTransformation,
         interactionSource = interactionSource,
         textStyle = Auth0Theme.typography.body.copy(color = textColor),
         cursorBrush = SolidColor(colors.textBold),
@@ -94,16 +99,22 @@ internal fun LoginInputField(
             .flowSurface(shape, isFocused = isFocused, isError = isInvalid),
         decorationBox = { innerTextField ->
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Auth0Theme.sizes.padding),
+                // No end padding on the row: the text keeps its own, so [trailing] (a 48 dp button) sits at the edge, as
+                // the copy button of a recovery code does.
+                modifier = Modifier.fillMaxWidth().padding(start = Auth0Theme.sizes.padding),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 leading()
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                Box(
+                    modifier = Modifier.weight(1f).padding(end = Auth0Theme.sizes.padding),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
                     if (value.isEmpty() && placeholder != null) {
                         Text(text = placeholder, style = Auth0Theme.typography.body, color = colors.textDisabled)
                     }
                     innerTextField()
                 }
+                trailing()
             }
         },
     )

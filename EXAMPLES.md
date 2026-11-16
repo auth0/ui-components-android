@@ -338,15 +338,18 @@ On code entry, Back returns to the email or phone entry it came from, and when t
 
 ### Multi-Factor Authentication
 
-When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLoginScreen` moves into MFA in place; nothing extra is needed in your app. Today it runs a push notification, a code sent to a phone (by text message or voice call) or to an email address, or the code from an authenticator app. With several factors, the user picks one from a list first. Other factors aren't supported in this flow yet.
+When the tenant's MFA policy asks for more than the emailed code, `EmbeddedLoginScreen` moves into MFA in place; nothing extra is needed in your app. Today it runs a push notification, a code sent to a phone (by text message or voice call) or to an email address, the code from an authenticator app, or a recovery code. With several factors, the user picks one from a list first, and the recovery code is listed last. Other factors aren't supported in this flow yet.
 
 - **Approved, or the code is right:** the credentials go to `onAuthenticated`. If the policy asks for another factor, the list returns headed **One more step**, with no limit on the number of steps.
 - **A wrong code** (phone, email or authenticator app) stays on the screen, inline, so the user can type another. **Resend** opens 60 seconds after each send. The authenticator app has nothing to send, so its screen opens at once and has no **Resend**.
-- **No answer while a typed code is being checked** (phone, email or authenticator app) stays on the screen with a "No connection" line under the boxes, and the same code can be sent again. It may be a dropped connection or a timeout after the server already had the code, so a second try can also be refused as wrong. The line goes away as soon as the user edits the code, and comes back only with the next answer.
+- **No answer while a typed code is being checked** (phone, email or authenticator app) stays on the screen with a "No connection" line under the boxes, and the same code can be sent again. It may be a dropped connection or a timeout after the server already had the code, so a second try can also be refused as wrong. For a recovery code that is worse: the server may already have used the code up, so the user is told it is wrong and never sees the new one. The line goes away as soon as the user edits the code, and comes back only with the next answer.
+- **A recovery code** opens its screen at once, with an empty field that hides what is typed (an eye shows it); nothing is sent until the user taps **Continue** (or the keyboard's Done). Before it is sent the code is cleaned: invisible characters that come with pasted text (zero-width spaces, direction marks) and the spaces around it are removed, while case, hyphens and spaces inside it are sent as typed. A wrong code stays on the screen with its own line, which goes away as soon as the field changes. Using a code replaces it, so the screen then shows the new one, with a copy button and a note to store it somewhere safe. **Continue** stays off until the user ticks **I have saved this recovery code**, then confirms the new code and signs in (or asks for one more factor). A dropped connection while checking or confirming keeps the screen, and the same step can be tried again; any other failure ends MFA.
+- **The screen with the new recovery code** is kept out of screenshots, screen recordings and the recent-apps preview (`FLAG_SECURE`, set on the Activity's window, also when your app replaced the screen or draws MFA itself; a Dialog or bottom sheet that holds the login has a window of its own, so set the flag there yourself). The user is not held there: Back and Cancel leave and start the sign-in over, and the new code is lost with them, since it is the only copy. Leaving while a typed recovery code is being checked loses it the same way: the check uses the code up, and one that has already gone out can't be recalled, so its answer is dropped. Back waits while the new code is being confirmed. If Android ends your app while the new code is on screen, it is lost with the sign-in session.
+- **Copying the new recovery code** marks the copy as sensitive, so the system keeps it out of the clipboard preview, and takes it off the clipboard after two minutes. The app does the removing, so it only happens while the app's process is alive; a screen you draw yourself gets neither, so copy with the same care.
 - **A code that expired** (phone or email), when the server offers another, stays on the screen with "Your code has expired. Resend another code and try again." Verify waits and **Resend** is open at once.
 - **A resend that gets no answer, or is refused as too many,** keeps the code already on the screen, with "No connection" or "Too many attempts" under the boxes. **Resend** opens again after the usual wait.
 - **Declined, session ended, too many attempts, a first code that could not be sent, or no connection at any other time:** a screen with its own message and **Start over**, which returns to email entry with the email kept.
-- **Verify another way** (several factors) returns to the list. **Back** does the same from a factor screen, and returns to email entry from the list, or from a factor screen in the first step when there is only one factor. While a code or a push is being sent again, or a typed code is being checked, it does nothing.
+- **Verify another way** (several factors) returns to the list. **Back** does the same from a factor screen, and returns to email entry from the list, or from a factor screen in the first step when there is only one factor. While a code or a push is being sent again, a typed code is being checked, or the new recovery code is being confirmed, it does nothing. On the screen with the new recovery code it leaves, as Back does.
 - **No factor this flow can run:** a **Verification method not available** screen shows, unless your app takes over with `onMfaError`.
 - **Push checks right away** when the app returns to the foreground, so approving on the same phone signs in without waiting for the next check.
 
@@ -379,7 +382,7 @@ If you return `Handled`, your app owns what happens next, including when what yo
 
 #### Change the words
 
-Every word has a default string resource named `auth0_mfa_<group>_<key>`, for example `auth0_mfa_push_challenge_title`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value such as the device name, use `MfaMessages`; anything you leave unset keeps its default. The groups are `authenticatorList`, `loading`, `errors`, `pushChallenge`, `phoneChallenge`, `emailChallenge` and `totpChallenge`.
+Every word has a default string resource named `auth0_mfa_<group>_<key>`, for example `auth0_mfa_push_challenge_title`. To change it for the whole app (and translate it), declare a string with the same name in your app. To change one place, or to build text from a value such as the device name, use `MfaMessages`; anything you leave unset keeps its default. The groups are `authenticatorList`, `loading`, `errors`, `pushChallenge`, `phoneChallenge`, `emailChallenge`, `totpChallenge` and `recoveryCodeChallenge`.
 
 ```kotlin
 // Built once: a new MfaMessages on every recomposition would make the words resolve again.
@@ -401,6 +404,10 @@ val mfa = remember {
             totpChallenge {
                 // It names no app: the user's may be any.
                 description = "Open your authenticator app"
+            }
+            recoveryCodeChallenge {
+                saveDescription = "This code works only once. Keep it for when you lose your device."
+                savedConfirmation = "I have stored this code"
             }
             errors { rejected { title = "Sign-in denied" } }
         },
@@ -442,7 +449,9 @@ mfa = MfaConfiguration(
 
 `canResend` says whether the server still allows another send. `resendAvailableIn` is the seconds left before it may be sent, and 0 when it can be tapped now. The flow owns that countdown, so calling `resend()` early does nothing; a replacement only has to show it (the model is published again each second while it counts down). On a code screen (phone, email or authenticator app), `submit(code)` does nothing unless the code is exactly 6 digits, so a replacement may enable its button on any input. The authenticator app's model (`TotpChallengeModel`) has no destination and no resend, since nothing is sent. The three code models share `CodeChallengeModel`, and the two that send a code (phone, email) share `SentCodeChallengeModel`, so one screen of your own can serve them all. `requestError` is `MfaError.Network` when the last check or resend got no answer (the code is untouched and `submit` may send it again), or `MfaError.TooManyAttempts` when a resend was refused; draw the factor's `noConnection` or `tooManyRequests` words (or `requestError?.let { messages.errors.messageFor(it) }`). `isCodeExpired` is true when the code timed out and another can be sent: `submit` does nothing until Resend brings it. Both are cleared by the next request. The standard screens also hide the wrong-code, no-connection and too-many lines as soon as the user edits the code (an expired line stays, because Verify waits for a new code whatever is typed); a screen of your own can do the same.
 
-The factor list (`authenticatorList`), the phone code screen (`phoneChallenge`), the email code screen (`emailChallenge`), the authenticator app screen (`totpChallenge`) and the error screen (`error`) are replaced the same way. There is no screen to replace for loading. Models hold data only, and every action defaults to doing nothing, so they are easy to build for a preview or a test of your own screen. Build the words with `ResolvedMfaMessages.from(context)`, passing `MfaMessages { ... }` as the second argument to include your own.
+The recovery code screen (`recoveryCodeChallenge`) has one model for both of its steps, and it is not a `CodeChallengeModel`: a recovery code is text of any length, not six digits. While `newCode` is null it takes a code through `submit(code)` (it is cleaned before it is sent, and a blank one is ignored); once the server accepts it, `newCode` is set: show it so the user can save it, and call `confirm()` when they have, which signs them in. The standard screen holds Continue back until its "I have saved this recovery code" box is ticked; a replacement decides that for itself. On that step `switchFactor()` does nothing, and `cancel()` leaves, which loses the new code. `isWrongCode` and `requestError` (`MfaError.Network`, when the last request got no answer and the same step can be tried again) say what to show, and the words are under `recoveryCodeChallenge`. `newCode` is the live recovery code: never log it, and don't print or dump the model or the step, whose descriptions leave it out. The SDK client's request logging would write the typed code and the new one to the log, so keep it off in release builds.
+
+The factor list (`authenticatorList`), the phone code screen (`phoneChallenge`), the email code screen (`emailChallenge`), the authenticator app screen (`totpChallenge`), the recovery code screen (`recoveryCodeChallenge`) and the error screen (`error`) are replaced the same way. There is no screen to replace for loading. Models hold data only, and every action defaults to doing nothing, so they are easy to build for a preview or a test of your own screen. Build the words with `ResolvedMfaMessages.from(context)`, passing `MfaMessages { ... }` as the second argument to include your own.
 
 #### Draw every MFA screen yourself (headless)
 
@@ -467,6 +476,7 @@ Box {
             is PhoneChallengeModel -> MyPhone(model)
             is EmailChallengeModel -> MyEmail(model)
             is TotpChallengeModel -> MyTotp(model)
+            is RecoveryCodeChallengeModel -> MyRecoveryCode(model)
             else -> Unit
         }
         is MfaStep.Error -> MyError(current.model)
@@ -479,6 +489,7 @@ Box {
 - An `MfaStep` is `Loading`, `AuthenticatorList`, `Error`, or `Factor(step)` for a factor's own screen: read `step.factor` (for example `MfaFactorId.Push`) and check `step.model` for that factor's model. New factors add no case, so keep the `else` branch.
 - `stream.step` is `null` when there is nothing to draw: before MFA, after it ends, or when no factor can be used. Your overlay goes away and the login's own screen shows.
 - `stream.result` is `MfaResult.SignedIn` or `MfaResult.Ended(error)` when MFA ends, and goes back to `null` when the next MFA starts.
+- On the recovery code step the login still sets `FLAG_SECURE` on the Activity's window while `RecoveryCodeChallengeModel.newCode` is not null, so your own screen is kept out of screenshots too.
 - The login still draws its own background, navigation bar and Back; only the MFA steps are yours. Every control is an action on a model; on the error step, `leave()` returns to email entry.
 
 Adding `onMfaError` or `mfa` is source-compatible, but your app must be recompiled against this version.

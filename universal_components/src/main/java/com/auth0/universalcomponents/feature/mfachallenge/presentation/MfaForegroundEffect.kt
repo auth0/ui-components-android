@@ -3,12 +3,17 @@ package com.auth0.universalcomponents.feature.mfachallenge.presentation
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.view.WindowManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
  * Tells [engine] when the app leaves or returns to the foreground, so a network failure while the user approves in
@@ -26,6 +31,35 @@ internal fun MfaForegroundEffect(engine: MfaEngine?) {
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         if (activity?.isChangingConfigurations != true) current?.onAppBackgrounded()
     }
+}
+
+/**
+ * Keeps the Activity's window out of screenshots, screen recordings and the recent-apps preview while it is on screen.
+ * It is for the screen that shows the new recovery code, which is a live secret. The window is the Activity's, so what
+ * the app draws over the login (a screen it replaced, or a headless app's own) is covered too; a Dialog or bottom
+ * sheet that holds the login has a window of its own and is not. A window the app already secured stays secured when
+ * this leaves.
+ */
+@Composable
+internal fun MfaSecureWindow() {
+    val activity = LocalContext.current.findActivity()
+    DisposableEffect(activity) {
+        // Only a window this call secured is cleared on the way out.
+        val window = activity?.window?.takeIf { it.attributes.flags and WindowManager.LayoutParams.FLAG_SECURE == 0 }
+        window?.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        onDispose { window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
+    }
+}
+
+/**
+ * True while this engine shows the new recovery code, a live secret: the login secures the window then. Null: no MFA is
+ * running.
+ */
+@Composable
+internal fun MfaEngine?.isShowingNewRecoveryCode(): Boolean {
+    val state = this?.state?.collectAsStateWithLifecycle()
+    // Read through derivedStateOf, so the caller redraws when the answer flips and not on every tick of the resend clock.
+    return remember(state) { derivedStateOf { state?.value is MfaState.SaveRecoveryCode } }.value
 }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {

@@ -63,12 +63,12 @@ internal sealed interface MfaState {
     ) : MfaState
 
     /**
-     * A code waits to be typed: the one that went to the phone or the email address of [factor], or the one its
-     * authenticator app shows. [phase] says what is on its way; [isWrongCode] is true after the server refused the last
-     * code. [resend] is null for a code nothing sends, such as an authenticator app's. [requestError] is why the last
-     * check, or the last resend, got no answer, when the screen stays up: a [MfaError.Network], or on a resend a
-     * [MfaError.TooManyAttempts]. [isCodeExpired] is true when the server says the code on show timed out but offers
-     * another: Verify waits for the new one.
+     * A code waits to be typed: the one that went to the phone or the email address of [factor], the one its
+     * authenticator app shows, or one of the user's recovery codes. [phase] says what is on its way; [isWrongCode] is
+     * true after the server refused the last code. [resend] is null for a code nothing sends, such as an authenticator
+     * app's or a recovery code. [requestError] is why the last check, or the last resend, got no answer, when the screen
+     * stays up: a [MfaError.Network], or on a resend a [MfaError.TooManyAttempts]. [isCodeExpired] is true when the server
+     * says the code on show timed out but offers another: Verify waits for the new one.
      */
     data class CodeEntry(
         val round: MfaRound,
@@ -79,6 +79,22 @@ internal sealed interface MfaState {
         val requestError: MfaError? = null,
         val isCodeExpired: Boolean = false,
     ) : MfaState
+
+    /**
+     * A recovery code was right, so it is used up, and [newCode] replaces it: shown for the user to save, and the
+     * sign-in goes on once they confirm. [isConfirming] is true while that confirmation is on its way; [requestError] is
+     * why the last one got no answer ([MfaError.Network]), when the screen stays up so Continue can be tapped again.
+     * [newCode] is the only copy there is, so a user who leaves (Back or Cancel) loses it; "Verify another way" is not
+     * offered. A live secret, so it is never written out by [toString].
+     */
+    data class SaveRecoveryCode(
+        val round: MfaRound,
+        val newCode: String,
+        val isConfirming: Boolean = false,
+        val requestError: MfaError? = null,
+    ) : MfaState {
+        override fun toString(): String = "SaveRecoveryCode(round=$round, isConfirming=$isConfirming)"
+    }
 
     /** MFA ended without signing in, and this screen says why. Leaving it is up to the host. */
     data class Failed(val error: MfaError) : MfaState
@@ -130,8 +146,13 @@ internal sealed interface MfaIntent {
     /** The app's Cancel on any screen: leaves MFA at once, where Back may only step back to the list. */
     data object Cancel : MfaIntent
 
-    /** Sends the code the user typed. */
-    data class SubmitCode(val code: String) : MfaIntent
+    /** Sends the code the user typed. A live credential, so [toString] leaves it out. */
+    data class SubmitCode(val code: String) : MfaIntent {
+        override fun toString(): String = "SubmitCode"
+    }
+
+    /** The user has saved the new recovery code: the sign-in goes on. */
+    data object ConfirmRecoveryCode : MfaIntent
 
     /** Sends the push, or the code, to the same device, phone or address again. */
     data object Resend : MfaIntent
@@ -163,8 +184,13 @@ internal sealed interface MfaOutcome {
     /** The server did not accept the typed code. */
     data object CodeRejected : MfaOutcome
 
-    /** Checking the typed code failed for a reason other than a wrong code. */
+    /** Checking the typed code, or confirming the new recovery code, failed for a reason other than a wrong code. */
     data class CodeFailed(val error: MfaError) : MfaOutcome
+
+    /** The recovery code was right and is used up; [newCode] replaces it. A live secret, so [toString] hides it. */
+    data class RecoveryCodeRotated(val newCode: String) : MfaOutcome {
+        override fun toString(): String = "RecoveryCodeRotated"
+    }
 
     /** The push or the code couldn't be sent. */
     data class SendFailed(val error: MfaError) : MfaOutcome
@@ -188,8 +214,13 @@ internal sealed interface MfaCommand {
 
     data class SendEmailCode(val factor: MfaFactor.Email) : MfaCommand
 
-    /** Checks the [code] the user typed for [factor]. */
-    data class VerifyCode(val factor: MfaFactor.Code, val code: String) : MfaCommand
+    /** Checks the [code] the user typed for [factor]. A live credential, so [toString] leaves it out. */
+    data class VerifyCode(val factor: MfaFactor.Code, val code: String) : MfaCommand {
+        override fun toString(): String = "VerifyCode(factor=$factor)"
+    }
+
+    /** Tells the server the new recovery code is saved, which finishes the sign-in. */
+    data object ConfirmRecoveryCode : MfaCommand
 
     /** Waits [afterMs], then says the next check is due; the reducer decides whether it still is. */
     data class SchedulePushCheck(val afterMs: Long) : MfaCommand

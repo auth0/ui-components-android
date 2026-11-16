@@ -13,6 +13,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.MfaStep
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.PhoneDelivery
 import com.auth0.universalcomponents.feature.mfachallenge.PushChallengeModel
+import com.auth0.universalcomponents.feature.mfachallenge.RecoveryCodeChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.SentCodeChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.TotpChallengeModel
 import com.auth0.universalcomponents.feature.mfachallenge.domain.model.MfaFactor
@@ -376,6 +377,101 @@ class MfaStepMapperTest {
     }
 
     @Test
+    fun `recovery code - the model carries the wrong-code, connection and switch states, with no new code`() {
+        val state = recoveryReady(TWO_WITH_RECOVERY).copy(isWrongCode = true, requestError = MfaError.Network())
+
+        val factor = (toStep(state) as MfaStep.Factor).step
+        val model = factor.model as RecoveryCodeChallengeModel
+
+        assertThat(factor.factor).isEqualTo(MfaFactorId.RecoveryCode)
+        assertThat(factor.round).isEqualTo(1)
+        assertThat(model.newCode).isNull()
+        assertThat(model.isWrongCode).isTrue()
+        assertThat(model.requestError).isInstanceOf(MfaError.Network::class.java)
+        assertThat(model.canSwitch).isTrue()
+        assertThat(model.isVerifying).isFalse()
+        val alone = (toStep(recoveryReady(MfaRound(1, listOf(RECOVERY)))) as MfaStep.Factor).step.model
+        assertThat((alone as RecoveryCodeChallengeModel).canSwitch).isFalse()
+    }
+
+    @Test
+    fun `recovery code - being checked - says so`() {
+        val verifying = recoveryReady(TWO_WITH_RECOVERY).copy(phase = CodePhase.Verifying)
+
+        val model = (toStep(verifying) as MfaStep.Factor).step.model as RecoveryCodeChallengeModel
+
+        assertThat(model.isVerifying).isTrue()
+    }
+
+    @Test
+    fun `recovery code - the taps - come back as intents`() {
+        val step = toStep(recoveryReady(TWO_WITH_RECOVERY)) as MfaStep.Factor
+        val model = step.step.model as RecoveryCodeChallengeModel
+
+        model.submit("ABCD-1234")
+        model.switchFactor()
+        model.cancel()
+
+        assertThat(intents).containsExactly(
+            MfaIntent.SubmitCode("ABCD-1234"),
+            MfaIntent.ChooseAnotherFactor,
+            MfaIntent.Cancel,
+        ).inOrder()
+    }
+
+    @Test
+    fun `new recovery code - the model carries the code, with nothing to switch to, and Continue comes back as an intent`() {
+        val state = MfaState.SaveRecoveryCode(TWO_WITH_RECOVERY, NEW_CODE, requestError = MfaError.Network())
+
+        val factor = (toStep(state) as MfaStep.Factor).step
+        val model = factor.model as RecoveryCodeChallengeModel
+        model.confirm()
+
+        assertThat(factor.factor).isEqualTo(MfaFactorId.RecoveryCode)
+        assertThat(model.newCode).isEqualTo(NEW_CODE)
+        assertThat(model.canSwitch).isFalse()
+        assertThat(model.isVerifying).isFalse()
+        assertThat(model.requestError).isInstanceOf(MfaError.Network::class.java)
+        assertThat(intents).containsExactly(MfaIntent.ConfirmRecoveryCode)
+    }
+
+    @Test
+    fun `new recovery code - being confirmed - says so`() {
+        val confirming = MfaState.SaveRecoveryCode(TWO_WITH_RECOVERY, NEW_CODE, isConfirming = true)
+
+        val model = (toStep(confirming) as MfaStep.Factor).step.model as RecoveryCodeChallengeModel
+
+        assertThat(model.isVerifying).isTrue()
+    }
+
+    @Test
+    fun `new recovery code - is never written out by the model or the step`() {
+        val step = toStep(MfaState.SaveRecoveryCode(TWO_WITH_RECOVERY, NEW_CODE))
+
+        assertThat(step.toString()).doesNotContain(NEW_CODE)
+    }
+
+    @Test
+    fun `list - a recovery code - is one row with no name of its own, and the recovery icon`() {
+        val step = toStep(MfaState.ChooseFactor(TWO_WITH_RECOVERY)) as MfaStep.AuthenticatorList
+
+        assertThat(step.model.rows).containsExactly(
+            AuthenticatorListModel.Row(
+                "recovery_code",
+                MfaFactorId.RecoveryCode,
+                "",
+                null,
+                R.drawable.ic_recovery_code,
+            ),
+            AuthenticatorListModel.Row("push:0", MfaFactorId.Push, "Jane's phone", null, R.drawable.ic_device),
+        ).inOrder()
+
+        step.model.select("recovery_code")
+
+        assertThat(intents).containsExactly(MfaIntent.SelectFactor(RECOVERY))
+    }
+
+    @Test
     fun `failed - any error, including no usable factor - is the error step with Start over`() {
         val errors = listOf(MfaError.Rejected(), MfaError.NoEligibleFactors(), MfaError.Network())
 
@@ -456,6 +552,8 @@ class MfaStepMapperTest {
     /** Nothing is sent to an authenticator app, so it never offers Resend. */
     private fun appReady(round: MfaRound) = codeReady(round).copy(factor = APP, resend = null)
 
+    private fun recoveryReady(round: MfaRound) = codeReady(round).copy(factor = RECOVERY, resend = null)
+
     private fun waiting(round: MfaRound, factor: MfaFactor.Push) = MfaState.PushWaiting(
         round = round,
         factor = factor,
@@ -478,6 +576,9 @@ class MfaStepMapperTest {
         val TWO_WITH_EMAIL = MfaRound(1, listOf(EMAIL, PHONE))
         val APP = MfaFactor.AuthenticatorApp
         val TWO_WITH_APP = MfaRound(1, listOf(APP, PHONE))
+        val RECOVERY = MfaFactor.RecoveryCode
+        val TWO_WITH_RECOVERY = MfaRound(1, listOf(RECOVERY, PHONE))
+        const val NEW_CODE = "YHARATFUJJKZNV5N3X1L2ZEC"
 
         /** A resend on offer, with 42 seconds of wait left. */
         val RESEND_WAITING = CodeResend(isOffered = true, secondsLeft = 42)

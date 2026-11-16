@@ -19,6 +19,8 @@ class MfaReducerTest {
     private val emailOrPush = MfaReducer(listOf(EMAIL, PHONE))
     private val appOnly = MfaReducer(listOf(APP))
     private val appOrPush = MfaReducer(listOf(APP, PHONE))
+    private val recoveryOnly = MfaReducer(listOf(RECOVERY))
+    private val recoveryOrPush = MfaReducer(listOf(RECOVERY, PHONE))
 
     // region start
 
@@ -1023,6 +1025,284 @@ class MfaReducerTest {
 
     // endregion
 
+    // region recovery code
+
+    @Test
+    fun `recovery - the only factor, or picked from the list - shows its code screen at once, with nothing to send`() {
+        val alone = recoveryOnly.start()
+        val list = MfaState.ChooseFactor(RECOVERY_OR_PUSH)
+        val picked = recoveryOrPush.handleIntent(list, MfaIntent.SelectFactor(RECOVERY))
+
+        assertThat(alone.state).isEqualTo(recoveryReady(BY_RECOVERY))
+        assertThat(alone.commands).isEmpty()
+        assertThat(picked.state).isEqualTo(recoveryReady(RECOVERY_OR_PUSH))
+        assertThat(picked.commands).isEmpty()
+    }
+
+    @Test
+    fun `recovery code - typed - is sent as it is, of any length, with what a paste brings along removed`() {
+        val ready = recoveryReady(BY_RECOVERY)
+
+        mapOf(
+            // Case, hyphens and spaces inside the code are the user's.
+            "Abcd-1234 efgh" to "Abcd-1234 efgh",
+            "  YHARATFUJJKZNV5N3X1L2ZEC\n" to "YHARATFUJJKZNV5N3X1L2ZEC",
+            // A zero-width space, a left-to-right mark and a byte-order mark come along with pasted text.
+            "\u200BYHARAT\u200EFUJJ\uFEFF" to "YHARATFUJJ",
+            "7" to "7",
+        ).forEach { (typed, sent) ->
+            val update = recoveryOnly.handleIntent(ready, MfaIntent.SubmitCode(typed))
+
+            assertThat(update.state).isEqualTo(ready.copy(phase = CodePhase.Verifying))
+            assertThat(update.commands).containsExactly(MfaCommand.VerifyCode(RECOVERY, sent))
+        }
+    }
+
+    @Test
+    fun `recovery code - blank, or only what a paste brings along - is never sent`() {
+        val ready = recoveryReady(BY_RECOVERY)
+
+        listOf("", "   ", "\n", "\u200B", "\u200E \uFEFF").forEach { typed ->
+            assertThat(recoveryOnly.handleIntent(ready, MfaIntent.SubmitCode(typed))).isEqualTo(MfaUpdate(ready))
+        }
+    }
+
+    @Test
+    fun `recovery code - wrong - stays for another try, and the next submit clears the line`() {
+        val submitted = recoveryOnly.handleIntent(recoveryReady(BY_RECOVERY), MfaIntent.SubmitCode("nope"))
+        val rejected = recoveryOnly.handleOutcome(submitted.state, MfaOutcome.CodeRejected)
+        val again = recoveryOnly.handleIntent(rejected.state, MfaIntent.SubmitCode("again"))
+
+        assertThat(rejected.state).isEqualTo(recoveryReady(BY_RECOVERY).copy(isWrongCode = true))
+        assertThat(again.state).isEqualTo(recoveryReady(BY_RECOVERY).copy(phase = CodePhase.Verifying))
+    }
+
+    @Test
+    fun `recovery code - right - is used up, and the new code is shown to save, with nothing sent yet`() {
+        val verifying = recoveryReady(BY_RECOVERY).copy(phase = CodePhase.Verifying)
+
+        val update = recoveryOnly.handleOutcome(verifying, MfaOutcome.RecoveryCodeRotated(NEW_CODE))
+
+        assertThat(update.state).isEqualTo(saving(BY_RECOVERY))
+        assertThat(update.commands).isEmpty()
+        assertThat(update.effect).isNull()
+    }
+
+    @Test
+    fun `recovery code - right, but for a screen the user left - is dropped`() {
+        val list = MfaState.ChooseFactor(RECOVERY_OR_PUSH)
+        val typing = recoveryReady(RECOVERY_OR_PUSH)
+        val otherFactor = MfaState.CodeEntry(RECOVERY_OR_PUSH, APP, CodePhase.Verifying, resend = null)
+
+        listOf(list, typing, otherFactor).forEach { state ->
+            val update = recoveryOrPush.handleOutcome(state, MfaOutcome.RecoveryCodeRotated(NEW_CODE))
+
+            assertThat(update).isEqualTo(MfaUpdate(state))
+        }
+    }
+
+    @Test
+    fun `recovery code - checked, then the connection drops - stays on the screen, so the same code can be sent again`() {
+        val verifying = recoveryReady(BY_RECOVERY).copy(phase = CodePhase.Verifying)
+
+        val dropped = recoveryOnly.handleOutcome(verifying, MfaOutcome.CodeFailed(NETWORK))
+        val again = recoveryOnly.handleIntent(dropped.state, MfaIntent.SubmitCode("same"))
+
+        assertThat(dropped.state).isEqualTo(recoveryReady(BY_RECOVERY).copy(requestError = NETWORK))
+        assertThat(again.state).isEqualTo(recoveryReady(BY_RECOVERY).copy(phase = CodePhase.Verifying))
+    }
+
+    @Test
+    fun `recovery code - checked, then any other failure - ends MFA, since the session is gone`() {
+        val verifying = recoveryReady(BY_RECOVERY).copy(phase = CodePhase.Verifying)
+        val tooMany = MfaError.TooManyAttempts()
+
+        val update = recoveryOnly.handleOutcome(verifying, MfaOutcome.CodeFailed(tooMany))
+
+        assertThat(update.state).isEqualTo(MfaState.Failed(tooMany))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(tooMany))
+    }
+
+    @Test
+    fun `recovery code - has no Resend, and no wait to count down`() {
+        val ready = recoveryReady(BY_RECOVERY)
+
+        assertThat(recoveryOnly.handleIntent(ready, MfaIntent.Resend)).isEqualTo(MfaUpdate(ready))
+        assertThat(recoveryOnly.handleSecondPassed(ready)).isEqualTo(MfaUpdate(ready))
+    }
+
+    @Test
+    fun `recovery code - verify another way and back - go to the list with a choice, else start the sign-in over`() {
+        val switched = recoveryOrPush.handleIntent(recoveryReady(RECOVERY_OR_PUSH), MfaIntent.ChooseAnotherFactor)
+        val alone = recoveryOnly.handleIntent(recoveryReady(BY_RECOVERY), MfaIntent.Back)
+        val checking = recoveryReady(RECOVERY_OR_PUSH).copy(phase = CodePhase.Verifying)
+
+        assertThat(switched.state).isEqualTo(MfaState.ChooseFactor(RECOVERY_OR_PUSH))
+        assertThat(alone.effect).isEqualTo(MfaEffect.Restart)
+        // The check can't be recalled and uses the code up, so there is no leaving while it is on its way.
+        assertThat(recoveryOrPush.handleIntent(checking, MfaIntent.ChooseAnotherFactor)).isEqualTo(MfaUpdate(checking))
+        assertThat(recoveryOrPush.handleIntent(checking, MfaIntent.Back)).isEqualTo(MfaUpdate(checking))
+    }
+
+    @Test
+    fun `recovery code - Cancel - leaves while it is being typed, and while the check is on its way`() {
+        val typing = recoveryReady(BY_RECOVERY)
+        val checking = typing.copy(phase = CodePhase.Verifying)
+
+        // The user may leave a screen that looks stuck; the check, if right, has used the code up and its answer is dropped.
+        assertThat(recoveryOnly.handleIntent(typing, MfaIntent.Cancel).effect).isEqualTo(MfaEffect.Restart)
+        assertThat(recoveryOnly.handleIntent(checking, MfaIntent.Cancel).effect).isEqualTo(MfaEffect.Restart)
+    }
+
+    @Test
+    fun `other codes - Cancel - still leaves while they are being checked`() {
+        val checking = appReady(BY_APP).copy(phase = CodePhase.Verifying)
+
+        assertThat(appOnly.handleIntent(checking, MfaIntent.Cancel).effect).isEqualTo(MfaEffect.Restart)
+    }
+
+    @Test
+    fun `new recovery code - Continue - tells the server once, and shows it is on its way`() {
+        val update = recoveryOnly.handleIntent(saving(BY_RECOVERY), MfaIntent.ConfirmRecoveryCode)
+        val twice = recoveryOnly.handleIntent(update.state, MfaIntent.ConfirmRecoveryCode)
+
+        assertThat(update.state).isEqualTo(saving(BY_RECOVERY, isConfirming = true))
+        assertThat(update.commands).containsExactly(MfaCommand.ConfirmRecoveryCode)
+        assertThat(twice).isEqualTo(MfaUpdate(update.state))
+    }
+
+    @Test
+    fun `new recovery code - confirmed by something other than its screen - is ignored`() {
+        listOf(recoveryReady(BY_RECOVERY), MfaState.ChooseFactor(RECOVERY_OR_PUSH)).forEach { state ->
+            assertThat(recoveryOnly.handleIntent(state, MfaIntent.ConfirmRecoveryCode)).isEqualTo(MfaUpdate(state))
+        }
+    }
+
+    @Test
+    fun `new recovery code - confirmed - signs in, or starts the next round when one more factor is asked for`() {
+        val confirming = saving(BY_RECOVERY, isConfirming = true)
+        val credentials = mockk<Credentials>()
+
+        val signedIn = recoveryOnly.handleOutcome(confirming, MfaOutcome.SignedIn(credentials))
+        val another = recoveryOnly.handleOutcome(confirming, MfaOutcome.AnotherFactor(listOf(PHONE)))
+
+        assertThat(signedIn.effect).isEqualTo(MfaEffect.Authenticated(credentials))
+        assertThat(another.state).isEqualTo(MfaState.ChooseFactor(MfaRound(2, listOf(PHONE))))
+    }
+
+    @Test
+    fun `new recovery code - confirmed, then the connection drops - stays on the code, so Continue can be tapped again`() {
+        val confirming = saving(BY_RECOVERY, isConfirming = true)
+
+        val dropped = recoveryOnly.handleOutcome(confirming, MfaOutcome.CodeFailed(NETWORK))
+        val again = recoveryOnly.handleIntent(dropped.state, MfaIntent.ConfirmRecoveryCode)
+
+        assertThat(dropped.state).isEqualTo(MfaState.SaveRecoveryCode(BY_RECOVERY, NEW_CODE, requestError = NETWORK))
+        assertThat(dropped.effect).isNull()
+        assertThat(again.state).isEqualTo(saving(BY_RECOVERY, isConfirming = true))
+        assertThat(again.commands).containsExactly(MfaCommand.ConfirmRecoveryCode)
+    }
+
+    @Test
+    fun `new recovery code - confirmed, then any other failure - ends MFA`() {
+        val confirming = saving(BY_RECOVERY, isConfirming = true)
+        val ended = MfaError.TokenInvalid()
+
+        val update = recoveryOnly.handleOutcome(confirming, MfaOutcome.CodeFailed(ended))
+
+        assertThat(update.state).isEqualTo(MfaState.Failed(ended))
+        assertThat(update.effect).isEqualTo(MfaEffect.Failed(ended))
+    }
+
+    @Test
+    fun `new recovery code - a failure nobody waits for - is dropped`() {
+        val update = recoveryOnly.handleOutcome(saving(BY_RECOVERY), MfaOutcome.CodeFailed(NETWORK))
+
+        assertThat(update).isEqualTo(MfaUpdate(saving(BY_RECOVERY)))
+    }
+
+    @Test
+    fun `new recovery code - Back and Cancel - leave, and the code is lost with them`() {
+        val state = saving(RECOVERY_OR_PUSH)
+
+        assertThat(recoveryOrPush.handleIntent(state, MfaIntent.Back).effect).isEqualTo(MfaEffect.Restart)
+        assertThat(recoveryOrPush.handleIntent(state, MfaIntent.Cancel).effect).isEqualTo(MfaEffect.Restart)
+    }
+
+    @Test
+    fun `new recovery code - being confirmed - Back waits for the answer, which would sign the user in, but Cancel leaves`() {
+        val confirming = saving(RECOVERY_OR_PUSH, isConfirming = true)
+
+        assertThat(recoveryOrPush.handleIntent(confirming, MfaIntent.Back)).isEqualTo(MfaUpdate(confirming))
+        assertThat(recoveryOrPush.handleIntent(confirming, MfaIntent.Cancel).effect).isEqualTo(MfaEffect.Restart)
+    }
+
+    @Test
+    fun `new recovery code - verify another way and everything else - do nothing, since the code is used up`() {
+        listOf(saving(RECOVERY_OR_PUSH), saving(RECOVERY_OR_PUSH, isConfirming = true)).forEach { state ->
+            listOf(
+                MfaIntent.ChooseAnotherFactor,
+                MfaIntent.Resend,
+                MfaIntent.SubmitCode("123456"),
+                MfaIntent.SelectFactor(PHONE),
+            ).forEach { intent ->
+                assertThat(recoveryOrPush.handleIntent(state, intent)).isEqualTo(MfaUpdate(state))
+            }
+        }
+    }
+
+    @Test
+    fun `new recovery code - a late push answer asking for one more factor - still starts the next round`() {
+        val update = recoveryOrPush.handleOutcome(saving(RECOVERY_OR_PUSH), MfaOutcome.AnotherFactor(listOf(TABLET)))
+
+        assertThat(update.state).isEqualTo(MfaState.ChooseFactor(MfaRound(2, listOf(TABLET))))
+        assertThat(update.commands).containsExactly(MfaCommand.CancelChallengeWork)
+    }
+
+    @Test
+    fun `new recovery code - is never written out by the state or the outcome`() {
+        assertThat(saving(BY_RECOVERY).toString()).doesNotContain(NEW_CODE)
+        assertThat(MfaOutcome.RecoveryCodeRotated(NEW_CODE).toString()).doesNotContain(NEW_CODE)
+    }
+
+    // endregion
+
+    // region cleaned recovery code
+
+    @Test
+    fun `cleaned - a code as typed - is left as it is, in its case, with its hyphens and inner spaces`() {
+        assertThat("Abcd-1234 efgh".cleanedRecoveryCode()).isEqualTo("Abcd-1234 efgh")
+        assertThat(NEW_CODE.cleanedRecoveryCode()).isEqualTo(NEW_CODE)
+    }
+
+    @Test
+    fun `cleaned - spaces and line breaks around it - are removed, including a no-break space`() {
+        assertThat("  ABCD-1234\n".cleanedRecoveryCode()).isEqualTo("ABCD-1234")
+        assertThat(" ABCD\t".cleanedRecoveryCode()).isEqualTo("ABCD")
+        assertThat("\u00A0ABCD\u00A0".cleanedRecoveryCode()).isEqualTo("ABCD")
+    }
+
+    @Test
+    fun `cleaned - the invisible characters a paste brings along - are removed wherever they are`() {
+        // A zero-width space, a left-to-right mark, a byte-order mark, and a language tag outside the basic plane.
+        val pasted = "\u200BABCD\u200E-12\uFEFF34\uDB40\uDC01"
+
+        assertThat(pasted.cleanedRecoveryCode()).isEqualTo("ABCD-1234")
+    }
+
+    @Test
+    fun `cleaned - nothing but spaces and invisible characters - is empty`() {
+        assertThat("".cleanedRecoveryCode()).isEmpty()
+        assertThat(" \n\u200B\u200E \uFEFF".cleanedRecoveryCode()).isEmpty()
+    }
+
+    @Test
+    fun `cleaned - letters of other scripts and emoji - are kept, since only the server can call them wrong`() {
+        assertThat("абв-😀".cleanedRecoveryCode()).isEqualTo("абв-😀")
+    }
+
+    // endregion
+
     private fun sent(pollMs: Long, canResend: Boolean = true) =
         MfaOutcome.PushSent(PushStatus.Pending(pollMs, canResend))
 
@@ -1071,6 +1351,18 @@ class MfaReducerTest {
         resend = null,
     )
 
+    /** On the screen for typing a recovery code: nothing was sent, so there is no resend wait. */
+    private fun recoveryReady(round: MfaRound) = MfaState.CodeEntry(
+        round = round,
+        factor = RECOVERY,
+        phase = CodePhase.Ready,
+        resend = null,
+    )
+
+    /** On the screen that shows the new recovery code. */
+    private fun saving(round: MfaRound, isConfirming: Boolean = false) =
+        MfaState.SaveRecoveryCode(round, NEW_CODE, isConfirming)
+
     private fun checking(round: MfaRound, factor: MfaFactor.Push) =
         waiting(round, factor).copy(phase = PushPhase.Checking)
 
@@ -1088,6 +1380,10 @@ class MfaReducerTest {
         val APP = MfaFactor.AuthenticatorApp
         val BY_APP = MfaRound(1, listOf(APP))
         val APP_OR_PUSH = MfaRound(1, listOf(APP, PHONE))
+        val RECOVERY = MfaFactor.RecoveryCode
+        val BY_RECOVERY = MfaRound(1, listOf(RECOVERY))
+        val RECOVERY_OR_PUSH = MfaRound(1, listOf(RECOVERY, PHONE))
+        const val NEW_CODE = "YHARATFUJJKZNV5N3X1L2ZEC"
         val NETWORK = MfaError.Network(null)
 
         /** A resend that is going out, or was just used: not on offer. */
