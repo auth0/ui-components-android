@@ -46,6 +46,13 @@ class MfaScreensTest {
     }
 
     @Test
+    fun `typed shortcut - totp - is kept under its own id`() {
+        val totp = MfaScreens { totpChallenge { _, _ -> } }
+
+        assertThat(totp.factors.keys).containsExactly(MfaFactorId.Totp)
+    }
+
+    @Test
     fun `replace - several screens - are all kept`() {
         val screens = MfaScreens {
             authenticatorList { _, _ -> }

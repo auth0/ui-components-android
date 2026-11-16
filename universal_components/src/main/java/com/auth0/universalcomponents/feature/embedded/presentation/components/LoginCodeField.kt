@@ -13,8 +13,9 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 internal const val CODE_LENGTH = 6
 
 /**
- * The library's boxed code input; keeps digits only and takes focus when it first appears.
- * Its boxes grow with the width, so it's held to [length] phone-sized boxes; otherwise they balloon in landscape.
+ * The library's boxed code input; keeps digits only (the boxes turn other scripts' digits into 0-9) and takes focus when
+ * it first appears. Its boxes grow with the width, so it's held to [length] phone-sized boxes; otherwise they balloon in
+ * landscape. [modifier] goes to the boxes, for the semantics a screen adds.
  */
 @Composable
 internal fun LoginCodeField(
@@ -22,6 +23,7 @@ internal fun LoginCodeField(
     onCodeChange: (String) -> Unit,
     isError: Boolean = false,
     length: Int = CODE_LENGTH,
+    modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
@@ -32,8 +34,9 @@ internal fun LoginCodeField(
             value = code,
             length = length,
             isError = isError,
-            onValueChange = { onCodeChange(it.filter(Char::isDigit).take(length)) },
+            onValueChange = { onCodeChange(it.take(length)) },
             focusRequester = focusRequester,
+            modifier = modifier,
         )
     }
 }

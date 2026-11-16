@@ -52,18 +52,17 @@ internal class MfaEngine(
     private var pushCheckTimer: Job? = null
 
     /**
-     * The push check on its way, if any. A send waits for it to be answered and heard before it starts (see [send]),
-     * because the answer may start a new round that the send was not meant for.
+     * The push check on its way, if any. Every call a factor makes waits for it to be answered and heard before it
+     * starts (see [request]), because the answer may start a new round that the call was not meant for.
      */
     private var checkJob: Job? = null
 
     /**
-     * The push or code being sent, whichever factor it is, from the moment it waits for a check on its way. Only one is
-     * ever out at a time: the screen stays off limits until it is, and a new round or the list drops it. Cancelling it
-     * drops a send the user has left (it never starts if it hasn't), and a call already on its way finishes but is not
-     * heard.
+     * The call a factor is making, whichever factor it is: a push or code sent, or a typed code checked. Only one is ever
+     * out at a time: the screen stays off limits until it is, and a new round or the list drops it. See [request] for
+     * when it can be dropped and what happens to its answer.
      */
-    private var sendJob: Job? = null
+    private var requestJob: Job? = null
 
     /** The one-second wait before the resend countdown moves on. */
     private var resendCountdownJob: Job? = null
@@ -130,24 +129,24 @@ internal class MfaEngine(
 
     private fun runCommand(command: MfaCommand) {
         when (command) {
-            // A send that is replaced, or abandoned, is cancelled, so an old one can't answer for a newer one.
-            is MfaCommand.SendPush -> send {
+            // Every call a factor makes goes through [request]: a new factor adds its call here, and no waiting rules.
+            is MfaCommand.SendPush -> request {
                 val sent = repository.sendPush(command.factor)
                 onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.PushSent(it) })
             }
 
-            is MfaCommand.SendPhoneCode -> send {
+            is MfaCommand.SendPhoneCode -> request {
                 val sent = repository.sendPhoneCode(command.factor)
                 onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.CodeSent(canResend = it) })
             }
 
-            is MfaCommand.SendEmailCode -> send {
+            is MfaCommand.SendEmailCode -> request {
                 val sent = repository.sendEmailCode(command.factor)
                 onOutcome(sent.toOutcome(MfaOutcome::SendFailed) { MfaOutcome.CodeSent(canResend = it) })
             }
 
-            is MfaCommand.VerifyCode -> scope.launch {
-                val verified = repository.verifyCode(command.code)
+            is MfaCommand.VerifyCode -> request {
+                val verified = repository.verifyCode(command.factor, command.code)
                 onOutcome(
                     verified.toOutcome(MfaOutcome::CodeFailed) { status ->
                         when (status) {
@@ -173,7 +172,7 @@ internal class MfaEngine(
 
             MfaCommand.CancelChallengeWork -> {
                 pushCheckTimer?.cancel()
-                sendJob?.cancel()
+                requestJob?.cancel()
             }
 
             MfaCommand.CountDownResend -> countDownResend()
@@ -181,15 +180,24 @@ internal class MfaEngine(
     }
 
     /**
-     * Starts a send, dropping any earlier one, once the check on its way, if any, has been answered and its answer
-     * applied. The SDK runs one step at a time, but waiting in its queue is not enough: the queue hands the send its
-     * turn before the check's answer reaches us, and a send that has started can't be recalled. The answer may start a
-     * new round, which cancels the send while it waits here, so nothing goes out for a screen the user never sees.
+     * The one lane every call a factor makes goes through (a push or code sent, a typed code checked), whatever the
+     * factor: the one rule lives here, so adding a factor never adds a waiting rule. The call starts, dropping any
+     * earlier one that is still waiting, once the push check on its way, if any, has been answered and its answer applied.
+     * The SDK runs one step at a time, but waiting in its queue is not enough: the queue hands the call its turn before
+     * the check's answer reaches us, and the answer may start a new round that the call was not meant for. A new round
+     * or the list cancels the call while it waits here, so nothing goes out for a screen the user never sees.
+     *
+     * A call still waiting for its turn when its screen is left (the list, a new round, or the end of MFA) is cancelled
+     * and never goes out, whatever it is. That matters most for a call that spends something the user can't get back,
+     * such as a recovery code, which must not be used up for a screen nobody sees.
+     *
+     * Once the call is out it can't be recalled: the SDK finishes it whatever happens here, so its session is never left
+     * half-updated. Cancelling after that only stops the answer from being heard.
      */
-    private fun send(call: suspend () -> Unit) {
-        sendJob?.cancel()
+    private fun request(call: suspend () -> Unit) {
+        requestJob?.cancel()
         val check = checkJob
-        sendJob = scope.launch {
+        requestJob = scope.launch {
             check?.join()
             call()
         }

@@ -13,8 +13,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.domain.model.PushStatu
  *   inputs:  MfaIntent (the user did something) · MfaOutcome (the server answered) · a wait is over
  *   outputs: MfaState (what to draw) · MfaCommand (work to run) · MfaEffect (MFA is over)
  *
- * The rules are the ones iOS's MFA Core follows, so a sign-in behaves the same on both platforms. One difference, from
- * the PRD's additional challenge: in round 2 and later the list shows even with a single factor.
+ * One rule comes from the PRD's additional challenge: in round 2 and later the list shows even with a single factor.
  */
 
 /**
@@ -64,22 +63,32 @@ internal sealed interface MfaState {
     ) : MfaState
 
     /**
-     * A code went to the phone or the email address of [factor] and waits to be typed. [phase] says what is on its way;
-     * [isWrongCode] is true after the server refused the last code. [canResend] is the server's say; Resend opens once
-     * [resendSecondsLeft] also reaches zero.
+     * A code waits to be typed: the one that went to the phone or the email address of [factor], or the one its
+     * authenticator app shows. [phase] says what is on its way; [isWrongCode] is true after the server refused the last
+     * code. [resend] is null for a code nothing sends, such as an authenticator app's. [requestError] is why the last
+     * check, or the last resend, got no answer, when the screen stays up: a [MfaError.Network], or on a resend a
+     * [MfaError.TooManyAttempts]. [isCodeExpired] is true when the server says the code on show timed out but offers
+     * another: Verify waits for the new one.
      */
     data class CodeEntry(
         val round: MfaRound,
         val factor: MfaFactor.Code,
         val phase: CodePhase,
-        val canResend: Boolean,
-        val resendSecondsLeft: Int,
+        val resend: CodeResend?,
         val isWrongCode: Boolean = false,
+        val requestError: MfaError? = null,
+        val isCodeExpired: Boolean = false,
     ) : MfaState
 
     /** MFA ended without signing in, and this screen says why. Leaving it is up to the host. */
     data class Failed(val error: MfaError) : MfaState
 }
+
+/**
+ * Resend on a code screen. [isOffered] is the server's say; Resend opens once [secondsLeft] also reaches zero. Only a
+ * code the server sends has it.
+ */
+internal data class CodeResend(val isOffered: Boolean, val secondsLeft: Int)
 
 /** What's on its way for the push on show; only one at a time. */
 internal sealed interface PushPhase {
@@ -179,7 +188,8 @@ internal sealed interface MfaCommand {
 
     data class SendEmailCode(val factor: MfaFactor.Email) : MfaCommand
 
-    data class VerifyCode(val code: String) : MfaCommand
+    /** Checks the [code] the user typed for [factor]. */
+    data class VerifyCode(val factor: MfaFactor.Code, val code: String) : MfaCommand
 
     /** Waits [afterMs], then says the next check is due; the reducer decides whether it still is. */
     data class SchedulePushCheck(val afterMs: Long) : MfaCommand
@@ -188,9 +198,10 @@ internal sealed interface MfaCommand {
     data object CheckPush : MfaCommand
 
     /**
-     * Cancels the wait before the next check, and a push or code still waiting for its turn at the SDK, so one
-     * the user has left behind is never sent. A call already on its way still finishes: the SDK can't stop it, and its
-     * answer is dropped.
+     * Cancels the wait before the next check, and a push, a code or a code check still waiting for its turn at the SDK,
+     * so one the user has left behind is never sent. A call already on its way still finishes, since the SDK can't stop
+     * it, and its answer is heard like any other: the reducer drops what no longer fits the screen, and a right code
+     * that signs the user in is never lost.
      */
     data object CancelChallengeWork : MfaCommand
 

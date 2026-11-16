@@ -189,6 +189,9 @@ class MfaMessagesTest {
         assertThat(words.codeLabel).isEqualTo(default(R.string.auth0_mfa_email_challenge_code_label))
         assertThat(words.verifyButton).isEqualTo(default(R.string.auth0_mfa_email_challenge_verify_button))
         assertThat(words.wrongCode).isEqualTo(default(R.string.auth0_mfa_email_challenge_wrong_code))
+        assertThat(words.expiredCode).isEqualTo(default(R.string.auth0_mfa_email_challenge_expired_code))
+        assertThat(words.noConnection).isEqualTo(default(R.string.auth0_mfa_email_challenge_no_connection))
+        assertThat(words.tooManyRequests).isEqualTo(default(R.string.auth0_mfa_email_challenge_too_many_requests))
         assertThat(words.row.title).isEqualTo(default(R.string.auth0_mfa_email_challenge_row_title))
         assertThat(words.row.description).isEqualTo(default(R.string.auth0_mfa_email_challenge_row_description))
         assertThat(words.resend.button).isEqualTo(default(R.string.auth0_mfa_email_challenge_resend_button))
@@ -213,6 +216,64 @@ class MfaMessagesTest {
         assertThat(words.resend.cooldown(5)).isEqualTo("Wait 5")
         assertThat(words.resend.button).isEqualTo(default(R.string.auth0_mfa_email_challenge_resend_button))
         assertThat(words.verifyAnotherWay).isEqualTo(default(R.string.auth0_mfa_email_challenge_verify_another_way))
+    }
+
+    @Test
+    fun `totp challenge - nothing set - every word is the string resource's`() {
+        val words = MfaMessages().resolve(resources).totpChallenge
+
+        assertThat(words.title).isEqualTo(default(R.string.auth0_mfa_totp_challenge_title))
+        assertThat(words.description).isEqualTo(default(R.string.auth0_mfa_totp_challenge_description))
+        assertThat(words.codeLabel).isEqualTo(default(R.string.auth0_mfa_totp_challenge_code_label))
+        assertThat(words.verifyButton).isEqualTo(default(R.string.auth0_mfa_totp_challenge_verify_button))
+        assertThat(words.noConnection).isEqualTo(default(R.string.auth0_mfa_totp_challenge_no_connection))
+        assertThat(words.wrongCode).isEqualTo(default(R.string.auth0_mfa_totp_challenge_wrong_code))
+        assertThat(words.verifyAnotherWay).isEqualTo(default(R.string.auth0_mfa_totp_challenge_verify_another_way))
+        assertThat(words.row.title).isEqualTo(default(R.string.auth0_mfa_totp_challenge_row_title))
+        assertThat(words.row.description).isEqualTo(default(R.string.auth0_mfa_totp_challenge_row_description))
+    }
+
+    @Test
+    fun `totp challenge - some set - replaces those, the others keep their defaults`() {
+        val words = MfaMessages {
+            totpChallenge {
+                title = "Type your code"
+                description = "Open your authenticator"
+                row { title = "Authenticator" }
+            }
+        }.resolve(resources).totpChallenge
+
+        assertThat(words.title).isEqualTo("Type your code")
+        assertThat(words.description).isEqualTo("Open your authenticator")
+        assertThat(words.row.title).isEqualTo("Authenticator")
+        assertThat(words.row.description).isEqualTo(default(R.string.auth0_mfa_totp_challenge_row_description))
+        assertThat(words.verifyButton).isEqualTo(default(R.string.auth0_mfa_totp_challenge_verify_button))
+        assertThat(words.wrongCode).isEqualTo(default(R.string.auth0_mfa_totp_challenge_wrong_code))
+    }
+
+    @Test
+    fun `code screens - the expired, no-connection and too-many words - default to the resources, and each can be replaced`() {
+        val defaults = MfaMessages().resolve(resources).phoneChallenge
+        assertThat(defaults.expiredCode).isEqualTo(default(R.string.auth0_mfa_phone_challenge_expired_code))
+        assertThat(defaults.noConnection).isEqualTo(default(R.string.auth0_mfa_phone_challenge_no_connection))
+        assertThat(defaults.tooManyRequests).isEqualTo(default(R.string.auth0_mfa_phone_challenge_too_many_requests))
+
+        val words = MfaMessages {
+            phoneChallenge {
+                expiredCode = "Old code"
+                noConnection = "Offline"
+                tooManyRequests = "Slow down"
+            }
+            totpChallenge { noConnection = "No network" }
+        }.resolve(resources)
+
+        assertThat(words.phoneChallenge.expiredCode).isEqualTo("Old code")
+        assertThat(words.phoneChallenge.noConnection).isEqualTo("Offline")
+        assertThat(words.phoneChallenge.tooManyRequests).isEqualTo("Slow down")
+        assertThat(words.totpChallenge.noConnection).isEqualTo("No network")
+        // Another factor's words are its own.
+        assertThat(words.emailChallenge.noConnection)
+            .isEqualTo(default(R.string.auth0_mfa_email_challenge_no_connection))
     }
 
     @Test

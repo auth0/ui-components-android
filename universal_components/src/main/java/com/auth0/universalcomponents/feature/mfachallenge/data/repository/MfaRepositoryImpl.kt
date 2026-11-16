@@ -22,7 +22,6 @@ import com.auth0.universalcomponents.utils.logging.Logger
 
 /**
  * The second factor against the SDK. [steps] must be the first factor's: its client holds the session MFA continues.
- * The server's answers are read as iOS reads them, so both platforms follow the same flow.
  */
 internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepository {
 
@@ -107,8 +106,8 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
         is StepAnswer.Done -> unexpected("Sending a code signed in")
     }
 
-    override suspend fun verifyCode(code: String): Result<CodeStatus, MfaError> =
-        when (val verified = steps.run { verifyOtp(code, OtpType.OOB) }) {
+    override suspend fun verifyCode(factor: MfaFactor.Code, code: String): Result<CodeStatus, MfaError> =
+        when (val verified = steps.run { verifyOtp(code, factor.otpType) }) {
             is StepAnswer.Done -> Result.Success(CodeStatus.Verified(verified.value))
             is StepAnswer.Next -> when {
                 // A wrong code answers "not finished yet" like a further step does; only its reason tells them apart.
@@ -124,6 +123,13 @@ internal class MfaRepositoryImpl(private val steps: EmbeddedAuthSteps) : MfaRepo
             }
 
             is StepAnswer.Failed -> Result.Error(verified.mfaError)
+        }
+
+    /** A code the server sent is out-of-band, and the one an authenticator app shows is time-based. */
+    private val MfaFactor.Code.otpType: OtpType
+        get() = when (this) {
+            is MfaFactor.Phone, is MfaFactor.Email -> OtpType.OOB
+            MfaFactor.AuthenticatorApp -> OtpType.TOTP
         }
 
     /** The "check the push" step the server offered, with the wait it wants before the next check. */

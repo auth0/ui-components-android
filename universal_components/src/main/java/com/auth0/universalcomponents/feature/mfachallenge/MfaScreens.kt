@@ -70,6 +70,11 @@ class MfaScreens private constructor(
             replace(MfaFactorId.Email) { model, messages -> if (model is EmailChallengeModel) content(model, messages) }
         }
 
+        /** Typing the code an authenticator app shows. */
+        fun totpChallenge(content: @Composable (TotpChallengeModel, ResolvedMfaMessages) -> Unit) {
+            replace(MfaFactorId.Totp) { model, messages -> if (model is TotpChallengeModel) content(model, messages) }
+        }
+
         internal fun build() = MfaScreens(authenticatorList, error, factors.toMap())
     }
 }

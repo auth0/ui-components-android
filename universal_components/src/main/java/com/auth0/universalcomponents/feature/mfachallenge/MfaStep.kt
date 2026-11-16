@@ -72,9 +72,9 @@ data class AuthenticatorListModel @JvmOverloads constructor(
      * One way to verify. [title] is what the user named the factor, such as a device name, and may be blank: show the
      * factor's own name then (`messages.pushChallenge.row`); for a phone it is the number as the server hides it, and
      * [delivery] says how its code is sent (the standard list words the row from both); for an email it is the address
-     * as the server hides it, and blank when the server gave none (`messages.emailChallenge.row`). [subtitle] is null
-     * from this library: the standard list words its second line from the messages too. [icon] is a drawable of this
-     * library; null draws none.
+     * as the server hides it, and blank when the server gave none (`messages.emailChallenge.row`); for an authenticator
+     * app it is always blank (`messages.totpChallenge.row`). [subtitle] is null from this library: the standard list
+     * words its second line from the messages too. [icon] is a drawable of this library; null draws none.
      */
     @Immutable
     data class Row @JvmOverloads constructor(
@@ -89,7 +89,8 @@ data class AuthenticatorListModel @JvmOverloads constructor(
 
 /**
  * The screen of one factor. [model] is the factor's own model, picked by [factor] (a push gets a
- * [PushChallengeModel], a phone a [PhoneChallengeModel], an email an [EmailChallengeModel]).
+ * [PushChallengeModel], a phone a [PhoneChallengeModel], an email an [EmailChallengeModel], an authenticator app a
+ * [TotpChallengeModel]).
  */
 @Immutable
 data class MfaFactorStep @JvmOverloads constructor(
@@ -119,26 +120,60 @@ data class PushChallengeModel @JvmOverloads constructor(
 ) : MfaFactorModel
 
 /**
- * A code was sent to [phoneNumber] (as the server hides it) by [delivery], and waits to be typed. [submit] checks a
- * typed code, unless [isVerifying]; [isWrongCode] is true after the server refused the last one. Resend is offered
- * while [canResend] and opens once [resendAvailableIn] seconds have passed; while it goes out, [isResending] is true.
- * [switchFactor] returns to the list when [canSwitch]. [cancel] leaves MFA.
+ * What every screen that takes a typed code shows and does, whichever factor's code it is, so one screen of your own
+ * can serve them all. [submit] checks a typed code, unless [isVerifying]; [isWrongCode] is true after the server
+ * refused the last one. [switchFactor] returns to the list when [canSwitch]. [cancel] leaves MFA.
+ *
+ * [requestError] says why the last check, or the last resend, got no answer while the screen stays up: a
+ * [MfaError.Network] (the request may or may not have reached the server, so the same code may be tried again), or on a
+ * resend a [MfaError.TooManyAttempts]. It is null otherwise, and cleared when the next request starts; the standard
+ * screens also hide its line as soon as the user edits the code. Show `requestError?.let { messages.errors.messageFor(it) }`,
+ * or the factor's own `noConnection` and `tooManyRequests` words.
+ */
+sealed interface CodeChallengeModel : MfaFactorModel {
+    val isWrongCode: Boolean
+    val isVerifying: Boolean
+    val canSwitch: Boolean
+    val submit: (code: String) -> Unit
+    val switchFactor: () -> Unit
+    val cancel: () -> Unit
+    val requestError: MfaError?
+}
+
+/**
+ * A code the server sends, so it can be sent again. Resend is offered while [canResend] and opens once
+ * [resendAvailableIn] seconds have passed; while it goes out, [isResending] is true. [isCodeExpired] is true when the
+ * server says the code timed out but offers another: [submit] does nothing until Resend brings a new one.
+ */
+sealed interface SentCodeChallengeModel : CodeChallengeModel {
+    val isResending: Boolean
+    val canResend: Boolean
+    val resendAvailableIn: Int
+    val resend: () -> Unit
+    val isCodeExpired: Boolean
+}
+
+/**
+ * A code was sent to [phoneNumber] (as the server hides it) by [delivery], and waits to be typed. See
+ * [SentCodeChallengeModel] and [CodeChallengeModel] for what the other fields mean.
  */
 @Immutable
 data class PhoneChallengeModel @JvmOverloads constructor(
     val phoneNumber: String,
     val delivery: PhoneDelivery,
-    val isWrongCode: Boolean = false,
-    val isVerifying: Boolean = false,
-    val isResending: Boolean = false,
-    val canResend: Boolean = false,
-    val resendAvailableIn: Int = 0,
-    val canSwitch: Boolean = false,
-    val submit: (code: String) -> Unit = {},
-    val resend: () -> Unit = {},
-    val switchFactor: () -> Unit = {},
-    val cancel: () -> Unit = {},
-) : MfaFactorModel
+    override val isWrongCode: Boolean = false,
+    override val isVerifying: Boolean = false,
+    override val isResending: Boolean = false,
+    override val canResend: Boolean = false,
+    override val resendAvailableIn: Int = 0,
+    override val canSwitch: Boolean = false,
+    override val submit: (code: String) -> Unit = {},
+    override val resend: () -> Unit = {},
+    override val switchFactor: () -> Unit = {},
+    override val cancel: () -> Unit = {},
+    override val requestError: MfaError? = null,
+    override val isCodeExpired: Boolean = false,
+) : SentCodeChallengeModel
 
 /** How a phone gets its code. */
 enum class PhoneDelivery {
@@ -151,25 +186,40 @@ enum class PhoneDelivery {
 }
 
 /**
- * A code was sent to [address] (as the server hides it, maybe blank) and waits to be typed. [submit] checks a typed
- * code, unless [isVerifying]; [isWrongCode] is true after the server refused the last one. Resend is offered while
- * [canResend] and opens once [resendAvailableIn] seconds have passed; while it goes out, [isResending] is true.
- * [switchFactor] returns to the list when [canSwitch]. [cancel] leaves MFA.
+ * A code was sent to [address] (as the server hides it, maybe blank) and waits to be typed. See
+ * [SentCodeChallengeModel] and [CodeChallengeModel] for what the other fields mean.
  */
 @Immutable
 data class EmailChallengeModel @JvmOverloads constructor(
     val address: String,
-    val isWrongCode: Boolean = false,
-    val isVerifying: Boolean = false,
-    val isResending: Boolean = false,
-    val canResend: Boolean = false,
-    val resendAvailableIn: Int = 0,
-    val canSwitch: Boolean = false,
-    val submit: (code: String) -> Unit = {},
-    val resend: () -> Unit = {},
-    val switchFactor: () -> Unit = {},
-    val cancel: () -> Unit = {},
-) : MfaFactorModel
+    override val isWrongCode: Boolean = false,
+    override val isVerifying: Boolean = false,
+    override val isResending: Boolean = false,
+    override val canResend: Boolean = false,
+    override val resendAvailableIn: Int = 0,
+    override val canSwitch: Boolean = false,
+    override val submit: (code: String) -> Unit = {},
+    override val resend: () -> Unit = {},
+    override val switchFactor: () -> Unit = {},
+    override val cancel: () -> Unit = {},
+    override val requestError: MfaError? = null,
+    override val isCodeExpired: Boolean = false,
+) : SentCodeChallengeModel
+
+/**
+ * The code an authenticator app shows waits to be typed. Nothing is sent, so there is no destination to name and no
+ * Resend. See [CodeChallengeModel] for what the fields mean.
+ */
+@Immutable
+data class TotpChallengeModel @JvmOverloads constructor(
+    override val isWrongCode: Boolean = false,
+    override val isVerifying: Boolean = false,
+    override val canSwitch: Boolean = false,
+    override val submit: (code: String) -> Unit = {},
+    override val switchFactor: () -> Unit = {},
+    override val cancel: () -> Unit = {},
+    override val requestError: MfaError? = null,
+) : CodeChallengeModel
 
 /** Why MFA ended is [error]; [exit] says where [leave] goes. */
 @Immutable
@@ -205,5 +255,8 @@ value class MfaFactorId(val value: String) {
 
         /** Type a code that was sent to an email address. */
         val Email = MfaFactorId("email")
+
+        /** Type the code an authenticator app shows. */
+        val Totp = MfaFactorId("totp")
     }
 }

@@ -158,7 +158,8 @@ internal class EmbeddedLoginRepositoryImpl(
 
         /**
          * What these screens can drive, told to the server so it only offers those: a code sent to an email or a phone,
-         * then a push, or a code sent to a phone or an email. The same as iOS, which sends only what is plugged in.
+         * then a push, a code sent to a phone or an email, or the code of an authenticator app. One fixed set,
+         * sent once when the sign-in opens, for the whole sign-in.
          */
         val CAPABILITIES = setOf(
             EmbeddedCapability.IDENTIFY_EMAIL,

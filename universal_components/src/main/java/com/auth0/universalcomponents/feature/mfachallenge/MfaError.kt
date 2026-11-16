@@ -3,8 +3,8 @@ package com.auth0.universalcomponents.feature.mfachallenge
 import com.auth0.universalcomponents.domain.error.ResultError
 
 /**
- * Why MFA ended without signing the user in: the same cases, under the same names, as iOS's `MfaError`, except
- * `credentialsNotSaved`, which is iOS's alone: this library never stores credentials, so there is nothing to fail.
+ * Why MFA ended without signing the user in. There is no case for credentials that could not be saved: this library
+ * never stores credentials, so there is nothing to fail.
  *
  * A later release may add cases, so give every `when` over this type an `else` branch. The compiler may call that
  * branch redundant today; it is what keeps your app working once a case is added.
@@ -37,7 +37,11 @@ sealed class MfaError(cause: Throwable?) : Exception(null as String?, cause), Re
     /** Reserved for step-up, which needs a screen to show MFA on. Embedded login never ends with it. */
     class PresentationUnavailable : MfaError(null)
 
-    /** A request couldn't reach the server, even after the quiet retries. */
+    /**
+     * A request got no answer from the server: no connection, or a timeout that may have come after the server received
+     * it. A push check is tried again quietly a few times first. A code check or a resend that gets no answer keeps its
+     * screen, with this as the reason, so the user can try again.
+     */
     class Network(cause: Throwable? = null) : MfaError(cause)
 
     /** Anything else. [serverMessage] is the server's own explanation, when it gave one. */

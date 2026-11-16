@@ -46,11 +46,34 @@ class MfaStepTest {
         assertThat(email.canResend).isFalse()
         assertThat(email.canSwitch).isFalse()
         assertThat(email.resendAvailableIn).isEqualTo(0)
+        assertThat(email.isCodeExpired).isFalse()
+        assertThat(email.requestError).isNull()
         assertThat(MfaFactorStep(MfaFactorId.Email, email).round).isEqualTo(1)
         email.submit("123456")
         email.resend()
         email.switchFactor()
         email.cancel()
+    }
+
+    @Test
+    fun `factor id - totp - is named totp, and compares by its value`() {
+        assertThat(MfaFactorId.Totp.value).isEqualTo("totp")
+        assertThat(MfaFactorId("totp")).isEqualTo(MfaFactorId.Totp)
+        assertThat(MfaFactorId.Totp).isNotEqualTo(MfaFactorId.Phone)
+    }
+
+    @Test
+    fun `totp model - built for a preview or a test - needs no data, and its actions are safe to call`() {
+        val totp = TotpChallengeModel()
+
+        assertThat(totp.isWrongCode).isFalse()
+        assertThat(totp.isVerifying).isFalse()
+        assertThat(totp.canSwitch).isFalse()
+        assertThat(totp.requestError).isNull()
+        assertThat(MfaFactorStep(MfaFactorId.Totp, totp).round).isEqualTo(1)
+        totp.submit("123456")
+        totp.switchFactor()
+        totp.cancel()
     }
 
     @Test
@@ -69,6 +92,7 @@ class MfaStepTest {
         // Only the models without a value-class parameter: Kotlin mangles the constructors of the others.
         PushChallengeModel::class.java.getConstructor(String::class.java)
         EmailChallengeModel::class.java.getConstructor(String::class.java)
+        TotpChallengeModel::class.java.getConstructor()
         AuthenticatorListModel::class.java.getConstructor(AuthenticatorListHeader::class.java, List::class.java)
         ErrorModel::class.java.getConstructor(MfaError::class.java)
         LoadingModel::class.java.getConstructor()

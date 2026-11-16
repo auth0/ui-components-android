@@ -24,6 +24,7 @@ class MfaMessages private constructor(
     internal val pushChallenge: PushChallenge,
     internal val phoneChallenge: PhoneChallenge,
     internal val emailChallenge: EmailChallenge,
+    internal val totpChallenge: TotpChallenge,
 ) {
 
     /** A title and a description, either of which can be changed. */
@@ -132,6 +133,15 @@ class MfaMessages private constructor(
 
         /** Under the code field after the server refused a code. */
         var wrongCode: String? = null
+
+        /** Under the code field when the code on show has timed out and another can be sent. */
+        var expiredCode: String? = null
+
+        /** Under the code field when the last check or resend got no answer. */
+        var noConnection: String? = null
+
+        /** Under the code field when a resend was refused as too many. */
+        var tooManyRequests: String? = null
         var verifyAnotherWay: String? = null
 
         /**
@@ -172,6 +182,15 @@ class MfaMessages private constructor(
 
         /** Under the code field after the server refused a code. */
         var wrongCode: String? = null
+
+        /** Under the code field when the code on show has timed out and another can be sent. */
+        var expiredCode: String? = null
+
+        /** Under the code field when the last check or resend got no answer. */
+        var noConnection: String? = null
+
+        /** Under the code field when a resend was refused as too many. */
+        var tooManyRequests: String? = null
         var verifyAnotherWay: String? = null
         internal val resend = Resend()
 
@@ -189,6 +208,30 @@ class MfaMessages private constructor(
             /** Takes the seconds left until Resend opens. */
             var cooldown: ((seconds: Int) -> String)? = null
         }
+    }
+
+    /** Typing the code an authenticator app shows. It names no app: the user's may be any. */
+    class TotpChallenge internal constructor() {
+        internal val row = Message()
+
+        var title: String? = null
+
+        /** The line under the title. */
+        var description: String? = null
+
+        /** The label above the code boxes. */
+        var codeLabel: String? = null
+        var verifyButton: String? = null
+
+        /** Under the code field after the server refused a code. */
+        var wrongCode: String? = null
+
+        /** Under the code field when the last check got no answer. */
+        var noConnection: String? = null
+        var verifyAnotherWay: String? = null
+
+        /** How the factor looks in the list: its name, with the description under it. */
+        fun row(configure: Message.() -> Unit) = row.configure()
     }
 
     companion object {
@@ -210,6 +253,7 @@ class MfaMessages private constructor(
         private val pushChallenge = PushChallenge()
         private val phoneChallenge = PhoneChallenge()
         private val emailChallenge = EmailChallenge()
+        private val totpChallenge = TotpChallenge()
 
         fun authenticatorList(configure: AuthenticatorList.() -> Unit) = authenticatorList.configure()
 
@@ -223,7 +267,16 @@ class MfaMessages private constructor(
 
         fun emailChallenge(configure: EmailChallenge.() -> Unit) = emailChallenge.configure()
 
-        internal fun build() =
-            MfaMessages(authenticatorList, loading, errors, pushChallenge, phoneChallenge, emailChallenge)
+        fun totpChallenge(configure: TotpChallenge.() -> Unit) = totpChallenge.configure()
+
+        internal fun build() = MfaMessages(
+            authenticatorList,
+            loading,
+            errors,
+            pushChallenge,
+            phoneChallenge,
+            emailChallenge,
+            totpChallenge,
+        )
     }
 }

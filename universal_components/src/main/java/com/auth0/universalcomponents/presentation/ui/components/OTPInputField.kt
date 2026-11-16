@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.utils.toAsciiDigits
 
 private const val ERROR_FILL_ALPHA = 0.5f
 private const val ERROR_EDGE_ALPHA = 0.18f
@@ -47,7 +48,7 @@ internal fun OTPInputField(
     val field = remember(value) { TextFieldValue(text = value, selection = TextRange(value.length)) }
     BasicTextField(
         value = field,
-        onValueChange = { if (it.text != value) onValueChange(it.text) },
+        onValueChange = { if (it.text != value) onValueChange(it.text.toAsciiDigits()) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier
             .fillMaxWidth()
