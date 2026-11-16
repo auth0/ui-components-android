@@ -162,7 +162,7 @@ class EmbeddedLoginRepositoryImplTest {
     fun `startOtp - email - email challenge offered - asks the server to send the code`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 2))
 
-        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(null))
 
         verify(exactly = 1) { client.challengeEmail(2) }
     }
@@ -171,7 +171,7 @@ class EmbeddedLoginRepositoryImplTest {
     fun `startOtp - email - code already sent - doesn't send another`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL))
 
-        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(null))
 
         verify(exactly = 0) { client.challengeEmail(any()) }
     }
@@ -200,7 +200,7 @@ class EmbeddedLoginRepositoryImplTest {
         every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, TEXT, VOICE))
         every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns step(verifyOtp(OtpChannel.SMS, MASKED_PHONE))
 
-        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(MASKED_PHONE))
 
         verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.TEXT) }
         verify(exactly = 0) { client.challengeEmail(any()) }
@@ -211,7 +211,7 @@ class EmbeddedLoginRepositoryImplTest {
         every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, VOICE))
         every { client.challengePhone(3, PhoneDeliveryMethod.VOICE) } returns step(verifyOtp(OtpChannel.VOICE, null))
 
-        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(MASKED_PHONE))
 
         verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.VOICE) }
     }
@@ -221,7 +221,7 @@ class EmbeddedLoginRepositoryImplTest {
         every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3))
         every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns step(verifyOtp(OtpChannel.SMS, null))
 
-        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(MASKED_PHONE))
 
         verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.TEXT) }
     }
@@ -230,9 +230,45 @@ class EmbeddedLoginRepositoryImplTest {
     fun `startOtp - phone code already sent - doesn't send another`() = runTest {
         every { client.identify(PHONE, IdentifierType.PHONE) } returns step(verifyOtp(OtpChannel.SMS, MASKED_PHONE))
 
-        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(MASKED_PHONE))
 
         verify(exactly = 0) { client.challengePhone(any(), any()) }
+    }
+
+    @Test
+    fun `startOtp - phone - the code went to the number the server names once it is out`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, TEXT))
+        every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns
+            step(verifyOtp(OtpChannel.SMS, "(4**)***-*900"))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success("(4**)***-*900"))
+    }
+
+    @Test
+    fun `startOtp - phone - the server names none once the code is out - the number it listed for the phone`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, TEXT))
+        every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns step(verifyOtp(OtpChannel.SMS, null))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(MASKED_PHONE))
+    }
+
+    @Test
+    fun `startOtp - phone code already sent with no number named - names none`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(verifyOtp(OtpChannel.SMS, null))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(null))
+    }
+
+    @Test
+    fun `startOtp - two phones, the first only takes calls - texts the first that can take a text`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns
+            step(challengePhone(at = 0, VOICE), challengePhone(at = 1, TEXT, VOICE))
+        every { client.challengePhone(1, PhoneDeliveryMethod.TEXT) } returns step(verifyOtp(OtpChannel.SMS, null))
+
+        repository.startOtp(LoginOption.PhoneOtp, PHONE)
+
+        verify(exactly = 1) { client.challengePhone(1, PhoneDeliveryMethod.TEXT) }
+        verify(exactly = 0) { client.challengePhone(0, any()) }
     }
 
     @Test
@@ -686,7 +722,7 @@ class EmbeddedLoginRepositoryImplTest {
         repository.discover()
         repository.identify(LoginOption.EmailOtp, EMAIL)
 
-        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(null))
         verify(exactly = 0) { client.challengeEmail(any()) }
     }
 
@@ -747,7 +783,7 @@ class EmbeddedLoginRepositoryImplTest {
 
         assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL).failure().error)
             .isEqualTo(EmbeddedLoginError.Network)
-        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(null))
 
         verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
         verify(exactly = 2) { client.identify(EMAIL, IdentifierType.EMAIL) }

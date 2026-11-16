@@ -30,7 +30,8 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * tapped. A null [onEdit], [onResend] or [onUsePassword] hides that action.
  * [isResending] and [isOpeningPassword] lock the boxes and Verify while a new code or the password is on its way; only
  * the button that was tapped spins. [resendSecondsLeft] is the wait before Resend opens.
- * [onUsePassword] adds "OR" and "Continue with a password" under Resend.
+ * [onUsePassword] adds "OR" and "Continue with a password" under Resend. [subtitleFontFeatures] sets the subtitle's OpenType
+ * features, to draw a number the server hid (`*********0128`) with every `*` the same size.
  */
 @Composable
 internal fun LoginCodeScreen(
@@ -38,6 +39,7 @@ internal fun LoginCodeScreen(
     modifier: Modifier = Modifier,
     title: String = stringResource(R.string.embedded_login_code_title),
     subtitle: String? = null,
+    subtitleFontFeatures: String? = null,
     fieldLabel: String = stringResource(R.string.embedded_login_code_label),
     digitCount: Int = CODE_LENGTH,
     isLoading: Boolean = false,
@@ -64,6 +66,7 @@ internal fun LoginCodeScreen(
             FlowScreenHeader(
                 title = title,
                 subtitle = subtitle,
+                subtitleFontFeatures = subtitleFontFeatures,
                 editLabel = stringResource(R.string.embedded_login_code_edit),
                 onEdit = onEdit,
                 isEditEnabled = !isBusy,

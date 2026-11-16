@@ -226,13 +226,14 @@ internal class LoginFlowViewModel(
      */
     private suspend fun sendCode(method: LoginOption, identifier: String, canUsePassword: Boolean) {
         repository.startOtp(method, identifier)
-            .onSuccess {
+            .onSuccess { sentTo ->
                 codeWait = CodeWait(method, identifier, RESEND_COOLDOWN_SECONDS)
                 _loginState.value = LoginState.CollectOtpCode(
                     identifier = identifier,
                     method = method,
                     resendSecondsLeft = RESEND_COOLDOWN_SECONDS,
                     canUsePassword = canUsePassword,
+                    sentTo = sentTo,
                 )
                 startResendCountdown()
             }

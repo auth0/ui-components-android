@@ -1,7 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.domain.repository
 
 import com.auth0.android.result.Credentials
-import com.auth0.universalcomponents.domain.network.EmptyResult
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
@@ -29,8 +28,11 @@ internal interface EmbeddedLoginRepository {
      * Sends a code to [identifier], an email address or an E.164 phone number as [method] says. Straight after
      * [identify] it goes on the same session; a resend, an edited identifier or a code after a wrong password opens a
      * new one first. A phone gets a text message, or a call when the server offers no text.
+     *
+     * Returns where the server says the code went, as it hides it (`XXXXXXXXX0128`), for a phone; null for an email, which
+     * is shown as typed, and when the server names nothing.
      */
-    suspend fun startOtp(method: LoginOption, identifier: String): EmptyResult<LoginFailure>
+    suspend fun startOtp(method: LoginOption, identifier: String): Result<String?, LoginFailure>
 
     /**
      * Verifies a code the user received. A correct code signs in, or fails with [EmbeddedLoginError.MfaRequired]

@@ -14,7 +14,6 @@ import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
 import com.auth0.universalcomponents.data.embeddedauth.INVALID_CODE_REASONS
 import com.auth0.universalcomponents.data.embeddedauth.StepAnswer
 import com.auth0.universalcomponents.data.embeddedauth.nextActions
-import com.auth0.universalcomponents.domain.network.EmptyResult
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.data.mapper.failure
 import com.auth0.universalcomponents.feature.embedded.data.mapper.toLoginOption
@@ -97,7 +96,7 @@ internal class EmbeddedLoginRepositoryImpl(
         return Result.Success(offer)
     }
 
-    override suspend fun startOtp(method: LoginOption, identifier: String): EmptyResult<LoginFailure> {
+    override suspend fun startOtp(method: LoginOption, identifier: String): Result<String?, LoginFailure> {
         if (method != LoginOption.EmailOtp && method != LoginOption.PhoneOtp) {
             return Result.Error(LoginFailure(EmbeddedLoginError.CodeNotSent(method)))
         }
@@ -105,6 +104,7 @@ internal class EmbeddedLoginRepositoryImpl(
         // identify is good for one code: a code right after it goes on the same session, and anything else (a
         // resend, or a code after a wrong password or an ended session) starts over.
         if (loop != Loop.Identified(identity)) submit(identity)?.let { return Result.Error(it) }
+        val phone = lastNextActions.phoneToCode().takeIf { method == LoginOption.PhoneOtp }
         val sent = when (method) {
             LoginOption.PhoneOtp -> sendPhoneCode(lastNextActions)
             else -> sendEmailCode(lastNextActions)
@@ -121,7 +121,7 @@ internal class EmbeddedLoginRepositoryImpl(
             else -> {
                 if (sent is StepAnswer.Next) lastNextActions = sent.actions
                 loop = Loop.CodeSent(identity)
-                Result.Success(Unit)
+                Result.Success(if (method == LoginOption.PhoneOtp) sentToPhone(phone) else null)
             }
         }
     }
@@ -200,7 +200,7 @@ internal class EmbeddedLoginRepositoryImpl(
      * (a list with no way named is a text, as in the SDK).
      */
     private suspend fun sendPhoneCode(nextActions: List<NextAction>): StepAnswer<*>? {
-        val phone = nextActions.firstNotNullOfOrNull { it as? NextAction.ChallengePhone }
+        val phone = nextActions.phoneToCode()
         return when {
             phone != null -> {
                 val ways = phone.deliveryMethods.ifEmpty { listOf(PhoneDeliveryMethod.TEXT) }
@@ -211,6 +211,27 @@ internal class EmbeddedLoginRepositoryImpl(
             nextActions.any { it is NextAction.VerifyOtp && it.channel in PHONE_CHANNELS } -> ALREADY_SENT
             else -> null
         }
+    }
+
+    /**
+     * The phone a code goes to: the first one that can take a text, else the first there is (the call is the way left). A
+     * voice-only phone listed ahead of a phone that can text is not the one to call.
+     */
+    private fun List<NextAction>.phoneToCode(): NextAction.ChallengePhone? {
+        val phones = filterIsInstance<NextAction.ChallengePhone>()
+        return phones.firstOrNull { it.canText } ?: phones.firstOrNull()
+    }
+
+    /**
+     * Where the server says the code went, as it hides the number: what it names once the code is out (a code it has
+     * sent lists its destination), else the number of the phone [phone] that was asked. Null when it names none.
+     */
+    private fun sentToPhone(phone: NextAction.ChallengePhone?): String? {
+        val named = lastNextActions
+            .filterIsInstance<NextAction.VerifyOtp>()
+            .firstOrNull { it.channel in PHONE_CHANNELS }
+            ?.identifier
+        return (named?.takeIf { it.isNotBlank() } ?: phone?.identifier?.takeIf { it.isNotBlank() })
     }
 
     override suspend fun verifyOtp(code: String): Result<Credentials, LoginFailure> {

@@ -42,7 +42,8 @@ internal sealed interface LoginState {
      * [isSubmitting] spins Verify; [isResending] busies only the resend row while a new code is on its way.
      * [resendSecondsLeft] counts down from each code sent; Resend opens at zero. [canUsePassword] is whether the server
      * also offers a password, which the screen then offers instead; [isOpeningPassword] spins that button while the
-     * server is asked for it.
+     * server is asked for it. [sentTo] is where the server says the code went, as it hides it (`XXXXXXXXX0128`), for a phone;
+     * null when it names none, and for an email, whose address the screen shows as typed.
      */
     data class CollectOtpCode(
         val identifier: String,
@@ -53,6 +54,7 @@ internal sealed interface LoginState {
         val resendSecondsLeft: Int = 0,
         val canUsePassword: Boolean = false,
         val isOpeningPassword: Boolean = false,
+        val sentTo: String? = null,
     ) : LoginState
 
     /**

@@ -16,6 +16,8 @@ import com.auth0.universalcomponents.feature.embedded.presentation.screens.Login
 import com.auth0.universalcomponents.feature.mfachallenge.MfaConfiguration
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaHost
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.forDisplay
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.NO_CONTEXTUAL_ALTERNATES
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
@@ -56,6 +58,7 @@ internal sealed interface ScreenPlan {
         val resendSecondsLeft: Int = 0,
         val canUsePassword: Boolean = false,
         val isOpeningPassword: Boolean = false,
+        val sentTo: String? = null,
     ) : ScreenPlan
 
     /** The password of [identifier], typed as [method]; [canSendCode] adds the way to a code. */
@@ -129,6 +132,7 @@ internal fun plan(step: LoginState): ScreenPlan = when (step) {
         resendSecondsLeft = step.resendSecondsLeft,
         canUsePassword = step.canUsePassword,
         isOpeningPassword = step.isOpeningPassword,
+        sentTo = step.sentTo,
     )
     is LoginState.CollectPassword -> ScreenPlan.Password(
         identifier = step.identifier,
@@ -189,7 +193,12 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
         }
 
         is ScreenPlan.OtpCode -> LoginCodeScreen(
-            subtitle = stringResource(R.string.embedded_login_code_from, plan.identifier),
+            // Where the server says the code went, as it hides it; else what the user typed, as it is.
+            subtitle = stringResource(
+                R.string.embedded_login_code_from,
+                plan.sentTo?.forDisplay() ?: plan.identifier,
+            ),
+            subtitleFontFeatures = NO_CONTEXTUAL_ALTERNATES.takeIf { plan.sentTo != null },
             isLoading = plan.isSubmitting,
             isResending = plan.isResending,
             isOpeningPassword = plan.isOpeningPassword,

@@ -57,7 +57,7 @@ class LoginFlowViewModelTest {
         Dispatchers.setMain(testDispatcher)
         repository = mockk()
         coEvery { repository.discover() } returns Result.Success(listOf(LoginOption.EmailOtp))
-        coEvery { repository.startOtp(any(), any()) } returns Result.Success(Unit)
+        coEvery { repository.startOtp(any(), any()) } returns Result.Success(null)
         // Who is identified decides what the server offers: a code to an email or a phone, a password to a username.
         coEvery { repository.identify(LoginOption.EmailOtp, any()) } returns Result.Success(listOf(LoginOption.EmailOtp))
         coEvery { repository.identify(LoginOption.PhoneOtp, any()) } returns Result.Success(listOf(LoginOption.PhoneOtp))
@@ -142,7 +142,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `submit email - while sending - stays on email with Continue spinning`() = runTest {
         startAtEmail()
-        val sent = CompletableDeferred<Unit>()
+        val sent = CompletableDeferred<String?>()
         coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } coAnswers { Result.Success(sent.await()) }
 
         viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
@@ -150,7 +150,7 @@ class LoginFlowViewModelTest {
 
         assertThat(viewModel.loginState.value)
             .isEqualTo(LoginState.CollectOtpIdentifier(value = EMAIL, isSubmitting = true))
-        sent.complete(Unit)
+        sent.complete(null)
         advanceUntilIdle()
     }
 
@@ -230,13 +230,13 @@ class LoginFlowViewModelTest {
     @Test
     fun `switch - while the email code is being sent - is ignored`() = runTest {
         startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp)
-        val sent = CompletableDeferred<Unit>()
+        val sent = CompletableDeferred<String?>()
         coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } coAnswers { Result.Success(sent.await()) }
         viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         runCurrent()
 
         viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
-        sent.complete(Unit)
+        sent.complete(null)
         runCurrent()
 
         assertThat(viewModel.loginState.value)
@@ -340,6 +340,53 @@ class LoginFlowViewModelTest {
     }
 
     @Test
+    fun `submit phone - code sent - the code step carries where the server says it went`() = runTest {
+        startAtPhone()
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } returns Result.Success("XXXXXXXXX0128")
+
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        runCurrent()
+
+        assertThat(viewModel.loginState.value).isEqualTo(
+            LoginState.CollectOtpCode(
+                NUMBER,
+                LoginOption.PhoneOtp,
+                resendSecondsLeft = COOLDOWN_SECONDS,
+                sentTo = "XXXXXXXXX0128",
+            ),
+        )
+    }
+
+    @Test
+    fun `submit phone - code step - keeps where it went through a failed check and Try again`() = runTest {
+        startAtPhone()
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } returns Result.Success("XXXXXXXXX0128")
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        advanceUntilIdle()
+        coEvery { repository.verifyOtp(CODE) } returns failure(EmbeddedLoginError.Network, canRetryStep = true)
+        viewModel.send(LoginIntent.SubmitOtp(CODE))
+        advanceUntilIdle()
+
+        viewModel.send(LoginIntent.Retry)
+        advanceUntilIdle()
+
+        assertThat((viewModel.loginState.value as LoginState.CollectOtpCode).sentTo).isEqualTo("XXXXXXXXX0128")
+    }
+
+    @Test
+    fun `resend - phone code - keeps where it went`() = runTest {
+        startAtPhone()
+        coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } returns Result.Success("XXXXXXXXX0128")
+        viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
+        advanceUntilIdle()
+
+        viewModel.send(LoginIntent.Resend)
+        advanceUntilIdle()
+
+        assertThat((viewModel.loginState.value as LoginState.CollectOtpCode).sentTo).isEqualTo("XXXXXXXXX0128")
+    }
+
+    @Test
     fun `resend - phone code - sends to the same number again`() = runTest {
         startAtPhoneCode()
 
@@ -376,7 +423,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `back - while the phone code is being sent - stays in the flow`() = runTest {
         startAtPhone()
-        val sent = CompletableDeferred<Unit>()
+        val sent = CompletableDeferred<String?>()
         coEvery { repository.startOtp(LoginOption.PhoneOtp, NUMBER) } coAnswers { Result.Success(sent.await()) }
         viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.PhoneOtp, NUMBER))
         runCurrent()
@@ -385,7 +432,7 @@ class LoginFlowViewModelTest {
         assertThat(viewModel.loginState.value)
             .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, isSubmitting = true, isFirst = false))
 
-        sent.complete(Unit)
+        sent.complete(null)
         advanceUntilIdle()
 
         assertThat(viewModel.loginState.value).isInstanceOf(LoginState.CollectOtpCode::class.java)
@@ -845,7 +892,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `resend - while sending - keeps the code step with only the resend row busy`() = runTest {
         startAtCode()
-        val sent = CompletableDeferred<Unit>()
+        val sent = CompletableDeferred<String?>()
         coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } coAnswers { Result.Success(sent.await()) }
 
         viewModel.send(LoginIntent.Resend)
@@ -853,7 +900,7 @@ class LoginFlowViewModelTest {
 
         assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpCode(EMAIL, isResending = true))
 
-        sent.complete(Unit)
+        sent.complete(null)
         advanceUntilIdle()
 
         assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpCode(EMAIL))
@@ -1403,7 +1450,7 @@ class LoginFlowViewModelTest {
     @Test
     fun `send code - while it is on its way - only that button is busy`() = runTest {
         startAtPassword(canSendCode = true)
-        val sent = CompletableDeferred<Unit>()
+        val sent = CompletableDeferred<String?>()
         coEvery { repository.startOtp(LoginOption.EmailOtp, EMAIL) } coAnswers { Result.Success(sent.await()) }
 
         viewModel.send(LoginIntent.SendCode)
@@ -1415,7 +1462,7 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginIntent.SubmitPassword(PASSWORD))
         viewModel.send(LoginIntent.SendCode)
         assertThat(viewModel.goBack()).isTrue()
-        sent.complete(Unit)
+        sent.complete(null)
         advanceUntilIdle()
         coVerify(exactly = 1) { repository.startOtp(LoginOption.EmailOtp, EMAIL) }
         coVerify(exactly = 0) { repository.verifyPassword(any(), any(), any()) }
