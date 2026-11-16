@@ -8,14 +8,12 @@ import com.auth0.universalcomponents.feature.mfachallenge.domain.repository.MfaR
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import kotlin.time.TimeSource
 
 /**
@@ -189,20 +187,19 @@ internal class MfaEngine(
      * the check's answer reaches us, and the answer may start a new round that the call was not meant for. A new round
      * or the list cancels the call while it waits here, so nothing goes out for a screen the user never sees.
      *
-     * Once the call is out it can't be recalled, and it is not cut off either: its answer is always heard, so a right
-     * code that signs the user in is never lost. [MfaReducer] then decides whether the answer still fits the screen, and
-     * drops it when it does not.
+     * A call still waiting for its turn when its screen is left (the list, a new round, or the end of MFA) is cancelled
+     * and never goes out, whatever it is. That matters most for a call that spends something the user can't get back,
+     * such as a recovery code, which must not be used up for a screen nobody sees.
      *
-     * Running a call to the end also means that stopping the engine, or leaving MFA, cannot cancel a call already queued
-     * behind another in the SDK: it goes out, and its answer is dropped. One call is out at a time, so that is a short
-     * wait at worst.
+     * Once the call is out it can't be recalled: the SDK finishes it whatever happens here, so its session is never left
+     * half-updated. Cancelling after that only stops the answer from being heard.
      */
     private fun request(call: suspend () -> Unit) {
         requestJob?.cancel()
         val check = checkJob
         requestJob = scope.launch {
             check?.join()
-            withContext(NonCancellable) { call() }
+            call()
         }
     }
 

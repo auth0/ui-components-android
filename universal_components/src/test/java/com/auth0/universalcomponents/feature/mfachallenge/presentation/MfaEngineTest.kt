@@ -721,7 +721,7 @@ class MfaEngineTest {
     }
 
     @Test
-    fun `a code check already out - is not cut off when the work is cancelled, so a right code still signs in`() =
+    fun `a code check already out - when the work is cancelled, its answer is not heard`() =
         runTest {
             val credentials = mockk<Credentials>()
             val answer = CompletableDeferred<Result<CodeStatus, MfaError>>()
@@ -742,7 +742,7 @@ class MfaEngineTest {
             answer.complete(Result.Success(CodeStatus.Verified(credentials)))
             runCurrent()
 
-            assertThat(effects).containsExactly(MfaEffect.Authenticated(credentials))
+            assertThat(effects).isEmpty()
         }
 
     // endregion
