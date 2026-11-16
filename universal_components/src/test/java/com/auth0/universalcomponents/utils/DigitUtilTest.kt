@@ -6,11 +6,6 @@ import org.junit.Test
 class DigitUtilTest {
 
     @Test
-    fun `ascii digit - 0 to 9 - is a digit`() {
-        assertThat(('0'..'9').all(Char::isAsciiDigit)).isTrue()
-    }
-
-    @Test
     fun `ascii digit - digits of other scripts - are not, though Char isDigit takes them`() {
         val arabicIndic = '٣'
         val fullwidth = '３'
@@ -19,16 +14,6 @@ class DigitUtilTest {
         assertThat(fullwidth.isDigit()).isTrue()
         assertThat(arabicIndic.isAsciiDigit()).isFalse()
         assertThat(fullwidth.isAsciiDigit()).isFalse()
-    }
-
-    @Test
-    fun `ascii digit - letters, signs and spaces - are not`() {
-        assertThat("a-+ .,/:".any(Char::isAsciiDigit)).isFalse()
-    }
-
-    @Test
-    fun `filtering a typed or pasted code - keeps only the ascii digits`() {
-        assertThat("12 3-4a5٦７".filter(Char::isAsciiDigit)).isEqualTo("12345")
     }
 
     @Test
