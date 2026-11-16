@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -42,6 +43,11 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeMark
+import kotlin.time.TimeSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginFlowViewModelTest {
@@ -67,7 +73,7 @@ class LoginFlowViewModelTest {
         coEvery { mfaRepository.sendPush(any()) } returns Result.Success(PushStatus.Pending(PUSH_POLL_MS, canResend = true))
         // A push nobody answers, unless a test says otherwise, so MFA stays on screen.
         coEvery { mfaRepository.checkPushStatus() } coAnswers { awaitCancellation() }
-        viewModel = LoginFlowViewModel(repository, mfaRepository)
+        viewModel = LoginFlowViewModel(repository, mfaRepository, VirtualTimeSource(testDispatcher.scheduler))
     }
 
     @After
@@ -224,7 +230,8 @@ class LoginFlowViewModelTest {
 
         viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
 
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, isFirst = false))
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, isFirst = false))
     }
 
     @Test
@@ -277,7 +284,8 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         coVerify(exactly = 0) { repository.startOtp(any(), any()) }
-        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, isFirst = false))
+        assertThat(viewModel.loginState.value)
+            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, isFirst = false))
     }
 
     @Test
@@ -430,7 +438,9 @@ class LoginFlowViewModelTest {
 
         assertThat(viewModel.goBack()).isTrue()
         assertThat(viewModel.loginState.value)
-            .isEqualTo(LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, isSubmitting = true, isFirst = false))
+            .isEqualTo(
+                LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, isSubmitting = true, isFirst = false),
+            )
 
         sent.complete(null)
         advanceUntilIdle()
@@ -807,7 +817,8 @@ class LoginFlowViewModelTest {
         viewModel.send(LoginIntent.SubmitOtp(CODE))
         runCurrent()
         // The wait is still running after the rate limit: only a code that can't be used opens Resend.
-        assertThat((viewModel.loginState.value as LoginState.CollectOtpCode).resendSecondsLeft).isEqualTo(COOLDOWN_SECONDS)
+        assertThat((viewModel.loginState.value as LoginState.CollectOtpCode).resendSecondsLeft)
+            .isEqualTo(COOLDOWN_SECONDS)
 
         viewModel.send(LoginIntent.SubmitOtp(CODE))
         runCurrent()
@@ -961,6 +972,35 @@ class LoginFlowViewModelTest {
         startAtCodeCountingDown()
 
         advanceTimeBy(COOLDOWN_SECONDS * ONE_SECOND_MILLIS)
+        runCurrent()
+
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpCode(EMAIL))
+    }
+
+    @Test
+    fun `countdown - ticks held back while the device sleeps - the next one shows the time that really passed`() =
+        runTest {
+            val clock = VirtualTimeSource(testDispatcher.scheduler)
+            viewModel = LoginFlowViewModel(repository, mfaRepository, clock)
+            startAtCodeCountingDown()
+
+            // The next tick comes a second on, but the device slept 45 seconds meanwhile.
+            clock.sleep(45.seconds)
+            advanceTimeBy(ONE_SECOND_MILLIS)
+            runCurrent()
+
+            assertThat(viewModel.loginState.value)
+                .isEqualTo(LoginState.CollectOtpCode(EMAIL, resendSecondsLeft = COOLDOWN_SECONDS - 46))
+        }
+
+    @Test
+    fun `countdown - the whole wait passes while the device sleeps - opens resend`() = runTest {
+        val clock = VirtualTimeSource(testDispatcher.scheduler)
+        viewModel = LoginFlowViewModel(repository, mfaRepository, clock)
+        startAtCodeCountingDown()
+
+        clock.sleep((COOLDOWN_SECONDS + 5).seconds)
+        advanceTimeBy(ONE_SECOND_MILLIS)
         runCurrent()
 
         assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpCode(EMAIL))
@@ -1273,7 +1313,13 @@ class LoginFlowViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.loginState.value).isEqualTo(
-            LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, NUMBER, country = CANADA, error = error, isFirst = false),
+            LoginState.CollectOtpIdentifier(
+                LoginOption.PhoneOtp,
+                NUMBER,
+                country = CANADA,
+                error = error,
+                isFirst = false,
+            ),
         )
     }
 
@@ -1694,6 +1740,20 @@ class LoginFlowViewModelTest {
     }
 
     @Test
+    fun `submit password - the sign-in opened again has no password - says so on the identifier screen`() = runTest {
+        startAtPassword(canSendCode = true)
+        coEvery { repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD) } returns
+            failure(EmbeddedLoginError.PasswordNotAvailable)
+
+        viewModel.send(LoginIntent.SubmitPassword(PASSWORD))
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginState.value).isEqualTo(
+            LoginState.CollectOtpIdentifier(value = EMAIL, error = EmbeddedLoginError.PasswordNotAvailable),
+        )
+    }
+
+    @Test
     fun `submit password - second factor needed - hands over to MFA, and Start over returns to the first screen`() =
         runTest {
             startAtPassword()
@@ -1789,7 +1849,11 @@ class LoginFlowViewModelTest {
     /** On the password step of an email, with a code also on offer when [canSendCode], and no code sent yet. */
     private fun TestScope.startAtPassword(canSendCode: Boolean = false) {
         startAtEmail()
-        if (canSendCode) offerToEmail(LoginOption.Password, LoginOption.EmailOtp) else offerToEmail(LoginOption.Password)
+        if (canSendCode) {
+            offerToEmail(LoginOption.Password, LoginOption.EmailOtp)
+        } else {
+            offerToEmail(LoginOption.Password)
+        }
         viewModel.send(LoginIntent.SubmitIdentifier(LoginOption.EmailOtp, EMAIL))
         advanceUntilIdle()
     }
@@ -1882,5 +1946,27 @@ class LoginFlowViewModelTest {
         val PHONE = MfaFactor.Push(0, "Jane's phone")
         val REJECTED = MfaError.Rejected()
         val TABLET = MfaFactor.Push(1, "Jane's tablet")
+    }
+}
+
+/**
+ * A clock that moves with the test's virtual time, so a wait measured on it follows `delay`. [sleep] moves it on
+ * without any tick running, as a device that slept does.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+private class VirtualTimeSource(private val scheduler: TestCoroutineScheduler) : TimeSource {
+
+    private var sleptMillis = 0L
+
+    fun sleep(duration: Duration) {
+        sleptMillis += duration.inWholeMilliseconds
+    }
+
+    private fun nowMillis() = scheduler.currentTime + sleptMillis
+
+    override fun markNow(): TimeMark = VirtualMark(nowMillis())
+
+    private inner class VirtualMark(private val startedAtMillis: Long) : TimeMark {
+        override fun elapsedNow(): Duration = (nowMillis() - startedAtMillis).milliseconds
     }
 }

@@ -18,6 +18,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEffect
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaReducer
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
+import com.auth0.universalcomponents.utils.ElapsedRealtimeSource
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -28,16 +29,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlin.time.TimeSource
 
 /**
  * Drives the first factor, by an email with a code or a password, a phone number with a code, or a username with its
  * password: [LoginIntent]s in, [LoginState]s out. Each event counts only on the screen it belongs to.
  * A second factor runs in an [MfaEngine] owned here, so the hand-off and its end are plain calls on this ViewModel.
  * The repositories return each failure as a [LoginFailure], so nothing here is caught.
+ * [timeSource] measures the wait before another code may be asked for; it keeps counting while the device sleeps.
  */
 internal class LoginFlowViewModel(
     private val repository: EmbeddedLoginRepository,
     private val mfaRepository: MfaRepository,
+    timeSource: TimeSource = ElapsedRealtimeSource,
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Loading)
@@ -75,14 +79,8 @@ internal class LoginFlowViewModel(
     /** The country the phone number was last submitted with, so every way back to its screen shows it again. */
     private var typedCountry: Country? = null
 
-    /**
-     * The last code sent, to whom, and how long until another may be asked for. It outlives the screens: a code asked
-     * for from the password screen waits as long as Resend does, so switching between the two can't send one on
-     * every tap, and it keeps counting while the user is elsewhere.
-     */
-    private data class CodeWait(val method: LoginOption, val identifier: String, val secondsLeft: Int)
-
-    private var codeWait: CodeWait? = null
+    /** It keeps counting while the user is elsewhere, so the password screen shows the wait of the code screen. */
+    private val cooldown = CodeCooldown(timeSource)
 
     fun send(event: LoginIntent) {
         val current = _loginState.value
@@ -101,9 +99,7 @@ internal class LoginFlowViewModel(
 
             // A tap on a button that was just replaced, or one while a request is on its way, is not a switch.
             is LoginIntent.SwitchMethod ->
-                if (current is LoginState.CollectOtpIdentifier && !current.isSubmitting &&
-                    event.method in current.otherMethods
-                ) {
+                if (current is LoginState.CollectOtpIdentifier && current.canSwitchTo(event.method)) {
                     _loginState.value = identifierStep(event.method)
                 }
 
@@ -116,19 +112,17 @@ internal class LoginFlowViewModel(
             }
 
             LoginIntent.Resend ->
-                if (current is LoginState.CollectOtpCode && current.resendSecondsLeft == 0 && !current.isBusy) {
+                if (current is LoginState.CollectOtpCode && current.canResend) {
                     launchStep { resend(current) }
                 }
 
             LoginIntent.UsePassword ->
-                if (current is LoginState.CollectOtpCode && current.canUsePassword && !current.isBusy) {
+                if (current is LoginState.CollectOtpCode && current.canOpenPassword) {
                     launchStep { usePassword(current) }
                 }
 
             LoginIntent.SendCode ->
-                if (current is LoginState.CollectPassword && current.canSendCode &&
-                    current.resendSecondsLeft == 0 && !current.isBusy
-                ) {
+                if (current is LoginState.CollectPassword && current.canAskForCode) {
                     launchStep { sendCodeInstead(current) }
                 }
 
@@ -137,11 +131,14 @@ internal class LoginFlowViewModel(
             // Its own event, not Back: a second tap on the screen still sliding out must not leave the login.
             LoginIntent.LeaveMfa -> if (current is LoginState.Mfa) leaveMfa(current)
 
-            // An app that doesn't take over leaves the user on MFA's own "not available" screen.
-            is LoginIntent.MfaErrorAnswered ->
-                if (current is LoginState.AwaitingApp && event.handling == MfaErrorHandling.NotHandled) {
-                    _loginState.value = LoginState.Mfa(current.engine, current.identifier, current.method)
-                }
+            is LoginIntent.MfaErrorAnswered -> answerMfaError(current, event.handling)
+        }
+    }
+
+    /** An app that doesn't take over leaves the user on MFA's own "not available" screen. */
+    private fun answerMfaError(current: LoginState, handling: MfaErrorHandling) {
+        if (current is LoginState.AwaitingApp && handling == MfaErrorHandling.NotHandled) {
+            _loginState.value = LoginState.Mfa(current.engine, current.identifier, current.method)
         }
     }
 
@@ -208,12 +205,7 @@ internal class LoginFlowViewModel(
             // Nothing to send and nothing to ask for.
             null -> requestFailed(LoginFailure(EmbeddedLoginError.CodeNotSent(method)), method, identifier)
 
-            LoginOption.Password -> _loginState.value = LoginState.CollectPassword(
-                identifier = identifier,
-                method = method,
-                canSendCode = method in offer,
-                resendSecondsLeft = waitLeft(method, identifier),
-            )
+            LoginOption.Password -> _loginState.value = passwordStep(method, identifier, canSendCode = method in offer)
 
             else -> sendCode(method, identifier, canUsePassword = LoginOption.Password in offer)
         }
@@ -227,11 +219,11 @@ internal class LoginFlowViewModel(
     private suspend fun sendCode(method: LoginOption, identifier: String, canUsePassword: Boolean) {
         repository.startOtp(method, identifier)
             .onSuccess { sentTo ->
-                codeWait = CodeWait(method, identifier, RESEND_COOLDOWN_SECONDS)
+                cooldown.start(method, identifier)
                 _loginState.value = LoginState.CollectOtpCode(
                     identifier = identifier,
                     method = method,
-                    resendSecondsLeft = RESEND_COOLDOWN_SECONDS,
+                    resendSecondsLeft = cooldown.secondsLeft(method, identifier),
                     canUsePassword = canUsePassword,
                     sentTo = sentTo,
                 )
@@ -262,12 +254,7 @@ internal class LoginFlowViewModel(
         repository.identify(method, identifier)
             .onSuccess { offer ->
                 if (LoginOption.Password in offer) {
-                    _loginState.value = LoginState.CollectPassword(
-                        identifier = identifier,
-                        method = method,
-                        canSendCode = method in offer,
-                        resendSecondsLeft = waitLeft(method, identifier),
-                    )
+                    _loginState.value = passwordStep(method, identifier, canSendCode = method in offer)
                 } else {
                     requestFailed(LoginFailure(EmbeddedLoginError.PasswordNotAvailable), method, identifier)
                 }
@@ -306,7 +293,7 @@ internal class LoginFlowViewModel(
 
                     // That code can't be used any more, so a new one can be asked for at once.
                     EmbeddedLoginError.CodeExpired, EmbeddedLoginError.CodeNoLongerValid -> {
-                        endWait(method, identifier)
+                        cooldown.end(method, identifier)
                         updateCodeStep { copy(error = problem, isSubmitting = false, resendSecondsLeft = 0) }
                     }
 
@@ -330,6 +317,9 @@ internal class LoginFlowViewModel(
             .onError { failure ->
                 when (val problem = failure.error) {
                     is EmbeddedLoginError.MfaRequired -> startMfa(method, identifier, problem.factors)
+
+                    // The sign-in opened again no longer has a password: as from the code screen, back to the identifier.
+                    EmbeddedLoginError.PasswordNotAvailable -> requestFailed(failure, method, identifier)
 
                     else -> if (problem is EmbeddedLoginError.InvalidPassword || problem.isRateLimit) {
                         updatePasswordStep { copy(error = problem, isSubmitting = false) }
@@ -410,41 +400,38 @@ internal class LoginFlowViewModel(
         _events.send(LoginEvent.Authenticated(credentials))
     }
 
-    /** How long until another code may be asked for [identifier]; zero when none was sent to them, or it is over. */
-    private fun waitLeft(method: LoginOption, identifier: String): Int =
-        codeWait?.takeIf { it.method == method && it.identifier == identifier }?.secondsLeft ?: 0
-
-    /** The code can't be used any more, so a new one may be asked for at once. */
-    private fun endWait(method: LoginOption, identifier: String) {
-        val wait = codeWait ?: return
-        if (wait.method == method && wait.identifier == identifier) codeWait = wait.copy(secondsLeft = 0)
-    }
-
-    /** Counts the wait down a second at a time, whichever screen is on show; it stops at zero. */
+    /**
+     * Redraws the wait once a second, whichever screen is on show, until it is over. Each redraw reads the clock, so a
+     * tick the system held back (the device asleep) is made up for on the next one.
+     */
     private fun startResendCountdown() {
         resendCountdownJob?.cancel()
         resendCountdownJob = viewModelScope.launch {
-            while ((codeWait?.secondsLeft ?: 0) > 0) {
+            while (cooldown.isRunning) {
                 delay(ONE_SECOND_MILLIS)
-                val wait = codeWait ?: return@launch
-                codeWait = wait.copy(secondsLeft = (wait.secondsLeft - 1).coerceAtLeast(0))
-                showWait()
+                _loginState.value = _loginState.value.withCurrentWait()
             }
         }
     }
 
-    /** Puts the wait on the code or password screen of the person it is for. */
-    private fun showWait() {
-        when (val current = _loginState.value) {
-            is LoginState.CollectOtpCode ->
-                _loginState.value = current.copy(resendSecondsLeft = waitLeft(current.method, current.identifier))
-
-            is LoginState.CollectPassword ->
-                _loginState.value = current.copy(resendSecondsLeft = waitLeft(current.method, current.identifier))
-
-            else -> Unit
-        }
+    /** The wait as it stands now, on the code or password screen of the person it is for; any other step is unchanged. */
+    private fun LoginState.withCurrentWait(): LoginState = when (this) {
+        is LoginState.CollectOtpCode -> copy(resendSecondsLeft = cooldown.secondsLeft(method, identifier))
+        is LoginState.CollectPassword -> copy(resendSecondsLeft = cooldown.secondsLeft(method, identifier))
+        else -> this
     }
+
+    /** The password screen for [identifier], with the wait before a code may be asked for them. */
+    private fun passwordStep(
+        method: LoginOption,
+        identifier: String,
+        canSendCode: Boolean,
+    ) = LoginState.CollectPassword(
+        identifier = identifier,
+        method = method,
+        canSendCode = canSendCode,
+        resendSecondsLeft = cooldown.secondsLeft(method, identifier),
+    )
 
     /** Changes code entry in place, so its countdown carries on; does nothing once that step is left. */
     private inline fun updateCodeStep(change: LoginState.CollectOtpCode.() -> LoginState.CollectOtpCode) {
@@ -484,15 +471,6 @@ internal class LoginFlowViewModel(
     private fun firstScreen(method: LoginOption, identifier: String) =
         identifierStep(primaryMethod, value = if (method == primaryMethod) identifier else "")
 
-    /** The same screen with nothing on its way, showing [error] if any. */
-    private fun LoginState.settled(error: EmbeddedLoginError?): LoginState = when (this) {
-        is LoginState.CollectOtpIdentifier -> copy(error = error, isSubmitting = false)
-        is LoginState.CollectOtpCode ->
-            copy(error = error, isSubmitting = false, isResending = false, isOpeningPassword = false)
-        is LoginState.CollectPassword -> copy(error = error, isSubmitting = false, isSendingCode = false)
-        else -> this
-    }
-
     /** The full-screen error. Logged once here, with its cause, so a failure in a live app can be traced. */
     private fun failed(failure: LoginFailure, retryTo: LoginState?): LoginState {
         Logger.e(TAG, "Login step failed: ${failure.error}", failure.cause)
@@ -501,14 +479,8 @@ internal class LoginFlowViewModel(
 
     private suspend fun retry(failed: LoginState.Failed) {
         val target = failed.retryTo
+        // A screen kept for Try again shows the wait as it stands now, not as it stood when it was left.
         if (target != null) _loginState.value = target.withCurrentWait() else discover()
-    }
-
-    /** A screen kept for Try again shows the wait as it stands now, not as it stood when it was left. */
-    private fun LoginState.withCurrentWait(): LoginState = when (this) {
-        is LoginState.CollectOtpCode -> copy(resendSecondsLeft = waitLeft(method, identifier))
-        is LoginState.CollectPassword -> copy(resendSecondsLeft = waitLeft(method, identifier))
-        else -> this
     }
 
     /** Runs one step at a time; a second tap while one is in flight is dropped. */
@@ -519,7 +491,6 @@ internal class LoginFlowViewModel(
 
     private companion object {
         const val TAG = "LoginFlowViewModel"
-        const val RESEND_COOLDOWN_SECONDS = 60
         const val ONE_SECOND_MILLIS = 1_000L
 
         /** The ways in these screens can draw; whichever the tenant lists first is the first screen. */
@@ -536,14 +507,5 @@ internal class LoginFlowViewModel(
             get() = this is EmbeddedLoginError.CodeNotSent ||
                 this == EmbeddedLoginError.PasswordNotAvailable ||
                 this is EmbeddedLoginError.InvalidPassword
-
-        /** A request for this screen is in flight. */
-        val LoginState.isBusy: Boolean
-            get() = when (this) {
-                is LoginState.CollectOtpIdentifier -> isSubmitting
-                is LoginState.CollectOtpCode -> isSubmitting || isResending || isOpeningPassword
-                is LoginState.CollectPassword -> isSubmitting || isSendingCode
-                else -> false
-            }
     }
 }

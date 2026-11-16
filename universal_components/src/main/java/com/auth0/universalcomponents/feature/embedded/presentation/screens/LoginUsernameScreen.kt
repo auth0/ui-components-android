@@ -1,7 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.presentation.screens
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -15,6 +14,7 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Lo
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
+import com.auth0.universalcomponents.feature.embedded.presentation.components.rememberDismissibleError
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
 import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
 import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
@@ -38,9 +38,8 @@ internal fun LoginUsernameScreen(
     onChooseMethod: (LoginOption) -> Unit = {},
 ) {
     var value by rememberSaveable { mutableStateOf(username) }
-    var hideServerError by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(errorMessage) { if (errorMessage != null) hideServerError = false }
-    val activeError = errorMessage.takeUnless { hideServerError }
+    val serverError = rememberDismissibleError(errorMessage)
+    val activeError = serverError.message
     val submit = {
         val trimmed = value.trim()
         // A second tap while the request is on its way is dropped.
@@ -56,7 +55,7 @@ internal fun LoginUsernameScreen(
                 value = value,
                 onValueChange = {
                     value = it
-                    hideServerError = true
+                    serverError.dismiss()
                 },
                 isInvalid = activeError != null,
                 enabled = !isLoading,
@@ -74,7 +73,9 @@ internal fun LoginUsernameScreen(
             )
         },
         secondaryAction = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
-            { LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading) }
+            {
+                LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading)
+            }
         },
         // Next to Continue, as in the design with other methods; alone, Continue stays at the bottom.
         pinActionsToBottom = otherMethods.isEmpty(),

@@ -310,7 +310,7 @@ fun MFASettingsScreen() {
 
 ## Embedded Login
 
-> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.1` or later** (`5.0.0-beta.2` for password sign-in), a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP, and optionally Phone (SMS) OTP with a phone provider, a password or a username on the connection you pass in.
+> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.2` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP, and optionally Phone (SMS) OTP with a phone provider, a password or a username on the connection you pass in.
 
 ### Display the Embedded Login Screen
 
@@ -341,16 +341,27 @@ On code or password entry, Back returns to the entry it came from, and a method 
 `EmbeddedLoginScreen` also signs users in with a password, with nothing to configure in your app. What the user sees follows what the tenant offers on the connection you pass in:
 
 - **The first screen is the first method the tenant lists**: email, phone number or username. Every other method is a button under **OR**, in the tenant's order ("Continue with Email", "Continue with Phone", "Continue with Password"), and it opens that method's own screen. **Back** returns to the first screen.
-- **A username** goes straight to the password screen. A tenant that offers a username but has no password step for it shows "Incorrect username or password. Please try again." under the field, the same words as a wrong password, so the screen never says whether the account exists.
-- **An email** is sent to the server first, and whichever of a code and a password the server lists first leads. With a code first, it is sent at once and the code screen offers **Continue with a password** under **Resend**. With the password first, nothing is sent and the password screen offers **Email me a code** under **Continue**.
+- **A username** goes straight to the password screen. A tenant that offers a username but has no password step for it shows "Incorrect username or password. Please try again." under the field, the same words as a wrong password, so the screen never says whether the account exists. A username the server refuses outright shows the server's own words on an error screen, as on iOS, and **Try again** returns to the username screen.
+- **An email** is sent to the server first, and whichever of a code and a password the server lists first leads (unless you pass `preference`, below). With a code first, it is sent at once and the code screen offers **Continue with a password** under **Resend**. With the password first, nothing is sent and the password screen offers **Email me a code** under **Continue**.
 - **A phone number** is offered its code only, whatever the server lists: a password for a phone number isn't supported yet. It is sent to the server first, and the code goes out at once by text message (or a call, when that is all the server can do for the number). A number the server offers no code for shows "We couldn't send your code. Please confirm the phone number is correct and try again." under the field.
-- **The password screen** shows who is signing in, with **Edit**, and a password field that hides what is typed (an eye shows it; it is hidden again when a request starts and when the app leaves the foreground). The password is sent exactly as typed, with nothing trimmed, and the field is emptied at every **Continue**. A wrong password stays on the screen, inline, and the same sign-in is used for the next try.
+- **The password screen** shows who is signing in, with **Edit**, and a password field that hides what is typed (an eye shows it; it is hidden again when a request starts and as soon as the app is paused). While the password is readable, the Activity's window is kept out of screenshots, screen recordings and the recent-apps preview (`FLAG_SECURE`; a Dialog or bottom sheet that holds the login has a window of its own, so set the flag there yourself). The password is sent exactly as typed, with nothing trimmed, and the field is emptied at every **Continue**. A wrong password stays on the screen, inline, and the same sign-in is used for the next try.
 - **A code asked for from the password screen** waits as long as **Resend** does, counted from the last code sent to the same person, even when they went back and came forward again: the button reads "Email me a code in 42s" until it opens.
-- **Too many attempts** stays on the screen the user was on, with "Too many attempts. Please try again later." under the field. The next try opens a new sign-in quietly.
+- **Too many attempts** stays on the screen the user was on, with "Too many attempts. Please try again later." under the field. The next try opens a new sign-in quietly. If that new sign-in no longer offers a password, an email returns to its screen with "A password isn't available for this account. Please use a code instead."; a username reads as a wrong password.
 - **A password found in a data breach** shows a screen with its own message; **Try again** returns to the password screen.
 - **A second factor after the password** moves into MFA in place, as after a code. **Start over** returns to the first screen.
 
-Password sign-in needs **Auth0.Android `5.0.0-beta.2` or later**. Not included: a password for a phone number, choosing which of the code and the password leads (the server's order decides), **Forgot password**, and password-manager autofill.
+**To choose instead of following the server,** pass `preference`. `EmbeddedLoginPreference.Server` (the default) follows the order above; `Code` always leads with the code and `Password` with the password, when the server offers both for an email. The other is still one tap away, and nothing changes when only one of the two is offered, or for a username (password only) or a phone number (code only). Changing `preference` starts the sign-in again.
+
+```kotlin
+EmbeddedLoginScreen(
+    connection = "Username-Password-Authentication",
+    onAuthenticated = { credentials -> /* save them */ },
+    onExit = onBack,
+    preference = EmbeddedLoginPreference.Password
+)
+```
+
+Not included: a password for a phone number, **Forgot password**, and password-manager autofill.
 
 ### Multi-Factor Authentication
 
@@ -508,19 +519,19 @@ Box {
 - `stream.step` is `null` when there is nothing to draw: before MFA, after it ends, or when no factor can be used. Your overlay goes away and the login's own screen shows.
 - `stream.result` is `MfaResult.SignedIn` or `MfaResult.Ended(error)` when MFA ends, and goes back to `null` when the next MFA starts.
 - On the recovery code step the login still sets `FLAG_SECURE` on the Activity's window while `RecoveryCodeChallengeModel.newCode` is not null, so your own screen is kept out of screenshots too.
-- The login still draws its own background, navigation bar and Back; only the MFA steps are yours. Every control is an action on a model; on the error step, `leave()` returns to email entry.
+- The login still draws its own background, navigation bar and Back; only the MFA steps are yours. Every control is an action on a model; on the error step, `leave()` returns to the first screen.
 
-Adding `onMfaError` or `mfa` is source-compatible, but your app must be recompiled against this version.
+Adding `onMfaError`, `mfa` or `preference` is source-compatible, but your app must be recompiled against this version.
 
 ### Flow Behaviour
 
 - **A wrong or expired code appears inline,** under the code field, and the user stays on code entry. After an expired code, **Resend** opens at once.
 - **Resend opens 60 seconds after each code is sent;** until then the button counts down.
-- **Other failures go full screen:** for example network or server errors, or too many attempts. **Try again** returns to code entry if the code can still be checked, and to email or phone entry (with what was typed kept) if not. If the first load failed, it loads again.
+- **Other failures go full screen:** for example network or server errors. **Try again** returns to where the failure came from: code or password entry after a failed check, and email, phone or username entry (with what was typed kept) after a request that did not go through. If the first load failed, it loads again. **Too many attempts** is the exception: it stays on the screen the user was on, with its message under the field.
 - **While a request is in flight,** Back and **Edit** are ignored and repeated taps are dropped. This stops a sign-in from finishing after the user has left the screen. During MFA, Back is ignored only while a push or code is being sent again or a typed code is being checked.
-- **If the connection offers neither Email OTP nor Phone OTP,** the flow shows a screen saying no sign-in methods are available.
-- **Phone sign-in:** the user picks the country and types the number, which is sent in international form (for example `+14233530900`). The code arrives by text message, or by a call when that is all the server can do for the number. With several phones listed, the first that can take a text gets it. The country starts as the one the device is set to (the United States if the list has none like it), and the one the user picked is kept for Edit and Try again. When the tenant offers email too, email comes first: the phone screen is reached from "Continue with Phone" and Back returns to email. When phone is the only method, it is the first screen and Back calls `onExit`.
-- **The sign-in session lives in memory.** Rotation is safe, but if Android ends the app while the user is signing in, the flow starts again from email entry when the app reopens.
+- **If the connection offers no way to start with an email, a phone number or a username,** the flow shows a screen saying no sign-in methods are available.
+- **Phone sign-in:** the user picks the country and types the number, which is sent in international form (for example `+14233530900`). The code arrives by text message, or by a call when that is all the server can do for the number. With several phones listed, the first that can take a text gets it. The country starts as the one the device is set to (the United States if the list has none like it), and the one the user picked is kept for Edit and Try again. When the tenant offers other methods too, the one it lists first comes first: the phone screen is reached from "Continue with Phone" and Back returns to the first screen. When phone is the only method, it is the first screen and Back calls `onExit`.
+- **The sign-in session lives in memory.** Rotation is safe, but if Android ends the app while the user is signing in, the flow starts again from the first screen when the app reopens.
 
 ## Support
 

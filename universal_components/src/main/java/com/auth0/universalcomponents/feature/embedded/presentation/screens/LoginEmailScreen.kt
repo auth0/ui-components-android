@@ -1,7 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.presentation.screens
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -14,6 +13,7 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Lo
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
+import com.auth0.universalcomponents.feature.embedded.presentation.components.rememberDismissibleError
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
 import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
 import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
@@ -40,13 +40,12 @@ internal fun LoginEmailScreen(
 ) {
     var value by rememberSaveable { mutableStateOf(email) }
     var isInvalidEmail by rememberSaveable { mutableStateOf(false) }
-    var hideServerError by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(errorMessage) { if (errorMessage != null) hideServerError = false }
+    val serverError = rememberDismissibleError(errorMessage)
 
     val activeError = if (isInvalidEmail) {
         stringResource(R.string.embedded_login_error_invalid_email)
     } else {
-        errorMessage.takeUnless { hideServerError }
+        serverError.message
     }
     val submit = {
         val trimmed = value.trim()
@@ -66,7 +65,7 @@ internal fun LoginEmailScreen(
                 onValueChange = {
                     value = it
                     isInvalidEmail = false
-                    hideServerError = true
+                    serverError.dismiss()
                 },
                 isInvalid = activeError != null,
                 enabled = !isLoading,
@@ -83,7 +82,9 @@ internal fun LoginEmailScreen(
             )
         },
         secondaryAction = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
-            { LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading) }
+            {
+                LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading)
+            }
         },
         // Next to Continue, as in the design with a second method; alone, Continue stays at the bottom.
         pinActionsToBottom = otherMethods.isEmpty(),

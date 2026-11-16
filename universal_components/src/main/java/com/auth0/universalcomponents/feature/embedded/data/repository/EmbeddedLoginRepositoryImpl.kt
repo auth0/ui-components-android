@@ -15,6 +15,7 @@ import com.auth0.universalcomponents.data.embeddedauth.INVALID_CODE_REASONS
 import com.auth0.universalcomponents.data.embeddedauth.StepAnswer
 import com.auth0.universalcomponents.data.embeddedauth.nextActions
 import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.embedded.EmbeddedLoginPreference
 import com.auth0.universalcomponents.feature.embedded.data.mapper.failure
 import com.auth0.universalcomponents.feature.embedded.data.mapper.toLoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
@@ -22,18 +23,23 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 import com.auth0.universalcomponents.feature.embedded.domain.repository.EmbeddedLoginRepository
 import com.auth0.universalcomponents.feature.mfachallenge.data.mapper.toMfaFactors
+import com.auth0.universalcomponents.utils.isAsciiDigit
 import com.auth0.universalcomponents.utils.logging.Logger
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The first factor against the SDK: authorize → identify → challengeEmail or challengePhone → verifyOtp, or
  * identify → verifyPassword. Each step before the last answers with `insufficient_authorization` and the next
  * actions to take.
  * [connection] is fixed for the whole flow; every resend, edited identifier and Try again opens a new session with it.
- * [steps] holds the client and its session, so MFA continues on the same instance.
+ * [steps] holds the client and its session, so MFA continues on the same instance. [preference] decides which of a code
+ * and a password leads when the server offers both.
  */
 internal class EmbeddedLoginRepositoryImpl(
     private val steps: EmbeddedAuthSteps,
     private val connection: String,
+    private val preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
 ) : EmbeddedLoginRepository {
 
     /** Who a sign-in is for: what it takes to open it again. */
@@ -71,45 +77,56 @@ internal class EmbeddedLoginRepositoryImpl(
     /** What the server offered last. */
     private var lastNextActions: List<NextAction> = emptyList()
 
-    override suspend fun discover(): Result<List<LoginOption>, LoginFailure> {
-        if (connection.isBlank()) return Result.Error(LoginFailure(EmbeddedLoginError.ConnectionMissing))
+    /**
+     * One call from the screens at a time, from its first SDK step to its last: a sign-in is authorize → identify →
+     * challenge, and [loop] and [lastNextActions] are read and written all along it. The lock in [steps] only keeps
+     * two SDK calls apart, so a second caller could still slip in between the steps of the first. A public function
+     * never calls another, so this is never taken twice.
+     */
+    private val oneAtATime = Mutex()
+
+    override suspend fun discover(): Result<List<LoginOption>, LoginFailure> = oneAtATime.withLock {
+        if (connection.isBlank()) return@withLock Result.Error(LoginFailure(EmbeddedLoginError.ConnectionMissing))
         val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
         if (opened is StepAnswer.Failed) {
             loop = Loop.Closed
-            return Result.Error(opened.failure)
+            return@withLock Result.Error(opened.failure)
         }
         loop = Loop.Opened(null)
         lastNextActions = opened.nextActions
-        return Result.Success(opened.nextActions.map { it.toLoginOption() })
+        Result.Success(opened.nextActions.map { it.toLoginOption() })
     }
 
-    override suspend fun identify(method: LoginOption, identifier: String): Result<List<LoginOption>, LoginFailure> {
-        if (method.identifierType == null) {
-            return Result.Error(LoginFailure(EmbeddedLoginError.Unknown("Cannot identify with $method")))
-        }
-        submit(Identity(method, identifier))?.let { return Result.Error(it) }
+    override suspend fun identify(
+        method: LoginOption,
+        identifier: String,
+    ): Result<List<LoginOption>, LoginFailure> = oneAtATime.withLock {
+        submit(Identity(method, identifier))?.let { return@withLock Result.Error(it) }
         val offer = offerTo(method)
         // A username has nothing after it but a password: the server offering none is the same as a wrong one.
         if (method == LoginOption.Username && LoginOption.Password !in offer) {
-            return Result.Error(LoginFailure(EmbeddedLoginError.InvalidPassword(method)))
+            return@withLock Result.Error(LoginFailure(EmbeddedLoginError.InvalidPassword(method)))
         }
-        return Result.Success(offer)
+        Result.Success(offer)
     }
 
-    override suspend fun startOtp(method: LoginOption, identifier: String): Result<String?, LoginFailure> {
+    override suspend fun startOtp(
+        method: LoginOption,
+        identifier: String,
+    ): Result<String?, LoginFailure> = oneAtATime.withLock {
         if (method != LoginOption.EmailOtp && method != LoginOption.PhoneOtp) {
-            return Result.Error(LoginFailure(EmbeddedLoginError.CodeNotSent(method)))
+            return@withLock Result.Error(LoginFailure(EmbeddedLoginError.CodeNotSent(method)))
         }
         val identity = Identity(method, identifier)
         // identify is good for one code: a code right after it goes on the same session, and anything else (a
         // resend, or a code after a wrong password or an ended session) starts over.
-        if (loop != Loop.Identified(identity)) submit(identity)?.let { return Result.Error(it) }
+        if (loop != Loop.Identified(identity)) submit(identity)?.let { return@withLock Result.Error(it) }
         val phone = lastNextActions.phoneToCode().takeIf { method == LoginOption.PhoneOtp }
         val sent = when (method) {
             LoginOption.PhoneOtp -> sendPhoneCode(lastNextActions)
             else -> sendEmailCode(lastNextActions)
         }
-        return when (sent) {
+        when (sent) {
             // No code is on its way, so the code screen would wait for nothing.
             null -> {
                 val offered = lastNextActions.map { it.capability.value }
@@ -128,9 +145,12 @@ internal class EmbeddedLoginRepositoryImpl(
 
     /**
      * Opens the sign-in (the one [discover] opened, the first time) and tells the server who it is for, keeping what
-     * it offers next. Null when that worked, else why not.
+     * it offers next. Null when that worked, else why not. A method nobody signs in as (the password, one these screens
+     * can't drive) fails before anything is opened.
      */
     private suspend fun submit(identity: Identity): LoginFailure? {
+        val identifierType = identity.method.identifierType
+            ?: return LoginFailure(EmbeddedLoginError.Unknown("Cannot identify with ${identity.method}"))
         if (loop !is Loop.Opened) {
             val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
             if (opened is StepAnswer.Failed) return opened.recorded()
@@ -138,7 +158,6 @@ internal class EmbeddedLoginRepositoryImpl(
         // From here a failure still knows who this is for, so the next try can open it again.
         loop = Loop.Opened(identity)
         lastNextActions = emptyList()
-        val identifierType = requireNotNull(identity.method.identifierType)
         val identified = steps.run { identify(identity.identifier, identifierType) }
         if (identified is StepAnswer.Failed) {
             val failure = identified.recorded()
@@ -148,10 +167,13 @@ internal class EmbeddedLoginRepositoryImpl(
             val rejection = (identified.error as? EmbeddedAuthException)?.takeIf {
                 it.error == EmbeddedAuthError.InvalidRequest
             }
-            return if (rejection != null) {
-                LoginFailure(EmbeddedLoginError.InvalidIdentifier(identity.method), cause = rejection)
-            } else {
-                failure
+            return when {
+                rejection == null -> failure
+                // A username has no format to blame, so what the server said about it is shown as it came, as on iOS.
+                identity.method == LoginOption.Username -> rejection.description.takeIf(String::isNotBlank)
+                    ?.let { LoginFailure(EmbeddedLoginError.Server(it), cause = rejection) } ?: failure
+
+                else -> LoginFailure(EmbeddedLoginError.InvalidIdentifier(identity.method), cause = rejection)
             }
         }
         lastNextActions = identified.nextActions
@@ -160,10 +182,10 @@ internal class EmbeddedLoginRepositoryImpl(
     }
 
     /**
-     * What the server offers [method], in its own order: a code to this email or phone, and a password, for the methods
-     * in [PASSWORD_METHODS]. A password the server lists for any other method is left out, as if it had not been offered.
+     * What the server offers [method]: a code to this email or phone, and a password, for the methods in
+     * [PASSWORD_METHODS]. A password the server lists for any other method is left out, as if it had not been offered.
      * A number that only takes calls counts as a code only when no password is offered (the call is the way left), which
-     * for a phone is always.
+     * for a phone is always. In the server's order, unless the app's [preference] puts the other first (see [led]).
      */
     private fun offerTo(method: LoginOption): List<LoginOption> {
         val hasPassword = method in PASSWORD_METHODS && lastNextActions.any { it is NextAction.VerifyPassword }
@@ -182,7 +204,21 @@ internal class EmbeddedLoginRepositoryImpl(
 
                 else -> null
             }
-        }.distinct()
+        }.distinct().led()
+    }
+
+    /**
+     * The first of the offer is what the screens lead with. When both a code and a password are on offer, the app's
+     * [preference] picks which: the server's order stands for [EmbeddedLoginPreference.Server]. With only one of the two
+     * on offer nothing changes, since a preference can't add what the server did not list.
+     */
+    private fun List<LoginOption>.led(): List<LoginOption> {
+        if (size < 2 || LoginOption.Password !in this) return this
+        return when (preference) {
+            EmbeddedLoginPreference.Server -> this
+            EmbeddedLoginPreference.Code -> sortedBy { it == LoginOption.Password }
+            EmbeddedLoginPreference.Password -> sortedByDescending { it == LoginOption.Password }
+        }
     }
 
     /** The step that sends the email code; null when the server offers none, [ALREADY_SENT] when it went out itself. */
@@ -224,20 +260,23 @@ internal class EmbeddedLoginRepositoryImpl(
 
     /**
      * Where the server says the code went, as it hides the number: what it names once the code is out (a code it has
-     * sent lists its destination), else the number of the phone [phone] that was asked. Null when it names none.
+     * sent lists its destination), else the number of the phone [phone] that was asked. Null when it names none, or
+     * only one it hid completely (`*********`): that tells the user nothing, so the screen shows what they typed.
      */
     private fun sentToPhone(phone: NextAction.ChallengePhone?): String? {
         val named = lastNextActions
             .filterIsInstance<NextAction.VerifyOtp>()
             .firstOrNull { it.channel in PHONE_CHANNELS }
             ?.identifier
-        return (named?.takeIf { it.isNotBlank() } ?: phone?.identifier?.takeIf { it.isNotBlank() })
+        return named?.takeIf { it.showsDigit() } ?: phone?.identifier?.takeIf { it.showsDigit() }
     }
 
-    override suspend fun verifyOtp(code: String): Result<Credentials, LoginFailure> {
+    private fun String.showsDigit(): Boolean = any(Char::isAsciiDigit)
+
+    override suspend fun verifyOtp(code: String): Result<Credentials, LoginFailure> = oneAtATime.withLock {
         // The code belongs to a sign-in the server ended (too many wrong codes, a timeout): only a new code helps.
-        if (loop is Loop.Ended) return Result.Error(LoginFailure(EmbeddedLoginError.CodeNoLongerValid))
-        return settle(INVALID_CODE_REASONS, EmbeddedLoginError.InvalidCode) {
+        if (loop is Loop.Ended) return@withLock Result.Error(LoginFailure(EmbeddedLoginError.CodeNoLongerValid))
+        settle(INVALID_CODE_REASONS, EmbeddedLoginError.InvalidCode) {
             steps.run { verifyOtp(code, OtpType.OOB) }
         }
     }
@@ -246,12 +285,16 @@ internal class EmbeddedLoginRepositoryImpl(
         method: LoginOption,
         identifier: String,
         password: String,
-    ): Result<Credentials, LoginFailure> {
+    ): Result<Credentials, LoginFailure> = oneAtATime.withLock {
         val identity = Identity(method, identifier)
         // Anything but a sign-in the server has identified (it ended on a rate limit, a breach or a timeout, or a
         // re-open stopped half way) gets a new one for the same person first.
         if (loop != Loop.Identified(identity) && loop != Loop.PasswordOnly(identity)) {
-            submit(identity)?.let { return Result.Error(it) }
+            submit(identity)?.let { return@withLock Result.Error(it) }
+            // What the server answers to the new sign-in may no longer include a password.
+            if (lastNextActions.none { it is NextAction.VerifyPassword }) {
+                return@withLock Result.Error(LoginFailure(passwordGone(method)))
+            }
         }
         val result = settle(INVALID_PASSWORD_REASONS, EmbeddedLoginError.InvalidPassword(method)) {
             steps.run { verifyPassword(password) }
@@ -260,8 +303,19 @@ internal class EmbeddedLoginRepositoryImpl(
         if (result is Result.Error && result.error.error is EmbeddedLoginError.InvalidPassword) {
             (loop as? Loop.Identified)?.let { loop = Loop.PasswordOnly(it.identity) }
         }
-        return result
+        result
     }
+
+    /**
+     * What to tell the user when the server no longer offers a password for [method]. A username has nothing after it
+     * but a password, so, as in [identify], that reads as a wrong one; an email can be signed in with a code instead.
+     */
+    private fun passwordGone(method: LoginOption): EmbeddedLoginError =
+        if (method == LoginOption.Username) {
+            EmbeddedLoginError.InvalidPassword(method)
+        } else {
+            EmbeddedLoginError.PasswordNotAvailable
+        }
 
     /**
      * Turns the answer of the step that checks a code or a password into a result. A rejection the user can fix on

@@ -17,10 +17,10 @@ internal interface EmbeddedLoginRepository {
 
     /**
      * Tells the server who is signing in, an email address, an E.164 phone number or a username as [method] says, and
-     * returns what it offers next, in its own order: [LoginOption.EmailOtp] or [LoginOption.PhoneOtp] when a code can
-     * be sent to this identifier, and [LoginOption.Password]. Nothing is sent to the user. The first one is what the
-     * server prefers. A username with no password step fails with [EmbeddedLoginError.InvalidPassword], the same as a
-     * wrong password.
+     * returns what it offers next: [LoginOption.EmailOtp] or [LoginOption.PhoneOtp] when a code can be sent to this
+     * identifier, and [LoginOption.Password]. Nothing is sent to the user. The first one is what leads: the server's
+     * order, unless the app chose which of a code and a password goes first. A username with no password step fails
+     * with [EmbeddedLoginError.InvalidPassword], the same as a wrong password.
      */
     suspend fun identify(method: LoginOption, identifier: String): Result<List<LoginOption>, LoginFailure>
 

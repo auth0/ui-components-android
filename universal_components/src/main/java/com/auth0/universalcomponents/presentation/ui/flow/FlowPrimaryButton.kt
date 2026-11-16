@@ -9,7 +9,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import com.auth0.universalcomponents.presentation.ui.components.GradientButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** The main call-to-action, drawn with the library's shared button. It takes the focus (and the keyboard) away unless [clearsFocus] is false. */
+/**
+ * The main call-to-action, drawn with the library's shared button. It takes the focus (and the keyboard) away unless
+ * [clearsFocus] is false.
+ */
 @Composable
 internal fun FlowPrimaryButton(
     title: String,

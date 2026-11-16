@@ -28,8 +28,9 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * [errorMessage] hides once the user types again, unless [needsNewCode]: a code that can't be checked any more keeps its
  * message while the user types, keeps Verify off, opens Resend at once, and is cleared from the boxes when Resend is
  * tapped. A null [onEdit], [onResend] or [onUsePassword] hides that action.
- * [isResending] and [isOpeningPassword] lock the boxes and Verify while a new code or the password is on its way; only
- * the button that was tapped spins. [resendSecondsLeft] is the wait before Resend opens.
+ * [isResending] and [isOpeningPassword] lock the boxes and Verify while a new code or the password is on its way. Verify
+ * and the password button spin when they are the request; Resend never does, as on iOS: it is off until the new code is
+ * out and its wait starts again. [resendSecondsLeft] is the wait before Resend opens.
  * [onUsePassword] adds "OR" and "Continue with a password" under Resend. [subtitleFontFeatures] sets the subtitle's OpenType
  * features, to draw a number the server hid (`*********0128`) with every `*` the same size.
  */

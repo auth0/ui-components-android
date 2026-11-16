@@ -20,6 +20,7 @@ import com.auth0.universalcomponents.domain.usecase.GetEnabledAuthenticatorMetho
 import com.auth0.universalcomponents.domain.usecase.GetEnrolledAuthenticatorsUseCase
 import com.auth0.universalcomponents.domain.usecase.GetUserInfoUseCase
 import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
+import com.auth0.universalcomponents.feature.embedded.EmbeddedLoginPreference
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
 import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl
@@ -65,10 +66,13 @@ object UniversalComponentsModule {
      * One SDK client per login flow: it keeps the session, so the first factor and MFA share it, through the same
      * [EmbeddedAuthSteps] so only one step runs on it at a time.
      */
-    internal fun provideLoginFlowViewModelFactory(connection: String): LoginFlowViewModelFactory {
+    internal fun provideLoginFlowViewModelFactory(
+        connection: String,
+        preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
+    ): LoginFlowViewModelFactory {
         val steps = EmbeddedAuthSteps(EmbeddedAuthClient(Auth0UniversalComponents.account))
         return LoginFlowViewModelFactory(
-            repository = EmbeddedLoginRepositoryImpl(steps = steps, connection = connection),
+            repository = EmbeddedLoginRepositoryImpl(steps = steps, connection = connection, preference = preference),
             mfaRepository = MfaRepositoryImpl(steps),
         )
     }

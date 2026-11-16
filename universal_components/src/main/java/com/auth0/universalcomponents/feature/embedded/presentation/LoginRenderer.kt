@@ -329,12 +329,3 @@ internal val LoginOption.sendCodeTitle: Int
 internal fun ScreenPlan.isSiblingOf(other: ScreenPlan): Boolean =
     (this is ScreenPlan.OtpCode && other is ScreenPlan.Password) ||
         (this is ScreenPlan.Password && other is ScreenPlan.OtpCode)
-
-/** A request for this screen is on its way, so Back waits and the screen fades what can't be tapped. */
-internal val ScreenPlan.isBusy: Boolean
-    get() = when (this) {
-        is ScreenPlan.Identifier -> isSubmitting
-        is ScreenPlan.OtpCode -> isSubmitting || isResending || isOpeningPassword
-        is ScreenPlan.Password -> isSubmitting || isSendingCode
-        else -> false
-    }

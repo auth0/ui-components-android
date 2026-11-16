@@ -95,6 +95,40 @@ internal sealed interface LoginState {
     data object NoMethodsAvailable : LoginState
 }
 
+/** A request for this screen is on its way, so Back waits and the screen fades what can't be tapped. */
+internal val LoginState.isBusy: Boolean
+    get() = when (this) {
+        is LoginState.CollectOtpIdentifier -> isSubmitting
+        is LoginState.CollectOtpCode -> isSubmitting || isResending || isOpeningPassword
+        is LoginState.CollectPassword -> isSubmitting || isSendingCode
+        else -> false
+    }
+
+/** The same screen with nothing on its way, showing [error] if any. */
+internal fun LoginState.settled(error: EmbeddedLoginError?): LoginState = when (this) {
+    is LoginState.CollectOtpIdentifier -> copy(error = error, isSubmitting = false)
+    is LoginState.CollectOtpCode ->
+        copy(error = error, isSubmitting = false, isResending = false, isOpeningPassword = false)
+    is LoginState.CollectPassword -> copy(error = error, isSubmitting = false, isSendingCode = false)
+    else -> this
+}
+
+/** "Continue with …" opens [method]'s own screen: it is one of the others on offer, and nothing is on its way. */
+internal fun LoginState.CollectOtpIdentifier.canSwitchTo(method: LoginOption): Boolean =
+    !isSubmitting && method in otherMethods
+
+/** Resend is open: its wait is over (or the code can't be used any more), and nothing is on its way. */
+internal val LoginState.CollectOtpCode.canResend: Boolean
+    get() = resendSecondsLeft == 0 && !isBusy
+
+/** "Continue with a password" is on offer, and nothing is on its way. */
+internal val LoginState.CollectOtpCode.canOpenPassword: Boolean
+    get() = canUsePassword && !isBusy
+
+/** "Email me a code" is on offer, the wait since the last code is over, and nothing is on its way. */
+internal val LoginState.CollectPassword.canAskForCode: Boolean
+    get() = canSendCode && resendSecondsLeft == 0 && !isBusy
+
 /** What the screens ask the ViewModel to do. */
 internal sealed interface LoginIntent {
 

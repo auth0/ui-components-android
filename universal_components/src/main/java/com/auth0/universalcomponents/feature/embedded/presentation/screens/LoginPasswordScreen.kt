@@ -34,6 +34,8 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.Lo
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginMethodDivider
+import com.auth0.universalcomponents.feature.embedded.presentation.components.rememberDismissibleError
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaSecureWindow
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
 import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
 import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
@@ -45,8 +47,9 @@ private const val EYE_DISABLED_ALPHA = 0.4f
  * Collects the password of whoever was entered on the screen before: [identifier], shown in a read-only row under
  * [identifierLabel] with Edit to go back. [onContinue] receives the password exactly as typed, never trimmed, and the
  * field is emptied at once, whatever the answer, so a rejected password can't be sent again by a second tap and none is
- * left on screen. It is hidden again when a request starts and when the app leaves the foreground, and focused again
- * once a rejection came back.
+ * left on screen. It is hidden again when a request starts and the moment the app is paused (the recent-apps preview is
+ * taken before the screen stops), and focused again once a rejection came back. While it is readable, the Activity's
+ * window is kept out of screenshots, screen recordings and that preview ([MfaSecureWindow]); hidden, it needs none.
  *
  * [errorMessage] comes from the server and hides once the user types again. With [onSendCode], Continue sits under the
  * field, then "OR" and a button for a code, which counts down while [sendCodeSecondsLeft] is above zero; without it,
@@ -74,20 +77,22 @@ internal fun LoginPasswordScreen(
     // Not saved: a secret is not kept across a rotation or a restart.
     var password by remember { mutableStateOf("") }
     var isShown by remember { mutableStateOf(false) }
-    var hideError by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val hiddenText = remember { PasswordVisualTransformation() }
-    val activeError = errorMessage.takeUnless { hideError }
+    val serverError = rememberDismissibleError(errorMessage)
+    val activeError = serverError.message
 
-    LaunchedEffect(errorMessage) { if (errorMessage != null) hideError = false }
-    // Not left readable on screen for the next attempt, or in the app switcher's snapshot. Once a request has come back
-    // the field takes the focus again, ready for another try; the first time, the field takes it itself when it appears.
+    // Not left readable on screen for the next attempt. Once a request has come back the field takes the focus again,
+    // ready for another try; the first time, the field takes it itself when it appears.
     var wasBusy by remember { mutableStateOf(false) }
     LaunchedEffect(isBusy) {
         if (isBusy) isShown = false else if (wasBusy) focusRequester.requestFocus()
         wasBusy = isBusy
     }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { isShown = false }
+    // Not in the app switcher's preview either: it is taken as the app is paused, before it stops, and hiding the text
+    // takes a frame. So the window is also kept out of the preview, and of screenshots, for as long as the text is readable.
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { isShown = false }
+    if (isShown) MfaSecureWindow()
 
     val submit = {
         // Done on the keyboard bypasses the button's guards.
@@ -118,7 +123,7 @@ internal fun LoginPasswordScreen(
                 onValueChange = {
                     if (!isBusy) {
                         password = it
-                        hideError = true
+                        serverError.dismiss()
                     }
                 },
                 // The visible label is a separate node, so TalkBack would land on an unnamed edit box.
@@ -164,7 +169,11 @@ internal fun LoginPasswordScreen(
                     Spacer(Modifier.height(Auth0Theme.dimensions.spacingSm))
                     LoginAlternativeButton(
                         title = if (sendCodeSecondsLeft > 0) {
-                            stringResource(R.string.embedded_login_code_available_in, sendCodeTitle, sendCodeSecondsLeft)
+                            stringResource(
+                                R.string.embedded_login_code_available_in,
+                                sendCodeTitle,
+                                sendCodeSecondsLeft,
+                            )
                         } else {
                             sendCodeTitle
                         },

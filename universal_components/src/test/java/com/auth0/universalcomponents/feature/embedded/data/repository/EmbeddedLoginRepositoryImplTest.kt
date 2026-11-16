@@ -15,10 +15,13 @@ import com.auth0.android.request.Request
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
 import com.auth0.universalcomponents.data.embeddedauth.EmbeddedAuthSteps
+import com.auth0.universalcomponents.data.embeddedauth.InFlightRequest
 import com.auth0.universalcomponents.data.embeddedauth.failingWith
+import com.auth0.universalcomponents.data.embeddedauth.sdkException
 import com.auth0.universalcomponents.data.embeddedauth.sdkInstance
 import com.auth0.universalcomponents.data.embeddedauth.step
 import com.auth0.universalcomponents.domain.network.Result
+import com.auth0.universalcomponents.feature.embedded.EmbeddedLoginPreference
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginFailure
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
@@ -28,6 +31,10 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -251,6 +258,30 @@ class EmbeddedLoginRepositoryImplTest {
 
         assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(MASKED_PHONE))
     }
+
+    @Test
+    fun `startOtp - phone - the server names a number it hid completely - the number it listed for the phone`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 3, TEXT))
+        every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns
+            step(verifyOtp(OtpChannel.SMS, "*********"))
+
+        assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(MASKED_PHONE))
+    }
+
+    @Test
+    fun `startOtp - phone - every number the server names is hidden completely - names none, so the typed one shows`() =
+        runTest {
+            val hiddenPhone = sdkInstance<NextAction.ChallengePhone>(
+                Int::class.java to 3,
+                String::class.java to "XXXXXXXXX",
+                List::class.java to listOf(TEXT),
+            )
+            every { client.identify(PHONE, IdentifierType.PHONE) } returns step(hiddenPhone)
+            every { client.challengePhone(3, PhoneDeliveryMethod.TEXT) } returns
+                step(verifyOtp(OtpChannel.SMS, "*********"))
+
+            assertThat(repository.startOtp(LoginOption.PhoneOtp, PHONE)).isEqualTo(Result.Success(null))
+        }
 
     @Test
     fun `startOtp - phone code already sent with no number named - names none`() = runTest {
@@ -588,6 +619,92 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
+    fun `preference server - both offered - the server's order stands, whichever it is`() = runTest {
+        val preferring = repositoryPreferring(EmbeddedLoginPreference.Server)
+
+        assertThat(preferring.offerWhenServerLists(codeFirst = true))
+            .containsExactly(LoginOption.EmailOtp, LoginOption.Password).inOrder()
+        assertThat(preferring.offerWhenServerLists(codeFirst = false))
+            .containsExactly(LoginOption.Password, LoginOption.EmailOtp).inOrder()
+    }
+
+    @Test
+    fun `preference code - both offered - the code leads, whichever the server lists first`() = runTest {
+        val preferring = repositoryPreferring(EmbeddedLoginPreference.Code)
+
+        assertThat(preferring.offerWhenServerLists(codeFirst = true))
+            .containsExactly(LoginOption.EmailOtp, LoginOption.Password).inOrder()
+        assertThat(preferring.offerWhenServerLists(codeFirst = false))
+            .containsExactly(LoginOption.EmailOtp, LoginOption.Password).inOrder()
+    }
+
+    @Test
+    fun `preference password - both offered - the password leads, whichever the server lists first`() = runTest {
+        val preferring = repositoryPreferring(EmbeddedLoginPreference.Password)
+
+        assertThat(preferring.offerWhenServerLists(codeFirst = true))
+            .containsExactly(LoginOption.Password, LoginOption.EmailOtp).inOrder()
+        assertThat(preferring.offerWhenServerLists(codeFirst = false))
+            .containsExactly(LoginOption.Password, LoginOption.EmailOtp).inOrder()
+    }
+
+    @Test
+    fun `preference - only one of the two offered - adds nothing the server did not list`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 0))
+        val preferringPassword = repositoryPreferring(EmbeddedLoginPreference.Password)
+        preferringPassword.discover()
+        val codeOnly = (preferringPassword.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        val preferringCode = repositoryPreferring(EmbeddedLoginPreference.Code)
+        preferringCode.discover()
+        val passwordOnly = (preferringCode.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+
+        assertThat(codeOnly).containsExactly(LoginOption.EmailOtp)
+        assertThat(passwordOnly).containsExactly(LoginOption.Password)
+    }
+
+    @Test
+    fun `preference code - a username - still goes to its password`() = runTest {
+        every { client.identify(USERNAME, IdentifierType.USERNAME) } returns step(NextAction.VerifyPassword)
+        val preferring = repositoryPreferring(EmbeddedLoginPreference.Code)
+        preferring.discover()
+
+        val offer = (preferring.identify(LoginOption.Username, USERNAME) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.Password)
+    }
+
+    @Test
+    fun `preference password - a phone number - is still offered its code only`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns
+            step(NextAction.VerifyPassword, challengePhone(at = 0, TEXT))
+        val preferring = repositoryPreferring(EmbeddedLoginPreference.Password)
+        preferring.discover()
+
+        val offer = (preferring.identify(LoginOption.PhoneOtp, PHONE) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.PhoneOtp)
+    }
+
+    @Test
+    fun `preference password - the code asked for afterwards - goes out on the same sign-in`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns
+            step(challengeEmail(at = 0), NextAction.VerifyPassword)
+        val preferring = repositoryPreferring(EmbeddedLoginPreference.Password)
+        preferring.discover()
+
+        val offer = (preferring.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+        // Nothing is sent while the password leads.
+        verify(exactly = 0) { client.challengeEmail(any()) }
+        preferring.startOtp(LoginOption.EmailOtp, EMAIL)
+
+        assertThat(offer).containsExactly(LoginOption.Password, LoginOption.EmailOtp).inOrder()
+        verify(exactly = 1) { client.identify(EMAIL, IdentifierType.EMAIL) }
+        verify(exactly = 1) { client.challengeEmail(0) }
+    }
+
+    @Test
     fun `identify - only a password offered - that is all`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
         repository.discover()
@@ -691,6 +808,30 @@ class EmbeddedLoginRepositoryImplTest {
         val failure = repository.identify(LoginOption.EmailOtp, EMAIL).failure()
 
         assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidIdentifier(LoginOption.EmailOtp))
+    }
+
+    @Test
+    fun `identify - server refuses the username - shows what the server said, not an email error`() = runTest {
+        every { client.identify(USERNAME, IdentifierType.USERNAME) } returns
+            failingWith(EmbeddedAuthError.InvalidRequest, description = "Username is not valid.", statusCode = 400)
+        repository.discover()
+
+        val failure = repository.identify(LoginOption.Username, USERNAME).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.Server("Username is not valid."))
+        // Kept, so the log shows what the server said.
+        assertThat(failure.cause).isInstanceOf(EmbeddedAuthException::class.java)
+    }
+
+    @Test
+    fun `identify - server refuses the username without saying why - fails with the generic error`() = runTest {
+        every { client.identify(USERNAME, IdentifierType.USERNAME) } returns
+            failingWith(EmbeddedAuthError.InvalidRequest, statusCode = 400)
+        repository.discover()
+
+        val failure = repository.identify(LoginOption.Username, USERNAME).failure()
+
+        assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
     }
 
     @Test
@@ -940,6 +1081,53 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
+    fun `verifyPassword - a method nobody signs in as - fails and opens nothing`() = runTest {
+        listOf(LoginOption.Password, LoginOption.Unsupported("verify-recovery-code")).forEach { method ->
+            val failure = repository.verifyPassword(method, "x", PASSWORD).failure()
+
+            assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
+        }
+
+        verify(exactly = 0) { client.authorize(any(), any(), any(), any()) }
+        verify(exactly = 0) { client.verifyPassword(any()) }
+    }
+
+    @Test
+    fun `verifyPassword - the sign-in opened again offers no password - fails as not available, and checks nothing`() =
+        runTest {
+            every { client.identify(EMAIL, IdentifierType.EMAIL) } returnsMany
+                listOf(step(NextAction.VerifyPassword), step(challengeEmail(at = 0)))
+            every { client.verifyPassword(PASSWORD) } returns
+                failingWith(EmbeddedAuthError.TooManyAttempts, statusCode = 429)
+            repository.discover()
+            repository.identify(LoginOption.EmailOtp, EMAIL)
+            // The rate limit ends the sign-in, so the next try opens a new one.
+            repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+
+            val failure = repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure()
+
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.PasswordNotAvailable)
+            verify(exactly = 1) { client.verifyPassword(PASSWORD) }
+        }
+
+    @Test
+    fun `verifyPassword - a username's sign-in opened again offers no password - fails like a wrong password`() =
+        runTest {
+            every { client.identify(USERNAME, IdentifierType.USERNAME) } returnsMany
+                listOf(step(NextAction.VerifyPassword), step(UNSUPPORTED))
+            every { client.verifyPassword(PASSWORD) } returns
+                failingWith(EmbeddedAuthError.TooManyAttempts, statusCode = 429)
+            repository.discover()
+            repository.identify(LoginOption.Username, USERNAME)
+            repository.verifyPassword(LoginOption.Username, USERNAME, PASSWORD)
+
+            val failure = repository.verifyPassword(LoginOption.Username, USERNAME, PASSWORD).failure()
+
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidPassword(LoginOption.Username))
+            verify(exactly = 1) { client.verifyPassword(PASSWORD) }
+        }
+
+    @Test
     fun `verifyPassword - second factor needed - fails as MFA required with the factors`() = runTest {
         every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
         every { client.verifyPassword(PASSWORD) } returns step(NextAction.VerifyRecoveryCode)
@@ -1005,6 +1193,50 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     // endregion
+
+    // region one call at a time
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `two calls at once - the second waits for the whole of the first, not only its current step`() = runTest {
+        val identifying = InFlightRequest<Void?>()
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns identifying
+        repository.discover()
+        launch { repository.identify(LoginOption.EmailOtp, EMAIL) }
+        runCurrent()
+
+        val sending = launch { repository.startOtp(LoginOption.EmailOtp, EMAIL) }
+        runCurrent()
+        assertThat(sending.isCompleted).isFalse()
+        identifying.fail(
+            sdkException(
+                EmbeddedAuthError.InsufficientAuthorization(listOf(challengeEmail(at = 0)), Reason.NONE),
+                code = "insufficient_authorization",
+            ),
+        )
+        advanceUntilIdle()
+
+        // It went on the sign-in the first call had just identified, instead of asking who it is a second time.
+        assertThat(sending.isCompleted).isTrue()
+        verify(exactly = 1) { client.identify(EMAIL, IdentifierType.EMAIL) }
+        verify(exactly = 1) { client.challengeEmail(0) }
+    }
+
+    // endregion
+
+    private fun repositoryPreferring(preference: EmbeddedLoginPreference) =
+        EmbeddedLoginRepositoryImpl(EmbeddedAuthSteps(client), CONNECTION, preference)
+
+    /** What [identify] offers an email the server answers with a code and a password, listed in the order given. */
+    private suspend fun EmbeddedLoginRepositoryImpl.offerWhenServerLists(codeFirst: Boolean): List<LoginOption> {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns if (codeFirst) {
+            step(challengeEmail(at = 0), NextAction.VerifyPassword)
+        } else {
+            step(NextAction.VerifyPassword, challengeEmail(at = 0))
+        }
+        discover()
+        return (identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+    }
 
     private fun challengeEmail(at: Int): NextAction.ChallengeEmail =
         sdkInstance(Int::class.java to at, String::class.java to EMAIL)

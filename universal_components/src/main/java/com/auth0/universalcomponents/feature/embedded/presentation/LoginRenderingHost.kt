@@ -68,7 +68,7 @@ internal fun LoginRenderingHost(
     // The new recovery code is a live secret, so the window is kept out of screenshots while it is on show. Here and not
     // in MfaHost, so a headless app, which draws no MfaHost, is covered too.
     if (engine.isShowingNewRecoveryCode()) MfaSecureWindow()
-    LoginScreenFrame(onBack = onBack, modifier = modifier, isBackEnabled = !plan(step).isBusy) {
+    LoginScreenFrame(onBack = onBack, modifier = modifier, isBackEnabled = !step.isBusy) {
         AnimatedContent(
             targetState = plan(step),
             contentKey = { it.transitionIdentity },
