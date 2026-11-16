@@ -2,6 +2,9 @@ package com.auth0.universalcomponents.feature.embedded.presentation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -65,12 +68,17 @@ internal fun LoginRenderingHost(
     // The new recovery code is a live secret, so the window is kept out of screenshots while it is on show. Here and not
     // in MfaHost, so a headless app, which draws no MfaHost, is covered too.
     if (engine.isShowingNewRecoveryCode()) MfaSecureWindow()
-    LoginScreenFrame(onBack = onBack, modifier = modifier) {
+    LoginScreenFrame(onBack = onBack, modifier = modifier, isBackEnabled = !plan(step).isBusy) {
         AnimatedContent(
             targetState = plan(step),
             contentKey = { it.transitionIdentity },
             transitionSpec = {
-                stepTransition(isForward = targetState.navigationDepth >= initialState.navigationDepth)
+                if (initialState.isSiblingOf(targetState)) {
+                    // The code and the password of one person swap in place, rather than pushing one another aside.
+                    fadeIn() togetherWith fadeOut()
+                } else {
+                    stepTransition(isForward = targetState.navigationDepth >= initialState.navigationDepth)
+                }
             },
             modifier = Modifier.fillMaxSize(),
             label = "loginState",

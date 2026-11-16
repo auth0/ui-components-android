@@ -8,6 +8,7 @@ import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
 internal fun NextAction.toLoginOption(): LoginOption = when (this) {
     NextAction.IdentifyEmail -> LoginOption.EmailOtp
     NextAction.IdentifyPhone -> LoginOption.PhoneOtp
+    NextAction.IdentifyUsername -> LoginOption.Username
     is NextAction.VerifyOtp if channel == OtpChannel.EMAIL -> LoginOption.EmailOtp
     is NextAction.VerifyOtp if channel == OtpChannel.SMS || channel == OtpChannel.VOICE -> LoginOption.PhoneOtp
     else -> LoginOption.Unsupported(capability.value)

@@ -76,7 +76,9 @@ class EmbeddedLoginRepositoryImplTest {
                     EmbeddedCapability.IDENTIFY_EMAIL,
                     EmbeddedCapability.CHALLENGE_EMAIL,
                     EmbeddedCapability.IDENTIFY_PHONE,
+                    EmbeddedCapability.IDENTIFY_USERNAME,
                     EmbeddedCapability.VERIFY_OTP,
+                    EmbeddedCapability.VERIFY_PASSWORD,
                     EmbeddedCapability.CHALLENGE_PUSH,
                     EmbeddedCapability.CHALLENGE_PHONE,
                     EmbeddedCapability.VERIFY_OOB,
@@ -514,6 +516,432 @@ class EmbeddedLoginRepositoryImplTest {
 
     // endregion
 
+    // region identify
+
+    @Test
+    fun `identify - username offered at discovery - returns the username method`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns
+            step(NextAction.IdentifyEmail, NextAction.IdentifyUsername)
+
+        val options = (repository.discover() as Result.Success).data
+
+        assertThat(options).containsExactly(LoginOption.EmailOtp, LoginOption.Username).inOrder()
+    }
+
+    @Test
+    fun `identify - code listed first - the code leads, and nothing is sent`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns
+            step(challengeEmail(at = 0), NextAction.VerifyPassword)
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.EmailOtp, LoginOption.Password).inOrder()
+        verify(exactly = 0) { client.challengeEmail(any()) }
+    }
+
+    @Test
+    fun `identify - password listed first - the password leads`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns
+            step(NextAction.VerifyPassword, challengeEmail(at = 0))
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.Password, LoginOption.EmailOtp).inOrder()
+    }
+
+    @Test
+    fun `identify - only a password offered - that is all`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.Password)
+    }
+
+    @Test
+    fun `identify - a code already sent by the server - counts as a code offered`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns
+            step(verifyOtp(OtpChannel.EMAIL, EMAIL), NextAction.VerifyPassword)
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.EmailOtp, LoginOption.Password).inOrder()
+    }
+
+    @Test
+    fun `identify - other steps in the menu - don't change which method leads`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns
+            step(UNSUPPORTED, NextAction.VerifyPassword, challengeEmail(at = 0))
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.EmailOtp, EMAIL) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.Password, LoginOption.EmailOtp).inOrder()
+    }
+
+    @Test
+    fun `identify - phone that takes texts, with a password listed - offers the code only`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns
+            step(challengePhone(at = 0, TEXT, VOICE), NextAction.VerifyPassword)
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.PhoneOtp, PHONE) as Result.Success).data
+
+        // A phone is not offered a password yet, whatever the server lists.
+        assertThat(offer).containsExactly(LoginOption.PhoneOtp)
+    }
+
+    @Test
+    fun `identify - phone that only takes calls, with a password listed - the call is the way left`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns
+            step(challengePhone(at = 0, VOICE), NextAction.VerifyPassword)
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.PhoneOtp, PHONE) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.PhoneOtp)
+    }
+
+    @Test
+    fun `identify - phone with only a password listed - offers nothing`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(NextAction.VerifyPassword)
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.PhoneOtp, PHONE) as Result.Success).data
+
+        assertThat(offer).isEmpty()
+    }
+
+    @Test
+    fun `identify - phone that only takes calls, with no password - the call is the way left`() = runTest {
+        every { client.identify(PHONE, IdentifierType.PHONE) } returns step(challengePhone(at = 0, VOICE))
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.PhoneOtp, PHONE) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.PhoneOtp)
+    }
+
+    @Test
+    fun `identify - username with a password step - identifies by username and offers the password`() = runTest {
+        every { client.identify(USERNAME, IdentifierType.USERNAME) } returns step(NextAction.VerifyPassword)
+        repository.discover()
+
+        val offer = (repository.identify(LoginOption.Username, USERNAME) as Result.Success).data
+
+        assertThat(offer).containsExactly(LoginOption.Password)
+    }
+
+    @Test
+    fun `identify - username with no password step - fails like a wrong password, so nobody can tell if it exists`() =
+        runTest {
+            every { client.identify(USERNAME, IdentifierType.USERNAME) } returns step(UNSUPPORTED)
+            repository.discover()
+
+            val failure = repository.identify(LoginOption.Username, USERNAME).failure()
+
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidPassword(LoginOption.Username))
+        }
+
+    @Test
+    fun `identify - server refuses the email - fails as an invalid email`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns failingWith(EmbeddedAuthError.InvalidRequest)
+        repository.discover()
+
+        val failure = repository.identify(LoginOption.EmailOtp, EMAIL).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidIdentifier(LoginOption.EmailOtp))
+    }
+
+    @Test
+    fun `identify - a method that can't be identified - fails and calls nothing`() = runTest {
+        val failure = repository.identify(LoginOption.Password, "x").failure()
+
+        assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
+        verify(exactly = 0) { client.identify(any(), any()) }
+    }
+
+    // endregion
+
+    // region sessions
+
+    @Test
+    fun `sessions - code right after identify - goes on the same session, with no second identify`() = runTest {
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
+
+        verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 1) { client.identify(EMAIL, IdentifierType.EMAIL) }
+        verify(exactly = 1) { client.challengeEmail(0) }
+    }
+
+    @Test
+    fun `sessions - a code the server already sent - isn't sent again`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(verifyOtp(OtpChannel.EMAIL, EMAIL))
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
+        verify(exactly = 0) { client.challengeEmail(any()) }
+    }
+
+    @Test
+    fun `sessions - identify twice - the second opens a new session`() = runTest {
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+    }
+
+    @Test
+    fun `sessions - a code for someone else - opens a new session`() = runTest {
+        every { client.identify(OTHER_EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 0))
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+        repository.startOtp(LoginOption.EmailOtp, OTHER_EMAIL)
+
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 1) { client.identify(OTHER_EMAIL, IdentifierType.EMAIL) }
+    }
+
+    @Test
+    fun `sessions - code after a wrong password - opens a new session`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns
+            step(NextAction.VerifyPassword, challengeEmail(at = 0))
+        every { client.verifyPassword(PASSWORD) } returns
+            step(NextAction.VerifyPassword, reason = Reason.INVALID_IDENTIFIER_OR_PASSWORD)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+        repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
+
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 2) { client.identify(EMAIL, IdentifierType.EMAIL) }
+    }
+
+    @Test
+    fun `sessions - code after a rate limit - opens a new session`() = runTest {
+        every { client.verifyPassword(PASSWORD) } returns
+            failingWith(EmbeddedAuthError.TooManyAttempts, statusCode = 429)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+        repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
+
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+    }
+
+    @Test
+    fun `sessions - a refused reopen - is reopened on the next try`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returnsMany listOf(
+            failingWith(EmbeddedAuthError.Network),
+            step(challengeEmail(at = 0)),
+        )
+        repository.discover()
+
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL).failure().error)
+            .isEqualTo(EmbeddedLoginError.Network)
+        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(Unit))
+
+        verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 2) { client.identify(EMAIL, IdentifierType.EMAIL) }
+    }
+
+    @Test
+    fun `sessions - the server ended it - the next code is refused as no longer valid, without asking the server`() =
+        runTest {
+            every { client.verifyOtp(CODE, OtpType.OOB) } returns
+                failingWith(EmbeddedAuthError.TooManyWrongOtpAttempts, statusCode = 403)
+            repository.discover()
+            repository.startOtp(LoginOption.EmailOtp, EMAIL)
+            assertThat(repository.verifyOtp(CODE).failure().error).isEqualTo(EmbeddedLoginError.TooManyWrongCodes)
+
+            val failure = repository.verifyOtp(CODE).failure()
+
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.CodeNoLongerValid)
+            verify(exactly = 1) { client.verifyOtp(CODE, OtpType.OOB) }
+        }
+
+    @Test
+    fun `sessions - a resend after the server ended it - checks the new code again`() = runTest {
+        every { client.verifyOtp(CODE, OtpType.OOB) } returnsMany listOf(
+            failingWith(EmbeddedAuthError.TooManyWrongOtpAttempts, statusCode = 403),
+            step(verifyOtp(OtpChannel.EMAIL, EMAIL), reason = Reason.INVALID_CODE),
+        )
+        repository.discover()
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
+        repository.verifyOtp(CODE)
+        repository.startOtp(LoginOption.EmailOtp, EMAIL)
+
+        assertThat(repository.verifyOtp(CODE).failure().error).isEqualTo(EmbeddedLoginError.InvalidCode)
+    }
+
+    @Test
+    fun `sessions - a network drop while checking a code - keeps the session, so the same code is tried again`() =
+        runTest {
+            every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(EmbeddedAuthError.Network)
+            repository.discover()
+            repository.startOtp(LoginOption.EmailOtp, EMAIL)
+            repository.verifyOtp(CODE)
+
+            assertThat(repository.verifyOtp(CODE).failure().error).isEqualTo(EmbeddedLoginError.Network)
+            verify(exactly = 2) { client.verifyOtp(CODE, OtpType.OOB) }
+        }
+
+    // endregion
+
+    // region verifyPassword
+
+    @Test
+    fun `verifyPassword - password accepted - returns the credentials on the session identify opened`() = runTest {
+        val credentials = mockk<Credentials>()
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returns FakeRequestImpl(response = credentials)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        val result = repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+
+        assertThat(result).isEqualTo(Result.Success(credentials))
+        verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 1) { client.identify(EMAIL, IdentifierType.EMAIL) }
+    }
+
+    @Test
+    fun `verifyPassword - wrong password - fails as invalid for what was typed, and the next try reuses the session`() =
+        runTest {
+            every { client.identify(USERNAME, IdentifierType.USERNAME) } returns step(NextAction.VerifyPassword)
+            every { client.verifyPassword(PASSWORD) } returns
+                step(NextAction.VerifyPassword, reason = Reason.INVALID_IDENTIFIER_OR_PASSWORD)
+            repository.discover()
+            repository.identify(LoginOption.Username, USERNAME)
+
+            val first = repository.verifyPassword(LoginOption.Username, USERNAME, PASSWORD).failure()
+            repository.verifyPassword(LoginOption.Username, USERNAME, PASSWORD)
+
+            assertThat(first.error).isEqualTo(EmbeddedLoginError.InvalidPassword(LoginOption.Username))
+            verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+            verify(exactly = 1) { client.identify(USERNAME, IdentifierType.USERNAME) }
+            verify(exactly = 2) { client.verifyPassword(PASSWORD) }
+        }
+
+    @Test
+    fun `verifyPassword - network drop - keeps the session`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returns failingWith(EmbeddedAuthError.Network)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+        repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+
+        verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 2) { client.verifyPassword(PASSWORD) }
+    }
+
+    @Test
+    fun `verifyPassword - after a rate limit - the next try opens a new session for the same person`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returnsMany listOf(
+            failingWith(EmbeddedAuthError.TooManyAttempts, statusCode = 429),
+            step(NextAction.VerifyPassword, reason = Reason.INVALID_IDENTIFIER_OR_PASSWORD),
+        )
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        assertThat(repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure().error)
+            .isEqualTo(EmbeddedLoginError.TooManyAttempts)
+        assertThat(repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure().error)
+            .isEqualTo(EmbeddedLoginError.InvalidPassword(LoginOption.EmailOtp))
+
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 2) { client.identify(EMAIL, IdentifierType.EMAIL) }
+    }
+
+    @Test
+    fun `verifyPassword - breached password - fails as leaked, and the next try opens a new session`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returns failingWith(EmbeddedAuthError.PasswordLeaked, statusCode = 401)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        val failure = repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure()
+        repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.PasswordLeaked)
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+    }
+
+    @Test
+    fun `verifyPassword - nothing left to ask for - fails with its own error`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returns failingWith(EmbeddedAuthError.NoNextSteps)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        val failure = repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.NoNextSteps)
+    }
+
+    @Test
+    fun `verifyPassword - a session that was never identified - identifies the same person first`() = runTest {
+        every { client.verifyPassword(PASSWORD) } returns FakeRequestImpl(response = mockk<Credentials>())
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        repository.discover()
+
+        repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD)
+
+        verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 1) { client.identify(EMAIL, IdentifierType.EMAIL) }
+        verify(exactly = 1) { client.verifyPassword(PASSWORD) }
+    }
+
+    @Test
+    fun `verifyPassword - second factor needed - fails as MFA required with the factors`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returns step(NextAction.VerifyRecoveryCode)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        val failure = repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired(listOf(MfaFactor.RecoveryCode)))
+    }
+
+    @Test
+    fun `verifyPassword - second factor needed but none usable - hands MFA no factors`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returns failingWith(EmbeddedAuthError.NoEligibleFactors)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        val failure = repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure()
+
+        assertThat(failure.error).isEqualTo(EmbeddedLoginError.MfaRequired.NoUsableFactor)
+    }
+
+    @Test
+    fun `verifyPassword - an answer for some other reason - fails as unexpected`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(NextAction.VerifyPassword)
+        every { client.verifyPassword(PASSWORD) } returns
+            step(NextAction.VerifyPassword, reason = Reason.SLOW_DOWN)
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        val failure = repository.verifyPassword(LoginOption.EmailOtp, EMAIL, PASSWORD).failure()
+
+        assertThat(failure.error).isInstanceOf(EmbeddedLoginError.Unknown::class.java)
+    }
+
+    // endregion
+
     // region retrying a step
 
     @Test
@@ -556,6 +984,9 @@ class EmbeddedLoginRepositoryImplTest {
         val VOICE = PhoneDeliveryMethod.VOICE
         const val CONNECTION = "email"
         const val EMAIL = "jane@example.com"
+        const val OTHER_EMAIL = "john@example.com"
+        const val USERNAME = "jane"
+        const val PASSWORD = "s3cret!"
 
         /** A step these screens have no way to drive: whatever the server may add after this version. */
         val UNSUPPORTED = sdkInstance<NextAction.Unknown>(String::class.java to "future_step")

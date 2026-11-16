@@ -11,13 +11,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import com.auth0.universalcomponents.theme.Auth0Theme
 
+// Edit fades while a request is on its way, as the rest of the screen does.
+private const val EDIT_DISABLED_ALPHA = 0.4f
+
 /**
- * The page title, with an optional subtitle and "Edit" action. [bottomSpacing] overrides the gap to the content.
+ * The page title, with an optional subtitle and "Edit" action, which is off (and faded) while [isEditEnabled] is false.
+ * [bottomSpacing] overrides the gap to the content.
  * [subtitleFontFeatures] sets OpenType features for the subtitle only, such as `'calt' 0`.
  */
 @Composable
@@ -27,6 +32,7 @@ internal fun FlowScreenHeader(
     subtitle: String? = null,
     editLabel: String? = null,
     onEdit: (() -> Unit)? = null,
+    isEditEnabled: Boolean = true,
     bottomSpacing: Dp? = null,
     subtitleFontFeatures: String? = null,
 ) {
@@ -50,7 +56,9 @@ internal fun FlowScreenHeader(
                         text = editLabel,
                         style = typography.body.copy(fontWeight = FontWeight.SemiBold),
                         color = colors.textBold,
-                        modifier = Modifier.clickable(onClick = onEdit),
+                        modifier = Modifier
+                            .alpha(if (isEditEnabled) 1f else EDIT_DISABLED_ALPHA)
+                            .clickable(enabled = isEditEnabled, onClick = onEdit),
                     )
                 }
             }

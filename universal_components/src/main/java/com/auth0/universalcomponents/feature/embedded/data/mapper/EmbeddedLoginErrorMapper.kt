@@ -26,6 +26,8 @@ internal fun EmbeddedAuthException.toLoginFailure(): LoginFailure {
         EmbeddedAuthError.TooManyLogins -> EmbeddedLoginError.TooManyLogins
         EmbeddedAuthError.IpBlocked -> EmbeddedLoginError.IpBlocked
         EmbeddedAuthError.ConsentRequired -> EmbeddedLoginError.ConsentRequired
+        EmbeddedAuthError.PasswordLeaked -> EmbeddedLoginError.PasswordLeaked
+        EmbeddedAuthError.NoNextSteps -> EmbeddedLoginError.NoNextSteps
         // The SDK's own text for these is developer advice ("Call authorize() first"), never for the user.
         EmbeddedAuthError.NoActiveSession, EmbeddedAuthError.SessionExpired -> EmbeddedLoginError.SessionExpired
         else -> null

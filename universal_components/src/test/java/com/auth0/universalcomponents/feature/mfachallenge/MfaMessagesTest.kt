@@ -2,6 +2,7 @@ package com.auth0.universalcomponents.feature.mfachallenge
 
 import android.content.res.Resources
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.endingDigits
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.resolve
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.words
 import com.google.common.truth.Truth.assertThat
@@ -126,23 +127,27 @@ class MfaMessagesTest {
     }
 
     @Test
-    fun `phone challenge - nothing set - every word is the string resource's, with the number filled in`() {
+    fun `phone challenge - nothing set - every word is the string resource's, naming the end of the number`() {
         val words = MfaMessages().resolve(resources).phoneChallenge
 
         assertThat(words.title).isEqualTo(default(R.string.auth0_mfa_phone_challenge_title))
         assertThat(words.codeLabel).isEqualTo(default(R.string.auth0_mfa_phone_challenge_code_label))
-        // The server hides a number with X (or *); the screen draws each hidden digit as the same *, as the design does.
+        // The server hides a number with X (or *); only the digits it shows are named, and as the end of the number.
         assertThat(words.description("XXXXXXXXX0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "*********0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "0128"))
         assertThat(words.descriptionVoice("XXXXXXXXX0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "*********0128"))
-        assertThat(words.description("*****0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "*****0128"))
-        // Whatever the server uses to hide a digit ends up as the same *, so the hidden part is one size.
-        assertThat(words.description("∗＊X●0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "****0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "0128"))
+        // The server may show fewer than four: they are all named.
+        assertThat(words.description("(4**)***-*900"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "900"))
         assertThat(words.description("+1 (XXX) XXX-0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "+1 (***) ***-0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "0128"))
+        // Whatever the server uses to hide a digit counts as hidden.
+        assertThat(words.description("∗＊X●0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "0128"))
+        // A number typed in full is named by its last four.
+        assertThat(words.descriptionVoice("+14155550123"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "0123"))
         // The list row names the way the code comes, as the design does; an app can add the number itself.
         assertThat(words.rowText("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_text))
         assertThat(words.rowVoice("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_voice))
@@ -159,6 +164,31 @@ class MfaMessagesTest {
             assertThat(words.descriptionVoice(hidden))
                 .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice_hidden))
         }
+    }
+
+    @Test
+    fun `ending digits - the last digits the server shows - and nothing when it shows none`() {
+        mapOf(
+            "+14155550123" to "0123",
+            "+1 (415) 555-0123" to "0123",
+            "(4**)***-*900" to "900",
+            "+1******900" to "900",
+            "+1XXXXXX0123" to "0123",
+            "••• 9239" to "9239",
+            "***-**-12" to "12",
+            "+4412" to "4412",
+            // Only the digits after the last hidden one are the end of the number.
+            "(4**)*9*0" to "0",
+        ).forEach { (number, ending) -> assertThat(number.endingDigits()).isEqualTo(ending) }
+
+        listOf("", "*****", "••••", "XXXX", "(***) ***-****", "no digits")
+            .forEach { assertThat(it.endingDigits()).isNull() }
+    }
+
+    @Test
+    fun `ending digits - a count is chosen - takes that many`() {
+        assertThat("+14155550123".endingDigits(count = 2)).isEqualTo("23")
+        assertThat("+14155550123".endingDigits(count = 20)).isEqualTo("14155550123")
     }
 
     @Test

@@ -37,6 +37,8 @@ import com.auth0.universalcomponents.theme.Auth0Theme
  * country of a phone number) and [placeholder] shows while the field is empty.
  * The cursor starts at the end, so a pre-filled value (after Edit or Try again) is ready to edit. [trailing] sits after
  * the text (the eye of a hidden field), and [visualTransformation] draws what is typed as something else (dots).
+ * [focusRequester] lets a screen take the focus back, as the password screen does after a rejection. Done keeps the
+ * focus (and the keyboard) when [clearFocusOnDone] is false, for a field that is tried again at once.
  */
 @Composable
 internal fun LoginInputField(
@@ -51,13 +53,14 @@ internal fun LoginInputField(
     trailing: @Composable () -> Unit = {},
     visualTransformation: VisualTransformation = VisualTransformation.None,
     onDone: () -> Unit = {},
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    clearFocusOnDone: Boolean = true,
 ) {
     val colors = Auth0Theme.colors
     val shape = Auth0Theme.shapes.medium
     val textColor = if (isInvalid) colors.textOnError else colors.textBold
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
     val focusManager = LocalFocusManager.current
     // A plain String field would start the cursor at 0; keeping the selection here lets it start at the end.
@@ -81,7 +84,7 @@ internal fun LoginInputField(
         visualTransformation = visualTransformation,
         interactionSource = interactionSource,
         textStyle = Auth0Theme.typography.body.copy(color = textColor),
-        cursorBrush = SolidColor(colors.textBold),
+        cursorBrush = SolidColor(if (isInvalid) colors.textOnError else colors.textBold),
         keyboardOptions = KeyboardOptions(
             capitalization = KeyboardCapitalization.None,
             autoCorrectEnabled = false,
@@ -89,7 +92,7 @@ internal fun LoginInputField(
             imeAction = ImeAction.Done,
         ),
         keyboardActions = KeyboardActions(onDone = {
-            focusManager.clearFocus()
+            if (clearFocusOnDone) focusManager.clearFocus()
             onDone()
         }),
         modifier = modifier

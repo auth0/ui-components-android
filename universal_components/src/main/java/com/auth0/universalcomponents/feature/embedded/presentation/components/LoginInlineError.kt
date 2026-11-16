@@ -5,9 +5,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** The error message shown under a field. */
+/** The error message shown under a field. A screen reader reads it aloud as soon as it appears. */
 @Composable
 internal fun LoginInlineError(message: String) {
     Text(
@@ -16,6 +19,7 @@ internal fun LoginInlineError(message: String) {
         color = Auth0Theme.colors.textOnError,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = Auth0Theme.dimensions.spacingXs),
+            .padding(top = Auth0Theme.dimensions.spacingXs)
+            .semantics { liveRegion = LiveRegionMode.Polite },
     )
 }

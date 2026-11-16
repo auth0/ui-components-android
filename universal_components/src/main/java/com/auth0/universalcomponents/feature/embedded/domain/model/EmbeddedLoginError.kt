@@ -20,6 +20,25 @@ internal sealed interface EmbeddedLoginError {
 
     data object CodeExpired : EmbeddedLoginError
 
+    /** The server ended the sign-in this code was sent for (too many wrong codes, a timeout): only a new code helps. */
+    data object CodeNoLongerValid : EmbeddedLoginError
+
+    /**
+     * The server rejected the email, number or username, or the password, and doesn't say which. Also the answer
+     * when it offers no password step for a username, so the screen never tells an account that exists from one
+     * that doesn't. [method] is what the user typed first.
+     */
+    data class InvalidPassword(val method: LoginOption) : EmbeddedLoginError
+
+    /** The password is in a known data breach, so the server won't take it. */
+    data object PasswordLeaked : EmbeddedLoginError
+
+    /** A password was asked for, but the server no longer offers one: only a code is left. */
+    data object PasswordNotAvailable : EmbeddedLoginError
+
+    /** The server has nothing left to ask for, yet the sign-in isn't done. */
+    data object NoNextSteps : EmbeddedLoginError
+
     data object TooManyWrongCodes : EmbeddedLoginError
 
     data object TooManyAttempts : EmbeddedLoginError

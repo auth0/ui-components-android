@@ -21,22 +21,28 @@ internal sealed interface LoginState {
     data object Loading : LoginState
 
     /**
-     * The screen asking for the email or the phone number a code goes to, as [method] says. [value] pre-fills the field
-     * (a phone number in E.164 form) and [country] is the one it was typed with, so Edit and Try again keep what was
-     * typed; null when nothing was typed yet. [otherMethod] is the one "Continue with" switches to; null hides it.
-     * [isSubmitting] spins Continue while the code is being sent.
+     * The screen asking for what a way to sign in needs first, as [method] says: an email, a phone number or a username.
+     * [value] pre-fills the field (a phone number in E.164 form) and [country] is the one it was typed with, so Edit
+     * and Try again keep what was typed; null when nothing was typed yet. [otherMethods] are the ones "Continue with"
+     * switches to, in the tenant's order; empty hides them. [isFirst] is false on a method's own screen, opened from
+     * the first one. [isSubmitting] spins Continue while the request is on its way, and [error] is what the server
+     * said that the user can fix here, shown under the field.
      */
     data class CollectOtpIdentifier(
         val method: LoginOption = LoginOption.EmailOtp,
         val value: String = "",
-        val otherMethod: LoginOption? = null,
+        val otherMethods: List<LoginOption> = emptyList(),
         val isSubmitting: Boolean = false,
         val country: Country? = null,
+        val error: EmbeddedLoginError? = null,
+        val isFirst: Boolean = true,
     ) : LoginState
 
     /**
      * [isSubmitting] spins Verify; [isResending] busies only the resend row while a new code is on its way.
-     * [resendSecondsLeft] counts down from each code sent; Resend opens at zero.
+     * [resendSecondsLeft] counts down from each code sent; Resend opens at zero. [canUsePassword] is whether the server
+     * also offers a password, which the screen then offers instead; [isOpeningPassword] spins that button while the
+     * server is asked for it.
      */
     data class CollectOtpCode(
         val identifier: String,
@@ -44,6 +50,24 @@ internal sealed interface LoginState {
         val error: EmbeddedLoginError? = null,
         val isSubmitting: Boolean = false,
         val isResending: Boolean = false,
+        val resendSecondsLeft: Int = 0,
+        val canUsePassword: Boolean = false,
+        val isOpeningPassword: Boolean = false,
+    ) : LoginState
+
+    /**
+     * The password of [identifier], typed as [method]. [canSendCode] is whether the server also offers a code, which
+     * the screen then offers instead; [isSendingCode] spins that button, and [isSubmitting] spins Continue.
+     * [resendSecondsLeft] is the wait before another code may be asked for, counted from the last one sent to this
+     * person, even before they came here.
+     */
+    data class CollectPassword(
+        val identifier: String,
+        val method: LoginOption = LoginOption.EmailOtp,
+        val canSendCode: Boolean = false,
+        val error: EmbeddedLoginError? = null,
+        val isSubmitting: Boolean = false,
+        val isSendingCode: Boolean = false,
         val resendSecondsLeft: Int = 0,
     ) : LoginState
 
@@ -84,10 +108,24 @@ internal sealed interface LoginIntent {
         val country: Country? = null,
     ) : LoginIntent
 
-    /** "Continue with …" on the first screen. Counts only there, and not while a code is being sent. */
+    /** "Continue with …" on the first screen. Counts only there, and not while a request is on its way. */
     data class SwitchMethod(val method: LoginOption) : LoginIntent
 
     data class SubmitOtp(val code: String) : LoginIntent
+
+    /** The password for the person on the password screen. It is never printed: a log must not hold it. */
+    data class SubmitPassword(val password: String) : LoginIntent {
+        override fun toString() = "SubmitPassword(password=***)"
+    }
+
+    /** "Continue with a password", on the code screen of someone the server also offers a password. */
+    data object UsePassword : LoginIntent
+
+    /**
+     * "Email me a code", on the password screen of someone the server also offers a code. The screen has a "Text me a code"
+     * for a phone too, but a phone is not offered a password yet.
+     */
+    data object SendCode : LoginIntent
 
     data object Resend : LoginIntent
 

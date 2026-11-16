@@ -129,18 +129,13 @@ private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMf
     return ResolvedMfaMessages.PhoneChallenge(
         title = word(title, R.string.auth0_mfa_phone_challenge_title),
         description = description ?: { number ->
-            if (number.hasDigits()) {
-                resources.getString(R.string.auth0_mfa_phone_challenge_description, number.forDisplay())
-            } else {
-                resources.getString(R.string.auth0_mfa_phone_challenge_description_hidden)
-            }
+            // The end of the number, not all of it: a server that hides every digit leaves nothing to name.
+            number.endingDigits()?.let { resources.getString(R.string.auth0_mfa_phone_challenge_description, it) }
+                ?: resources.getString(R.string.auth0_mfa_phone_challenge_description_hidden)
         },
         descriptionVoice = descriptionVoice ?: { number ->
-            if (number.hasDigits()) {
-                resources.getString(R.string.auth0_mfa_phone_challenge_description_voice, number.forDisplay())
-            } else {
-                resources.getString(R.string.auth0_mfa_phone_challenge_description_voice_hidden)
-            }
+            number.endingDigits()?.let { resources.getString(R.string.auth0_mfa_phone_challenge_description_voice, it) }
+                ?: resources.getString(R.string.auth0_mfa_phone_challenge_description_voice_hidden)
         },
         codeLabel = word(codeLabel, R.string.auth0_mfa_phone_challenge_code_label),
         verifyButton = word(verifyButton, R.string.auth0_mfa_phone_challenge_verify_button),
@@ -252,3 +247,16 @@ private const val HIDDEN_DIGIT = '*'
 
 /** A number the server hid completely (`*********`) has nothing to show, so the default words don't name it. */
 internal fun String.hasDigits(): Boolean = any(Char::isDigit)
+
+/**
+ * The end of a phone number, as the code screen names it ("ending in 900"): the last [count] digits the server really
+ * shows. Digits before a hidden one are left out, since they are not the end of the number: `(4**)***-*900` gives `900`,
+ * the server showing only three, and `+14155550123` typed in full gives `0123`. Anything but a digit or a phone mark counts
+ * as hidden, as in [forDisplay]. Null when no digit is shown at the end (`*****`, or an empty string).
+ */
+internal fun String.endingDigits(count: Int = ENDING_DIGITS): String? {
+    val shown = substring(indexOfLast { !(it in '0'..'9' || it in PHONE_MARKS) } + 1)
+    return shown.filter { it in '0'..'9' }.takeLast(count).ifEmpty { null }
+}
+
+private const val ENDING_DIGITS = 4

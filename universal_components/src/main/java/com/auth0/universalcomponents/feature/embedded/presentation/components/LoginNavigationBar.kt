@@ -22,11 +22,14 @@ import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.presentation.ui.flow.flowBackground
 import com.auth0.universalcomponents.theme.Auth0Theme
 
+private const val BACK_DISABLED_ALPHA = 0.4f
+
 /** The top bar with the back arrow and the "Log in" title. */
 @Composable
 internal fun LoginNavigationBar(
     onBack: () -> Unit,
     title: String = stringResource(R.string.embedded_login_title),
+    isBackEnabled: Boolean = true,
 ) {
     val colors = Auth0Theme.colors
     Box(
@@ -35,11 +38,12 @@ internal fun LoginNavigationBar(
             .height(Auth0Theme.dimensions.spacingXxl)
             .padding(horizontal = Auth0Theme.dimensions.spacingXxs),
     ) {
-        IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart)) {
+        // Back waits while a request is on its way, and says so by fading, as the rest of the screen does.
+        IconButton(onClick = onBack, enabled = isBackEnabled, modifier = Modifier.align(Alignment.CenterStart)) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = stringResource(R.string.embedded_login_back),
-                tint = colors.textBold,
+                tint = colors.textBold.copy(alpha = if (isBackEnabled) 1f else BACK_DISABLED_ALPHA),
                 modifier = Modifier.size(Auth0Theme.sizes.iconMedium),
             )
         }
@@ -57,6 +61,7 @@ internal fun LoginNavigationBar(
 internal fun LoginScreenFrame(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    isBackEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     Column(
@@ -65,7 +70,7 @@ internal fun LoginScreenFrame(
             .flowBackground()
             .statusBarsPadding(),
     ) {
-        LoginNavigationBar(onBack = onBack)
+        LoginNavigationBar(onBack = onBack, isBackEnabled = isBackEnabled)
         Box(
             modifier = Modifier
                 .fillMaxWidth()

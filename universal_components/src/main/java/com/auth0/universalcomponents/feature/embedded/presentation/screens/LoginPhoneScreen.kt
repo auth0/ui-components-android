@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +23,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.sp
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
@@ -51,9 +54,12 @@ private fun deviceCountry(): Country =
         ?: Country.countries.first()
 
 /**
- * Collects the phone number the code is sent to. [onContinue] receives it in E.164 form (`+14233530900`) once it looks
- * valid, and the country it was typed with. [phone] pre-fills the field in that same form and [country] is the one
- * it was typed with, so Edit and Try again keep what was typed. With no [country], the field starts on the device's.
+ * Collects the phone number the code is sent to. [onContinue] receives it in E.164 form (`+14233530900`) once
+ * it looks valid, and the country it was typed with. [phone] pre-fills the field in that same form and [country] is the
+ * one it was typed with, so Edit and Try again keep what was typed. With no [country], the field starts on the device's.
+ * [errorMessage] comes from the server, hides once the user edits the number, and comes back when the server reports
+ * again. Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue; they are off
+ * while [isLoading].
  */
 @Composable
 internal fun LoginPhoneScreen(
@@ -63,6 +69,9 @@ internal fun LoginPhoneScreen(
     phone: String = "",
     country: Country? = null,
     isLoading: Boolean = false,
+    errorMessage: String? = null,
+    otherMethods: List<LoginOption> = emptyList(),
+    onChooseMethod: (LoginOption) -> Unit = {},
 ) {
     // The countries are a fixed list, so a position survives a rotation where a Country could not.
     val (initialCountry, initialNumber) = remember {
@@ -74,11 +83,22 @@ internal fun LoginPhoneScreen(
     var isPickingCountry by rememberSaveable { mutableStateOf(false) }
     val selected = Country.countries[countryIndex]
 
+    var hideServerError by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(errorMessage) { if (errorMessage != null) hideServerError = false }
+    val activeError = if (isInvalidPhone) {
+        stringResource(R.string.embedded_login_error_invalid_phone)
+    } else {
+        errorMessage.takeUnless { hideServerError }
+    }
+
     val submit = {
-        if (ValidationUtil.isValidPhoneNumber(number)) {
-            onContinue(selected.phoneCode + number, selected)
-        } else {
-            isInvalidPhone = true
+        // A second tap while the request is on its way is dropped.
+        if (!isLoading) {
+            if (ValidationUtil.isValidPhoneNumber(number)) {
+                onContinue(selected.phoneCode + number, selected)
+            } else {
+                isInvalidPhone = true
+            }
         }
     }
 
@@ -92,15 +112,16 @@ internal fun LoginPhoneScreen(
                 onValueChange = {
                     number = it.filter(Char::isDigit).take(selected.maxNumberDigits())
                     isInvalidPhone = false
+                    hideServerError = true
                 },
-                isInvalid = isInvalidPhone,
+                isInvalid = activeError != null,
                 enabled = !isLoading,
                 keyboardType = KeyboardType.Phone,
                 placeholder = stringResource(R.string.phone_number_placeholder),
                 leading = { CountryChip(selected, enabled = !isLoading, onClick = { isPickingCountry = true }) },
                 onDone = submit,
             )
-            if (isInvalidPhone) LoginInlineError(stringResource(R.string.embedded_login_error_invalid_phone))
+            activeError?.let { LoginInlineError(it) }
         },
         primaryAction = {
             FlowPrimaryButton(
@@ -110,6 +131,11 @@ internal fun LoginPhoneScreen(
                 enabled = number.isNotBlank() && !isLoading,
             )
         },
+        secondaryAction = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
+            { LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading) }
+        },
+        // Next to Continue, as in the design with other methods; alone, Continue stays at the bottom.
+        pinActionsToBottom = otherMethods.isEmpty(),
     )
 
     if (isPickingCountry) {
