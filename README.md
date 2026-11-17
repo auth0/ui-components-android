@@ -61,7 +61,7 @@ Add the dependency to your `build.gradle` file:
 
 ```gradle
 dependencies {
-    implementation 'com.auth0.universalcomponents:universal-components:1.0.0-beta.3'
+    implementation 'com.auth0.universalcomponents:universal-components:1.0.0-beta.4'
 }
 ```
 
@@ -72,7 +72,7 @@ Add to your `gradle/libs.versions.toml`:
 
 ```toml
 [versions]
-auth0-universal-components = "1.0.0-beta.3"
+auth0-universal-components = "1.0.0-beta.4"
 
 [libraries]
 auth0-universal-components = { module = "com.auth0.universalcomponents:universal-components", version.ref = "auth0-universal-components" }
