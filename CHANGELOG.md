@@ -1,5 +1,14 @@
 # Change Log
 
+## [1.0.0-beta.4](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.4) (2026-11-17)
+[Full Changelog](https://github.com/auth0/ui-components-android/compare/1.0.0-beta.3...1.0.0-beta.4)
+
+**Added**
+- Added support for EMAIL and PASSWORD as first factor [\#68](https://github.com/auth0/ui-components-android/pull/68) ([pacific-ring](https://github.com/pacific-ring))
+- Added recovery code as an option in MFA Factor [\#66](https://github.com/auth0/ui-components-android/pull/66) ([pacific-ring](https://github.com/pacific-ring))
+- Added support for MFA with TOTP. [\#65](https://github.com/auth0/ui-components-android/pull/65) ([pacific-ring](https://github.com/pacific-ring))
+- Add an email code as an MFA factor [\#64](https://github.com/auth0/ui-components-android/pull/64) ([pacific-ring](https://github.com/pacific-ring))
+
 ## [1.0.0-beta.3](https://github.com/auth0/ui-components-android/tree/1.0.0-beta.3) (2026-11-06)
 [Full Changelog](https://github.com/auth0/ui-components-android/compare/1.0.0-beta.2...1.0.0-beta.3)
 
