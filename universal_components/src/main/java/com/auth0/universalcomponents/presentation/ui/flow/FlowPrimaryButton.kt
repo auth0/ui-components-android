@@ -9,7 +9,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import com.auth0.universalcomponents.presentation.ui.components.GradientButton
 import com.auth0.universalcomponents.theme.Auth0Theme
 
-/** The main call-to-action, drawn with the library's shared button. */
+/**
+ * The main call-to-action, drawn with the library's shared button. It takes the focus (and the keyboard) away unless
+ * [clearsFocus] is false.
+ */
 @Composable
 internal fun FlowPrimaryButton(
     title: String,
@@ -17,6 +20,7 @@ internal fun FlowPrimaryButton(
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     enabled: Boolean = true,
+    clearsFocus: Boolean = true,
 ) {
     val focusManager = LocalFocusManager.current
     GradientButton(
@@ -26,7 +30,7 @@ internal fun FlowPrimaryButton(
         isLoading = isLoading,
         enabled = enabled,
         onClick = {
-            focusManager.clearFocus()
+            if (clearsFocus) focusManager.clearFocus()
             onClick()
         },
     ) {

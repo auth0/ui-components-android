@@ -1,46 +1,31 @@
 package com.auth0.universalcomponents.feature.embedded.presentation.screens
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import com.auth0.universalcomponents.R
+import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
+import com.auth0.universalcomponents.feature.embedded.presentation.components.rememberDismissibleError
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
 import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
 import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
-import com.auth0.universalcomponents.presentation.ui.flow.flowSurface
-import com.auth0.universalcomponents.theme.Auth0Theme
 
 /** Lenient on purpose; the server has the final say. */
 private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
 
 /**
- * Collects the email the code is sent to. [onContinue] receives the trimmed email once it looks valid.
- * [errorMessage] comes from the server and hides once the user edits the field.
- * A non-null [onContinueWithPhone] adds the "OR" divider and "Continue with Phone" below Continue, as designed.
+ * Collects the email the code or password is for. [onContinue] receives the trimmed email once it looks valid.
+ * [errorMessage] comes from the server, hides once the user edits the field, and comes back when the server reports
+ * again. Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue, as designed; they
+ * are off while [isLoading].
  */
 @Composable
 internal fun LoginEmailScreen(
@@ -50,21 +35,24 @@ internal fun LoginEmailScreen(
     email: String = "",
     isLoading: Boolean = false,
     errorMessage: String? = null,
-    onContinueWithPhone: (() -> Unit)? = null,
+    otherMethods: List<LoginOption> = emptyList(),
+    onChooseMethod: (LoginOption) -> Unit = {},
 ) {
     var value by rememberSaveable { mutableStateOf(email) }
     var isInvalidEmail by rememberSaveable { mutableStateOf(false) }
-    var hideServerError by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(errorMessage) { if (errorMessage != null) hideServerError = false }
+    val serverError = rememberDismissibleError(errorMessage)
 
     val activeError = if (isInvalidEmail) {
         stringResource(R.string.embedded_login_error_invalid_email)
     } else {
-        errorMessage.takeUnless { hideServerError }
+        serverError.message
     }
     val submit = {
         val trimmed = value.trim()
-        if (EMAIL_PATTERN.matches(trimmed)) onContinue(trimmed) else isInvalidEmail = true
+        // A second tap while the request is on its way is dropped.
+        if (!isLoading) {
+            if (EMAIL_PATTERN.matches(trimmed)) onContinue(trimmed) else isInvalidEmail = true
+        }
     }
 
     FlowStepLayout(
@@ -77,7 +65,7 @@ internal fun LoginEmailScreen(
                 onValueChange = {
                     value = it
                     isInvalidEmail = false
-                    hideServerError = true
+                    serverError.dismiss()
                 },
                 isInvalid = activeError != null,
                 enabled = !isLoading,
@@ -93,56 +81,12 @@ internal fun LoginEmailScreen(
                 enabled = value.isNotBlank() && !isLoading,
             )
         },
-        secondaryAction = onContinueWithPhone?.let { switchToPhone ->
+        secondaryAction = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
             {
-                ContinueWithPhone(onClick = switchToPhone, enabled = !isLoading)
+                LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading)
             }
         },
         // Next to Continue, as in the design with a second method; alone, Continue stays at the bottom.
-        pinActionsToBottom = onContinueWithPhone == null,
+        pinActionsToBottom = otherMethods.isEmpty(),
     )
-}
-
-/** The "OR" divider, then the white "Continue with Phone" button. */
-@Composable
-private fun ContinueWithPhone(onClick: () -> Unit, enabled: Boolean) {
-    val dimensions = Auth0Theme.dimensions
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(dimensions.spacingSm),
-    ) {
-        HorizontalDivider(modifier = Modifier.weight(1f), color = Auth0Theme.colors.borderSubtle)
-        Text(
-            text = stringResource(R.string.embedded_login_or),
-            style = Auth0Theme.typography.bodySmall,
-            color = Auth0Theme.colors.textDefault,
-        )
-        HorizontalDivider(modifier = Modifier.weight(1f), color = Auth0Theme.colors.borderSubtle)
-    }
-    Spacer(Modifier.height(dimensions.spacingSm))
-    val shape = Auth0Theme.shapes.medium
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(Auth0Theme.sizes.buttonHeight)
-            .flowSurface(shape, isFocused = false, isError = false)
-            .clip(shape)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                painter = painterResource(R.drawable.ic_device),
-                contentDescription = null,
-                modifier = Modifier.size(dimensions.spacingMd),
-                tint = if (enabled) Auth0Theme.colors.textBold else Auth0Theme.colors.textDisabled,
-            )
-            Spacer(Modifier.width(dimensions.spacingSm))
-            Text(
-                text = stringResource(R.string.embedded_login_continue_with_phone),
-                style = Auth0Theme.typography.label,
-                color = if (enabled) Auth0Theme.colors.textBold else Auth0Theme.colors.textDisabled,
-            )
-        }
-    }
 }

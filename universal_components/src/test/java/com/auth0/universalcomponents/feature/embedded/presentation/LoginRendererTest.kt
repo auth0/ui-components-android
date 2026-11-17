@@ -92,13 +92,22 @@ class LoginRendererTest {
     }
 
     @Test
-    fun `plan - phone steps - carry the method and the way to switch`() {
+    fun `plan - phone steps - carry the method and the ways to switch`() {
         val expected = mapOf(
-            LoginState.CollectOtpIdentifier(LoginOption.EmailOtp, EMAIL, otherMethod = LoginOption.PhoneOtp) to
-                ScreenPlan.Identifier(EMAIL, LoginOption.EmailOtp, otherMethod = LoginOption.PhoneOtp),
-            LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, PHONE) to
-                ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp),
+            LoginState.CollectOtpIdentifier(
+                LoginOption.EmailOtp,
+                EMAIL,
+                otherMethods = listOf(LoginOption.PhoneOtp, LoginOption.Username),
+            ) to ScreenPlan.Identifier(
+                EMAIL,
+                LoginOption.EmailOtp,
+                otherMethods = listOf(LoginOption.PhoneOtp, LoginOption.Username),
+            ),
+            LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, PHONE, isFirst = false) to
+                ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp, isFirst = false),
             LoginState.CollectOtpCode(PHONE, LoginOption.PhoneOtp) to ScreenPlan.OtpCode(PHONE, LoginOption.PhoneOtp),
+            LoginState.CollectOtpCode(PHONE, LoginOption.PhoneOtp, sentTo = "XXXXXXXXX0128") to
+                ScreenPlan.OtpCode(PHONE, LoginOption.PhoneOtp, sentTo = "XXXXXXXXX0128"),
         )
         expected.forEach { (step, plan) -> assertThat(plan(step)).isEqualTo(plan) }
     }
@@ -108,7 +117,7 @@ class LoginRendererTest {
         val depths = listOf(
             ScreenPlan.Loading,
             ScreenPlan.Identifier(EMAIL),
-            ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp),
+            ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp, isFirst = false),
             ScreenPlan.OtpCode(EMAIL),
             ScreenPlan.Mfa(mockk()),
             ScreenPlan.Authenticated,
@@ -117,8 +126,79 @@ class LoginRendererTest {
         assertThat(depths).isInStrictOrder()
     }
 
+    @Test
+    fun `plan - password and username steps - carry who, how to finish and what is on its way`() {
+        val error = EmbeddedLoginError.InvalidPassword(LoginOption.EmailOtp)
+        val expected = mapOf(
+            LoginState.CollectPassword(EMAIL, LoginOption.EmailOtp) to ScreenPlan.Password(EMAIL),
+            LoginState.CollectPassword(
+                EMAIL,
+                LoginOption.EmailOtp,
+                canSendCode = true,
+                error = error,
+                isSubmitting = true,
+                isSendingCode = true,
+                resendSecondsLeft = 42,
+            ) to ScreenPlan.Password(
+                EMAIL,
+                LoginOption.EmailOtp,
+                canSendCode = true,
+                error = error,
+                isSubmitting = true,
+                isSendingCode = true,
+                resendSecondsLeft = 42,
+            ),
+            LoginState.CollectOtpIdentifier(LoginOption.Username, USERNAME, error = error) to
+                ScreenPlan.Identifier(USERNAME, LoginOption.Username, error = error),
+            LoginState.CollectOtpCode(EMAIL, canUsePassword = true, isOpeningPassword = true) to
+                ScreenPlan.OtpCode(EMAIL, canUsePassword = true, isOpeningPassword = true),
+        )
+        expected.forEach { (step, plan) -> assertThat(plan(step)).isEqualTo(plan) }
+    }
+
+    @Test
+    fun `transitionIdentity - password step - is its own screen, apart from the code`() {
+        assertThat(ScreenPlan.Password(EMAIL).transitionIdentity)
+            .isNotEqualTo(ScreenPlan.OtpCode(EMAIL).transitionIdentity)
+        assertThat(ScreenPlan.Password("a@example.com").transitionIdentity)
+            .isEqualTo(ScreenPlan.Password(EMAIL).transitionIdentity)
+    }
+
+    @Test
+    fun `transitionIdentity - username entry - is its own screen`() {
+        assertThat(ScreenPlan.Identifier(USERNAME, LoginOption.Username).transitionIdentity)
+            .isNotEqualTo(ScreenPlan.Identifier(EMAIL).transitionIdentity)
+    }
+
+    @Test
+    fun `isSiblingOf - the code and the password - are two ways of finishing one step, and nothing else is`() {
+        assertThat(ScreenPlan.OtpCode(EMAIL).isSiblingOf(ScreenPlan.Password(EMAIL))).isTrue()
+        assertThat(ScreenPlan.Password(EMAIL).isSiblingOf(ScreenPlan.OtpCode(EMAIL))).isTrue()
+        assertThat(ScreenPlan.Identifier(EMAIL).isSiblingOf(ScreenPlan.Password(EMAIL))).isFalse()
+        assertThat(ScreenPlan.OtpCode(EMAIL).isSiblingOf(ScreenPlan.OtpCode(EMAIL))).isFalse()
+    }
+
+    @Test
+    fun `navigationDepth - a method's own screen - is one deeper than the first, whichever method it is`() {
+        val first = ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp).navigationDepth
+        val own = ScreenPlan.Identifier(EMAIL, LoginOption.EmailOtp, isFirst = false).navigationDepth
+
+        assertThat(own).isEqualTo(first + 1)
+        assertThat(ScreenPlan.Password(EMAIL).navigationDepth).isEqualTo(ScreenPlan.OtpCode(EMAIL).navigationDepth)
+        assertThat(ScreenPlan.Password(EMAIL).navigationDepth).isGreaterThan(own)
+    }
+
+    @Test
+    fun `needsNewCode - only a code that can't be checked any more`() {
+        assertThat(EmbeddedLoginError.CodeExpired.needsNewCode).isTrue()
+        assertThat(EmbeddedLoginError.CodeNoLongerValid.needsNewCode).isTrue()
+        assertThat(EmbeddedLoginError.InvalidCode.needsNewCode).isFalse()
+        assertThat(EmbeddedLoginError.TooManyWrongCodes.needsNewCode).isFalse()
+    }
+
     private companion object {
         const val EMAIL = "jane@example.com"
+        const val USERNAME = "jane.doe"
         const val PHONE = "+14233530900"
     }
 }

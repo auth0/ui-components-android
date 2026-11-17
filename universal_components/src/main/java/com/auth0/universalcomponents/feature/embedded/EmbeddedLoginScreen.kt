@@ -25,6 +25,9 @@ import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
  * the `when` an `else` branch.
  *
  * [mfa] customizes MFA: change its words, replace a screen, or draw it all yourself (headless).
+ *
+ * [preference] chooses which way leads when the tenant offers both a code and a password for an email address; by
+ * default, the order the server lists them in. Changing it starts the sign-in again.
  */
 @Composable
 fun EmbeddedLoginScreen(
@@ -35,11 +38,17 @@ fun EmbeddedLoginScreen(
     themeConfiguration: Auth0ThemeConfiguration = Auth0ThemeConfiguration.Default,
     onMfaError: (MfaError) -> MfaErrorHandling = { MfaErrorHandling.NotHandled },
     mfa: MfaConfiguration = MfaConfiguration(),
+    preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
 ) {
     Auth0Theme(configuration = themeConfiguration) {
         // Remembered so a recomposition doesn't build an SDK client that's never used.
-        val factory = remember(connection) { UniversalComponentsModule.provideLoginFlowViewModelFactory(connection) }
-        val loginViewModel: LoginFlowViewModel = viewModel(key = "embedded-login:$connection", factory = factory)
+        val factory = remember(connection, preference) {
+            UniversalComponentsModule.provideLoginFlowViewModelFactory(connection, preference)
+        }
+        val loginViewModel: LoginFlowViewModel = viewModel(
+            key = "embedded-login:$connection:$preference",
+            factory = factory,
+        )
         LoginRenderingHost(
             viewModel = loginViewModel,
             onAuthenticated = onAuthenticated,

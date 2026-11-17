@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.mfachallenge.presentation
+package com.auth0.universalcomponents.utils
 
 import android.os.SystemClock
 import kotlin.time.Duration
@@ -8,7 +8,8 @@ import kotlin.time.TimeSource
 
 /**
  * Time that keeps counting while the device sleeps. [TimeSource.Monotonic] and `delay()` both stand still then, so a
- * user who locks the phone for two minutes would come back to a Resend wait that has barely moved.
+ * user who locks the phone for two minutes would come back to a Resend wait that has barely moved. Shared by every wait
+ * a screen counts down (the login's and MFA's), so they agree on how long a minute is.
  */
 internal object ElapsedRealtimeSource : TimeSource {
 

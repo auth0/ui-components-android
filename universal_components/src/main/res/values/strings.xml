@@ -114,8 +114,26 @@
     <string name="embedded_login_email_label">Email</string>
     <string name="embedded_login_continue">Continue</string>
     <string name="embedded_login_continue_with_phone">Continue with Phone</string>
+    <string name="embedded_login_continue_with_email">Continue with Email</string>
+    <string name="embedded_login_continue_with_password">Continue with Password</string>
     <string name="embedded_login_or">OR</string>
     <string name="embedded_login_phone_title">Enter your phone number to get started</string>
+    <string name="embedded_login_username_title">Enter your username to get started</string>
+    <string name="embedded_login_username_label">Username</string>
+    <string name="embedded_login_password_title">Enter your password</string>
+    <string name="embedded_login_password_label">Password</string>
+    <string name="embedded_login_show_password">Show password</string>
+    <string name="embedded_login_hide_password">Hide password</string>
+    <string name="embedded_login_use_password">Continue with a password</string>
+    <string name="embedded_login_send_code">Send me a code</string>
+    <string name="embedded_login_send_code_email">Email me a code</string>
+    <string name="embedded_login_send_code_phone">Text me a code</string>
+    <!-- "Email me a code in 42s": the button of a code that was just sent counts down, as Resend does. -->
+    <string name="embedded_login_code_available_in">%1$s in %2$ds</string>
+    <!-- What a screen reader says for Edit on the row that names who is signing in: one string per way, so a language can word each. -->
+    <string name="embedded_login_edit_email">Edit email</string>
+    <string name="embedded_login_edit_phone">Edit phone number</string>
+    <string name="embedded_login_edit_username">Edit username</string>
     <string name="embedded_login_code_title">Enter the 6-digit code</string>
     <string name="embedded_login_code_from">From %1$s</string>
     <string name="embedded_login_code_edit">Edit</string>
@@ -146,7 +164,14 @@
     <string name="embedded_login_error_too_many_logins">Too many attempts. Please try again later.</string>
     <string name="embedded_login_error_ip_blocked">Sign-in is temporarily blocked. Please try again later.</string>
     <string name="embedded_login_error_consent_required">This sign-in needs consent that can\'t be given in the app.</string>
-    <string name="embedded_login_error_session_expired">Your sign-in session expired. Please sign in again.</string>
+    <string name="embedded_login_error_session_expired">Your sign-in timed out. Please try again.</string>
+    <string name="embedded_login_error_code_no_longer_valid">This code is no longer valid. Please request a new one.</string>
+    <string name="embedded_login_error_invalid_password_email">Incorrect email or password. Please try again.</string>
+    <string name="embedded_login_error_invalid_password_phone">Incorrect phone number or password. Please try again.</string>
+    <string name="embedded_login_error_invalid_password_username">Incorrect username or password. Please try again.</string>
+    <string name="embedded_login_error_password_leaked">For your security, this password can\'t be used because it appeared in a data breach. Please reset your password and try again.</string>
+    <string name="embedded_login_error_password_not_available">A password isn\'t available for this account. Please use a code instead.</string>
+    <string name="embedded_login_error_no_next_steps">We couldn\'t continue signing you in with this account. Please try again or use another method.</string>
     <!-- MFA words. Names follow the key paths of MfaMessages (auth0_mfa_<group>_<key>); an app
          overrides a default by declaring a string with the same name. -->
     <string name="auth0_mfa_authenticator_list_headers_challenge_title">Verify it\'s you</string>
@@ -164,10 +189,11 @@
     <string name="auth0_mfa_push_challenge_resend_cooldown">Resend in %1$d sec…</string>
     <string name="auth0_mfa_push_challenge_verify_another_way">Verify another way</string>
     <string name="auth0_mfa_phone_challenge_title">Enter the 6-digit code</string>
-    <string name="auth0_mfa_phone_challenge_description">We’ve sent a code to %1$s</string>
-    <string name="auth0_mfa_phone_challenge_description_voice">We’re calling %1$s with a code</string>
-    <string name="auth0_mfa_phone_challenge_description_hidden">We’ve sent a code to your phone</string>
-    <string name="auth0_mfa_phone_challenge_description_voice_hidden">We’re calling your phone with a code</string>
+    <!-- %1$s of the two "ending in" words is the last digits the server shows (up to four), not the masked number. -->
+    <string name="auth0_mfa_phone_challenge_description_ending_in">Sent to the phone number ending in %1$s</string>
+    <string name="auth0_mfa_phone_challenge_description_voice_ending_in">Calling your phone number ending in %1$s</string>
+    <string name="auth0_mfa_phone_challenge_description_hidden">We texted a code to your phone.</string>
+    <string name="auth0_mfa_phone_challenge_description_voice_hidden">We’re calling your phone with a code.</string>
     <string name="auth0_mfa_phone_challenge_code_label">One-Time Passcode</string>
     <string name="auth0_mfa_phone_challenge_verify_button">Verify</string>
     <string name="auth0_mfa_phone_challenge_wrong_code">Invalid Code. Please double check the code sent to your phone.</string>

@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.Credentials
@@ -18,6 +19,7 @@ import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEffect
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaEngine
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.MfaReducer
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
+import com.auth0.universalcomponents.utils.ElapsedRealtimeSource
 import com.auth0.universalcomponents.utils.logging.Logger
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -28,20 +30,29 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlin.time.TimeSource
 
 /**
- * Drives the code flow, by email or by phone: [LoginIntent]s in, [LoginState]s out. Each event counts only on the
- * screen it belongs to.
+ * Drives the first factor, by an email with a code or a password, a phone number with a code, or a username with its
+ * password: [LoginIntent]s in, [LoginState]s out. Each event counts only on the screen it belongs to.
  * A second factor runs in an [MfaEngine] owned here, so the hand-off and its end are plain calls on this ViewModel.
  * The repositories return each failure as a [LoginFailure], so nothing here is caught.
+ * [timeSource] measures the wait before another code may be asked for; it keeps counting while the device sleeps.
  */
 internal class LoginFlowViewModel(
     private val repository: EmbeddedLoginRepository,
     private val mfaRepository: MfaRepository,
+    timeSource: TimeSource = ElapsedRealtimeSource,
 ) : ViewModel() {
 
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Loading)
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
+
+    /**
+     * What is typed on the password screen. Here so a rotation doesn't lose it, as on iOS, and only in memory: it is never
+     * in the saved state, so it goes with the process. Emptied at every Continue, and once that screen is left.
+     */
+    internal val typedPassword = mutableStateOf("")
 
     private val _events = Channel<LoginEvent>(Channel.BUFFERED)
 
@@ -66,14 +77,17 @@ internal class LoginFlowViewModel(
     private var runningStep: Job? = null
     private var resendCountdownJob: Job? = null
 
-    /** The method the flow starts on and Back returns to; set by [discover]. */
+    /** The first screen's method, the one the tenant lists first; Back from another method's screen returns to it. */
     private var primaryMethod: LoginOption = LoginOption.EmailOtp
 
-    /** Whether the server also offers a phone, so the first screen can offer to switch to it. */
-    private var isPhoneOffered = false
+    /** The methods this flow can draw, in the tenant's order. The first is [primaryMethod]; the rest are its buttons. */
+    private var methods: List<LoginOption> = emptyList()
 
     /** The country the phone number was last submitted with, so every way back to its screen shows it again. */
     private var typedCountry: Country? = null
+
+    /** It keeps counting while the user is elsewhere, so the password screen shows the wait of the code screen. */
+    private val cooldown = CodeCooldown(timeSource)
 
     fun send(event: LoginIntent) {
         val current = _loginState.value
@@ -87,14 +101,12 @@ internal class LoginFlowViewModel(
             is LoginIntent.SubmitIdentifier ->
                 if (current is LoginState.CollectOtpIdentifier && current.method == event.method) {
                     typedCountry = event.country
-                    launchStep { sendCode(event.method, event.value, isResend = false) }
+                    launchStep { submitIdentifier(event.method, event.value) }
                 }
 
-            // A tap on a button that was just replaced, or one while a code is sent, is not a switch.
+            // A tap on a button that was just replaced, or one while a request is on its way, is not a switch.
             is LoginIntent.SwitchMethod ->
-                if (current is LoginState.CollectOtpIdentifier && !current.isSubmitting &&
-                    event.method == current.otherMethod
-                ) {
+                if (current is LoginState.CollectOtpIdentifier && current.canSwitchTo(event.method)) {
                     _loginState.value = identifierStep(event.method)
                 }
 
@@ -102,28 +114,46 @@ internal class LoginFlowViewModel(
                 launchStep { verify(current.method, current.identifier, event.code) }
             }
 
-            LoginIntent.Resend -> if (current is LoginState.CollectOtpCode && !current.isCountingDown) {
-                launchStep { sendCode(current.method, current.identifier, isResend = true) }
+            is LoginIntent.SubmitPassword -> if (current is LoginState.CollectPassword) {
+                launchStep { verifyPassword(current.method, current.identifier, event.password) }
             }
+
+            LoginIntent.Resend ->
+                if (current is LoginState.CollectOtpCode && current.canResend) {
+                    launchStep { resend(current) }
+                }
+
+            LoginIntent.UsePassword ->
+                if (current is LoginState.CollectOtpCode && current.canOpenPassword) {
+                    launchStep { usePassword(current) }
+                }
+
+            LoginIntent.SendCode ->
+                if (current is LoginState.CollectPassword && current.canAskForCode) {
+                    launchStep { sendCodeInstead(current) }
+                }
 
             LoginIntent.Retry -> if (current is LoginState.Failed) launchStep { retry(current) }
 
             // Its own event, not Back: a second tap on the screen still sliding out must not leave the login.
             LoginIntent.LeaveMfa -> if (current is LoginState.Mfa) leaveMfa(current)
 
-            // An app that doesn't take over leaves the user on MFA's own "not available" screen.
-            is LoginIntent.MfaErrorAnswered ->
-                if (current is LoginState.AwaitingApp && event.handling == MfaErrorHandling.NotHandled) {
-                    _loginState.value = LoginState.Mfa(current.engine, current.identifier, current.method)
-                }
+            is LoginIntent.MfaErrorAnswered -> answerMfaError(current, event.handling)
+        }
+    }
+
+    /** An app that doesn't take over leaves the user on MFA's own "not available" screen. */
+    private fun answerMfaError(current: LoginState, handling: MfaErrorHandling) {
+        if (current is LoginState.AwaitingApp && handling == MfaErrorHandling.NotHandled) {
+            _loginState.value = LoginState.Mfa(current.engine, current.identifier, current.method)
         }
     }
 
     /**
-     * Code entry goes back to the screen the identifier was typed on, and a secondary method's screen back to the
-     * primary one; MFA decides its own Back (true); anywhere else leaves (false). Once MFA has ended, its error screen
-     * is all that is left of it, so Back leaves it, as its "Start over" does. So does Back while waiting for the app:
-     * the user doesn't wait for an app that never answers.
+     * Code or password entry goes back to the screen the identifier was typed on, and a secondary method's screen back
+     * to the first one; MFA decides its own Back (true); anywhere else leaves (false). Once MFA has ended, its error
+     * screen is all that is left of it, so Back leaves it, as its "Start over" does. So does Back while waiting for the
+     * app: the user doesn't wait for an app that never answers.
      */
     fun goBack(): Boolean {
         val current = _loginState.value
@@ -132,12 +162,16 @@ internal class LoginFlowViewModel(
             return true
         }
         if (current is LoginState.AwaitingApp) {
-            _loginState.value = identifierStep(current.method, current.identifier)
+            _loginState.value = firstScreen(current.method, current.identifier)
             return true
         }
         // Stay put until the request in flight answers, rather than dropping it halfway.
         if (current.isBusy) return true
         if (current is LoginState.CollectOtpCode) {
+            _loginState.value = identifierStep(current.method, current.identifier)
+            return true
+        }
+        if (current is LoginState.CollectPassword) {
             _loginState.value = identifierStep(current.method, current.identifier)
             return true
         }
@@ -153,9 +187,9 @@ internal class LoginFlowViewModel(
         _loginState.value = LoginState.Loading
         repository.discover()
             .onSuccess { options ->
-                // Email ranks above phone, whatever order the server lists them in.
-                val primary = FIRST_FACTORS.firstOrNull { it in options }
-                isPhoneOffered = LoginOption.PhoneOtp in options
+                // The tenant's order: the first it lists is the first screen, the rest are its buttons.
+                methods = options.filter { it in FIRST_FACTORS }.distinct()
+                val primary = methods.firstOrNull()
                 if (primary != null) primaryMethod = primary
                 _loginState.value = if (primary != null) identifierStep(primary) else LoginState.NoMethodsAvailable
             }
@@ -163,55 +197,142 @@ internal class LoginFlowViewModel(
     }
 
     /**
-     * Each code sent restarts the resend countdown. A failure here, including no code going out,
-     * is one for good: Try again returns to the identifier entry with what was typed kept.
+     * Tells the server who is signing in, then follows what it lists first: a code is sent at once, or the password is
+     * asked for. The other, when offered, is the alternative on that screen.
      */
-    private suspend fun sendCode(method: LoginOption, identifier: String, isResend: Boolean) {
-        _loginState.value = if (isResend) {
-            LoginState.CollectOtpCode(identifier, method, isResending = true)
-        } else {
-            identifierStep(method, identifier, isSubmitting = true)
+    private suspend fun submitIdentifier(method: LoginOption, identifier: String) {
+        _loginState.value = identifierStep(method, identifier, isSubmitting = true)
+        repository.identify(method, identifier)
+            .onSuccess { offer -> follow(offer, method, identifier) }
+            .onError { failure -> requestFailed(failure, method, identifier) }
+    }
+
+    private suspend fun follow(offer: List<LoginOption>, method: LoginOption, identifier: String) {
+        when (offer.firstOrNull()) {
+            // Nothing to send and nothing to ask for.
+            null -> requestFailed(LoginFailure(EmbeddedLoginError.CodeNotSent(method)), method, identifier)
+
+            LoginOption.Password -> _loginState.value = passwordStep(method, identifier, canSendCode = method in offer)
+
+            else -> sendCode(method, identifier, canUsePassword = LoginOption.Password in offer)
         }
-        repository.startOtp(method, identifier)
-            .onSuccess {
-                _loginState.value =
-                    LoginState.CollectOtpCode(identifier, method, resendSecondsLeft = RESEND_COOLDOWN_SECONDS)
-                startResendCountdown()
-            }
-            .onError { failure ->
-                _loginState.value = failed(failure, retryTo = identifierStep(method, identifier))
-            }
     }
 
     /**
-     * A wrong or expired code stays on code entry with the error under the field.
-     * After a failure for good, Try again returns to code entry only if the session survived, else to the identifier
-     * entry.
-     * A second factor hands over to the MFA flow, which carries on with the same session.
+     * Sends a code to someone the sign-in already knows, and goes to code entry, which offers the password when
+     * [canUsePassword]. Each code sent restarts the resend countdown. A failure here, including no code going out, is
+     * one for good: Try again returns to the identifier entry with what was typed kept.
+     */
+    private suspend fun sendCode(method: LoginOption, identifier: String, canUsePassword: Boolean) {
+        repository.startOtp(method, identifier)
+            .onSuccess { sentTo ->
+                cooldown.start(method, identifier)
+                _loginState.value = LoginState.CollectOtpCode(
+                    identifier = identifier,
+                    method = method,
+                    resendSecondsLeft = cooldown.secondsLeft(method, identifier),
+                    canUsePassword = canUsePassword,
+                    sentTo = sentTo,
+                )
+                startResendCountdown()
+            }
+            .onError { failure -> requestFailed(failure, method, identifier) }
+    }
+
+    /** Resend: a new code to the same person. The password stays on offer when it was. */
+    private suspend fun resend(current: LoginState.CollectOtpCode) {
+        _loginState.value = current.copy(error = null, isResending = true)
+        sendCode(current.method, current.identifier, current.canUsePassword)
+    }
+
+    /** "Email me a code" on the password screen; the code screen that follows offers the password again. */
+    private suspend fun sendCodeInstead(current: LoginState.CollectPassword) {
+        _loginState.value = current.copy(error = null, isSendingCode = true)
+        sendCode(current.method, current.identifier, canUsePassword = true)
+    }
+
+    /**
+     * "Continue with a password" on the code screen: the server is asked again who this is, on a new session, so the
+     * password is asked for on one that still offers it. The code that was sent goes with the old one.
+     */
+    private suspend fun usePassword(current: LoginState.CollectOtpCode) {
+        val (method, identifier) = current.method to current.identifier
+        _loginState.value = current.copy(error = null, isOpeningPassword = true)
+        repository.identify(method, identifier)
+            .onSuccess { offer ->
+                if (LoginOption.Password in offer) {
+                    _loginState.value = passwordStep(method, identifier, canSendCode = method in offer)
+                } else {
+                    requestFailed(LoginFailure(EmbeddedLoginError.PasswordNotAvailable), method, identifier)
+                }
+            }
+            .onError { failure -> requestFailed(failure, method, identifier) }
+    }
+
+    /**
+     * The failure of a request made from the screen on show: a rate limit stays there, since that screen works again
+     * once the wait is over; what the user can fix by typing again is shown under the identifier's field; anything else
+     * is the full-screen error, whose Try again returns to the identifier entry with what was typed kept.
+     */
+    private fun requestFailed(failure: LoginFailure, method: LoginOption, identifier: String) {
+        val error = failure.error
+        _loginState.value = when {
+            error.isRateLimit -> _loginState.value.settled(error)
+            error.isFixedOnIdentifier -> identifierStep(method, identifier, error = error)
+            else -> failed(failure, retryTo = identifierStep(method, identifier))
+        }
+    }
+
+    /**
+     * A wrong, expired or no longer valid code stays on code entry with the error under the field. Any other failure is
+     * the full-screen error, and Try again returns to code entry: if the server ended the sign-in, the next Verify says
+     * so and Resend is open. A second factor hands over to the MFA flow, which carries on with the same session.
      */
     private suspend fun verify(method: LoginOption, identifier: String, code: String) {
         updateCodeStep { copy(error = null, isSubmitting = true) }
         repository.verifyOtp(code)
             .onSuccess { credentials -> signedIn(credentials) }
             .onError { failure ->
-                when (val error = failure.error) {
-                    is EmbeddedLoginError.MfaRequired -> startMfa(method, identifier, error.factors)
+                when (val problem = failure.error) {
+                    is EmbeddedLoginError.MfaRequired -> startMfa(method, identifier, problem.factors)
 
-                    EmbeddedLoginError.InvalidCode ->
-                        updateCodeStep { copy(error = failure.error, isSubmitting = false) }
+                    EmbeddedLoginError.InvalidCode -> updateCodeStep { copy(error = problem, isSubmitting = false) }
 
                     // That code can't be used any more, so a new one can be asked for at once.
-                    EmbeddedLoginError.CodeExpired ->
-                        updateCodeStep { copy(error = failure.error, isSubmitting = false, resendSecondsLeft = 0) }
+                    EmbeddedLoginError.CodeExpired, EmbeddedLoginError.CodeNoLongerValid -> {
+                        cooldown.end(method, identifier)
+                        updateCodeStep { copy(error = problem, isSubmitting = false, resendSecondsLeft = 0) }
+                    }
 
-                    else -> _loginState.value = failed(
-                        failure,
-                        retryTo = if (failure.canRetryStep) {
-                            LoginState.CollectOtpCode(identifier, method)
-                        } else {
-                            identifierStep(method, identifier)
-                        },
-                    )
+                    else -> if (problem.isRateLimit) {
+                        updateCodeStep { copy(error = problem, isSubmitting = false) }
+                    } else {
+                        _loginState.value = failed(failure, retryTo = _loginState.value.settled(null))
+                    }
+                }
+            }
+    }
+
+    /**
+     * A wrong password, or too many tries, stays on password entry with the error under the field. Any other failure
+     * is the full-screen error, and Try again returns to password entry. A second factor hands over to the MFA flow.
+     */
+    private suspend fun verifyPassword(method: LoginOption, identifier: String, password: String) {
+        updatePasswordStep { copy(error = null, isSubmitting = true) }
+        repository.verifyPassword(method, identifier, password)
+            .onSuccess { credentials -> signedIn(credentials) }
+            .onError { failure ->
+                when (val problem = failure.error) {
+                    is EmbeddedLoginError.MfaRequired -> startMfa(method, identifier, problem.factors)
+
+                    // The sign-in opened again no longer has a password: as from the code screen, back to the identifier.
+                    EmbeddedLoginError.PasswordNotAvailable -> requestFailed(failure, method, identifier)
+
+                    else -> if (problem is EmbeddedLoginError.InvalidPassword || problem.isRateLimit) {
+                        updatePasswordStep { copy(error = problem, isSubmitting = false) }
+                    } else {
+                        _loginState.value = failed(failure, retryTo = _loginState.value.settled(null))
+                    }
                 }
             }
     }
@@ -235,12 +356,12 @@ internal class LoginFlowViewModel(
         engine.start()
     }
 
-    /** Back to the identifier entry with what was typed kept; the next code opens a new session. */
+    /** Back to the first screen: the code or password is spent, so the first factor starts again. */
     private fun leaveMfa(mfa: LoginState.Mfa) {
         mfa.engine.stop()
         // An ending already recorded (an error screen being left) stays what it was.
         if (_mfaResult.value == null) finishMfa(MfaResult.Ended(MfaError.Cancelled()))
-        _loginState.value = identifierStep(mfa.method, mfa.identifier)
+        _loginState.value = firstScreen(mfa.method, mfa.identifier)
     }
 
     private fun endMfa(method: LoginOption, identifier: String, effect: MfaEffect) {
@@ -249,10 +370,10 @@ internal class LoginFlowViewModel(
                 finishMfa(MfaResult.SignedIn)
                 viewModelScope.launch { signedIn(effect.credentials) }
             }
-            // What was typed is kept; the next code opens a new session.
+            // The first screen, with what was typed kept when it is the same method.
             MfaEffect.Restart -> {
                 finishMfa(MfaResult.Ended(MfaError.Cancelled()))
-                _loginState.value = identifierStep(method, identifier)
+                _loginState.value = firstScreen(method, identifier)
             }
             // Its error screen stays on show until the user starts over. The engine already logged the failure, once.
             is MfaEffect.Failed -> finishMfa(MfaResult.Ended(effect.error))
@@ -286,16 +407,38 @@ internal class LoginFlowViewModel(
         _events.send(LoginEvent.Authenticated(credentials))
     }
 
-    /** Counts the resend wait down a second at a time; it stops at zero, or once code entry is left. */
+    /**
+     * Redraws the wait once a second, whichever screen is on show, until it is over. Each redraw reads the clock, so a
+     * tick the system held back (the device asleep) is made up for on the next one.
+     */
     private fun startResendCountdown() {
         resendCountdownJob?.cancel()
         resendCountdownJob = viewModelScope.launch {
-            while (_loginState.value.isCountingDown) {
+            while (cooldown.isRunning) {
                 delay(ONE_SECOND_MILLIS)
-                updateCodeStep { copy(resendSecondsLeft = (resendSecondsLeft - 1).coerceAtLeast(0)) }
+                _loginState.value = _loginState.value.withCurrentWait()
             }
         }
     }
+
+    /** The wait as it stands now, on the code or password screen of the person it is for; any other step is unchanged. */
+    private fun LoginState.withCurrentWait(): LoginState = when (this) {
+        is LoginState.CollectOtpCode -> copy(resendSecondsLeft = cooldown.secondsLeft(method, identifier))
+        is LoginState.CollectPassword -> copy(resendSecondsLeft = cooldown.secondsLeft(method, identifier))
+        else -> this
+    }
+
+    /** The password screen for [identifier], with the wait before a code may be asked for them. */
+    private fun passwordStep(
+        method: LoginOption,
+        identifier: String,
+        canSendCode: Boolean,
+    ) = LoginState.CollectPassword(
+        identifier = identifier,
+        method = method,
+        canSendCode = canSendCode,
+        resendSecondsLeft = cooldown.secondsLeft(method, identifier),
+    )
 
     /** Changes code entry in place, so its countdown carries on; does nothing once that step is left. */
     private inline fun updateCodeStep(change: LoginState.CollectOtpCode.() -> LoginState.CollectOtpCode) {
@@ -303,15 +446,37 @@ internal class LoginFlowViewModel(
         _loginState.value = current.change()
     }
 
-    /** The identifier screen for [method]; the way to the phone is offered on the primary screen only, as designed. */
-    private fun identifierStep(method: LoginOption, value: String = "", isSubmitting: Boolean = false) =
-        LoginState.CollectOtpIdentifier(
+    /** Changes password entry in place; does nothing once that step is left. */
+    private inline fun updatePasswordStep(change: LoginState.CollectPassword.() -> LoginState.CollectPassword) {
+        val current = _loginState.value as? LoginState.CollectPassword ?: return
+        _loginState.value = current.change()
+    }
+
+    /**
+     * The identifier screen for [method]; the other methods are offered on the first screen only, as designed, and a
+     * method opened from there is its own screen ([LoginState.CollectOtpIdentifier.isFirst] is false).
+     */
+    private fun identifierStep(
+        method: LoginOption,
+        value: String = "",
+        isSubmitting: Boolean = false,
+        error: EmbeddedLoginError? = null,
+    ): LoginState.CollectOtpIdentifier {
+        val isFirst = method == primaryMethod
+        return LoginState.CollectOtpIdentifier(
             method = method,
             value = value,
-            otherMethod = LoginOption.PhoneOtp.takeIf { isPhoneOffered && method == primaryMethod && method != it },
+            otherMethods = if (isFirst) methods.filter { it != method } else emptyList(),
             isSubmitting = isSubmitting,
             country = typedCountry.takeIf { method == LoginOption.PhoneOtp && value.isNotEmpty() },
+            error = error,
+            isFirst = isFirst,
         )
+    }
+
+    /** The first screen, pre-filled with what was typed when it asks for the same [method]. */
+    private fun firstScreen(method: LoginOption, identifier: String) =
+        identifierStep(primaryMethod, value = if (method == primaryMethod) identifier else "")
 
     /** The full-screen error. Logged once here, with its cause, so a failure in a live app can be traced. */
     private fun failed(failure: LoginFailure, retryTo: LoginState?): LoginState {
@@ -321,7 +486,8 @@ internal class LoginFlowViewModel(
 
     private suspend fun retry(failed: LoginState.Failed) {
         val target = failed.retryTo
-        if (target != null) _loginState.value = target else discover()
+        // A screen kept for Try again shows the wait as it stands now, not as it stood when it was left.
+        if (target != null) _loginState.value = target.withCurrentWait() else discover()
     }
 
     /** Runs one step at a time; a second tap while one is in flight is dropped. */
@@ -332,22 +498,21 @@ internal class LoginFlowViewModel(
 
     private companion object {
         const val TAG = "LoginFlowViewModel"
-        const val RESEND_COOLDOWN_SECONDS = 60
         const val ONE_SECOND_MILLIS = 1_000L
 
-        /** The first factors these screens can draw, most phishing-resistant first; the first offered is primary. */
-        val FIRST_FACTORS = listOf(LoginOption.EmailOtp, LoginOption.PhoneOtp)
+        /** The ways in these screens can draw; whichever the tenant lists first is the first screen. */
+        val FIRST_FACTORS = setOf(LoginOption.EmailOtp, LoginOption.PhoneOtp, LoginOption.Username)
 
-        /** Resend is still waiting out its cooldown. */
-        val LoginState.isCountingDown: Boolean
-            get() = this is LoginState.CollectOtpCode && resendSecondsLeft > 0
+        /** The server wants the user to wait; the screen they are on works again once it is over. */
+        val EmbeddedLoginError.isRateLimit: Boolean
+            get() = this == EmbeddedLoginError.TooManyWrongCodes ||
+                this == EmbeddedLoginError.TooManyAttempts ||
+                this == EmbeddedLoginError.TooManyLogins
 
-        /** A request for this screen is in flight. */
-        val LoginState.isBusy: Boolean
-            get() = when (this) {
-                is LoginState.CollectOtpIdentifier -> isSubmitting
-                is LoginState.CollectOtpCode -> isSubmitting || isResending
-                else -> false
-            }
+        /** What the user can fix on the identifier screen, so it shows there rather than on the error screen. */
+        val EmbeddedLoginError.isFixedOnIdentifier: Boolean
+            get() = this is EmbeddedLoginError.CodeNotSent ||
+                this == EmbeddedLoginError.PasswordNotAvailable ||
+                this is EmbeddedLoginError.InvalidPassword
     }
 }

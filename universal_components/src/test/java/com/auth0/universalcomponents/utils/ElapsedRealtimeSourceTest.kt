@@ -1,4 +1,4 @@
-package com.auth0.universalcomponents.feature.mfachallenge.presentation
+package com.auth0.universalcomponents.utils
 
 import android.os.SystemClock
 import com.google.common.truth.Truth.assertThat
