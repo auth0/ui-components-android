@@ -130,8 +130,10 @@
     <string name="embedded_login_send_code_phone">Text me a code</string>
     <!-- "Email me a code in 42s": the button of a code that was just sent counts down, as Resend does. -->
     <string name="embedded_login_code_available_in">%1$s in %2$ds</string>
-    <!-- What a screen reader says for Edit; %1$s is the label of the row, in lower case (email, phone number, username). -->
-    <string name="embedded_login_edit_identifier">Edit %1$s</string>
+    <!-- What a screen reader says for Edit on the row that names who is signing in: one string per way, so a language can word each. -->
+    <string name="embedded_login_edit_email">Edit email</string>
+    <string name="embedded_login_edit_phone">Edit phone number</string>
+    <string name="embedded_login_edit_username">Edit username</string>
     <string name="embedded_login_code_title">Enter the 6-digit code</string>
     <string name="embedded_login_code_from">From %1$s</string>
     <string name="embedded_login_code_edit">Edit</string>
@@ -187,8 +189,9 @@
     <string name="auth0_mfa_push_challenge_resend_cooldown">Resend in %1$d sec…</string>
     <string name="auth0_mfa_push_challenge_verify_another_way">Verify another way</string>
     <string name="auth0_mfa_phone_challenge_title">Enter the 6-digit code</string>
-    <string name="auth0_mfa_phone_challenge_description">Sent to the phone number ending in %1$s</string>
-    <string name="auth0_mfa_phone_challenge_description_voice">Calling your phone number ending in %1$s</string>
+    <!-- %1$s of the two "ending in" words is the last digits the server shows (up to four), not the masked number. -->
+    <string name="auth0_mfa_phone_challenge_description_ending_in">Sent to the phone number ending in %1$s</string>
+    <string name="auth0_mfa_phone_challenge_description_voice_ending_in">Calling your phone number ending in %1$s</string>
     <string name="auth0_mfa_phone_challenge_description_hidden">We texted a code to your phone.</string>
     <string name="auth0_mfa_phone_challenge_description_voice_hidden">We’re calling your phone with a code.</string>
     <string name="auth0_mfa_phone_challenge_code_label">One-Time Passcode</string>
