@@ -134,20 +134,20 @@ class MfaMessagesTest {
         assertThat(words.codeLabel).isEqualTo(default(R.string.auth0_mfa_phone_challenge_code_label))
         // The server hides a number with X (or *); only the digits it shows are named, and as the end of the number.
         assertThat(words.description("XXXXXXXXX0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_ending_in, "0128"))
         assertThat(words.descriptionVoice("XXXXXXXXX0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice_ending_in, "0128"))
         // The server may show fewer than four: they are all named.
         assertThat(words.description("(4**)***-*900"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "900"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_ending_in, "900"))
         assertThat(words.description("+1 (XXX) XXX-0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_ending_in, "0128"))
         // Whatever the server uses to hide a digit counts as hidden.
         assertThat(words.description("∗＊X●0128"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description, "0128"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_ending_in, "0128"))
         // A number typed in full is named by its last four.
         assertThat(words.descriptionVoice("+14155550123"))
-            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice, "0123"))
+            .isEqualTo(default(R.string.auth0_mfa_phone_challenge_description_voice_ending_in, "0123"))
         // The list row names the way the code comes, as the design does; an app can add the number itself.
         assertThat(words.rowText("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_text))
         assertThat(words.rowVoice("***9239")).isEqualTo(default(R.string.auth0_mfa_phone_challenge_row_voice))

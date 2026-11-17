@@ -45,11 +45,13 @@ private const val EYE_DISABLED_ALPHA = 0.4f
 
 /**
  * Collects the password of whoever was entered on the screen before: [identifier], shown in a read-only row under
- * [identifierLabel] with Edit to go back. [onContinue] receives the password exactly as typed, never trimmed, and the
- * field is emptied at once, whatever the answer, so a rejected password can't be sent again by a second tap and none is
- * left on screen. It is hidden again when a request starts and the moment the app is paused (the recent-apps preview is
- * taken before the screen stops), and focused again once a rejection came back. While it is readable, the Activity's
- * window is kept out of screenshots, screen recordings and that preview ([MfaSecureWindow]); hidden, it needs none.
+ * [identifierLabel] with Edit to go back, which a screen reader calls [editDescription]. [password] is what is typed,
+ * held by the caller ([onPasswordChange]) so a rotation keeps it, and never saved. [onContinue] receives the
+ * password exactly as typed, never trimmed, and the field is emptied at once, whatever the answer, so a rejected
+ * password can't be sent again by a second tap and none is left on screen. It is hidden again when a request starts and
+ * the moment the app is paused (the recent-apps preview is taken before the screen stops), and focused again once a
+ * rejection came back. While it is readable, the Activity's window is kept out of screenshots, screen recordings and
+ * that preview ([MfaSecureWindow]); hidden, it needs none.
  *
  * [errorMessage] comes from the server and hides once the user types again. With [onSendCode], Continue sits under the
  * field, then "OR" and a button for a code, which counts down while [sendCodeSecondsLeft] is above zero; without it,
@@ -59,7 +61,10 @@ private const val EYE_DISABLED_ALPHA = 0.4f
 @Composable
 internal fun LoginPasswordScreen(
     onContinue: (String) -> Unit,
+    password: String,
+    onPasswordChange: (String) -> Unit,
     identifierLabel: String,
+    editDescription: String,
     identifier: String,
     modifier: Modifier = Modifier,
     title: String = stringResource(R.string.embedded_login_password_title),
@@ -74,8 +79,6 @@ internal fun LoginPasswordScreen(
 ) {
     val colors = Auth0Theme.colors
     val isBusy = isLoading || isSendingCode
-    // Not saved: a secret is not kept across a rotation or a restart.
-    var password by remember { mutableStateOf("") }
     var isShown by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val hiddenText = remember { PasswordVisualTransformation() }
@@ -98,7 +101,7 @@ internal fun LoginPasswordScreen(
         // Done on the keyboard bypasses the button's guards.
         if (!isBusy && password.isNotEmpty()) {
             onContinue(password)
-            password = ""
+            onPasswordChange("")
         }
     }
     val showPassword = stringResource(R.string.embedded_login_show_password)
@@ -111,6 +114,7 @@ internal fun LoginPasswordScreen(
         content = {
             LoginIdentifierRow(
                 label = identifierLabel,
+                editDescription = editDescription,
                 value = identifier,
                 isEditEnabled = !isBusy,
                 onEdit = onEdit,
@@ -122,7 +126,7 @@ internal fun LoginPasswordScreen(
                 // Not turned off while busy: a disabled field loses focus. What is typed meanwhile is ignored.
                 onValueChange = {
                     if (!isBusy) {
-                        password = it
+                        onPasswordChange(it)
                         serverError.dismiss()
                     }
                 },

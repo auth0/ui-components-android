@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.auth0.android.result.Credentials
@@ -46,6 +47,12 @@ internal class LoginFlowViewModel(
 
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Loading)
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
+
+    /**
+     * What is typed on the password screen. Here so a rotation doesn't lose it, as on iOS, and only in memory: it is never
+     * in the saved state, so it goes with the process. Emptied at every Continue, and once that screen is left.
+     */
+    internal val typedPassword = mutableStateOf("")
 
     private val _events = Channel<LoginEvent>(Channel.BUFFERED)
 

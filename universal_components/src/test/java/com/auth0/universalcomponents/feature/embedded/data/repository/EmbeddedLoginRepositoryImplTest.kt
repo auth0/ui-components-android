@@ -915,19 +915,42 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
-    fun `sessions - a refused reopen - is reopened on the next try`() = runTest {
-        every { client.identify(EMAIL, IdentifierType.EMAIL) } returnsMany listOf(
-            failingWith(EmbeddedAuthError.Network),
-            step(challengeEmail(at = 0)),
-        )
+    fun `sessions - an identify that got no answer - is tried again on a new session, as the server may have it`() =
+        runTest {
+            every { client.identify(EMAIL, IdentifierType.EMAIL) } returnsMany listOf(
+                failingWith(EmbeddedAuthError.Network),
+                step(challengeEmail(at = 0)),
+            )
+            repository.discover()
+
+            assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL).failure().error)
+                .isEqualTo(EmbeddedLoginError.Network)
+            assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(null))
+
+            verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+            verify(exactly = 2) { client.identify(EMAIL, IdentifierType.EMAIL) }
+        }
+
+    @Test
+    fun `sessions - an identify that got no answer, then another identifier - opens a new session for it`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns failingWith(EmbeddedAuthError.Network)
+        every { client.identify(OTHER_EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 0))
+        repository.discover()
+        repository.identify(LoginOption.EmailOtp, EMAIL)
+
+        assertThat(repository.identify(LoginOption.EmailOtp, OTHER_EMAIL)).isInstanceOf(Result.Success::class.java)
+
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+    }
+
+    @Test
+    fun `sessions - the one discovery opened - is used for the first identify, without opening another`() = runTest {
+        every { client.identify(EMAIL, IdentifierType.EMAIL) } returns step(challengeEmail(at = 0))
         repository.discover()
 
-        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL).failure().error)
-            .isEqualTo(EmbeddedLoginError.Network)
-        assertThat(repository.startOtp(LoginOption.EmailOtp, EMAIL)).isEqualTo(Result.Success(null))
+        repository.identify(LoginOption.EmailOtp, EMAIL)
 
         verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
-        verify(exactly = 2) { client.identify(EMAIL, IdentifierType.EMAIL) }
     }
 
     @Test
@@ -1125,6 +1148,26 @@ class EmbeddedLoginRepositoryImplTest {
 
             assertThat(failure.error).isEqualTo(EmbeddedLoginError.InvalidPassword(LoginOption.Username))
             verify(exactly = 1) { client.verifyPassword(PASSWORD) }
+        }
+
+    @Test
+    fun `verifyPassword - after a sign-in with no password - the next try opens a new one, and asks the password there`() =
+        runTest {
+            every { client.identify(USERNAME, IdentifierType.USERNAME) } returnsMany
+                listOf(step(NextAction.VerifyPassword), step(UNSUPPORTED), step(NextAction.VerifyPassword))
+            every { client.verifyPassword(PASSWORD) } returns
+                failingWith(EmbeddedAuthError.TooManyAttempts, statusCode = 429)
+            repository.discover()
+            repository.identify(LoginOption.Username, USERNAME)
+            repository.verifyPassword(LoginOption.Username, USERNAME, PASSWORD)
+            repository.verifyPassword(LoginOption.Username, USERNAME, PASSWORD)
+
+            val failure = repository.verifyPassword(LoginOption.Username, USERNAME, PASSWORD).failure()
+
+            // Not the generic error a password sent to a session that never offered one ends on.
+            assertThat(failure.error).isEqualTo(EmbeddedLoginError.TooManyAttempts)
+            verify(exactly = 3) { client.identify(USERNAME, IdentifierType.USERNAME) }
+            verify(exactly = 2) { client.verifyPassword(PASSWORD) }
         }
 
     @Test

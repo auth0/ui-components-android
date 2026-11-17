@@ -130,11 +130,13 @@ private fun MfaMessages.PhoneChallenge.resolve(resources: Resources): ResolvedMf
         title = word(title, R.string.auth0_mfa_phone_challenge_title),
         description = description ?: { number ->
             // The end of the number, not all of it: a server that hides every digit leaves nothing to name.
-            number.endingDigits()?.let { resources.getString(R.string.auth0_mfa_phone_challenge_description, it) }
+            number.endingDigits()
+                ?.let { resources.getString(R.string.auth0_mfa_phone_challenge_description_ending_in, it) }
                 ?: resources.getString(R.string.auth0_mfa_phone_challenge_description_hidden)
         },
         descriptionVoice = descriptionVoice ?: { number ->
-            number.endingDigits()?.let { resources.getString(R.string.auth0_mfa_phone_challenge_description_voice, it) }
+            number.endingDigits()
+                ?.let { resources.getString(R.string.auth0_mfa_phone_challenge_description_voice_ending_in, it) }
                 ?: resources.getString(R.string.auth0_mfa_phone_challenge_description_voice_hidden)
         },
         codeLabel = word(codeLabel, R.string.auth0_mfa_phone_challenge_code_label),

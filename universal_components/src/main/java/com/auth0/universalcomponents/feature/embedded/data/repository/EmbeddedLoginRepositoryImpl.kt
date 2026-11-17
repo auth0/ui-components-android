@@ -56,7 +56,10 @@ internal class EmbeddedLoginRepositoryImpl(
         /** Nothing to continue: the next identifier opens a sign-in. */
         data object Closed : Loop
 
-        /** Alive with nobody identified yet (discovery just opened it), or a re-open that stopped before that. */
+        /**
+         * Alive with nobody identified yet: discovery just opened it (no identity). With an identity, a re-open whose
+         * identify got no answer; the server may have it all the same, so only the one from discovery is ever reused.
+         */
         data class Opened(override val identity: Identity?) : Loop
 
         /** The server has the identifier and has said everything it offers. */
@@ -151,7 +154,10 @@ internal class EmbeddedLoginRepositoryImpl(
     private suspend fun submit(identity: Identity): LoginFailure? {
         val identifierType = identity.method.identifierType
             ?: return LoginFailure(EmbeddedLoginError.Unknown("Cannot identify with ${identity.method}"))
-        if (loop !is Loop.Opened) {
+        // An identify that got no answer (a dropped connection, a timeout) may still have reached the server, which would
+        // then refuse a second one on the same session as a bad request, and blame the identifier. So only the session
+        // discovery opened is reused; any other starts over.
+        if (loop != Loop.Opened(null)) {
             val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
             if (opened is StepAnswer.Failed) return opened.recorded()
         }
@@ -293,6 +299,9 @@ internal class EmbeddedLoginRepositoryImpl(
             submit(identity)?.let { return@withLock Result.Error(it) }
             // What the server answers to the new sign-in may no longer include a password.
             if (lastNextActions.none { it is NextAction.VerifyPassword }) {
+                // Nothing here to ask a password of: the next try opens a new sign-in, rather than send one to a session
+                // that never offered it and end on the generic error.
+                loop = Loop.Ended(identity)
                 return@withLock Result.Error(LoginFailure(passwordGone(method)))
             }
         }

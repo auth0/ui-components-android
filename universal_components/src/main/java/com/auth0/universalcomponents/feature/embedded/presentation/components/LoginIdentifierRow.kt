@@ -31,19 +31,19 @@ private val EDIT_TARGET = 48.dp
 
 /**
  * Who is signing in, shaped like the field it was typed in but read-only: the email, number or username from the screen
- * before, under the label that field had, with "Edit" at the end to go back and change it. A null [onEdit] hides Edit,
- * and Edit is off while [isEditEnabled] is false.
+ * before, under the label that field had, with "Edit" at the end to go back and change it, which a screen reader calls
+ * [editDescription]. A null [onEdit] hides Edit, and Edit is off while [isEditEnabled] is false.
  */
 @Composable
 internal fun LoginIdentifierRow(
     label: String,
+    editDescription: String,
     value: String,
     isEditEnabled: Boolean,
     onEdit: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val colors = Auth0Theme.colors
-    val editDescription = stringResource(R.string.embedded_login_edit_identifier, label.lowercase())
     Column(modifier = modifier.fillMaxWidth()) {
         LoginFieldLabel(label)
         Row(

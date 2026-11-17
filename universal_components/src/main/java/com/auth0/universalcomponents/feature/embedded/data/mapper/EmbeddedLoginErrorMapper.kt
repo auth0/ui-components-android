@@ -26,6 +26,9 @@ internal fun EmbeddedAuthException.toLoginFailure(): LoginFailure {
         EmbeddedAuthError.TooManyLogins -> EmbeddedLoginError.TooManyLogins
         EmbeddedAuthError.IpBlocked -> EmbeddedLoginError.IpBlocked
         EmbeddedAuthError.ConsentRequired -> EmbeddedLoginError.ConsentRequired
+        // A wrong password is not here: the SDK answers it as "not finished yet" (`insufficient_authorization`) with the
+        // reason INVALID_IDENTIFIER_OR_PASSWORD, never as an error. The repository reads that reason, and names it for
+        // what the user typed (an email, a username), which this mapper does not know.
         EmbeddedAuthError.PasswordLeaked -> EmbeddedLoginError.PasswordLeaked
         EmbeddedAuthError.NoNextSteps -> EmbeddedLoginError.NoNextSteps
         // The SDK's own text for these is developer advice ("Call authorize() first"), never for the user.

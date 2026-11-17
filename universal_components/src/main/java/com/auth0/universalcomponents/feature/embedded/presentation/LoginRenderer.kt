@@ -1,6 +1,8 @@
 package com.auth0.universalcomponents.feature.embedded.presentation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
@@ -22,11 +24,12 @@ import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 
-/** What a screen needs from the host, without knowing about the ViewModel. */
+/** What a screen needs from the host, without knowing about the ViewModel. [typedPassword] outlives a rotation. */
 internal class RenderContext(
     val dispatch: (LoginIntent) -> Unit,
     val back: () -> Unit,
     val mfa: MfaConfiguration = MfaConfiguration(),
+    val typedPassword: MutableState<String> = mutableStateOf(""),
 )
 
 /** The screen for a step, with the data it shows. */
@@ -217,10 +220,13 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
 
         is ScreenPlan.Password -> LoginPasswordScreen(
             identifierLabel = stringResource(plan.method.fieldLabel),
+            editDescription = stringResource(plan.method.editDescription),
             identifier = plan.identifier,
             isLoading = plan.isSubmitting,
             isSendingCode = plan.isSendingCode,
             errorMessage = plan.error?.text(plan.method),
+            password = context.typedPassword.value,
+            onPasswordChange = { context.typedPassword.value = it },
             onContinue = { context.dispatch(LoginIntent.SubmitPassword(it)) },
             onEdit = context.back,
             onSendCode = if (plan.canSendCode) {
@@ -315,6 +321,14 @@ internal val LoginOption.fieldLabel: Int
         LoginOption.PhoneOtp -> R.string.phone_number_label
         LoginOption.Username -> R.string.embedded_login_username_label
         else -> R.string.embedded_login_email_label
+    }
+
+/** What a screen reader says for Edit on that row: its own words for each method, not the label made lower case. */
+internal val LoginOption.editDescription: Int
+    get() = when (this) {
+        LoginOption.PhoneOtp -> R.string.embedded_login_edit_phone
+        LoginOption.Username -> R.string.embedded_login_edit_username
+        else -> R.string.embedded_login_edit_email
     }
 
 /** The password screen's way to a code, for an email or a number the server offers both for. */

@@ -63,7 +63,12 @@ internal fun LoginRenderingHost(
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
     BackHandler(onBack = onBack)
 
-    val context = remember(viewModel, mfa) { RenderContext(dispatch = viewModel::send, back = onBack, mfa = mfa) }
+    val context = remember(viewModel, mfa) {
+        RenderContext(dispatch = viewModel::send, back = onBack, mfa = mfa, typedPassword = viewModel.typedPassword)
+    }
+    // The typed password goes with its screen. A rotation draws the same screen again, so it keeps it.
+    val isOnPassword = step is LoginState.CollectPassword
+    LaunchedEffect(isOnPassword) { if (!isOnPassword) viewModel.typedPassword.value = "" }
 
     // The new recovery code is a live secret, so the window is kept out of screenshots while it is on show. Here and not
     // in MfaHost, so a headless app, which draws no MfaHost, is covered too.
