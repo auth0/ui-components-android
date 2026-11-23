@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.isSpecified
 
 /**
  * Data class representing the Auth0 color scheme with semantic and Material3 bridge colors.
@@ -59,7 +60,27 @@ data class Auth0Color(
     val textOnSuccess: Color,
     /** Color for text and icons placed on top of an error background, ensuring readable contrast. */
     val textOnError: Color,
+
+    // Foreground
+    //
+    // Added after the first release. [Color.Unspecified], the default, means "the built-in color for the current light
+    // or dark mode", which [Auth0Theme] fills in, so a color set written before these existed still gets the right one.
+
+    /** Color of the "Sign up" and "Log in" links under the entry field of embedded login. */
+    val foregroundLinkPrimary: Color = Color.Unspecified,
+    /** A confirmation drawn over a surface, such as the check on the "signed in" screen. */
+    val foregroundSuccess: Color = Color.Unspecified,
 ) {
+
+    /**
+     * This color set with the built-in [defaults] in place of every foreground color left [Color.Unspecified]. Colors set
+     * to a value are kept.
+     */
+    internal fun withDefaultsFrom(defaults: Auth0Color): Auth0Color = copy(
+        foregroundLinkPrimary = if (foregroundLinkPrimary.isSpecified) foregroundLinkPrimary else defaults.foregroundLinkPrimary,
+        foregroundSuccess = if (foregroundSuccess.isSpecified) foregroundSuccess else defaults.foregroundSuccess,
+    )
+
     companion object {
         /**
          * Create a light theme color scheme.
@@ -91,6 +112,9 @@ data class Auth0Color(
             textOnPrimary = Color(0xFFF0F0F0),
             textOnSuccess = Color(0xFF6EE7B7),
             textOnError = Color(0xFF5D251D),
+            // Foreground colors
+            foregroundLinkPrimary = Color(0xFF9921FE),
+            foregroundSuccess = Color(0xFF218C4D),
         )
 
         /**
@@ -123,6 +147,9 @@ data class Auth0Color(
             textOnPrimary = Color(0xFF18181B),
             textOnSuccess = Color(0xFFA7F3D0),
             textOnError = Color(0xFFFFCFC5),
+            // Foreground colors
+            foregroundLinkPrimary = Color(0xFFB570FF),
+            foregroundSuccess = Color(0xFF34D399),
         )
     }
 }
