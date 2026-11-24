@@ -28,6 +28,7 @@ import com.auth0.universalcomponents.feature.embedded.EmbeddedEntryParts
 import com.auth0.universalcomponents.feature.embedded.LocalEmbeddedEntry
 import com.auth0.universalcomponents.feature.embedded.resolve
 import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.tintOr
 
 /**
  * The first screen of embedded login: the logo, the [title], the [form] (the field and Continue) and, when there are
@@ -64,7 +65,7 @@ internal fun EmbeddedEntryScaffold(
     }
 }
 
-/** The theme's logo at the theme's height, however wide it is, in the text color unless the brand says otherwise. */
+/** The theme's logo at the theme's height, however wide it is, tinted as [tintOr] says. */
 @Composable
 private fun BrandLogo() {
     val brand = Auth0Theme.brand
@@ -80,7 +81,7 @@ private fun BrandLogo() {
         painter = painter,
         contentDescription = brand.logoDescription,
         modifier = Modifier.height(Auth0Theme.sizes.logoHeight).then(shape),
-        tint = brand.logoTint ?: Auth0Theme.colors.textBold,
+        tint = brand.tintOr(Auth0Theme.colors.textBold),
     )
 }
 

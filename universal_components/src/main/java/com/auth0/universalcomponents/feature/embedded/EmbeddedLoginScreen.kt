@@ -43,7 +43,7 @@ fun EmbeddedLoginScreen(
     onMfaError: (MfaError) -> MfaErrorHandling = { MfaErrorHandling.NotHandled },
     mfa: MfaConfiguration = MfaConfiguration(),
     preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
-    entry: EmbeddedEntryConfiguration = EmbeddedEntryConfiguration(),
+    entry: EmbeddedEntryConfiguration = EmbeddedEntryConfiguration.Default,
 ) {
     Auth0Theme(configuration = themeConfiguration) {
         // Remembered so a recomposition doesn't build an SDK client that's never used.

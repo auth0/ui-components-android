@@ -2,7 +2,7 @@ package com.auth0.universalcomponents.feature.embedded
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.compositionLocalOf
 import com.auth0.universalcomponents.feature.embedded.presentation.components.StackedEntry
 
 /**
@@ -21,7 +21,7 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.St
  * )
  * ```
  *
- * To change the logo everywhere at once, set it in the theme instead (`Auth0ThemeConfiguration.brand`).
+ * To change the logo of every entry screen at once, set it in the theme instead (`Auth0ThemeConfiguration.brand`).
  *
  * @property logo Which logo the entry screen shows.
  * @property layout Where the parts of the screen go.
@@ -32,7 +32,13 @@ class EmbeddedEntryConfiguration @JvmOverloads constructor(
     val logo: EmbeddedEntryLogo = EmbeddedEntryLogo.Theme,
     val layout: EmbeddedEntryLayout = EmbeddedEntryLayout.Centered,
     val messages: EmbeddedEntryMessages = EmbeddedEntryMessages(),
-)
+) {
+    companion object {
+
+        /** Every part left to its default. One shared instance, so a screen that passes it never looks changed. */
+        val Default = EmbeddedEntryConfiguration()
+    }
+}
 
 /** Which logo the entry screen shows. */
 sealed interface EmbeddedEntryLogo {
@@ -82,6 +88,9 @@ class EmbeddedEntryParts internal constructor(
  * ```
  *
  * The layout is given at least the height of the screen, so a `Column` with `Arrangement.Center` centres its content.
+ *
+ * The screen scrolls, so the layout is measured with no limit on its height. Don't put a vertical lazy list, such as
+ * `LazyColumn`, in it: Compose throws when one is measured inside a vertically scrolling parent.
  */
 class EmbeddedEntryLayout(val content: @Composable (EmbeddedEntryParts) -> Unit) {
 
@@ -98,15 +107,23 @@ class EmbeddedEntryLayout(val content: @Composable (EmbeddedEntryParts) -> Unit)
 /**
  * The words of the entry screen. One left unset keeps its default.
  *
- * @property loginTitle The title above the field. Null keeps the way's own, such as "Enter your email to get started".
+ * @property loginTitle The title above the field. Null or blank keeps the way's own, such as "Enter your email to
+ * get started", so a title can never be an empty heading.
  */
 @Immutable
 class EmbeddedEntryMessages @JvmOverloads constructor(
     val loginTitle: String? = null,
 )
 
-/** What the entry screen is configured with, for the screens below [EmbeddedLoginScreen]. */
-internal val LocalEmbeddedEntry = staticCompositionLocalOf { EmbeddedEntryConfiguration() }
+/**
+ * What the entry screen is configured with, for the screens below [EmbeddedLoginScreen]. Not a static local: a new
+ * value then refreshes the screens that read it, and not everything below [EmbeddedLoginScreen].
+ */
+internal val LocalEmbeddedEntry = compositionLocalOf { EmbeddedEntryConfiguration.Default }
+
+/** The title to show: the app's [EmbeddedEntryMessages.loginTitle], or [default] when it set none (or only blanks). */
+internal fun EmbeddedEntryMessages.titleOr(default: String): String =
+    loginTitle?.takeUnless { it.isBlank() } ?: default
 
 /** The logo to draw: the one the theme has when [Theme][EmbeddedEntryLogo.Theme], the app's own, or none. */
 internal fun EmbeddedEntryLogo.resolve(theme: @Composable () -> Unit): (@Composable () -> Unit)? = when (this) {

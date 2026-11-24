@@ -321,18 +321,25 @@ fun MFASettingsScreen() {
 fun LoginScreen(
     credentialsManager: CredentialsManager,
     onSignedIn: () -> Unit,
+    onSaveFailed: () -> Unit,
     onBack: () -> Unit
 ) {
     EmbeddedLoginScreen(
         connection = "Username-Password-Authentication",
         onAuthenticated = { credentials ->
-            credentialsManager.saveCredentials(credentials)
-            onSignedIn()
+            try {
+                credentialsManager.saveCredentials(credentials)
+                onSignedIn()
+            } catch (e: CredentialsManagerException) {
+                onSaveFailed()
+            }
         },
         onExit = onBack
     )
 }
 ```
+
+Saving can fail, and the library doesn't catch what `onAuthenticated` throws, so handle it there, as above.
 
 On code or password entry, Back returns to the entry it came from, and a method opened from the first screen returns to the first screen; during MFA, Back works as described below. Anywhere else, Back calls `onExit`. To style the screens, pass `themeConfiguration` as you would to the other components (see [Theme Customization](#theme-customization)).
 
@@ -360,7 +367,7 @@ EmbeddedLoginScreen(
 
 A part you leave out keeps its default.
 
-**The logo comes from the theme.** Out of the box the entry screen shows the Auth0 logo. To show yours on every screen that has a logo, set it once in the theme's brand, together with the description a screen reader reads:
+**The logo comes from the theme.** Out of the box the entry screen shows the Auth0 logo. To show yours on the entry screens, set it once in the theme's brand, together with the description a screen reader reads:
 
 ```kotlin
 EmbeddedLoginScreen(
@@ -371,7 +378,7 @@ EmbeddedLoginScreen(
 )
 ```
 
-A logo is drawn in the text color, so it reads in dark mode too. Pass `logoTint = Color.Unspecified` to keep its own colors. `EmbeddedEntryLogo.Custom { … }` replaces the logo on one screen, and `EmbeddedEntryLogo.Hidden` takes it off.
+Your logo is drawn as it is, so use a vector or bitmap drawable. To tint it, pass `logoTint`. `EmbeddedEntryLogo.Custom { … }` replaces the logo on one screen, and `EmbeddedEntryLogo.Hidden` takes it off.
 
 To place the pieces yourself, give a layout. It gets each piece as a composable, or `null` when there is none (no logo, or no other methods):
 
@@ -612,6 +619,8 @@ Box {
 - `stream.result` is `MfaResult.SignedIn` or `MfaResult.Ended(error)` when MFA ends, and goes back to `null` when the next MFA starts.
 - On the recovery code step, the login still sets `FLAG_SECURE` on the Activity's window while `RecoveryCodeChallengeModel.newCode` is not null, so your own screen is kept out of screenshots too.
 - The login still draws its own background, navigation bar and Back. Only the MFA steps are yours. Every control is an action on a model, and on the error step `leave()` returns to the first screen.
+
+Adding `onMfaError`, `mfa`, `preference` or `entry`, and the new properties of `Auth0Color`, `Auth0Sizes` and `Auth0ThemeConfiguration`, is source-compatible. Your app must be recompiled against this version.
 
 ### Flow Behaviour
 

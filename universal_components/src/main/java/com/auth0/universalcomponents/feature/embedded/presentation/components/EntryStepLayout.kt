@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.auth0.universalcomponents.feature.embedded.LocalEmbeddedEntry
+import com.auth0.universalcomponents.feature.embedded.titleOr
 import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
 import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
 import com.auth0.universalcomponents.theme.Auth0Theme
@@ -29,7 +30,7 @@ internal fun EntryStepLayout(
 ) {
     if (isEntry) {
         EmbeddedEntryScaffold(
-            title = LocalEmbeddedEntry.current.messages.loginTitle ?: title,
+            title = LocalEmbeddedEntry.current.messages.titleOr(title),
             modifier = modifier,
             form = {
                 Column(modifier = Modifier.fillMaxWidth()) {

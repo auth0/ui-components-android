@@ -46,4 +46,31 @@ class EmbeddedEntryConfigurationTest {
     fun `the two ready-made layouts - are two different layouts`() {
         assertThat(EmbeddedEntryLayout.Centered).isNotSameInstanceAs(EmbeddedEntryLayout.Top)
     }
+
+    @Test
+    fun `the shared default - leaves every part to its default`() {
+        val entry = EmbeddedEntryConfiguration.Default
+
+        assertThat(entry.logo).isEqualTo(EmbeddedEntryLogo.Theme)
+        assertThat(entry.layout).isSameInstanceAs(EmbeddedEntryLayout.Centered)
+        assertThat(entry.messages.loginTitle).isNull()
+    }
+
+    @Test
+    fun `a title the app set - is the one shown`() {
+        val messages = EmbeddedEntryMessages(loginTitle = "Welcome back")
+
+        assertThat(messages.titleOr("Enter your email")).isEqualTo("Welcome back")
+    }
+
+    @Test
+    fun `no title - the way's own is shown`() {
+        assertThat(EmbeddedEntryMessages().titleOr("Enter your email")).isEqualTo("Enter your email")
+    }
+
+    @Test
+    fun `a blank title - counts as none, so the heading is never empty`() {
+        assertThat(EmbeddedEntryMessages(loginTitle = "").titleOr("Enter your email")).isEqualTo("Enter your email")
+        assertThat(EmbeddedEntryMessages(loginTitle = "   ").titleOr("Enter your email")).isEqualTo("Enter your email")
+    }
 }
