@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -21,6 +22,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -67,9 +70,12 @@ internal fun FlowErrorScreen(
     )
 }
 
+/** An icon above a status title, and the color to draw it in. */
+internal class StatusIcon(val imageVector: ImageVector, val tint: Color)
+
 /**
- * A title and optional description with an optional button right below, centred together on the screen.
- * It scrolls when it doesn't fit, as in landscape with large text.
+ * A title and optional description with an optional button right below, centred together on the screen, and an optional
+ * [icon] above the title. It scrolls when it doesn't fit, as in landscape with large text.
  */
 @Composable
 internal fun FlowStatusScreen(
@@ -78,6 +84,7 @@ internal fun FlowStatusScreen(
     description: String? = null,
     actionTitle: String? = null,
     onAction: (() -> Unit)? = null,
+    icon: StatusIcon? = null,
 ) {
     val colors = Auth0Theme.colors
     val typography = Auth0Theme.typography
@@ -91,6 +98,15 @@ internal fun FlowStatusScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
         ) {
+            if (icon != null) {
+                // Decorative: the title says the same, so a screen reader skips it.
+                Icon(
+                    imageVector = icon.imageVector,
+                    contentDescription = null,
+                    modifier = Modifier.size(Auth0Theme.sizes.statusIcon),
+                    tint = icon.tint,
+                )
+            }
             Text(
                 text = title,
                 style = typography.titleLarge.copy(fontWeight = FontWeight.Normal),
