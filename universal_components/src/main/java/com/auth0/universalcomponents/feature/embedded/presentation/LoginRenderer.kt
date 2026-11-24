@@ -170,6 +170,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
                     errorMessage = error,
                     otherMethods = plan.otherMethods,
                     onChooseMethod = choose,
+                    isEntry = plan.isFirst,
                     onContinue = { number, country ->
                         context.dispatch(LoginIntent.SubmitIdentifier(plan.method, number, country))
                     },
@@ -181,6 +182,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
                     errorMessage = error,
                     otherMethods = plan.otherMethods,
                     onChooseMethod = choose,
+                    isEntry = plan.isFirst,
                     onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(plan.method, it)) },
                 )
 
@@ -190,6 +192,7 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
                     errorMessage = error,
                     otherMethods = plan.otherMethods,
                     onChooseMethod = choose,
+                    isEntry = plan.isFirst,
                     onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(plan.method, it)) },
                 )
             }

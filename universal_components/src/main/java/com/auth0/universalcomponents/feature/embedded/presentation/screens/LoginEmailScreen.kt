@@ -9,14 +9,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
 import com.auth0.universalcomponents.feature.embedded.presentation.components.rememberDismissibleError
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
-import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
-import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
 
 /** Lenient on purpose; the server has the final say. */
 private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
@@ -25,7 +24,7 @@ private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
  * Collects the email the code or password is for. [onContinue] receives the trimmed email once it looks valid.
  * [errorMessage] comes from the server, hides once the user edits the field, and comes back when the server reports
  * again. Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue, as designed; they
- * are off while [isLoading].
+ * are off while [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title.
  */
 @Composable
 internal fun LoginEmailScreen(
@@ -37,6 +36,7 @@ internal fun LoginEmailScreen(
     errorMessage: String? = null,
     otherMethods: List<LoginOption> = emptyList(),
     onChooseMethod: (LoginOption) -> Unit = {},
+    isEntry: Boolean = false,
 ) {
     var value by rememberSaveable { mutableStateOf(email) }
     var isInvalidEmail by rememberSaveable { mutableStateOf(false) }
@@ -55,10 +55,11 @@ internal fun LoginEmailScreen(
         }
     }
 
-    FlowStepLayout(
+    EntryStepLayout(
+        isEntry = isEntry,
+        title = title,
         modifier = modifier,
-        pageDescription = { FlowScreenHeader(title = title) },
-        content = {
+        field = {
             LoginFieldLabel(stringResource(R.string.embedded_login_email_label))
             LoginInputField(
                 value = value,
@@ -73,7 +74,7 @@ internal fun LoginEmailScreen(
             )
             activeError?.let { LoginInlineError(it) }
         },
-        primaryAction = {
+        continueButton = {
             FlowPrimaryButton(
                 title = stringResource(R.string.embedded_login_continue),
                 onClick = submit,
@@ -81,12 +82,10 @@ internal fun LoginEmailScreen(
                 enabled = value.isNotBlank() && !isLoading,
             )
         },
-        secondaryAction = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
+        alternatives = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
             {
                 LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading)
             }
         },
-        // Next to Continue, as in the design with a second method; alone, Continue stays at the bottom.
-        pinActionsToBottom = otherMethods.isEmpty(),
     )
 }

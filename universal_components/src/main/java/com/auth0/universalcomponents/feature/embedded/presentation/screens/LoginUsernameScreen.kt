@@ -10,21 +10,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
 import com.auth0.universalcomponents.feature.embedded.presentation.components.rememberDismissibleError
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
-import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
-import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
 
 /**
  * Collects the username whose password is asked for next. A username has no format to check, so Continue turns on once
  * something is typed, and [onContinue] receives it trimmed. [errorMessage] comes from the server (for example, no
  * password step for this username), hides once the user edits the field, and comes back when the server reports again.
  * Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue; they are off while
- * [isLoading].
+ * [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title.
  */
 @Composable
 internal fun LoginUsernameScreen(
@@ -36,6 +35,7 @@ internal fun LoginUsernameScreen(
     errorMessage: String? = null,
     otherMethods: List<LoginOption> = emptyList(),
     onChooseMethod: (LoginOption) -> Unit = {},
+    isEntry: Boolean = false,
 ) {
     var value by rememberSaveable { mutableStateOf(username) }
     val serverError = rememberDismissibleError(errorMessage)
@@ -46,10 +46,11 @@ internal fun LoginUsernameScreen(
         if (!isLoading && trimmed.isNotEmpty()) onContinue(trimmed)
     }
 
-    FlowStepLayout(
+    EntryStepLayout(
+        isEntry = isEntry,
+        title = title,
         modifier = modifier,
-        pageDescription = { FlowScreenHeader(title = title) },
-        content = {
+        field = {
             LoginFieldLabel(stringResource(R.string.embedded_login_username_label))
             LoginInputField(
                 value = value,
@@ -64,7 +65,7 @@ internal fun LoginUsernameScreen(
             )
             activeError?.let { LoginInlineError(it) }
         },
-        primaryAction = {
+        continueButton = {
             FlowPrimaryButton(
                 title = stringResource(R.string.embedded_login_continue),
                 onClick = submit,
@@ -72,12 +73,10 @@ internal fun LoginUsernameScreen(
                 enabled = value.isNotBlank() && !isLoading,
             )
         },
-        secondaryAction = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
+        alternatives = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
             {
                 LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading)
             }
         },
-        // Next to Continue, as in the design with other methods; alone, Continue stays at the bottom.
-        pinActionsToBottom = otherMethods.isEmpty(),
     )
 }

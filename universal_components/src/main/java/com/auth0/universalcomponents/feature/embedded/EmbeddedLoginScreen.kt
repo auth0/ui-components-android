@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,6 +29,9 @@ import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
  *
  * [preference] chooses which way leads when the tenant offers both a code and a password for an email address; by
  * default, the order the server lists them in. Changing it starts the sign-in again.
+ *
+ * [entry] customizes the first screen: its logo, layout and title. To change the logo for every screen that shows one,
+ * set it in [themeConfiguration] instead (`Auth0ThemeConfiguration.brand`).
  */
 @Composable
 fun EmbeddedLoginScreen(
@@ -39,6 +43,7 @@ fun EmbeddedLoginScreen(
     onMfaError: (MfaError) -> MfaErrorHandling = { MfaErrorHandling.NotHandled },
     mfa: MfaConfiguration = MfaConfiguration(),
     preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
+    entry: EmbeddedEntryConfiguration = EmbeddedEntryConfiguration(),
 ) {
     Auth0Theme(configuration = themeConfiguration) {
         // Remembered so a recomposition doesn't build an SDK client that's never used.
@@ -49,13 +54,15 @@ fun EmbeddedLoginScreen(
             key = "embedded-login:$connection:$preference",
             factory = factory,
         )
-        LoginRenderingHost(
-            viewModel = loginViewModel,
-            onAuthenticated = onAuthenticated,
-            onExit = onExit,
-            modifier = modifier,
-            onMfaError = onMfaError,
-            mfa = mfa,
-        )
+        CompositionLocalProvider(LocalEmbeddedEntry provides entry) {
+            LoginRenderingHost(
+                viewModel = loginViewModel,
+                onAuthenticated = onAuthenticated,
+                onExit = onExit,
+                modifier = modifier,
+                onMfaError = onMfaError,
+                mfa = mfa,
+            )
+        }
     }
 }

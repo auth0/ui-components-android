@@ -23,14 +23,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.sp
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInlineError
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginInputField
 import com.auth0.universalcomponents.feature.embedded.presentation.components.rememberDismissibleError
 import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
-import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
-import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.CountrySelectorSheet
 import com.auth0.universalcomponents.presentation.ui.mfa.phone.forIso
@@ -59,7 +58,7 @@ private fun deviceCountry(): Country =
  * one it was typed with, so Edit and Try again keep what was typed. With no [country], the field starts on the device's.
  * [errorMessage] comes from the server, hides once the user edits the number, and comes back when the server reports
  * again. Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue; they are off
- * while [isLoading].
+ * while [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title.
  */
 @Composable
 internal fun LoginPhoneScreen(
@@ -72,6 +71,7 @@ internal fun LoginPhoneScreen(
     errorMessage: String? = null,
     otherMethods: List<LoginOption> = emptyList(),
     onChooseMethod: (LoginOption) -> Unit = {},
+    isEntry: Boolean = false,
 ) {
     // The countries are a fixed list, so a position survives a rotation where a Country could not.
     val (initialCountry, initialNumber) = remember {
@@ -101,10 +101,11 @@ internal fun LoginPhoneScreen(
         }
     }
 
-    FlowStepLayout(
+    EntryStepLayout(
+        isEntry = isEntry,
+        title = title,
         modifier = modifier,
-        pageDescription = { FlowScreenHeader(title = title) },
-        content = {
+        field = {
             LoginFieldLabel(stringResource(R.string.phone_number_label))
             LoginInputField(
                 value = number,
@@ -122,7 +123,7 @@ internal fun LoginPhoneScreen(
             )
             activeError?.let { LoginInlineError(it) }
         },
-        primaryAction = {
+        continueButton = {
             FlowPrimaryButton(
                 title = stringResource(R.string.embedded_login_continue),
                 onClick = submit,
@@ -130,13 +131,11 @@ internal fun LoginPhoneScreen(
                 enabled = number.isNotBlank() && !isLoading,
             )
         },
-        secondaryAction = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
+        alternatives = otherMethods.takeIf { it.isNotEmpty() }?.let { others ->
             {
                 LoginAlternativeMethods(methods = others, onChoose = onChooseMethod, enabled = !isLoading)
             }
         },
-        // Next to Continue, as in the design with other methods; alone, Continue stays at the bottom.
-        pinActionsToBottom = otherMethods.isEmpty(),
     )
 
     if (isPickingCountry) {
