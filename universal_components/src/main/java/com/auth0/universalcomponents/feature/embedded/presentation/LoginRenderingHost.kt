@@ -52,7 +52,8 @@ internal fun LoginRenderingHost(
     val currentOnMfaError by rememberUpdatedState(onMfaError)
 
     LaunchedEffect(viewModel) { viewModel.send(LoginIntent.Start) }
-    ObserveAsEvents(viewModel.events) { event ->
+    // Keyed on the ViewModel: a new sign-in (another connection, preference or sign-up setting) has events of its own.
+    ObserveAsEvents(viewModel.events, key1 = viewModel) { event ->
         when (event) {
             is LoginEvent.Authenticated -> currentOnAuthenticated(event.credentials)
             is LoginEvent.MfaFailed -> viewModel.send(LoginIntent.MfaErrorAnswered(currentOnMfaError(event.error)))

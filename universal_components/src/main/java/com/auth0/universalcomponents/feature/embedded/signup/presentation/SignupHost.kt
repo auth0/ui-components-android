@@ -50,7 +50,8 @@ internal fun SignupHost(
     val currentOnExit by rememberUpdatedState(onExit)
 
     LaunchedEffect(viewModel) { viewModel.send(SignupIntent.Start) }
-    ObserveAsEvents(viewModel.effects) { effect ->
+    // Keyed on the ViewModel: a new sign-up (another connection) has effects of its own.
+    ObserveAsEvents(viewModel.effects, key1 = viewModel) { effect ->
         when (effect) {
             is SignupEffect.Authenticated -> currentOnAuthenticated(effect.credentials)
             SignupEffect.Exit -> currentOnExit()
