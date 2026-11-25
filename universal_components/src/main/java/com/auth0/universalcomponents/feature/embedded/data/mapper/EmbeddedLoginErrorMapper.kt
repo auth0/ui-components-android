@@ -41,7 +41,7 @@ internal fun EmbeddedAuthException.toLoginFailure(): LoginFailure {
 }
 
 /** HTTP 5xx: the server failed, not the request. */
-private val SERVER_ERROR_STATUS = 500..599
+internal val SERVER_ERROR_STATUS = 500..599
 
 /** A failed step in the login flow's terms. */
 internal val StepAnswer.Failed.failure: LoginFailure

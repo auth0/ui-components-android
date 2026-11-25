@@ -36,6 +36,7 @@ internal sealed interface LoginState {
         val country: Country? = null,
         val error: EmbeddedLoginError? = null,
         val isFirst: Boolean = true,
+        val canSignUp: Boolean = false,
     ) : LoginState
 
     /**

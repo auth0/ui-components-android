@@ -310,7 +310,7 @@ fun MFASettingsScreen() {
 
 ## Embedded Login
 
-> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.2` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP, and optionally Phone (SMS) OTP with a phone provider, a password or a username on the connection you pass in.
+> **Note:** Embedded Login is in beta and requires **Auth0.Android `5.0.0-beta.3` or later**, a pre-release that replaces the earlier Auth0.Android 3.x dependency. Your tenant must have Embedded Login enabled for your application, with Email OTP, and optionally Phone (SMS) OTP with a phone provider, a password or a username on the connection you pass in.
 
 ### Display the Embedded Login Screen
 
@@ -345,7 +345,7 @@ On code or password entry, Back returns to the entry it came from, and a method 
 
 ### Customize the Entry Screen
 
-The first screen of `EmbeddedLoginScreen` is built from pieces you can set: a logo, a title, the field with Continue, and the other ways to continue. Set them with `entry`:
+The first screen of `EmbeddedLoginScreen` and `EmbeddedSignupScreen` is built from pieces you can set: a logo, a title, the field with Continue, the link to the other flow ("Sign up" or "Log in"), and the other ways to continue. Set them with `entry`:
 
 ```kotlin
 EmbeddedLoginScreen(
@@ -360,12 +360,12 @@ EmbeddedLoginScreen(
                 modifier = Modifier.height(48.dp)
             )
         },
-        messages = EmbeddedEntryMessages(loginTitle = "Welcome to Acme")
+        messages = EmbeddedEntryMessages(loginOrSignUpTitle = "Welcome to Acme", signUpAction = "Join")
     )
 )
 ```
 
-A part you leave out keeps its default.
+A part you leave out keeps its default. `EmbeddedEntryMessages` also takes `loginTitle`, for a login that doesn't offer sign-up, and the other words of the two links; each default is a string resource named `embedded_entry_*`, so you can override it by declaring a string with the same name.
 
 **The logo comes from the theme.** Out of the box the entry screen shows the Auth0 logo. To show yours on the entry screens, set it once in the theme's brand, together with the description a screen reader reads:
 
@@ -378,9 +378,9 @@ EmbeddedLoginScreen(
 )
 ```
 
-Your logo is drawn as it is, so use a vector or bitmap drawable. To tint it, pass `logoTint`. `EmbeddedEntryLogo.Custom { … }` replaces the logo on one screen, and `EmbeddedEntryLogo.Hidden` takes it off.
+Your logo is drawn as it is, so use a vector or bitmap drawable. To tint it, pass `logoTint`. `EmbeddedEntryLogo.Custom { … }` replaces the logo on one screen, and `EmbeddedEntryLogo.Hidden` takes it off. The color of the "Sign up" and "Log in" links is the theme's `foregroundLinkPrimary`; set it for one screen with `EmbeddedEntryConfiguration(linkColor = …)`.
 
-To place the pieces yourself, give a layout. It gets each piece as a composable, or `null` when there is none (no logo, or no other methods):
+To place the pieces yourself, give a layout. It gets each piece as a composable, or `null` when there is none (no logo, no sign-up link, or no other methods):
 
 ```kotlin
 val layout = EmbeddedEntryLayout { parts ->
@@ -391,6 +391,7 @@ val layout = EmbeddedEntryLayout { parts ->
         parts.logo?.invoke()           // at the start, instead of centered above the title
         parts.title()
         parts.form()                   // the field and Continue stay together
+        parts.accountLink?.invoke()
         parts.alternatives?.invoke()
     }
 }
@@ -399,6 +400,42 @@ EmbeddedLoginScreen(…, entry = EmbeddedEntryConfiguration(layout = layout))
 ```
 
 `EmbeddedEntryLayout.Centered` (the default) puts the block in the middle of the screen, and `EmbeddedEntryLayout.Top` starts it at the top.
+
+To keep the login to signing in, pass `signup = EmbeddedLoginSignup.Hidden`: the first screen then has no sign-up link, and the login tells the server nothing about sign-up.
+
+### Sign up with an Email
+
+`EmbeddedSignupScreen` creates a new account: the user enters their email, confirms it with a one-time code, and the account is created. It signs up with the `Auth0` account you passed to `Auth0UniversalComponents.initialize(...)`, and hands the credentials to `onAuthenticated` once, as `EmbeddedLoginScreen` does:
+
+```kotlin
+@Composable
+fun CreateAccountScreen(
+    credentialsManager: CredentialsManager,
+    onSignedIn: () -> Unit,
+    onSaveFailed: () -> Unit,
+    onBack: () -> Unit
+) {
+    EmbeddedSignupScreen(
+        connection = "Username-Password-Authentication",
+        onAuthenticated = { credentials ->
+            try {
+                credentialsManager.saveCredentials(credentials)
+                onSignedIn()
+            } catch (e: CredentialsManagerException) {
+                onSaveFailed()
+            }
+        },
+        onExit = onBack
+    )
+}
+```
+
+- `EmbeddedLoginScreen` already links to this flow when the tenant offers sign-up, so a button of your own is only needed to start sign-up from somewhere else. The link opens sign-up in the same screen, with the same theme and `entry`, and "Log in" or Back returns to the login as it was.
+- The server decides what it asks for. A connection that requires something this screen can't ask for yet, such as a phone number or two identifiers, shows "Sign-up isn't available".
+- If the email already has an account, the server signs that user in, and `onAuthenticated` is called the same way.
+- A wrong code stays on the code screen. Too many wrong codes, or too many codes requested, end the sign-up with **Start over**.
+- Back from the code screen returns to the email, which keeps what was typed. **Resend Code** opens after 60 seconds.
+- If the connection drops while the account is created, **Try again** creates it without asking for the code again.
 
 ### Sign in with a Phone Number
 
@@ -620,7 +657,7 @@ Box {
 - On the recovery code step, the login still sets `FLAG_SECURE` on the Activity's window while `RecoveryCodeChallengeModel.newCode` is not null, so your own screen is kept out of screenshots too.
 - The login still draws its own background, navigation bar and Back. Only the MFA steps are yours. Every control is an action on a model, and on the error step `leave()` returns to the first screen.
 
-Adding `onMfaError`, `mfa`, `preference` or `entry`, and the new properties of `Auth0Color`, `Auth0Sizes` and `Auth0ThemeConfiguration`, is source-compatible. Your app must be recompiled against this version.
+Adding `onMfaError`, `mfa`, `preference`, `entry` or `signup`, and the new properties of `Auth0Color`, `Auth0Sizes` and `Auth0ThemeConfiguration`, is source-compatible. Your app must be recompiled against this version.
 
 ### Flow Behaviour
 

@@ -9,7 +9,18 @@ import com.auth0.android.embedded.authorize.NextAction
  */
 internal sealed interface StepAnswer<out T> {
     data class Done<T>(val value: T) : StepAnswer<T>
-    data class Next(val actions: List<NextAction>, val reason: Reason) : StepAnswer<Nothing>
+
+    /**
+     * [description] is the server's own `error_description`, such as `invalid_email`, which the SDK has no [reason] for.
+     * When the server sent none, it is the SDK's generic sentence, so compare it only with words the server is known to
+     * use, and never show it.
+     */
+    data class Next(
+        val actions: List<NextAction>,
+        val reason: Reason,
+        val description: String = "",
+    ) : StepAnswer<Nothing>
+
     data class Failed(val error: Exception) : StepAnswer<Nothing>
 }
 

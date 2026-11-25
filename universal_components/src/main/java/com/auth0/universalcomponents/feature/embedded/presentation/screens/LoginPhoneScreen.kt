@@ -23,6 +23,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.sp
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryRole
 import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
@@ -58,7 +59,8 @@ private fun deviceCountry(): Country =
  * one it was typed with, so Edit and Try again keep what was typed. With no [country], the field starts on the device's.
  * [errorMessage] comes from the server, hides once the user edits the number, and comes back when the server reports
  * again. Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue; they are off
- * while [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title.
+ * while [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title, and [role]
+ * sets that title and the link to sign-up or log in.
  */
 @Composable
 internal fun LoginPhoneScreen(
@@ -72,6 +74,7 @@ internal fun LoginPhoneScreen(
     otherMethods: List<LoginOption> = emptyList(),
     onChooseMethod: (LoginOption) -> Unit = {},
     isEntry: Boolean = false,
+    role: EntryRole = EntryRole.Login(),
 ) {
     // The countries are a fixed list, so a position survives a rotation where a Country could not.
     val (initialCountry, initialNumber) = remember {
@@ -103,6 +106,8 @@ internal fun LoginPhoneScreen(
 
     EntryStepLayout(
         isEntry = isEntry,
+        role = role,
+        isEnabled = !isLoading,
         title = title,
         modifier = modifier,
         field = {

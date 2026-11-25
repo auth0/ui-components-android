@@ -10,6 +10,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryRole
 import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
@@ -23,7 +24,8 @@ import com.auth0.universalcomponents.presentation.ui.flow.FlowPrimaryButton
  * something is typed, and [onContinue] receives it trimmed. [errorMessage] comes from the server (for example, no
  * password step for this username), hides once the user edits the field, and comes back when the server reports again.
  * Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue; they are off while
- * [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title.
+ * [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title, and [role]
+ * sets that title and the link to sign-up or log in.
  */
 @Composable
 internal fun LoginUsernameScreen(
@@ -36,6 +38,7 @@ internal fun LoginUsernameScreen(
     otherMethods: List<LoginOption> = emptyList(),
     onChooseMethod: (LoginOption) -> Unit = {},
     isEntry: Boolean = false,
+    role: EntryRole = EntryRole.Login(),
 ) {
     var value by rememberSaveable { mutableStateOf(username) }
     val serverError = rememberDismissibleError(errorMessage)
@@ -48,6 +51,8 @@ internal fun LoginUsernameScreen(
 
     EntryStepLayout(
         isEntry = isEntry,
+        role = role,
+        isEnabled = !isLoading,
         title = title,
         modifier = modifier,
         field = {

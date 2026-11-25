@@ -31,8 +31,8 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.theme.tintOr
 
 /**
- * The first screen of embedded login: the logo, the [title], the [form] (the field and Continue) and, when there are
- * other ways to sign in, [alternatives]. The app's [com.auth0.universalcomponents.feature.embedded.EmbeddedEntryLayout]
+ * The first screen of embedded login and of sign-up: the logo, the [title], the [form] (the field and Continue), the
+ * [accountLink] to the other flow when there is one, and, when there are other ways to sign in, [alternatives]. The app's [com.auth0.universalcomponents.feature.embedded.EmbeddedEntryLayout]
  * places these inside the screen's padding. The screen scrolls when it doesn't fit, as in landscape or with large text,
  * and keeps clear of the keyboard.
  */
@@ -41,6 +41,7 @@ internal fun EmbeddedEntryScaffold(
     title: String,
     form: @Composable () -> Unit,
     modifier: Modifier = Modifier,
+    accountLink: (@Composable () -> Unit)? = null,
     alternatives: (@Composable () -> Unit)? = null,
 ) {
     val entry = LocalEmbeddedEntry.current
@@ -48,6 +49,7 @@ internal fun EmbeddedEntryScaffold(
         logo = entry.logo.resolve { BrandLogo() },
         title = { EntryTitle(title) },
         form = form,
+        accountLink = accountLink,
         alternatives = alternatives,
     )
     BoxWithConstraints(modifier = modifier.fillMaxSize().imePadding()) {
@@ -97,8 +99,8 @@ private fun EntryTitle(title: String) {
 }
 
 /**
- * The default layouts: the logo, the title, the form and the other ways, one below the other, in the middle of the
- * screen or at the top.
+ * The default layouts: the logo, the title, the form, the link to the other flow and the other ways, one below the
+ * other, in the middle of the screen or at the top.
  */
 @Composable
 internal fun StackedEntry(parts: EmbeddedEntryParts, isCentered: Boolean) {
@@ -115,6 +117,10 @@ internal fun StackedEntry(parts: EmbeddedEntryParts, isCentered: Boolean) {
         parts.title()
         Spacer(Modifier.height(dimensions.spacingXl))
         parts.form()
+        parts.accountLink?.let { accountLink ->
+            Spacer(Modifier.height(dimensions.spacingMd))
+            accountLink()
+        }
         parts.alternatives?.let { alternatives ->
             Spacer(Modifier.height(dimensions.spacingLg))
             alternatives()

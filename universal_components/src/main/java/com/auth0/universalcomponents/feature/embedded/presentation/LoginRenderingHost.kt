@@ -32,7 +32,8 @@ import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 /**
  * Draws the ViewModel's step, animates screen changes and owns the navigation bar and the one Back handler. During MFA
  * it places [MfaHost] inside its frame (unless the app draws MFA itself, headless). It only draws: moving into and out
- * of MFA is the ViewModel's, so nothing depends on a screen being on show.
+ * of MFA is the ViewModel's, so nothing depends on a screen being on show. [onSignUp], when the app offers sign-up,
+ * opens it from the link on the first screen.
  */
 @Composable
 internal fun LoginRenderingHost(
@@ -42,6 +43,7 @@ internal fun LoginRenderingHost(
     modifier: Modifier = Modifier,
     onMfaError: (MfaError) -> MfaErrorHandling = { MfaErrorHandling.NotHandled },
     mfa: MfaConfiguration = MfaConfiguration(),
+    onSignUp: (() -> Unit)? = null,
 ) {
     val step by viewModel.loginState.collectAsStateWithLifecycle()
     val engine = (step as? LoginState.Mfa)?.engine
@@ -63,8 +65,16 @@ internal fun LoginRenderingHost(
     val onBack: () -> Unit = remember(viewModel) { { if (!viewModel.goBack()) currentOnExit() } }
     BackHandler(onBack = onBack)
 
-    val context = remember(viewModel, mfa) {
-        RenderContext(dispatch = viewModel::send, back = onBack, mfa = mfa, typedPassword = viewModel.typedPassword)
+    val currentOnSignUp by rememberUpdatedState(onSignUp)
+    val offersSignUp = onSignUp != null
+    val context = remember(viewModel, mfa, offersSignUp) {
+        RenderContext(
+            dispatch = viewModel::send,
+            back = onBack,
+            mfa = mfa,
+            typedPassword = viewModel.typedPassword,
+            onSignUp = if (offersSignUp) ({ currentOnSignUp?.invoke() }) else null,
+        )
     }
     // The typed password goes with its screen. A rotation draws the same screen again, so it keeps it.
     val isOnPassword = step is LoginState.CollectPassword

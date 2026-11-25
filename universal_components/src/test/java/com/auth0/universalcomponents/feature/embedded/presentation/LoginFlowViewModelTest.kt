@@ -143,6 +143,70 @@ class LoginFlowViewModelTest {
 
     // endregion
 
+    // region sign-up
+
+    @Test
+    fun `start - the server offers sign-up next to email - the first screen links to it`() = runTest {
+        startWithMethods(LoginOption.EmailOtp, LoginOption.Signup)
+
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(canSignUp = true))
+    }
+
+    @Test
+    fun `start - sign-up not offered - the first screen has no link`() = runTest {
+        startWithMethods(LoginOption.EmailOtp)
+
+        assertThat((viewModel.loginState.value as LoginState.CollectOtpIdentifier).canSignUp).isFalse()
+    }
+
+    @Test
+    fun `start - sign-up offered but no way to sign in - shows no methods, as sign-up has no screen of its own here`() =
+        runTest {
+            startWithMethods(LoginOption.Signup)
+
+            assertThat(viewModel.loginState.value).isEqualTo(LoginState.NoMethodsAvailable)
+        }
+
+    @Test
+    fun `start - sign-up offered - it is not one of the ways to switch to`() = runTest {
+        startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp, LoginOption.Signup)
+
+        assertThat(viewModel.loginState.value).isEqualTo(
+            LoginState.CollectOtpIdentifier(
+                otherMethods = listOf(LoginOption.PhoneOtp),
+                canSignUp = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `switch - to another method with sign-up offered - only the first screen links to it`() = runTest {
+        startWithMethods(LoginOption.EmailOtp, LoginOption.PhoneOtp, LoginOption.Signup)
+
+        viewModel.send(LoginIntent.SwitchMethod(LoginOption.PhoneOtp))
+        assertThat((viewModel.loginState.value as LoginState.CollectOtpIdentifier).canSignUp).isFalse()
+        viewModel.goBack()
+
+        assertThat((viewModel.loginState.value as LoginState.CollectOtpIdentifier).canSignUp).isTrue()
+    }
+
+    @Test
+    fun `try again after the sign-in failed to open - reads the offer again, sign-up included`() = runTest {
+        coEvery { repository.discover() } returnsMany listOf(
+            Result.Error(LoginFailure(EmbeddedLoginError.Network)),
+            Result.Success(listOf(LoginOption.EmailOtp, LoginOption.Signup)),
+        )
+
+        viewModel.send(LoginIntent.Start)
+        advanceUntilIdle()
+        viewModel.send(LoginIntent.Retry)
+        advanceUntilIdle()
+
+        assertThat(viewModel.loginState.value).isEqualTo(LoginState.CollectOtpIdentifier(canSignUp = true))
+    }
+
+    // endregion
+
     // region email
 
     @Test

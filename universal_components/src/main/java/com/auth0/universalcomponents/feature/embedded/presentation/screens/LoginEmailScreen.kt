@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryRole
 import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryStepLayout
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginAlternativeMethods
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginFieldLabel
@@ -24,7 +25,8 @@ private val EMAIL_PATTERN = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
  * Collects the email the code or password is for. [onContinue] receives the trimmed email once it looks valid.
  * [errorMessage] comes from the server, hides once the user edits the field, and comes back when the server reports
  * again. Any [otherMethods] add the "OR" divider and one "Continue with …" button each below Continue, as designed; they
- * are off while [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title.
+ * are off while [isLoading]. On the first screen ([isEntry]) it is the entry screen, with the logo and a centered title, and [role]
+ * sets that title and the link to sign-up or log in.
  */
 @Composable
 internal fun LoginEmailScreen(
@@ -37,6 +39,7 @@ internal fun LoginEmailScreen(
     otherMethods: List<LoginOption> = emptyList(),
     onChooseMethod: (LoginOption) -> Unit = {},
     isEntry: Boolean = false,
+    role: EntryRole = EntryRole.Login(),
 ) {
     var value by rememberSaveable { mutableStateOf(email) }
     var isInvalidEmail by rememberSaveable { mutableStateOf(false) }
@@ -57,6 +60,8 @@ internal fun LoginEmailScreen(
 
     EntryStepLayout(
         isEntry = isEntry,
+        role = role,
+        isEnabled = !isLoading,
         title = title,
         modifier = modifier,
         field = {

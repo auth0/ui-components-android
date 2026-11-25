@@ -172,6 +172,26 @@
     <string name="embedded_login_error_password_leaked">For your security, this password can\'t be used because it appeared in a data breach. Please reset your password and try again.</string>
     <string name="embedded_login_error_password_not_available">A password isn\'t available for this account. Please use a code instead.</string>
     <string name="embedded_login_error_no_next_steps">We couldn\'t continue signing you in with this account. Please try again or use another method.</string>
+    <!-- Embedded sign-up. The words are the iOS SDK's. Words that are the same as the login's are not repeated here. -->
+    <string name="embedded_signup_title">Sign up</string>
+    <string name="embedded_signup_code_sent_to">Sent to %1$s</string>
+    <string name="embedded_signup_start_over">Start over</string>
+    <string name="embedded_signup_unavailable_title">Sign-up isn\'t available</string>
+    <string name="embedded_signup_unavailable_message">This app can\'t create accounts right now.</string>
+    <string name="embedded_signup_error_title">Sign-up couldn\'t be completed.</string>
+    <string name="embedded_signup_error_invalid_code">Invalid code. Please double check your code that was sent to your email.</string>
+    <string name="embedded_signup_error_code_expired">This code has expired. Please start again.</string>
+    <string name="embedded_signup_error_too_many_wrong_codes">Too many incorrect codes. Please start again.</string>
+    <string name="embedded_signup_error_too_many_codes_requested">Too many codes were requested. Please start again later.</string>
+    <string name="embedded_signup_error_denied">We couldn\'t create your account. Please try again later.</string>
+    <string name="embedded_signup_error_ended">We couldn\'t finish creating your account. Please start again.</string>
+    <!-- The entry screen of the login and of sign-up. An app can override any of these by name, or set the words in EmbeddedEntryMessages. -->
+    <string name="embedded_entry_login_or_sign_up_title">Log in or sign up</string>
+    <string name="embedded_entry_sign_up_title">Create your account</string>
+    <string name="embedded_entry_sign_up_prompt">Don’t have an account?</string>
+    <string name="embedded_entry_sign_up_action">Sign up</string>
+    <string name="embedded_entry_log_in_prompt">Already have an account?</string>
+    <string name="embedded_entry_log_in_action">Log in</string>
     <!-- MFA words. Names follow the key paths of MfaMessages (auth0_mfa_<group>_<key>); an app
          overrides a default by declaring a string with the same name. -->
     <string name="auth0_mfa_authenticator_list_headers_challenge_title">Verify it\'s you</string>

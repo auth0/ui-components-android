@@ -107,6 +107,20 @@ class EmbeddedAuthStepsTest {
         verify(exactly = 0) { client.identify(any(), any()) }
     }
 
+    @Test
+    fun `not finished yet - the answer carries the actions, the reason and the server's words`() = runTest {
+        every { client.identify(any(), any()) } returns failingWith(
+            EmbeddedAuthError.InsufficientAuthorization(listOf(NextAction.IdentifyEmail), Reason.NONE),
+            code = "insufficient_authorization",
+            description = "invalid_email",
+        )
+
+        val answer = steps.run { identify(EMAIL, IdentifierType.EMAIL) }
+
+        assertThat(answer)
+            .isEqualTo(StepAnswer.Next(listOf(NextAction.IdentifyEmail), Reason.NONE, "invalid_email"))
+    }
+
     private fun stillPending(): EmbeddedAuthError =
         EmbeddedAuthError.InsufficientAuthorization(
             listOf(sdkInstance<NextAction.VerifyOob>(Int::class.java to POLL_MS)),

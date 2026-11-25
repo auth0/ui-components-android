@@ -23,6 +23,8 @@ import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.feature.embedded.EmbeddedLoginPreference
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
+import com.auth0.universalcomponents.feature.embedded.signup.data.repository.EmbeddedSignupRepositoryImpl
+import com.auth0.universalcomponents.feature.embedded.signup.di.SignupViewModelFactory
 import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl
 
 object UniversalComponentsModule {
@@ -69,12 +71,27 @@ object UniversalComponentsModule {
     internal fun provideLoginFlowViewModelFactory(
         connection: String,
         preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
+        offersSignup: Boolean = false,
     ): LoginFlowViewModelFactory {
         val steps = EmbeddedAuthSteps(EmbeddedAuthClient(Auth0UniversalComponents.account))
         return LoginFlowViewModelFactory(
-            repository = EmbeddedLoginRepositoryImpl(steps = steps, connection = connection, preference = preference),
+            repository = EmbeddedLoginRepositoryImpl(
+                steps = steps,
+                connection = connection,
+                preference = preference,
+                offersSignup = offersSignup,
+            ),
             mfaRepository = MfaRepositoryImpl(steps),
         )
+    }
+
+    /**
+     * A sign-up has its own SDK client and session, not the login's, so it is built apart and a login that is left or
+     * started again never touches it.
+     */
+    internal fun provideSignupViewModelFactory(connection: String): SignupViewModelFactory = SignupViewModelFactory {
+        val steps = EmbeddedAuthSteps(EmbeddedAuthClient(Auth0UniversalComponents.account))
+        EmbeddedSignupRepositoryImpl(steps = steps, connection = connection)
     }
 
     // Use cases

@@ -34,13 +34,18 @@ import kotlinx.coroutines.sync.withLock
  * actions to take.
  * [connection] is fixed for the whole flow; every resend, edited identifier and Try again opens a new session with it.
  * [steps] holds the client and its session, so MFA continues on the same instance. [preference] decides which of a code
- * and a password leads when the server offers both.
+ * and a password leads when the server offers both. With [offersSignup] the server is also told it may offer to create
+ * an account, which then comes back as [LoginOption.Signup]; without it, sign-up is never mentioned.
  */
 internal class EmbeddedLoginRepositoryImpl(
     private val steps: EmbeddedAuthSteps,
     private val connection: String,
     private val preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
+    offersSignup: Boolean = false,
 ) : EmbeddedLoginRepository {
+
+    /** What the server is told this sign-in can drive; [CAPABILITIES], and sign-up's own two steps when it is offered. */
+    private val capabilities = if (offersSignup) CAPABILITIES + SIGNUP_CAPABILITIES else CAPABILITIES
 
     /** Who a sign-in is for: what it takes to open it again. */
     private data class Identity(val method: LoginOption, val identifier: String)
@@ -90,7 +95,7 @@ internal class EmbeddedLoginRepositoryImpl(
 
     override suspend fun discover(): Result<List<LoginOption>, LoginFailure> = oneAtATime.withLock {
         if (connection.isBlank()) return@withLock Result.Error(LoginFailure(EmbeddedLoginError.ConnectionMissing))
-        val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
+        val opened = steps.run { authorize(connection, capabilities = capabilities) }
         if (opened is StepAnswer.Failed) {
             loop = Loop.Closed
             return@withLock Result.Error(opened.failure)
@@ -158,7 +163,7 @@ internal class EmbeddedLoginRepositoryImpl(
         // then refuse a second one on the same session as a bad request, and blame the identifier. So only the session
         // discovery opened is reused; any other starts over.
         if (loop != Loop.Opened(null)) {
-            val opened = steps.run { authorize(connection, capabilities = CAPABILITIES) }
+            val opened = steps.run { authorize(connection, capabilities = capabilities) }
             if (opened is StepAnswer.Failed) return opened.recorded()
         }
         // From here a failure still knows who this is for, so the next try can open it again.
@@ -387,7 +392,7 @@ internal class EmbeddedLoginRepositoryImpl(
             LoginOption.EmailOtp -> IdentifierType.EMAIL
             LoginOption.PhoneOtp -> IdentifierType.PHONE
             LoginOption.Username -> IdentifierType.USERNAME
-            LoginOption.Password, is LoginOption.Unsupported -> null
+            LoginOption.Password, LoginOption.Signup, is LoginOption.Unsupported -> null
         }
 
     /** A list with no way named is a text, as in the SDK. */
@@ -411,6 +416,9 @@ internal class EmbeddedLoginRepositoryImpl(
 
         /** The reason the server gives when the username or password was wrong; it doesn't say which. */
         val INVALID_PASSWORD_REASONS = setOf(Reason.INVALID_IDENTIFIER_OR_PASSWORD)
+
+        /** Sign-up's own two steps, told to the server on top of [CAPABILITIES] only when the app offers sign-up. */
+        val SIGNUP_CAPABILITIES = setOf(EmbeddedCapability.SIGNUP, EmbeddedCapability.CONFIRM_SIGNUP)
 
         /**
          * What these screens can drive, told to the server so it only offers those: a code sent to an email or a phone,

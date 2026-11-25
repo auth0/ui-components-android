@@ -3,12 +3,13 @@ package com.auth0.universalcomponents.feature.embedded
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.graphics.Color
 import com.auth0.universalcomponents.feature.embedded.presentation.components.StackedEntry
 
 /**
- * How an app changes the entry screen of embedded login: the first screen the user sees, with a logo, a title, the field
- * with Continue, and a button for each other way to sign in. Each part is set on its own, and one left unset keeps its
- * default.
+ * How an app changes the entry screen of embedded login and of sign-up: the first screen the user sees, with a logo, a
+ * title, the field with Continue, the way to the other flow ("Sign up" or "Log in"), and a button for each other way to
+ * sign in. Each part is set on its own, and one left unset keeps its default.
  *
  * ```
  * EmbeddedLoginScreen(
@@ -26,12 +27,14 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.St
  * @property logo Which logo the entry screen shows.
  * @property layout Where the parts of the screen go.
  * @property messages The words of the screen.
+ * @property linkColor The color of "Sign up" and "Log in". Null uses the theme's `foregroundLinkPrimary`.
  */
 @Immutable
 class EmbeddedEntryConfiguration @JvmOverloads constructor(
     val logo: EmbeddedEntryLogo = EmbeddedEntryLogo.Theme,
     val layout: EmbeddedEntryLayout = EmbeddedEntryLayout.Centered,
     val messages: EmbeddedEntryMessages = EmbeddedEntryMessages(),
+    val linkColor: Color? = null,
 ) {
     companion object {
 
@@ -68,6 +71,8 @@ class EmbeddedEntryParts internal constructor(
     val title: @Composable () -> Unit,
     /** The field and Continue. */
     val form: @Composable () -> Unit,
+    /** "Don't have an account? Sign up" or "Already have an account? Log in", when there is one to offer. */
+    val accountLink: (@Composable () -> Unit)?,
     /** "OR" and a button for each other way, when the tenant offers more than one. */
     val alternatives: (@Composable () -> Unit)?,
 )
@@ -82,6 +87,7 @@ class EmbeddedEntryParts internal constructor(
  *         parts.logo?.invoke()
  *         parts.title()
  *         parts.form()
+ *         parts.accountLink?.invoke()
  *         parts.alternatives?.invoke()
  *     }
  * }
@@ -105,14 +111,28 @@ class EmbeddedEntryLayout(val content: @Composable (EmbeddedEntryParts) -> Unit)
 }
 
 /**
- * The words of the entry screen. One left unset keeps its default.
+ * The words of the entry screen. One left unset, null or blank, keeps its default, so a title is never an empty heading.
+ * The defaults are string resources named `embedded_entry_*`, which an app can also override by declaring a string with
+ * the same name.
  *
- * @property loginTitle The title above the field. Null or blank keeps the way's own, such as "Enter your email to
- * get started", so a title can never be an empty heading.
+ * @property loginTitle The login's title above the field when the tenant doesn't offer sign-up. Unset keeps the way's
+ * own, such as "Enter your email to get started".
+ * @property loginOrSignUpTitle The login's title when the tenant offers sign-up as well. "Log in or sign up".
+ * @property signUpTitle The title of sign-up's first screen. "Create your account".
+ * @property signUpPrompt The words before the link to sign-up. "Don't have an account?"
+ * @property signUpAction The link to sign-up. "Sign up".
+ * @property logInPrompt The words before the link back to the login. "Already have an account?"
+ * @property logInAction The link back to the login. "Log in".
  */
 @Immutable
 class EmbeddedEntryMessages @JvmOverloads constructor(
     val loginTitle: String? = null,
+    val loginOrSignUpTitle: String? = null,
+    val signUpTitle: String? = null,
+    val signUpPrompt: String? = null,
+    val signUpAction: String? = null,
+    val logInPrompt: String? = null,
+    val logInAction: String? = null,
 )
 
 /**
@@ -120,10 +140,6 @@ class EmbeddedEntryMessages @JvmOverloads constructor(
  * value then refreshes the screens that read it, and not everything below [EmbeddedLoginScreen].
  */
 internal val LocalEmbeddedEntry = compositionLocalOf { EmbeddedEntryConfiguration.Default }
-
-/** The title to show: the app's [EmbeddedEntryMessages.loginTitle], or [default] when it set none (or only blanks). */
-internal fun EmbeddedEntryMessages.titleOr(default: String): String =
-    loginTitle?.takeUnless { it.isBlank() } ?: default
 
 /** The logo to draw: the one the theme has when [Theme][EmbeddedEntryLogo.Theme], the app's own, or none. */
 internal fun EmbeddedEntryLogo.resolve(theme: @Composable () -> Unit): (@Composable () -> Unit)? = when (this) {

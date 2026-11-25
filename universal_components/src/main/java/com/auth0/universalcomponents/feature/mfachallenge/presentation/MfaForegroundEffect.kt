@@ -1,8 +1,5 @@
 package com.auth0.universalcomponents.feature.mfachallenge.presentation
 
-import android.app.Activity
-import android.content.Context
-import android.content.ContextWrapper
 import android.view.WindowManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -14,6 +11,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.auth0.universalcomponents.utils.findActivity
 
 /**
  * Tells [engine] when the app leaves or returns to the foreground, so a network failure while the user approves in
@@ -60,10 +58,4 @@ internal fun MfaEngine?.isShowingNewRecoveryCode(): Boolean {
     val state = this?.state?.collectAsStateWithLifecycle()
     // Read through derivedStateOf, so the caller redraws when the answer flips and not on every tick of the resend clock.
     return remember(state) { derivedStateOf { state?.value is MfaState.SaveRecoveryCode } }.value
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }

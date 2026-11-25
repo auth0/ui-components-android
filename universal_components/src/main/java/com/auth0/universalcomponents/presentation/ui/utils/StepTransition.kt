@@ -1,6 +1,8 @@
 package com.auth0.universalcomponents.presentation.ui.utils
 
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.EaseInOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -23,4 +25,20 @@ internal fun stepTransition(isForward: Boolean): ContentTransform {
     val slide = tween<IntOffset>(TRANSITION_MILLIS, easing = EaseInOut)
     return (slideInHorizontally(slide) { direction * it } + fadeIn(spec)) togetherWith
         (slideOutHorizontally(slide) { -direction * it } + fadeOut(spec))
+}
+
+/**
+ * A screen that slides in over another and back out over it, while the one under it stays where it is. [opening] is
+ * the screen on top coming in; the one on top is always the one that moves.
+ */
+internal fun overlayTransition(opening: Boolean): ContentTransform {
+    val spec = tween<Float>(TRANSITION_MILLIS, easing = EaseInOut)
+    val slide = tween<IntOffset>(TRANSITION_MILLIS, easing = EaseInOut)
+    return if (opening) {
+        ((slideInHorizontally(slide) { it } + fadeIn(spec)) togetherWith ExitTransition.None)
+            .apply { targetContentZIndex = 1f }
+    } else {
+        (EnterTransition.None togetherWith (slideOutHorizontally(slide) { it } + fadeOut(spec)))
+            .apply { targetContentZIndex = 0f }
+    }
 }
