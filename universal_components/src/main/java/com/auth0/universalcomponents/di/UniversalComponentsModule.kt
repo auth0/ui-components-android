@@ -23,6 +23,8 @@ import com.auth0.universalcomponents.domain.usecase.VerifyAuthenticatorUseCase
 import com.auth0.universalcomponents.feature.embedded.EmbeddedLoginPreference
 import com.auth0.universalcomponents.feature.embedded.data.repository.EmbeddedLoginRepositoryImpl
 import com.auth0.universalcomponents.feature.embedded.di.LoginFlowViewModelFactory
+import com.auth0.universalcomponents.feature.embedded.signup.data.repository.EmbeddedSignupRepositoryImpl
+import com.auth0.universalcomponents.feature.embedded.signup.di.SignupViewModelFactory
 import com.auth0.universalcomponents.feature.mfachallenge.data.repository.MfaRepositoryImpl
 
 object UniversalComponentsModule {
@@ -65,16 +67,36 @@ object UniversalComponentsModule {
     /**
      * One SDK client per login flow: it keeps the session, so the first factor and MFA share it, through the same
      * [EmbeddedAuthSteps] so only one step runs on it at a time.
+     *
+     * [offersSignup] is the app's `signup = EmbeddedLoginSignup.Offered`. The login's capabilities leave out sign-up's
+     * two steps unless it is set, so the server lists no sign-up (and the login shows no link) when the app chose
+     * `Hidden`. It defaults to off here because the screen always passes it; a sign-up screen on its own needs no flag,
+     * as signing up is all it does.
      */
     internal fun provideLoginFlowViewModelFactory(
         connection: String,
         preference: EmbeddedLoginPreference = EmbeddedLoginPreference.Server,
+        offersSignup: Boolean = false,
     ): LoginFlowViewModelFactory {
         val steps = EmbeddedAuthSteps(EmbeddedAuthClient(Auth0UniversalComponents.account))
         return LoginFlowViewModelFactory(
-            repository = EmbeddedLoginRepositoryImpl(steps = steps, connection = connection, preference = preference),
+            repository = EmbeddedLoginRepositoryImpl(
+                steps = steps,
+                connection = connection,
+                preference = preference,
+                offersSignup = offersSignup,
+            ),
             mfaRepository = MfaRepositoryImpl(steps),
         )
+    }
+
+    /**
+     * A sign-up has its own SDK client and session, not the login's, so it is built apart and a login that is left or
+     * started again never touches it.
+     */
+    internal fun provideSignupViewModelFactory(connection: String): SignupViewModelFactory = SignupViewModelFactory {
+        val steps = EmbeddedAuthSteps(EmbeddedAuthClient(Auth0UniversalComponents.account))
+        EmbeddedSignupRepositoryImpl(steps = steps, connection = connection)
     }
 
     // Use cases

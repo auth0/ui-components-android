@@ -47,7 +47,7 @@ internal class EmbeddedAuthSteps(private val client: EmbeddedAuthClient) {
     } catch (e: EmbeddedAuthException) {
         val error = e.error
         if (error is EmbeddedAuthError.InsufficientAuthorization) {
-            StepAnswer.Next(error.nextActions, error.reason)
+            StepAnswer.Next(error.nextActions, error.reason, e.description)
         } else {
             StepAnswer.Failed(e)
         }

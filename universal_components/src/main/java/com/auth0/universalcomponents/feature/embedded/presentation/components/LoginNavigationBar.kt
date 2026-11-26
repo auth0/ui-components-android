@@ -24,7 +24,7 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 
 private const val BACK_DISABLED_ALPHA = 0.4f
 
-/** The top bar with the back arrow and the "Log in" title. */
+/** The top bar with the back arrow and the [title], "Log in" unless the screen says otherwise. */
 @Composable
 internal fun LoginNavigationBar(
     onBack: () -> Unit,
@@ -61,6 +61,7 @@ internal fun LoginNavigationBar(
 internal fun LoginScreenFrame(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
+    title: String = stringResource(R.string.embedded_login_title),
     isBackEnabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
@@ -70,7 +71,7 @@ internal fun LoginScreenFrame(
             .flowBackground()
             .statusBarsPadding(),
     ) {
-        LoginNavigationBar(onBack = onBack, isBackEnabled = isBackEnabled)
+        LoginNavigationBar(onBack = onBack, title = title, isBackEnabled = isBackEnabled)
         Box(
             modifier = Modifier
                 .fillMaxWidth()

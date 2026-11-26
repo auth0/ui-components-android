@@ -7,6 +7,7 @@ import androidx.compose.ui.res.stringResource
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.domain.model.EmbeddedLoginError
 import com.auth0.universalcomponents.feature.embedded.domain.model.LoginOption
+import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryRole
 import com.auth0.universalcomponents.feature.embedded.presentation.components.continueWithIcon
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
@@ -30,6 +31,8 @@ internal class RenderContext(
     val back: () -> Unit,
     val mfa: MfaConfiguration = MfaConfiguration(),
     val typedPassword: MutableState<String> = mutableStateOf(""),
+    /** Opens sign-up from the first screen's link; null when this login offers none. */
+    val onSignUp: (() -> Unit)? = null,
 )
 
 /** The screen for a step, with the data it shows. */
@@ -50,6 +53,7 @@ internal sealed interface ScreenPlan {
         val country: Country? = null,
         val error: EmbeddedLoginError? = null,
         val isFirst: Boolean = true,
+        val canSignUp: Boolean = false,
     ) : ScreenPlan
 
     data class OtpCode(
@@ -125,6 +129,7 @@ internal fun plan(step: LoginState): ScreenPlan = when (step) {
         country = step.country,
         error = step.error,
         isFirst = step.isFirst,
+        canSignUp = step.canSignUp,
     )
     is LoginState.CollectOtpCode -> ScreenPlan.OtpCode(
         identifier = step.identifier,
@@ -162,6 +167,8 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
         is ScreenPlan.Identifier -> {
             val error = plan.error?.text(plan.method)
             val choose = { other: LoginOption -> context.dispatch(LoginIntent.SwitchMethod(other)) }
+            // The link to sign-up only where the server offered it and the app can open it.
+            val entryRole = EntryRole.Login(onSignUp = context.onSignUp.takeIf { plan.canSignUp })
             when (plan.method) {
                 LoginOption.PhoneOtp -> LoginPhoneScreen(
                     phone = plan.value,
@@ -170,6 +177,8 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
                     errorMessage = error,
                     otherMethods = plan.otherMethods,
                     onChooseMethod = choose,
+                    isEntry = plan.isFirst,
+                    role = entryRole,
                     onContinue = { number, country ->
                         context.dispatch(LoginIntent.SubmitIdentifier(plan.method, number, country))
                     },
@@ -181,6 +190,8 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
                     errorMessage = error,
                     otherMethods = plan.otherMethods,
                     onChooseMethod = choose,
+                    isEntry = plan.isFirst,
+                    role = entryRole,
                     onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(plan.method, it)) },
                 )
 
@@ -190,6 +201,8 @@ internal fun LoginRenderer(plan: ScreenPlan, context: RenderContext) {
                     errorMessage = error,
                     otherMethods = plan.otherMethods,
                     onChooseMethod = choose,
+                    isEntry = plan.isFirst,
+                    role = entryRole,
                     onContinue = { context.dispatch(LoginIntent.SubmitIdentifier(plan.method, it)) },
                 )
             }

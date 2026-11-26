@@ -105,6 +105,8 @@ class LoginRendererTest {
             ),
             LoginState.CollectOtpIdentifier(LoginOption.PhoneOtp, PHONE, isFirst = false) to
                 ScreenPlan.Identifier(PHONE, LoginOption.PhoneOtp, isFirst = false),
+            LoginState.CollectOtpIdentifier(value = EMAIL, canSignUp = true) to
+                ScreenPlan.Identifier(EMAIL, canSignUp = true),
             LoginState.CollectOtpCode(PHONE, LoginOption.PhoneOtp) to ScreenPlan.OtpCode(PHONE, LoginOption.PhoneOtp),
             LoginState.CollectOtpCode(PHONE, LoginOption.PhoneOtp, sentTo = "XXXXXXXXX0128") to
                 ScreenPlan.OtpCode(PHONE, LoginOption.PhoneOtp, sentTo = "XXXXXXXXX0128"),

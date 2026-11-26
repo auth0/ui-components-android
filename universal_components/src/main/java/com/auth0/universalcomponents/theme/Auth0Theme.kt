@@ -23,6 +23,7 @@ import androidx.compose.runtime.ReadOnlyComposable
  * @property shapes Custom shapes, or null to use default
  * @property dimensions Custom dimensions/spacing, or null to use default
  * @property sizes Custom component sizes, or null to use default
+ * @property brand The brand's own assets (its logo), or null for Auth0's
  */
 @Immutable
 data class Auth0ThemeConfiguration(
@@ -30,7 +31,8 @@ data class Auth0ThemeConfiguration(
     val typography: Auth0Typography? = null,
     val shapes: Auth0Shapes? = null,
     val dimensions: Auth0Dimensions? = null,
-    val sizes: Auth0Sizes? = null
+    val sizes: Auth0Sizes? = null,
+    val brand: Auth0Brand? = null,
 ) {
     companion object {
         /**
@@ -76,6 +78,7 @@ object Auth0Theme {
         val shapes: Auth0Shapes,
         val dimensions: Auth0Dimensions,
         val sizes: Auth0Sizes,
+        val brand: Auth0Brand = Auth0Brand(),
     )
 
     val colors: Auth0Color
@@ -97,6 +100,10 @@ object Auth0Theme {
     val sizes: Auth0Sizes
         @Composable @ReadOnlyComposable
         get() = LocalAuth0Theme.current.sizes
+
+    val brand: Auth0Brand
+        @Composable @ReadOnlyComposable
+        get() = LocalAuth0Theme.current.brand
 }
 
 /**
@@ -143,11 +150,10 @@ fun Auth0Theme(
     val isDark = darkTheme ?: isSystemInDarkTheme()
 
     // Step 2: Resolve each token type (custom override or default)
-    val color = configuration.color ?: if (isDark) {
-        Auth0Color.dark()
-    } else {
-        Auth0Color.light()
-    }
+    // A color set the app wrote keeps what it set; what it left out comes from the built-in set that suits its own
+    // surfaces, not the phone's mode, because it is drawn over them.
+    val defaultColor = if (isDark) Auth0Color.dark() else Auth0Color.light()
+    val color = configuration.color?.let { it.withDefaultsFrom(it.builtInForSurfaces()) } ?: defaultColor
 
     val typography = configuration.typography ?: Auth0Typography.default()
 
@@ -157,6 +163,8 @@ fun Auth0Theme(
 
     val sizes = configuration.sizes ?: Auth0Sizes.default()
 
+    val brand = configuration.brand ?: Auth0Brand()
+
     // Step 3: Single Values wrapper
     val themeValues = Auth0Theme.Values(
         colors = color,
@@ -164,6 +172,7 @@ fun Auth0Theme(
         shapes = shapes,
         dimensions = dimensions,
         sizes = sizes,
+        brand = brand,
     )
 
     // Step 4: Bridge Auth0 tokens to Material3

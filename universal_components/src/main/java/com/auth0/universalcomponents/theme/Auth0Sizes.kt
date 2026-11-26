@@ -32,7 +32,14 @@ data class Auth0Sizes(
     /**
      *  Larger padding value
      */
-    val paddingLarge: Dp
+    val paddingLarge: Dp,
+
+    // Added after the first release, so a set of sizes written before them keeps compiling and gets these.
+
+    /** Height of the brand logo on the entry screens; its width follows its shape. */
+    val logoHeight: Dp = 40.dp,
+    /** Size of the icon above the title on a status screen, such as the check on the "signed in" screen. */
+    val statusIcon: Dp = 44.dp,
 ) {
     companion object {
         fun default(): Auth0Sizes = Auth0Sizes(

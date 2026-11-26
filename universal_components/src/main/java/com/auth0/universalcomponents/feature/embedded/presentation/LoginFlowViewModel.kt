@@ -83,6 +83,9 @@ internal class LoginFlowViewModel(
     /** The methods this flow can draw, in the tenant's order. The first is [primaryMethod]; the rest are its buttons. */
     private var methods: List<LoginOption> = emptyList()
 
+    /** The server offered to create an account next to the sign-in methods, so the first screen links to it. */
+    private var offersSignUp = false
+
     /** The country the phone number was last submitted with, so every way back to its screen shows it again. */
     private var typedCountry: Country? = null
 
@@ -189,6 +192,7 @@ internal class LoginFlowViewModel(
             .onSuccess { options ->
                 // The tenant's order: the first it lists is the first screen, the rest are its buttons.
                 methods = options.filter { it in FIRST_FACTORS }.distinct()
+                offersSignUp = LoginOption.Signup in options
                 val primary = methods.firstOrNull()
                 if (primary != null) primaryMethod = primary
                 _loginState.value = if (primary != null) identifierStep(primary) else LoginState.NoMethodsAvailable
@@ -471,6 +475,7 @@ internal class LoginFlowViewModel(
             country = typedCountry.takeIf { method == LoginOption.PhoneOtp && value.isNotEmpty() },
             error = error,
             isFirst = isFirst,
+            canSignUp = isFirst && offersSignUp,
         )
     }
 

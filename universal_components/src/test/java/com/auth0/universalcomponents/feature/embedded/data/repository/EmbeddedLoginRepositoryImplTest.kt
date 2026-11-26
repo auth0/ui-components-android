@@ -97,6 +97,46 @@ class EmbeddedLoginRepositoryImplTest {
     }
 
     @Test
+    fun `discover - sign-up not offered by the app - never tells the server about it`() = runTest {
+        repository.discover()
+
+        verify {
+            client.authorize(
+                CONNECTION,
+                any(),
+                any(),
+                match { SIGNUP !in it && CONFIRM_SIGNUP !in it },
+            )
+        }
+    }
+
+    @Test
+    fun `discover - sign-up offered by the app - also tells the server about the two steps of sign-up`() = runTest {
+        val offering = EmbeddedLoginRepositoryImpl(EmbeddedAuthSteps(client), CONNECTION, offersSignup = true)
+
+        offering.discover()
+
+        verify {
+            client.authorize(
+                CONNECTION,
+                any(),
+                any(),
+                match { SIGNUP in it && CONFIRM_SIGNUP in it && EmbeddedCapability.IDENTIFY_EMAIL in it },
+            )
+        }
+    }
+
+    @Test
+    fun `discover - the server lists sign-up - returns it next to the methods`() = runTest {
+        val offering = EmbeddedLoginRepositoryImpl(EmbeddedAuthSteps(client), CONNECTION, offersSignup = true)
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns
+            step(NextAction.IdentifyEmail, sdkInstance<NextAction.Signup>(List::class.java to emptyList<Any>()))
+
+        assertThat(offering.discover())
+            .isEqualTo(Result.Success(listOf(LoginOption.EmailOtp, LoginOption.Signup)))
+    }
+
+    @Test
     fun `discover - email offered - returns an email code option`() = runTest {
         assertThat(repository.discover()).isEqualTo(Result.Success(listOf(LoginOption.EmailOtp)))
     }
@@ -1294,6 +1334,8 @@ class EmbeddedLoginRepositoryImplTest {
         val TEXT = PhoneDeliveryMethod.TEXT
         val VOICE = PhoneDeliveryMethod.VOICE
         const val CONNECTION = "email"
+        val SIGNUP = EmbeddedCapability.SIGNUP
+        val CONFIRM_SIGNUP = EmbeddedCapability.CONFIRM_SIGNUP
         const val EMAIL = "jane@example.com"
         const val OTHER_EMAIL = "john@example.com"
         const val USERNAME = "jane"
