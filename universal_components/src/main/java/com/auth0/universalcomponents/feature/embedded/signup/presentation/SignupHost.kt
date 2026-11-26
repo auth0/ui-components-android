@@ -13,15 +13,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.R
 import com.auth0.universalcomponents.feature.embedded.presentation.components.EntryRole
 import com.auth0.universalcomponents.feature.embedded.presentation.components.LoginScreenFrame
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginCodeScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginEmailScreen
+import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginPhoneScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginSuccessScreen
+import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupChallenge
+import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupError
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupIdentifier
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupKind
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.forDisplay
+import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.NO_CONTEXTUAL_ALTERNATES
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
@@ -33,10 +39,10 @@ import com.auth0.universalcomponents.utils.findActivity
  * navigation bar, the one Back handler and the effects. It only draws: what each tap means is [SignupReducer]'s.
  *
  * [onAuthenticated] gets the credentials, once. [onExit] is the user leaving sign-up: Back from any screen but the code
- * screen (which returns to the email), or "Go back"; Back waits while a request is running. [onLogIn], when sign-up was
- * opened from the login, adds "Already have an account? Log in" to the first screen; it is what returns there. The
- * sign-up is left, so the next visit opens a new one, when this leaves the composition, unless it only leaves to be
- * drawn again (a rotation).
+ * screen and the choice of how to get it (which return to the entry), or "Go back"; Back waits while a request is
+ * running. [onLogIn], when sign-up was opened from the login, adds "Already have an account? Log in" to the first
+ * screen; it is what returns there. The sign-up is left, so the next visit opens a new one, when this leaves the
+ * composition, unless it only leaves to be drawn again (a rotation).
  */
 @Composable
 internal fun SignupHost(
@@ -114,19 +120,48 @@ private fun SignupScreen(
             SignupKind.Email -> LoginEmailScreen(
                 email = state.value,
                 isLoading = state.isSubmitting,
-                errorMessage = state.error?.text(),
+                errorMessage = state.error?.text(state.kind),
                 isEntry = true,
                 role = EntryRole.SignUp(onLogIn),
                 onContinue = { send(SignupIntent.SubmitIdentifier(SignupIdentifier(state.kind, it))) },
             )
+
+            // The screen takes the country back out of the number, as it does for the login.
+            SignupKind.Phone -> LoginPhoneScreen(
+                phone = state.value,
+                isLoading = state.isSubmitting,
+                errorMessage = state.error?.text(state.kind),
+                isEntry = true,
+                role = EntryRole.SignUp(onLogIn),
+                onContinue = { number, _ -> send(SignupIntent.SubmitIdentifier(SignupIdentifier(state.kind, number))) },
+            )
         }
 
+        is SignupState.Delivery -> SignupDeliveryScreen(
+            sentTo = state.challenge.shownFor(state.identifier),
+            ways = state.challenge.deliveries,
+            onContinue = { send(SignupIntent.ChooseDelivery(it)) },
+            sentToFontFeatures = state.challenge.fontFeatures,
+            isLoading = state.isSubmitting,
+            errorMessage = state.error?.text(state.identifier.kind),
+            onEdit = onBack,
+        )
+
         is SignupState.Code -> LoginCodeScreen(
-            subtitle = stringResource(R.string.embedded_signup_code_sent_to, state.identifier.value),
+            subtitle = stringResource(
+                if (state.delivery == PhoneDeliveryMethod.VOICE) {
+                    R.string.embedded_signup_code_called
+                } else {
+                    R.string.embedded_signup_code_sent_to
+                },
+                state.challenge.shownFor(state.identifier),
+            ),
+            subtitleFontFeatures = state.challenge.fontFeatures,
             isLoading = state.phase == CodePhase.Verifying,
             isResending = state.phase == CodePhase.Resending,
             resendSecondsLeft = state.resendSecondsLeft,
-            errorMessage = state.error?.text(),
+            errorMessage = state.shownError?.text(state.identifier.kind),
+            needsNewCode = state.isExpired,
             onVerify = { send(SignupIntent.SubmitCode(it)) },
             onEdit = onBack,
             onResend = { send(SignupIntent.Resend) },
@@ -143,7 +178,7 @@ private fun SignupScreen(
 
         is SignupState.Failed -> FlowErrorScreen(
             onRetry = { send(SignupIntent.Retry) },
-            message = state.error.text(),
+            message = state.error.text(state.kind),
             title = stringResource(R.string.embedded_signup_error_title),
             // With nothing to go back to the sign-up is over, and only a new one helps.
             actionTitle = stringResource(
@@ -153,11 +188,29 @@ private fun SignupScreen(
     }
 }
 
+/**
+ * Where the code goes, to show: the number as the server hid it, with every hidden digit drawn alike, else what the user
+ * typed (an email always, since the server hides nothing there).
+ */
+internal fun SignupChallenge.shownFor(typed: SignupIdentifier): String = sentTo?.forDisplay() ?: typed.value
+
+/**
+ * What the code screen shows under the field: the error of the last request, else that the code expired. The expired
+ * line is gone while a new code is on its way, as on iOS, and back if that fails and the user tries again.
+ */
+internal val SignupState.Code.shownError: SignupError?
+    get() = error ?: SignupError.CodeExpired.takeIf { isExpired && phase == CodePhase.Ready }
+
+/** The hidden digits of a number the server hid are drawn alike only with the font's contextual alternates off. */
+private val SignupChallenge.fontFeatures: String?
+    get() = NO_CONTEXTUAL_ALTERNATES.takeIf { sentTo != null }
+
 /** Names the screen and ignores its data, so a data-only change doesn't animate. */
 private val SignupState.transitionIdentity: String
     get() = when (this) {
         SignupState.Idle, SignupState.Loading, SignupState.Creating -> "loading"
         is SignupState.Entry -> "entry:$kind"
+        is SignupState.Delivery -> "delivery"
         is SignupState.Code -> "code"
         SignupState.Authenticated -> "authenticated"
         SignupState.Unavailable -> "unavailable"
@@ -169,6 +222,7 @@ private val SignupState.navigationDepth: Int
     get() = when (this) {
         SignupState.Idle, SignupState.Loading, SignupState.Creating -> 0
         is SignupState.Entry -> 1
+        is SignupState.Delivery -> 2
         is SignupState.Code -> 3
         SignupState.Authenticated, SignupState.Unavailable, is SignupState.Failed -> 4
     }

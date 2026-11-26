@@ -21,6 +21,16 @@ class SignupErrorMapperTest {
     }
 
     @Test
+    fun `a continuation with no reason and the description invalid_phone - is a wrong phone number`() {
+        assertThat(next(Reason.NONE, "invalid_phone").toSignupFailure()?.error).isEqualTo(SignupError.InvalidPhone)
+    }
+
+    @Test
+    fun `invalid_phone with a reason of its own - is not taken for a wrong phone number`() {
+        assertThat(next(Reason.SLOW_DOWN, "invalid_phone").toSignupFailure()).isNull()
+    }
+
+    @Test
     fun `a continuation with no reason and no description - is just the next menu`() {
         assertThat(next(Reason.NONE, null).toSignupFailure()).isNull()
         assertThat(next(Reason.NONE, "").toSignupFailure()).isNull()
@@ -149,6 +159,7 @@ class SignupErrorMapperTest {
     @Test
     fun `the groups - say what the user can do`() {
         assertThat(SignupError.InvalidEmail).isInstanceOf(SignupError.Fixable::class.java)
+        assertThat(SignupError.InvalidPhone).isInstanceOf(SignupError.Fixable::class.java)
         assertThat(SignupError.InvalidCode).isInstanceOf(SignupError.Fixable::class.java)
         assertThat(SignupError.CodeNotSent).isInstanceOf(SignupError.Fixable::class.java)
         assertThat(SignupError.CodeExpired).isInstanceOf(SignupError.Fatal::class.java)

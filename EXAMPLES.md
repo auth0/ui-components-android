@@ -432,13 +432,19 @@ fun CreateAccountScreen(
 }
 ```
 
-- `EmbeddedLoginScreen` already links to this flow when the tenant offers sign-up, so a button of your own is only needed to start sign-up from somewhere else. The link opens sign-up in the same screen, with the same theme and `entry`, and "Log in" or Back returns to the login as it was.
-- The server decides what it asks for. A connection that requires something this screen can't ask for yet, such as a phone number or two identifiers, shows "Sign-up isn't available".
+- `EmbeddedLoginScreen` already links to this flow when the tenant offers sign-up, so a button of your own is only needed to start sign-up from somewhere else.
+- The server decides what it asks for. A connection that requires something this screen can't ask for yet, such as two identifiers, shows "Sign-up isn't available".
 - If the email already has an account, the server signs that user in, and `onAuthenticated` is called the same way.
 - A wrong code stays on the code screen. Too many wrong codes, or too many codes requested, end the sign-up with **Start over**.
-- Back from the code screen returns to the email, which keeps what was typed. **Resend Code** opens after 60 seconds.
-- Back calls `onExit` from the email, loading, error and success screens. It waits while a request is running.
-- If the connection drops while the account is created, **Try again** sends the request again without asking for the code. If it dropped on the very last step, after the server had already made the account, **Try again** ends on **Start over**; signing up again with the same email then signs that user in.
+- Back calls `onExit` from the first screen, and from the loading, error and success screens.
+
+### Sign up with a Phone Number
+
+The same `EmbeddedSignupScreen` signs a user up with a phone number when the connection requires one: nothing changes in your code. The user picks a country and enters the number. A number that takes both a text and a call then asks "Choose how to get your code": **Text message** or **Voice call**, and **Continue** sends it. A number that takes only one is sent the code at once, by text, or by call when it only takes calls. The code screen shows the number as the server masked it, with **Edit**, and **Resend Code** once the wait is over, which sends it the same way again.
+
+- A connection that requires a phone number and allows an email starts on the phone number.
+- A code that timed out stays on the screen with "The code expired. Send a new one to continue." and **Resend Code** comes on at once. A new code starts the sign-up again for the same number, so the user doesn't type it again.
+- A number the server rejects stays on the entry screen with "Please enter a valid phone number."
 
 ### Sign in with a Phone Number
 

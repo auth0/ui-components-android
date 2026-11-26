@@ -14,16 +14,17 @@ import com.auth0.universalcomponents.theme.Auth0Theme
 import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
 
 /**
- * Embedded sign-up on its own: the user enters their email, confirms it with a one-time code, and creates the account.
- * The server decides what it asks for and in what order; a connection that needs something this screen can't ask for yet
- * shows "Sign-up isn't available". To offer sign-up from the login instead, leave `signup` at its default in
- * [EmbeddedLoginScreen].
+ * Embedded sign-up on its own: the user enters their email or phone number, confirms it with a one-time code, and
+ * creates the account. The server decides what it asks for and in what order; a connection that needs something this
+ * screen can't ask for yet shows "Sign-up isn't available". To offer sign-up from the login instead, leave `signup` at
+ * its default in [EmbeddedLoginScreen].
  *
  * The library stores nothing. When the account is created, the credentials go to [onAuthenticated], once, and keeping
- * them is the app's job. If the email already has an account, the server signs that user in instead, and
- * [onAuthenticated] is called the same way. [onExit] is called when the user leaves: Back from the email, loading, error
- * or success screen, or "Go back" when sign-up isn't available. Back from the code screen returns to the email instead,
- * and Back waits while a request is running.
+ * them is the app's job. If the server signs the user in instead, because the account already exists,
+ * [onAuthenticated] is called the same way. [onExit] is called when the user leaves: Back from the email or phone
+ * number entry, or from the loading, error or success screen, or "Go back" when sign-up isn't available. Back from the
+ * code screen, or from a phone's choice of how to get the code, returns to the entry instead, and Back waits while a
+ * request is running.
  *
  * It looks as the login does, for the same [themeConfiguration] and [entry].
  */

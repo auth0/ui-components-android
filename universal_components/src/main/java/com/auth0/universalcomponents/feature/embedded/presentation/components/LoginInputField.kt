@@ -113,7 +113,9 @@ internal fun LoginInputField(
                     contentAlignment = Alignment.CenterStart,
                 ) {
                     if (value.isEmpty() && placeholder != null) {
-                        Text(text = placeholder, style = Auth0Theme.typography.body, color = colors.textDisabled)
+                        // The regular text colour, a step lighter than what is typed, as on iOS (`fieldPrompt`). The
+                        // disabled colour is a dark grey in dark mode, almost the field's own background.
+                        Text(text = placeholder, style = Auth0Theme.typography.body, color = colors.textDefault)
                     }
                     innerTextField()
                 }
