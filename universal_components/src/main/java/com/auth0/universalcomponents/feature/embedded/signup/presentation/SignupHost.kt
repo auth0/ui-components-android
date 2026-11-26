@@ -32,10 +32,11 @@ import com.auth0.universalcomponents.utils.findActivity
  * Draws the sign-up's state with the login's own screens and sign-up's words, animates screen changes, and owns the
  * navigation bar, the one Back handler and the effects. It only draws: what each tap means is [SignupReducer]'s.
  *
- * [onAuthenticated] gets the credentials, once. [onExit] is the user leaving sign-up: Back from the first screen, or
- * "Go back". [onLogIn], when sign-up was opened from the login, adds "Already have an account? Log in" to the first
- * screen; it is what returns there. The sign-up is left, so the next visit opens a new one, when this leaves the
- * composition, unless it only leaves to be drawn again (a rotation).
+ * [onAuthenticated] gets the credentials, once. [onExit] is the user leaving sign-up: Back from any screen but the code
+ * screen (which returns to the email), or "Go back"; Back waits while a request is running. [onLogIn], when sign-up was
+ * opened from the login, adds "Already have an account? Log in" to the first screen; it is what returns there. The
+ * sign-up is left, so the next visit opens a new one, when this leaves the composition, unless it only leaves to be
+ * drawn again (a rotation).
  */
 @Composable
 internal fun SignupHost(

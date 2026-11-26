@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.di.UniversalComponentsModule
+import com.auth0.universalcomponents.feature.embedded.presentation.LocalEmbeddedEntry
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginFlowViewModel
 import com.auth0.universalcomponents.feature.embedded.presentation.LoginRenderingHost
 import com.auth0.universalcomponents.feature.embedded.signup.presentation.SignupHost
@@ -119,8 +120,9 @@ private fun LoginWithSignup(
     onMfaError: (MfaError) -> MfaErrorHandling,
     mfa: MfaConfiguration,
 ) {
-    // A change of the app's mind about sign-up starts a new login (see the ViewModel's key), and so a new route.
-    var route by rememberSaveable { mutableStateOf(Route.Login) }
+    // A change of connection, preference or sign-up setting starts a new login (see the ViewModel's key), and a new
+    // login starts on the login, not on a sign-up opened over the one before it.
+    var route by rememberSaveable(loginViewModel) { mutableStateOf(Route.Login) }
     val stateHolder = rememberSaveableStateHolder()
     AnimatedContent(
         targetState = route,

@@ -17,7 +17,8 @@ import com.auth0.universalcomponents.R
  *
  * @property logo The logo shown above the title of the embedded login entry screens. Auth0's by default. A vector or
  * bitmap drawable; an XML shape or layer list can't be drawn here, so show one with `EmbeddedEntryLogo.Custom { }`.
- * @property logoDescription What a screen reader says for the logo. "Auth0" by default.
+ * @property logoDescription What a screen reader says for the logo. `null`, the default, says "Auth0" for Auth0's own
+ * logo and nothing for your [logo], which a screen reader then skips; set it to describe your logo.
  * @property logoTint How the logo is coloured. `null`, the default, leaves it to the library: Auth0's own logo is drawn
  * in the theme's text color, which keeps its one color readable in dark mode, and your [logo] is drawn as it is.
  * [Color.Unspecified] draws any logo as it is, and any other color tints it.
@@ -25,9 +26,18 @@ import com.auth0.universalcomponents.R
 @Immutable
 data class Auth0Brand(
     @param:DrawableRes val logo: Int = R.drawable.uc_auth0_logo,
-    val logoDescription: String = "Auth0",
+    val logoDescription: String? = null,
     val logoTint: Color? = null,
 )
+
+/**
+ * What a screen reader says for the logo. What the app set wins; left to the library ([Auth0Brand.logoDescription] is
+ * `null`), only Auth0's own logo is named, so an app's logo is never announced as "Auth0".
+ */
+internal fun Auth0Brand.descriptionOrDefault(): String? = logoDescription
+    ?: if (logo == R.drawable.uc_auth0_logo) AUTH0_LOGO_DESCRIPTION else null
+
+private const val AUTH0_LOGO_DESCRIPTION = "Auth0"
 
 /**
  * The color to tint the logo with. What the app set wins; left to the library ([Auth0Brand.logoTint] is `null`), only

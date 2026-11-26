@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.di.UniversalComponentsModule
+import com.auth0.universalcomponents.feature.embedded.presentation.LocalEmbeddedEntry
 import com.auth0.universalcomponents.feature.embedded.signup.presentation.SignupHost
 import com.auth0.universalcomponents.feature.embedded.signup.presentation.SignupViewModel
 import com.auth0.universalcomponents.theme.Auth0Theme
@@ -20,8 +21,9 @@ import com.auth0.universalcomponents.theme.Auth0ThemeConfiguration
  *
  * The library stores nothing. When the account is created, the credentials go to [onAuthenticated], once, and keeping
  * them is the app's job. If the email already has an account, the server signs that user in instead, and
- * [onAuthenticated] is called the same way. [onExit] is called when the user leaves: Back from the first screen, or "Go
- * back" when sign-up isn't available.
+ * [onAuthenticated] is called the same way. [onExit] is called when the user leaves: Back from the email, loading, error
+ * or success screen, or "Go back" when sign-up isn't available. Back from the code screen returns to the email instead,
+ * and Back waits while a request is running.
  *
  * It looks as the login does, for the same [themeConfiguration] and [entry].
  */

@@ -22,6 +22,7 @@ class SignupErrorMapperTest {
 
     @Test
     fun `a continuation with no reason and no description - is just the next menu`() {
+        assertThat(next(Reason.NONE, null).toSignupFailure()).isNull()
         assertThat(next(Reason.NONE, "").toSignupFailure()).isNull()
     }
 
@@ -108,7 +109,7 @@ class SignupErrorMapperTest {
         listOf(500, 503, 599).forEach { status ->
             val failure = failed(EmbeddedAuthError.Unknown, statusCode = status)
 
-            assertThat(failure.error).isInstanceOf(SignupError.Unknown::class.java)
+            assertThat(failure.error).isEqualTo(SignupError.ServerError)
             assertThat(failure.error).isInstanceOf(SignupError.Transient::class.java)
             assertThat(failure.cause).isInstanceOf(EmbeddedAuthException::class.java)
         }
@@ -116,8 +117,7 @@ class SignupErrorMapperTest {
 
     @Test
     fun `a server error - wins over what the error would be named, since the session is kept either way`() {
-        assertThat(failed(EmbeddedAuthError.AccessDenied, statusCode = 502).error)
-            .isInstanceOf(SignupError.Transient::class.java)
+        assertThat(failed(EmbeddedAuthError.AccessDenied, statusCode = 502).error).isEqualTo(SignupError.ServerError)
     }
 
     @Test
@@ -134,12 +134,13 @@ class SignupErrorMapperTest {
     }
 
     @Test
-    fun `an exception that isn't the SDK's - is unknown, with its cause kept`() {
+    fun `an exception that isn't the SDK's - is unknown and ends the sign-up, with its cause kept`() {
         val cause = IllegalStateException("broken")
 
         val failure = StepAnswer.Failed(cause).toSignupFailure()
 
         assertThat(failure.error).isEqualTo(SignupError.Unknown("broken"))
+        assertThat(failure.error).isInstanceOf(SignupError.Fatal::class.java)
         assertThat(failure.cause).isSameInstanceAs(cause)
     }
 
@@ -153,10 +154,11 @@ class SignupErrorMapperTest {
         assertThat(SignupError.CodeExpired).isInstanceOf(SignupError.Fatal::class.java)
         assertThat(SignupError.Unavailable).isInstanceOf(SignupError.Fatal::class.java)
         assertThat(SignupError.Network).isInstanceOf(SignupError.Transient::class.java)
-        assertThat(SignupError.Unknown("x")).isInstanceOf(SignupError.Transient::class.java)
+        assertThat(SignupError.ServerError).isInstanceOf(SignupError.Transient::class.java)
+        assertThat(SignupError.Unknown("x")).isInstanceOf(SignupError.Fatal::class.java)
     }
 
-    private fun next(reason: Reason, description: String = ""): StepAnswer.Next =
+    private fun next(reason: Reason, description: String? = null): StepAnswer.Next =
         StepAnswer.Next(listOf(NextAction.IdentifyEmail), reason, description)
 
     private fun failed(

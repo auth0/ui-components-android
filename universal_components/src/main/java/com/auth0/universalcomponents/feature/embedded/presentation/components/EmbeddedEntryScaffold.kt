@@ -25,9 +25,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import com.auth0.universalcomponents.feature.embedded.EmbeddedEntryParts
-import com.auth0.universalcomponents.feature.embedded.LocalEmbeddedEntry
-import com.auth0.universalcomponents.feature.embedded.resolve
+import com.auth0.universalcomponents.feature.embedded.presentation.LocalEmbeddedEntry
+import com.auth0.universalcomponents.feature.embedded.presentation.resolve
 import com.auth0.universalcomponents.theme.Auth0Theme
+import com.auth0.universalcomponents.theme.descriptionOrDefault
 import com.auth0.universalcomponents.theme.tintOr
 
 /**
@@ -81,7 +82,7 @@ private fun BrandLogo() {
     }
     Icon(
         painter = painter,
-        contentDescription = brand.logoDescription,
+        contentDescription = brand.descriptionOrDefault(),
         modifier = Modifier.height(Auth0Theme.sizes.logoHeight).then(shape),
         tint = brand.tintOr(Auth0Theme.colors.textBold),
     )

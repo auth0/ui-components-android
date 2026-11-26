@@ -1,6 +1,7 @@
 package com.auth0.universalcomponents.feature.embedded
 
 import androidx.compose.runtime.Composable
+import com.auth0.universalcomponents.feature.embedded.presentation.resolve
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 

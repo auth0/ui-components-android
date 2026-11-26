@@ -150,9 +150,10 @@ fun Auth0Theme(
     val isDark = darkTheme ?: isSystemInDarkTheme()
 
     // Step 2: Resolve each token type (custom override or default)
-    // A color set the app wrote keeps what it set; what it left out comes from the built-in set of this mode.
+    // A color set the app wrote keeps what it set; what it left out comes from the built-in set that suits its own
+    // surfaces, not the phone's mode, because it is drawn over them.
     val defaultColor = if (isDark) Auth0Color.dark() else Auth0Color.light()
-    val color = configuration.color?.withDefaultsFrom(defaultColor) ?: defaultColor
+    val color = configuration.color?.let { it.withDefaultsFrom(it.builtInForSurfaces()) } ?: defaultColor
 
     val typography = configuration.typography ?: Auth0Typography.default()
 

@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.auth0.universalcomponents.feature.embedded.LocalEmbeddedEntry
+import com.auth0.universalcomponents.feature.embedded.presentation.LocalEmbeddedEntry
 import com.auth0.universalcomponents.presentation.ui.flow.FlowScreenHeader
 import com.auth0.universalcomponents.presentation.ui.flow.FlowStepLayout
 import com.auth0.universalcomponents.theme.Auth0Theme

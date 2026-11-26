@@ -39,13 +39,17 @@ internal class SignupReducer {
         is SignupOutcome.CreateFailed -> createFailed(state, outcome.error)
     }
 
-    /** [seconds] passed on the resend wait of the code screen. Anywhere else the count is over, and nothing goes on. */
+    /**
+     * [seconds] passed on the resend wait. It runs on the code screen, and on the error screen shown over it, so the
+     * time spent there counts and "Try again" doesn't bring back a wait that stood still. Anywhere else the count is
+     * over, and nothing goes on.
+     */
     fun handleSecondsPassed(state: SignupState, seconds: Int): SignupUpdate {
-        if (state !is SignupState.Code) return SignupUpdate(state)
-        val left = (state.resendSecondsLeft - seconds).coerceAtLeast(0)
+        val waiting = state.waitingCode ?: return SignupUpdate(state)
+        val counted = waiting.copy(resendSecondsLeft = (waiting.resendSecondsLeft - seconds).coerceAtLeast(0))
         return SignupUpdate(
-            state.copy(resendSecondsLeft = left),
-            commands = if (left > 0) listOf(SignupCommand.CountDownResend) else emptyList(),
+            if (state is SignupState.Failed) state.copy(retry = SignupRetry.ReturnTo(counted)) else counted,
+            commands = if (counted.resendSecondsLeft > 0) listOf(SignupCommand.CountDownResend) else emptyList(),
         )
     }
 
@@ -200,7 +204,12 @@ internal class SignupReducer {
         },
     )
 
-    /** Creating the account failed. A lost connection keeps the sign-up where it is; the code isn't asked for again. */
+    /**
+     * Creating the account failed. A lost connection keeps the sign-up where it is; the code isn't asked for again. That
+     * holds while the SDK still has its session, which it doesn't once the server has made the account and only the
+     * final token request failed: the retry then finds none and ends on "Start over", where signing up again with the
+     * same email signs the user in.
+     */
     private fun createFailed(state: SignupState, error: SignupError): SignupUpdate {
         val creating = state == SignupState.Creating || (state is SignupState.Code && state.phase == CodePhase.Verifying)
         if (!creating) return SignupUpdate(state)
@@ -213,6 +222,14 @@ internal class SignupReducer {
     }
 
     // endregion
+
+    /** The code screen whose resend wait is running: the one on show, or the one an error screen will return to. */
+    private val SignupState.waitingCode: SignupState.Code?
+        get() = when (this) {
+            is SignupState.Code -> this
+            is SignupState.Failed -> (retry as? SignupRetry.ReturnTo)?.state as? SignupState.Code
+            else -> null
+        }
 
     /** A returned code screen goes on counting its wait down. */
     private fun countdownIfWaiting(state: SignupState): List<SignupCommand> =

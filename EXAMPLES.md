@@ -365,7 +365,7 @@ EmbeddedLoginScreen(
 )
 ```
 
-A part you leave out keeps its default. `EmbeddedEntryMessages` also takes `loginTitle`, for a login that doesn't offer sign-up, and the other words of the two links; each default is a string resource named `embedded_entry_*`, so you can override it by declaring a string with the same name.
+A part you leave out keeps its default. Build the `EmbeddedEntryConfiguration` once, with `remember` or as a constant, rather than inline on every recomposition: a new object each time redraws every screen that reads it. `EmbeddedEntryMessages` also takes `loginTitle`, for a login that doesn't offer sign-up, and the other words of the two links; each default is a string resource named `embedded_entry_*`, so you can override it by declaring a string with the same name.
 
 **The logo comes from the theme.** Out of the box the entry screen shows the Auth0 logo. To show yours on the entry screens, set it once in the theme's brand, together with the description a screen reader reads:
 
@@ -378,7 +378,7 @@ EmbeddedLoginScreen(
 )
 ```
 
-Your logo is drawn as it is, so use a vector or bitmap drawable. To tint it, pass `logoTint`. `EmbeddedEntryLogo.Custom { … }` replaces the logo on one screen, and `EmbeddedEntryLogo.Hidden` takes it off. The color of the "Sign up" and "Log in" links is the theme's `foregroundLinkPrimary`; set it for one screen with `EmbeddedEntryConfiguration(linkColor = …)`.
+Your logo is drawn as it is, so use a vector or bitmap drawable. Without a `logoDescription`, a screen reader skips your logo: it names only Auth0's own. To tint it, pass `logoTint`. `EmbeddedEntryLogo.Custom { … }` replaces the logo on one screen, and `EmbeddedEntryLogo.Hidden` takes it off. The color of the "Sign up" and "Log in" links is the theme's `foregroundLinkPrimary`; set it for one screen with `EmbeddedEntryConfiguration(linkColor = …)`.
 
 To place the pieces yourself, give a layout. It gets each piece as a composable, or `null` when there is none (no logo, no sign-up link, or no other methods):
 
@@ -402,6 +402,8 @@ EmbeddedLoginScreen(…, entry = EmbeddedEntryConfiguration(layout = layout))
 `EmbeddedEntryLayout.Centered` (the default) puts the block in the middle of the screen, and `EmbeddedEntryLayout.Top` starts it at the top.
 
 To keep the login to signing in, pass `signup = EmbeddedLoginSignup.Hidden`: the first screen then has no sign-up link, and the login tells the server nothing about sign-up.
+
+**Upgrading from an earlier version.** Without any change of yours, the first screen of `EmbeddedLoginScreen` now shows the Auth0 logo and centres its content, and when the tenant offers sign-up it links to it under the title "Log in or sign up". Your `loginTitle` is used only when sign-up isn't offered, and a layout of your own must draw `accountLink` to show the link its title mentions. The login also tells the server it can handle sign-up. To turn these off, pass `signup = EmbeddedLoginSignup.Hidden` (no link, no such title, nothing said about sign-up), `EmbeddedEntryLogo.Hidden` (no logo) and `EmbeddedEntryLayout.Top` (content from the top).
 
 ### Sign up with an Email
 
@@ -435,7 +437,8 @@ fun CreateAccountScreen(
 - If the email already has an account, the server signs that user in, and `onAuthenticated` is called the same way.
 - A wrong code stays on the code screen. Too many wrong codes, or too many codes requested, end the sign-up with **Start over**.
 - Back from the code screen returns to the email, which keeps what was typed. **Resend Code** opens after 60 seconds.
-- If the connection drops while the account is created, **Try again** creates it without asking for the code again.
+- Back calls `onExit` from the email, loading, error and success screens. It waits while a request is running.
+- If the connection drops while the account is created, **Try again** sends the request again without asking for the code. If it dropped on the very last step, after the server had already made the account, **Try again** ends on **Start over**; signing up again with the same email then signs that user in.
 
 ### Sign in with a Phone Number
 
@@ -657,7 +660,7 @@ Box {
 - On the recovery code step, the login still sets `FLAG_SECURE` on the Activity's window while `RecoveryCodeChallengeModel.newCode` is not null, so your own screen is kept out of screenshots too.
 - The login still draws its own background, navigation bar and Back. Only the MFA steps are yours. Every control is an action on a model, and on the error step `leave()` returns to the first screen.
 
-Adding `onMfaError`, `mfa`, `preference`, `entry` or `signup`, and the new properties of `Auth0Color`, `Auth0Sizes` and `Auth0ThemeConfiguration`, is source-compatible. Your app must be recompiled against this version.
+Adding `onMfaError`, `mfa`, `preference`, `entry` or `signup`, and the new properties of `Auth0Color`, `Auth0Sizes` and `Auth0ThemeConfiguration`, is source-compatible. Your app must be recompiled against this version. The first screen also looks different without any change of yours: see [Customize the Entry Screen](#customize-the-entry-screen).
 
 ### Flow Behaviour
 

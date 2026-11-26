@@ -8,8 +8,10 @@ import com.auth0.android.result.Credentials
  */
 internal enum class SignupKind { Email }
 
-/** What the user typed for one [kind]. */
-internal data class SignupIdentifier(val kind: SignupKind, val value: String)
+/** What the user typed for one [kind]. An email is personal data, so [toString] leaves [value] out, as it does a code. */
+internal data class SignupIdentifier(val kind: SignupKind, val value: String) {
+    override fun toString(): String = "SignupIdentifier(kind=$kind)"
+}
 
 /** A code the server will send. [index] is the server's, passed back unchanged. */
 internal data class SignupChallenge(val index: Int)

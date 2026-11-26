@@ -26,15 +26,15 @@ internal fun StepAnswer.Next.toSignupFailure(): SignupFailure? = when {
 
 /**
  * Names a failed step in our terms, keeping it as the cause. The SDK ends its session on every failure except a
- * network error or a server error (5xx), so anything else not named here ends the sign-up.
+ * network error or a server error (5xx), so anything else not named here ends the sign-up. The exception is the last
+ * step that makes the account: the SDK has already cleared its session before it asks for the tokens, so a network or
+ * server error there is retryable on paper, but the retry finds no session and ends the sign-up.
  */
 internal fun StepAnswer.Failed.toSignupFailure(): SignupFailure {
     val exception = error as? EmbeddedAuthException
         ?: return SignupFailure(SignupError.Unknown(error.message ?: error.javaClass.name), cause = error)
     // The server failed, not the request, and the session is still there: the same step can be sent again.
-    if (exception.statusCode in SERVER_ERROR_STATUS) {
-        return SignupFailure(SignupError.Unknown("${exception.statusCode}: ${exception.code}"), cause = exception)
-    }
+    if (exception.statusCode in SERVER_ERROR_STATUS) return SignupFailure(SignupError.ServerError, cause = exception)
     val named = when (exception.error) {
         EmbeddedAuthError.TooManyAttempts, EmbeddedAuthError.TooManyLogins -> SignupError.TooManyAttempts
         EmbeddedAuthError.TooManyWrongOtpAttempts -> SignupError.TooManyWrongCodes

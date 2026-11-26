@@ -52,8 +52,15 @@ internal sealed interface SignupError {
 
     data object Network : Transient
 
-    /** Nothing better to say. [message] says what actually failed, for the logs; it's debug output, never shown. */
-    data class Unknown(val message: String) : Transient
+    /** The server failed (5xx), not the request, and the SDK kept its session, so the same step can be sent again. */
+    data object ServerError : Transient
+
+    /**
+     * An exception that isn't the SDK's, or an answer this flow has no screen for. What state the session is in is
+     * unknown, so only starting over is safe. [message] says what actually failed, for the logs; it's debug output,
+     * never shown.
+     */
+    data class Unknown(val message: String) : Fatal
 }
 
 /**

@@ -26,6 +26,6 @@ internal fun SignupError.text(): String = stringResource(
         SignupError.ConnectionMissing -> R.string.embedded_login_error_connection_missing
         SignupError.Unavailable -> R.string.embedded_signup_unavailable_message
         SignupError.Network -> R.string.embedded_login_error_network
-        is SignupError.Unknown -> R.string.embedded_login_error_generic
+        SignupError.ServerError, is SignupError.Unknown -> R.string.embedded_login_error_generic
     },
 )

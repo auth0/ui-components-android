@@ -49,7 +49,11 @@ internal sealed interface SignupState {
         val value: String = "",
         val isSubmitting: Boolean = false,
         val error: SignupError.Fixable? = null,
-    ) : SignupState
+    ) : SignupState {
+
+        /** [value] is what the user typed, personal data, so it is left out. */
+        override fun toString(): String = "Entry(kind=$kind, isSubmitting=$isSubmitting, error=$error)"
+    }
 
     /**
      * A [challenge] code went out to [identifier]. [phase] says what is on its way, and [error] is what the user can

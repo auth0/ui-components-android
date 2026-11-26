@@ -2,7 +2,6 @@ package com.auth0.universalcomponents.feature.embedded
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.auth0.universalcomponents.feature.embedded.presentation.components.StackedEntry
 
@@ -21,6 +20,9 @@ import com.auth0.universalcomponents.feature.embedded.presentation.components.St
  *     ),
  * )
  * ```
+ *
+ * Build it once, with `remember` or as a constant. It has no `equals`, so a new one on every recomposition of the caller
+ * redraws every entry screen that reads it.
  *
  * To change the logo of every entry screen at once, set it in the theme instead (`Auth0ThemeConfiguration.brand`).
  *
@@ -134,16 +136,3 @@ class EmbeddedEntryMessages @JvmOverloads constructor(
     val logInPrompt: String? = null,
     val logInAction: String? = null,
 )
-
-/**
- * What the entry screen is configured with, for the screens below [EmbeddedLoginScreen]. Not a static local: a new
- * value then refreshes the screens that read it, and not everything below [EmbeddedLoginScreen].
- */
-internal val LocalEmbeddedEntry = compositionLocalOf { EmbeddedEntryConfiguration.Default }
-
-/** The logo to draw: the one the theme has when [Theme][EmbeddedEntryLogo.Theme], the app's own, or none. */
-internal fun EmbeddedEntryLogo.resolve(theme: @Composable () -> Unit): (@Composable () -> Unit)? = when (this) {
-    EmbeddedEntryLogo.Theme -> theme
-    is EmbeddedEntryLogo.Custom -> content
-    EmbeddedEntryLogo.Hidden -> null
-}

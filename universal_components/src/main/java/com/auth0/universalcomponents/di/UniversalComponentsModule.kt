@@ -67,6 +67,11 @@ object UniversalComponentsModule {
     /**
      * One SDK client per login flow: it keeps the session, so the first factor and MFA share it, through the same
      * [EmbeddedAuthSteps] so only one step runs on it at a time.
+     *
+     * [offersSignup] is the app's `signup = EmbeddedLoginSignup.Offered`. The login's capabilities leave out sign-up's
+     * two steps unless it is set, so the server lists no sign-up (and the login shows no link) when the app chose
+     * `Hidden`. It defaults to off here because the screen always passes it; a sign-up screen on its own needs no flag,
+     * as signing up is all it does.
      */
     internal fun provideLoginFlowViewModelFactory(
         connection: String,

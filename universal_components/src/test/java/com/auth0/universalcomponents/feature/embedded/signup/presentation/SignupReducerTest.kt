@@ -636,8 +636,37 @@ class SignupReducerTest {
     }
 
     @Test
+    fun `a second passes - on the error screen over the code screen - the wait goes on under it`() {
+        val failed = SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(code(secondsLeft = 10)))
+
+        val update = reducer.handleSecondsPassed(failed, seconds = 1)
+
+        assertThat(update.state)
+            .isEqualTo(SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(code(secondsLeft = 9))))
+        assertThat(update.commands).containsExactly(SignupCommand.CountDownResend)
+    }
+
+    @Test
+    fun `seconds pass - on the error screen, past the wait - try again returns to a code screen that can resend`() {
+        val failed = SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(code(secondsLeft = 3)))
+
+        val counted = reducer.handleSecondsPassed(failed, seconds = 30)
+        val returned = reducer.handleIntent(counted.state, SignupIntent.Retry)
+
+        assertThat(counted.commands).isEmpty()
+        assertThat(returned.state).isEqualTo(code(secondsLeft = 0))
+        assertThat(returned.commands).isEmpty()
+    }
+
+    @Test
     fun `a second passes - once the code screen is left - nothing goes on`() {
-        listOf(entry(), SignupState.Idle, SignupState.Failed(SignupError.Ended)).forEach { state ->
+        listOf(
+            entry(),
+            SignupState.Idle,
+            SignupState.Failed(SignupError.Ended),
+            SignupState.Failed(SignupError.Network, SignupRetry.CreateAccount),
+            SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(entry(value = ADDRESS))),
+        ).forEach { state ->
             val update = reducer.handleSecondsPassed(state, seconds = 1)
 
             assertThat(update.state).isEqualTo(state)
@@ -651,6 +680,23 @@ class SignupReducerTest {
     fun `a typed code and the credentials - are never written out`() {
         assertThat(SignupIntent.SubmitCode("123456").toString()).doesNotContain("123456")
         assertThat(SignupCommand.Verify("123456").toString()).doesNotContain("123456")
+    }
+
+    @Test
+    fun `the email the user typed - is never written out`() {
+        val typed = entry(value = ADDRESS)
+
+        listOf(
+            IDENTIFIER,
+            typed,
+            code(),
+            SignupIntent.SubmitIdentifier(IDENTIFIER),
+            SignupCommand.Identify(IDENTIFIER),
+            SignupCommand.SendCode(IDENTIFIER, CHALLENGE),
+            SignupOutcome.Identified(IDENTIFIER, CHALLENGE),
+            SignupOutcome.CodeSent(IDENTIFIER, CHALLENGE),
+            SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(typed)),
+        ).forEach { assertThat(it.toString()).doesNotContain(ADDRESS) }
     }
 
     private fun entry(

@@ -48,6 +48,32 @@ class Auth0ThemeTokensTest {
     }
 
     @Test
+    fun `built-in colors to fill in - follow the surfaces of the set, not the phone's mode`() {
+        assertThat(light.builtInForSurfaces()).isEqualTo(light)
+        assertThat(dark.builtInForSurfaces()).isEqualTo(dark)
+    }
+
+    @Test
+    fun `a fixed light set with no foreground colors - gets the light ones, whatever the phone's mode`() {
+        val before = light.copy(foregroundLinkPrimary = Color.Unspecified, foregroundSuccess = Color.Unspecified)
+
+        val resolved = before.withDefaultsFrom(before.builtInForSurfaces())
+
+        assertThat(resolved.foregroundLinkPrimary).isEqualTo(light.foregroundLinkPrimary)
+        assertThat(resolved.foregroundSuccess).isEqualTo(light.foregroundSuccess)
+    }
+
+    @Test
+    fun `a fixed dark set with no foreground colors - gets the dark ones`() {
+        val before = dark.copy(foregroundLinkPrimary = Color.Unspecified, foregroundSuccess = Color.Unspecified)
+
+        val resolved = before.withDefaultsFrom(before.builtInForSurfaces())
+
+        assertThat(resolved.foregroundLinkPrimary).isEqualTo(dark.foregroundLinkPrimary)
+        assertThat(resolved.foregroundSuccess).isEqualTo(dark.foregroundSuccess)
+    }
+
+    @Test
     fun `filling in the foreground colors - changes no other color`() {
         val custom = light.copy(textBold = Color.Red, foregroundSuccess = Color.Unspecified)
 
@@ -88,8 +114,23 @@ class Auth0ThemeTokensTest {
         val brand = Auth0Brand()
 
         assertThat(brand.logo).isEqualTo(R.drawable.uc_auth0_logo)
-        assertThat(brand.logoDescription).isEqualTo("Auth0")
+        assertThat(brand.logoDescription).isNull()
+        assertThat(brand.descriptionOrDefault()).isEqualTo("Auth0")
         assertThat(brand.logoTint).isNull()
+    }
+
+    @Test
+    fun `the app's own logo with no description - is not announced as Auth0`() {
+        val brand = Auth0Brand(logo = R.drawable.ic_email)
+
+        assertThat(brand.descriptionOrDefault()).isNull()
+    }
+
+    @Test
+    fun `a description the app set - is what a screen reader says, for any logo`() {
+        assertThat(Auth0Brand(logoDescription = "Acme").descriptionOrDefault()).isEqualTo("Acme")
+        assertThat(Auth0Brand(logo = R.drawable.uc_auth0_logo, logoDescription = "Acme").descriptionOrDefault())
+            .isEqualTo("Acme")
     }
 
     @Test
