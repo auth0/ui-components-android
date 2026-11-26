@@ -8,6 +8,7 @@ import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
 import com.auth0.android.embedded.authorize.OtpChannel
 import com.auth0.android.embedded.authorize.OtpType
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.embedded.authorize.SignupIdentifier
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.data.FakeRequestImpl
@@ -29,6 +30,7 @@ import io.mockk.clearAllMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -37,7 +39,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupIdentifier as EmailIdentifier
+import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupIdentifier as KindIdentifier
 
 class EmbeddedSignupRepositoryImplTest {
 
@@ -83,6 +85,8 @@ class EmbeddedSignupRepositoryImplTest {
                     EmbeddedCapability.CONFIRM_SIGNUP,
                     EmbeddedCapability.IDENTIFY_EMAIL,
                     EmbeddedCapability.CHALLENGE_EMAIL,
+                    EmbeddedCapability.IDENTIFY_PHONE,
+                    EmbeddedCapability.CHALLENGE_PHONE,
                     EmbeddedCapability.VERIFY_OTP,
                 ),
             )
@@ -112,8 +116,36 @@ class EmbeddedSignupRepositoryImplTest {
     }
 
     @Test
-    fun `open - a phone required - is unavailable, since there is no screen for it`() = runTest {
+    fun `open - a phone required - starts it and asks for the phone`() = runTest {
         every { client.authorize(CONNECTION, any(), any(), any()) } returns step(signup(PHONE to true))
+        every { client.signup() } returns step(NextAction.IdentifyPhone)
+
+        assertThat(repository.open()).isEqualTo(Result.Success(SignupNext.AskFor(SignupKind.Phone)))
+    }
+
+    @Test
+    fun `open - a phone required and an email allowed - starts on the phone, though the email is listed first`() =
+        runTest {
+            every { client.authorize(CONNECTION, any(), any(), any()) } returns
+                step(signup(EMAIL to false, PHONE to true))
+            every { client.signup() } returns step(NextAction.IdentifyEmail, NextAction.IdentifyPhone)
+
+            assertThat(repository.open()).isEqualTo(Result.Success(SignupNext.AskFor(SignupKind.Phone)))
+        }
+
+    @Test
+    fun `open - an email required and a phone allowed - starts on the email`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns
+            step(signup(EMAIL to true, PHONE to false))
+        every { client.signup() } returns step(NextAction.IdentifyPhone, NextAction.IdentifyEmail)
+
+        assertThat(repository.open()).isEqualTo(Result.Success(SignupNext.AskFor(SignupKind.Email)))
+    }
+
+    @Test
+    fun `open - a username required - is unavailable, since there is no screen for it`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns
+            step(signup(IdentifierType.USERNAME to true))
 
         assertThat(repository.open().failure().error).isEqualTo(SignupError.Unavailable)
         verify(exactly = 0) { client.signup() }
@@ -211,20 +243,95 @@ class EmbeddedSignupRepositoryImplTest {
         verify(exactly = 0) { client.challengeEmail(any()) }
     }
 
+    @Test
+    fun `identify - a phone accepted - returns the server's mask and the ways it sends, text first`() = runTest {
+        every { client.identify(NUMBER, IdentifierType.PHONE) } returns
+            step(challengePhone(at = 2, PhoneDeliveryMethod.VOICE, PhoneDeliveryMethod.TEXT))
+
+        assertThat(repository.identify(PHONE_NUMBER)).isEqualTo(
+            Result.Success(
+                SignupChallenge(
+                    index = 2,
+                    sentTo = MASKED_NUMBER,
+                    deliveries = listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE),
+                ),
+            ),
+        )
+    }
+
+    @Test
+    fun `identify - a phone that only takes calls - lists the call alone`() = runTest {
+        every { client.identify(NUMBER, IdentifierType.PHONE) } returns
+            step(challengePhone(at = 0, PhoneDeliveryMethod.VOICE))
+
+        val challenge = (repository.identify(PHONE_NUMBER) as Result.Success).data
+
+        assertThat(challenge.deliveries).containsExactly(PhoneDeliveryMethod.VOICE)
+    }
+
+    @Test
+    fun `identify - a phone the server hid completely - names none, so the screen shows what was typed`() = runTest {
+        every { client.identify(NUMBER, IdentifierType.PHONE) } returns
+            step(challengePhone(at = 0, PhoneDeliveryMethod.TEXT, masked = "*********"))
+
+        val challenge = (repository.identify(PHONE_NUMBER) as Result.Success).data
+
+        assertThat(challenge.sentTo).isNull()
+    }
+
+    @Test
+    fun `identify - a phone with no way to send the code listed - fails with code not sent`() = runTest {
+        every { client.identify(NUMBER, IdentifierType.PHONE) } returns step(challengePhone(at = 0))
+
+        assertThat(repository.identify(PHONE_NUMBER).failure().error).isEqualTo(SignupError.CodeNotSent)
+    }
+
+    @Test
+    fun `identify - the server calls the phone invalid - fails with invalid phone`() = runTest {
+        every { client.identify(NUMBER, IdentifierType.PHONE) } returns failingWith(
+            EmbeddedAuthError.InsufficientAuthorization(listOf(NextAction.IdentifyPhone), Reason.NONE),
+            code = "insufficient_authorization",
+            description = "invalid_phone",
+        )
+
+        assertThat(repository.identify(PHONE_NUMBER).failure().error).isEqualTo(SignupError.InvalidPhone)
+    }
+
     // endregion
 
     // region sendCode
 
     @Test
     fun `sendCode - sends the code the challenge stands for`() = runTest {
-        assertThat(repository.sendCode(SignupChallenge(index = 2))).isEqualTo(Result.Success(Unit))
+        assertThat(repository.sendCode(SignupChallenge(index = 2), delivery = null)).isEqualTo(Result.Success(Unit))
         verify(exactly = 1) { client.challengeEmail(2) }
     }
 
     @Test
+    fun `sendCode - a phone's code - goes the way given, and never by email`() = runTest {
+        every { client.challengePhone(any(), any()) } returns step(verifyOtp())
+
+        repository.sendCode(SignupChallenge(index = 3), PhoneDeliveryMethod.VOICE)
+        repository.sendCode(SignupChallenge(index = 3), PhoneDeliveryMethod.TEXT)
+
+        verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.VOICE) }
+        verify(exactly = 1) { client.challengePhone(3, PhoneDeliveryMethod.TEXT) }
+        verify(exactly = 0) { client.challengeEmail(any()) }
+    }
+
+    @Test
+    fun `sendCode - a phone's code can't be sent - fails with the reason`() = runTest {
+        every { client.challengePhone(any(), any()) } returns failingWith(EmbeddedAuthError.Network)
+
+        val failure = repository.sendCode(SignupChallenge(index = 0), PhoneDeliveryMethod.TEXT).failure()
+
+        assertThat(failure.error).isEqualTo(SignupError.Network)
+    }
+
+    @Test
     fun `sendCode - again - is the same call`() = runTest {
-        repository.sendCode(SignupChallenge(index = 2))
-        repository.sendCode(SignupChallenge(index = 2))
+        repository.sendCode(SignupChallenge(index = 2), delivery = null)
+        repository.sendCode(SignupChallenge(index = 2), delivery = null)
 
         verify(exactly = 2) { client.challengeEmail(2) }
     }
@@ -234,7 +341,7 @@ class EmbeddedSignupRepositoryImplTest {
         every { client.challengeEmail(any()) } returns
             failingWith(EmbeddedAuthError.AccessDenied, description = "too_many_resend_attempts")
 
-        assertThat(repository.sendCode(SignupChallenge(index = 0)).failure().error)
+        assertThat(repository.sendCode(SignupChallenge(index = 0), delivery = null).failure().error)
             .isEqualTo(SignupError.TooManyCodesRequested)
     }
 
@@ -242,12 +349,96 @@ class EmbeddedSignupRepositoryImplTest {
     fun `sendCode - the connection drops - fails with network`() = runTest {
         every { client.challengeEmail(any()) } returns failingWith(EmbeddedAuthError.Network)
 
-        assertThat(repository.sendCode(SignupChallenge(index = 0)).failure().error).isEqualTo(SignupError.Network)
+        assertThat(repository.sendCode(SignupChallenge(index = 0), delivery = null).failure().error)
+            .isEqualTo(SignupError.Network)
+    }
+
+    // endregion
+
+    // region replaceExpiredCode
+
+    /** A sign-up that requires a phone, which takes texts and calls. */
+    private fun phoneSignup() {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(signup(PHONE to true))
+        every { client.signup() } returns step(NextAction.IdentifyPhone)
+        every { client.identify(NUMBER, IdentifierType.PHONE) } returns
+            step(challengePhone(at = 1, PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE))
+        every { client.challengePhone(any(), any()) } returns step(verifyOtp())
+    }
+
+    @Test
+    fun `replaceExpiredCode - starts a new sign-up for the same number and sends the code the way given`() = runTest {
+        phoneSignup()
+
+        val replaced = repository.replaceExpiredCode(PHONE_NUMBER, PhoneDeliveryMethod.VOICE)
+
+        assertThat(replaced).isEqualTo(
+            Result.Success(
+                SignupChallenge(1, MASKED_NUMBER, listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE)),
+            ),
+        )
+        verifyOrder {
+            client.authorize(CONNECTION, any(), any(), any())
+            client.signup()
+            client.identify(NUMBER, IdentifierType.PHONE)
+            client.challengePhone(1, PhoneDeliveryMethod.VOICE)
+        }
+    }
+
+    @Test
+    fun `replaceExpiredCode - the connection drops while opening - fails with network and goes no further`() = runTest {
+        phoneSignup()
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns failingWith(EmbeddedAuthError.Network)
+
+        assertThat(repository.replaceExpiredCode(PHONE_NUMBER, PhoneDeliveryMethod.TEXT).failure().error)
+            .isEqualTo(SignupError.Network)
+        verify(exactly = 0) { client.identify(any(), any()) }
+        verify(exactly = 0) { client.challengePhone(any(), any()) }
+    }
+
+    @Test
+    fun `replaceExpiredCode - the sign-up is no longer offered - is unavailable`() = runTest {
+        phoneSignup()
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.IdentifyPhone)
+
+        assertThat(repository.replaceExpiredCode(PHONE_NUMBER, PhoneDeliveryMethod.TEXT).failure().error)
+            .isEqualTo(SignupError.Unavailable)
+    }
+
+    @Test
+    fun `replaceExpiredCode - the number is refused - fails with it and sends nothing`() = runTest {
+        phoneSignup()
+        every { client.identify(NUMBER, IdentifierType.PHONE) } returns step(NextAction.IdentifyPhone)
+
+        assertThat(repository.replaceExpiredCode(PHONE_NUMBER, PhoneDeliveryMethod.TEXT).failure().error)
+            .isEqualTo(SignupError.CodeNotSent)
+        verify(exactly = 0) { client.challengePhone(any(), any()) }
+    }
+
+    @Test
+    fun `replaceExpiredCode - the new code can't be sent - fails with the reason`() = runTest {
+        phoneSignup()
+        every { client.challengePhone(any(), any()) } returns
+            failingWith(EmbeddedAuthError.AccessDenied, description = "too_many_resend_attempts")
+
+        assertThat(repository.replaceExpiredCode(PHONE_NUMBER, PhoneDeliveryMethod.TEXT).failure().error)
+            .isEqualTo(SignupError.TooManyCodesRequested)
     }
 
     // endregion
 
     // region verify
+
+    @Test
+    fun `verify - after a required phone, the phone is asked for first, though the email is listed first`() = runTest {
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(signup(EMAIL to false, PHONE to true))
+        every { client.signup() } returns step(NextAction.IdentifyPhone)
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns step(NextAction.IdentifyEmail, NextAction.IdentifyPhone)
+        repository.open()
+
+        assertThat(repository.verify(CODE))
+            .isEqualTo(Result.Success(SignupProgress.Continue(SignupNext.AskFor(SignupKind.Phone))))
+    }
 
     @Test
     fun `verify - the email already has an account - signs that user in`() = runTest {
@@ -384,6 +575,13 @@ class EmbeddedSignupRepositoryImplTest {
     private fun challengeEmail(at: Int): NextAction.ChallengeEmail =
         sdkInstance(Int::class.java to at, String::class.java to MASKED_ADDRESS)
 
+    private fun challengePhone(
+        at: Int,
+        vararg ways: PhoneDeliveryMethod,
+        masked: String = MASKED_NUMBER,
+    ): NextAction.ChallengePhone =
+        sdkInstance(Int::class.java to at, String::class.java to masked, List::class.java to ways.toList())
+
     private fun verifyOtp(): NextAction.VerifyOtp =
         sdkInstance(
             OtpChannel::class.java to OtpChannel.EMAIL,
@@ -396,8 +594,11 @@ class EmbeddedSignupRepositoryImplTest {
         const val CONNECTION = "Username-Password-Authentication"
         const val ADDRESS = "jane@example.com"
         const val MASKED_ADDRESS = "j***@example.com"
+        const val NUMBER = "+15551234567"
+        const val MASKED_NUMBER = "+1XXXXXX4567"
         const val CODE = "123456"
-        val EMAIL_ADDRESS = EmailIdentifier(SignupKind.Email, ADDRESS)
+        val EMAIL_ADDRESS = KindIdentifier(SignupKind.Email, ADDRESS)
+        val PHONE_NUMBER = KindIdentifier(SignupKind.Phone, NUMBER)
     }
 }
 

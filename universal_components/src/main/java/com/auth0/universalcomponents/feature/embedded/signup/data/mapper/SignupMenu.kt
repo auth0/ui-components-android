@@ -3,6 +3,7 @@ package com.auth0.universalcomponents.feature.embedded.signup.data.mapper
 import com.auth0.android.embedded.authorize.EmbeddedCapability
 import com.auth0.android.embedded.authorize.IdentifierType
 import com.auth0.android.embedded.authorize.NextAction
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupChallenge
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupKind
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupNext
@@ -13,6 +14,7 @@ import com.auth0.universalcomponents.feature.embedded.signup.domain.model.Signup
 internal val SignupKind.identifierType: IdentifierType
     get() = when (this) {
         SignupKind.Email -> IdentifierType.EMAIL
+        SignupKind.Phone -> IdentifierType.PHONE
     }
 
 /** The steps the server must be able to offer for this kind, so `authorize` never advertises one with no screen. */
@@ -23,22 +25,39 @@ internal val SignupKind.capabilities: Set<EmbeddedCapability>
             EmbeddedCapability.CHALLENGE_EMAIL,
             EmbeddedCapability.VERIFY_OTP,
         )
+
+        SignupKind.Phone -> setOf(
+            EmbeddedCapability.IDENTIFY_PHONE,
+            EmbeddedCapability.CHALLENGE_PHONE,
+            EmbeddedCapability.VERIFY_OTP,
+        )
     }
 
 /** The kind of a server identifier; null for one this flow has no screens for. */
 private fun IdentifierType.toSignupKind(): SignupKind? = when (this) {
     IdentifierType.EMAIL -> SignupKind.Email
-    IdentifierType.PHONE, IdentifierType.USERNAME -> null
+    IdentifierType.PHONE -> SignupKind.Phone
+    IdentifierType.USERNAME -> null
 }
 
 /** Whether this action asks for [kind] to be entered, or entered again to correct it. */
 private fun NextAction.asksFor(kind: SignupKind): Boolean = when (kind) {
     SignupKind.Email -> this is NextAction.IdentifyEmail
+    SignupKind.Phone -> this is NextAction.IdentifyPhone
 }
 
-/** The server's offer to send a code, when this action is one. */
+/**
+ * The server's offer to send a code, when this action is one. A phone that lists no way to send it is no offer, as on
+ * iOS: there is nothing to send. (The login treats that as a text.)
+ */
 private fun NextAction.toSignupChallenge(): SignupChallenge? = when (this) {
     is NextAction.ChallengeEmail -> SignupChallenge(index)
+    is NextAction.ChallengePhone -> {
+        val ways = PhoneDeliveryMethod.entries.filter { it in deliveryMethods }
+        // A number the server hid completely (`*********`) tells the user nothing, so the screen shows what was typed.
+        val named = identifier.takeIf { shown -> shown.any(Char::isDigit) }
+        if (ways.isEmpty()) null else SignupChallenge(index, sentTo = named, deliveries = ways)
+    }
     else -> null
 }
 
@@ -65,7 +84,10 @@ internal fun List<NextAction>.toSignupOffer(): SignupOffer? {
 
 /** The server's menu, read for sign-up. */
 internal data class SignupMenu(
-    /** Kinds the server will take an entry for. Includes one still being verified: entering it again corrects it. */
+    /**
+     * Kinds the server will take an entry for, the required ones first. Includes one still being verified: entering it
+     * again corrects it.
+     */
     val askedFor: List<SignupKind>,
     /** A code the server will send now, or again. */
     val challenge: SignupChallenge?,
@@ -81,8 +103,12 @@ internal data class SignupMenu(
         }
 }
 
-internal fun List<NextAction>.toSignupMenu(): SignupMenu = SignupMenu(
-    askedFor = SignupKind.entries.filter { kind -> any { it.asksFor(kind) } },
+/**
+ * [required] are the kinds this sign-up requires: the ones asked for first, since a connection that requires a phone and
+ * allows an email must not start on the email.
+ */
+internal fun List<NextAction>.toSignupMenu(required: List<SignupKind> = emptyList()): SignupMenu = SignupMenu(
+    askedFor = SignupKind.entries.filter { kind -> any { it.asksFor(kind) } }.sortedBy { it !in required },
     challenge = firstNotNullOfOrNull { it.toSignupChallenge() },
     canConfirm = any { it is NextAction.ConfirmSignup },
 )

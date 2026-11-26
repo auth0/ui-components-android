@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.signup.presentation
 
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.domain.network.Result
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupChallenge
@@ -52,7 +53,7 @@ class SignupViewModelTest {
         repository = mockk()
         coEvery { repository.open() } returns Result.Success(SignupNext.AskFor(SignupKind.Email))
         coEvery { repository.identify(IDENTIFIER) } returns Result.Success(CHALLENGE)
-        coEvery { repository.sendCode(CHALLENGE) } returns Result.Success(Unit)
+        coEvery { repository.sendCode(CHALLENGE, null) } returns Result.Success(Unit)
         coEvery { repository.verify(CODE) } returns
             Result.Success(SignupProgress.Continue(SignupNext.ReadyToCreate))
         coEvery { repository.createAccount() } returns Result.Success(credentials)
@@ -127,7 +128,7 @@ class SignupViewModelTest {
 
         assertThat(viewModel.state.value)
             .isEqualTo(SignupState.Entry(SignupKind.Email, ADDRESS, error = SignupError.InvalidEmail))
-        coVerify(exactly = 0) { repository.sendCode(any()) }
+        coVerify(exactly = 0) { repository.sendCode(any(), any()) }
     }
 
     @Test
@@ -199,7 +200,7 @@ class SignupViewModelTest {
         advanceUntilIdle()
 
         assertThat(viewModel.state.value).isEqualTo(SignupState.Entry(SignupKind.Email, ADDRESS))
-        coVerify(exactly = 1) { repository.sendCode(CHALLENGE) }
+        coVerify(exactly = 1) { repository.sendCode(CHALLENGE, null) }
     }
 
     @Test
@@ -253,7 +254,7 @@ class SignupViewModelTest {
         viewModel.send(SignupIntent.Resend)
         runCurrent()
 
-        coVerify(exactly = 2) { repository.sendCode(CHALLENGE) }
+        coVerify(exactly = 2) { repository.sendCode(CHALLENGE, null) }
         assertThat((viewModel.state.value as SignupState.Code).resendSecondsLeft).isEqualTo(RESEND_WAIT_SECONDS)
     }
 
@@ -268,6 +269,55 @@ class SignupViewModelTest {
         runCurrent()
 
         assertThat((viewModel.state.value as SignupState.Code).resendSecondsLeft).isEqualTo(0)
+    }
+
+    @Test
+    fun `a phone that takes a text and a call - asks how, then sends the code the way chosen`() = runTest {
+        coEvery { repository.open() } returns Result.Success(SignupNext.AskFor(SignupKind.Phone))
+        coEvery { repository.identify(PHONE) } returns Result.Success(BOTH_WAYS)
+        coEvery { repository.sendCode(BOTH_WAYS, PhoneDeliveryMethod.VOICE) } returns Result.Success(Unit)
+        startAtEntry()
+
+        viewModel.send(SignupIntent.SubmitIdentifier(PHONE))
+        advanceUntilIdle()
+        assertThat(viewModel.state.value).isEqualTo(SignupState.Delivery(PHONE, BOTH_WAYS))
+        coVerify(exactly = 0) { repository.sendCode(any(), any()) }
+
+        viewModel.send(SignupIntent.ChooseDelivery(PhoneDeliveryMethod.VOICE))
+        runCurrent()
+
+        assertThat(viewModel.state.value)
+            .isEqualTo(SignupState.Code(PHONE, BOTH_WAYS, PhoneDeliveryMethod.VOICE))
+        coVerify(exactly = 1) { repository.sendCode(BOTH_WAYS, PhoneDeliveryMethod.VOICE) }
+    }
+
+    @Test
+    fun `a phone's expired code - stays, and resend starts the sign-up over for the same number`() = runTest {
+        val fresh = SignupChallenge(index = 9, sentTo = BOTH_WAYS.sentTo, deliveries = BOTH_WAYS.deliveries)
+        coEvery { repository.open() } returns Result.Success(SignupNext.AskFor(SignupKind.Phone))
+        coEvery { repository.identify(PHONE) } returns
+            Result.Success(SignupChallenge(1, deliveries = listOf(PhoneDeliveryMethod.TEXT)))
+        coEvery { repository.sendCode(any(), PhoneDeliveryMethod.TEXT) } returns Result.Success(Unit)
+        coEvery { repository.verify(CODE) } returns failure(SignupError.CodeExpired)
+        coEvery { repository.replaceExpiredCode(PHONE, PhoneDeliveryMethod.TEXT) } returns Result.Success(fresh)
+        startAtEntry()
+        viewModel.send(SignupIntent.SubmitIdentifier(PHONE))
+        advanceUntilIdle()
+        viewModel.send(SignupIntent.SubmitCode(CODE))
+        advanceUntilIdle()
+
+        val expired = viewModel.state.value as SignupState.Code
+        assertThat(expired.isExpired).isTrue()
+        assertThat(expired.resendSecondsLeft).isEqualTo(0)
+
+        viewModel.send(SignupIntent.Resend)
+        runCurrent()
+
+        val renewed = viewModel.state.value as SignupState.Code
+        assertThat(renewed.challenge).isEqualTo(fresh)
+        assertThat(renewed.isExpired).isFalse()
+        assertThat(renewed.resendSecondsLeft).isEqualTo(RESEND_WAIT_SECONDS)
+        coVerify(exactly = 1) { repository.replaceExpiredCode(PHONE, PhoneDeliveryMethod.TEXT) }
     }
 
     private suspend fun kotlinx.coroutines.test.TestScope.startAtEntry() {
@@ -296,6 +346,12 @@ class SignupViewModelTest {
         const val CODE = "123456"
         val IDENTIFIER = SignupIdentifier(SignupKind.Email, ADDRESS)
         val CHALLENGE = SignupChallenge(index = 1)
+        val PHONE = SignupIdentifier(SignupKind.Phone, "+15551234567")
+        val BOTH_WAYS = SignupChallenge(
+            index = 1,
+            sentTo = "+1XXXXXX4567",
+            deliveries = listOf(PhoneDeliveryMethod.TEXT, PhoneDeliveryMethod.VOICE),
+        )
     }
 }
 

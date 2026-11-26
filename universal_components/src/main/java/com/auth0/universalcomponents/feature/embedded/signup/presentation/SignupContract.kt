@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.signup.presentation
 
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.presentation.CodeCooldown
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupChallenge
@@ -17,8 +18,10 @@ import com.auth0.universalcomponents.feature.embedded.signup.domain.model.Signup
  *   inputs:  SignupIntent (the user did something) · SignupOutcome (the server answered) · a second has passed
  *   outputs: SignupState (what to draw) · SignupCommand (work to run) · SignupEffect (what the host must do)
  *
- * The server's menu decides each next screen, never a fixed order: a second kind of identifier is a new
- * [SignupKind] and its screens, not a change in these rules.
+ * The server's menu decides each next screen, never a fixed order. A new kind of identifier is a new [SignupKind] and its
+ * screens, and may need rules of its own, as a phone's choice of how to get the code and its expired code did: the
+ * compiler lists the exhaustive `when`s on [SignupKind], but not the plain comparisons (`recoversExpiredCode`, a
+ * delivery of `null` for an email) that must be checked by hand.
  */
 
 /** The seconds a code has to wait before another may be asked for, as on the login's code screen. */
@@ -56,15 +59,31 @@ internal sealed interface SignupState {
     }
 
     /**
-     * A [challenge] code went out to [identifier]. [phase] says what is on its way, and [error] is what the user can
-     * fix here, shown under the field. [resendSecondsLeft] counts down from each code sent; Resend opens at zero.
+     * A phone [identifier] was accepted and its [challenge] lists more than one way to send the code, so the user
+     * chooses before anything is sent. [isSubmitting] spins Continue while the code is on its way, and [error] is what
+     * the user can fix here, shown under the choices.
+     */
+    data class Delivery(
+        val identifier: SignupIdentifier,
+        val challenge: SignupChallenge,
+        val isSubmitting: Boolean = false,
+        val error: SignupError.Fixable? = null,
+    ) : SignupState
+
+    /**
+     * A [challenge] code went out to [identifier], the way [delivery] says (null for an email). [phase] says what is on
+     * its way, and [error] is what the user can fix here, shown under the field. [resendSecondsLeft] counts down from
+     * each code sent; Resend opens at zero. [isExpired] means the code timed out, which a phone's code screen survives:
+     * only a new code helps, so Verify stays off and Resend is open at once.
      */
     data class Code(
         val identifier: SignupIdentifier,
         val challenge: SignupChallenge,
+        val delivery: PhoneDeliveryMethod?,
         val phase: CodePhase = CodePhase.Ready,
         val error: SignupError.Fixable? = null,
         val resendSecondsLeft: Int = RESEND_WAIT_SECONDS,
+        val isExpired: Boolean = false,
     ) : SignupState
 
     /** The account exists and the credentials went to the host. */
@@ -75,9 +94,14 @@ internal sealed interface SignupState {
 
     /**
      * The sign-up couldn't go on, for [error], which is never one the user can fix on a field. [retry] says what
-     * "Try again" does; null means the sign-up is over and only "Start over" follows.
+     * "Try again" does; null means the sign-up is over and only "Start over" follows. [kind] picks the words of the few
+     * errors that name what is being verified: the one the user was on, and the email's before anything is entered.
      */
-    data class Failed(val error: SignupError, val retry: SignupRetry? = null) : SignupState
+    data class Failed(
+        val error: SignupError,
+        val retry: SignupRetry? = null,
+        val kind: SignupKind = SignupKind.Email,
+    ) : SignupState
 }
 
 /** What is on its way for the code screen on show; only one at a time. */
@@ -120,7 +144,10 @@ internal sealed interface SignupIntent {
         override fun toString(): String = "SubmitCode"
     }
 
-    /** A new code, to the same address as the last. */
+    /** Continue on the screen that asks how to get the code: it goes this way. Counts only if the number takes it. */
+    data class ChooseDelivery(val delivery: PhoneDeliveryMethod) : SignupIntent
+
+    /** A new code, to the same address as the last and the way the last went. */
     data object Resend : SignupIntent
 
     /** The button on the error screen, "Try again" or "Start over". */
@@ -146,8 +173,12 @@ internal sealed interface SignupOutcome {
     /** The server accepted [identifier] and will send [challenge]. */
     data class Identified(val identifier: SignupIdentifier, val challenge: SignupChallenge) : SignupOutcome
 
-    /** The code for [challenge] is out, to [identifier]. */
-    data class CodeSent(val identifier: SignupIdentifier, val challenge: SignupChallenge) : SignupOutcome
+    /** The code for [challenge] is out, to [identifier], the way [delivery] says. After a timeout it is a new challenge. */
+    data class CodeSent(
+        val identifier: SignupIdentifier,
+        val challenge: SignupChallenge,
+        val delivery: PhoneDeliveryMethod?,
+    ) : SignupOutcome
 
     data class Verified(val progress: SignupProgress) : SignupOutcome
 
@@ -156,7 +187,7 @@ internal sealed interface SignupOutcome {
         override fun toString(): String = "AccountCreated"
     }
 
-    /** A request from the entry or the code screen failed: an identifier sent, a code sent, or a code checked. */
+    /** A request from the entry, delivery or code screen failed: an identifier sent, a code sent, or a code checked. */
     data class RequestFailed(val error: SignupError) : SignupOutcome
 
     data class CreateFailed(val error: SignupError) : SignupOutcome
@@ -173,8 +204,18 @@ internal sealed interface SignupCommand {
 
     data class Identify(val identifier: SignupIdentifier) : SignupCommand
 
-    /** Sends the code for [challenge], to [identifier]. A resend is the same command. */
-    data class SendCode(val identifier: SignupIdentifier, val challenge: SignupChallenge) : SignupCommand
+    /**
+     * Sends the code for [challenge], to [identifier], the way [delivery] says (null for an email). A resend is the
+     * same command.
+     */
+    data class SendCode(
+        val identifier: SignupIdentifier,
+        val challenge: SignupChallenge,
+        val delivery: PhoneDeliveryMethod?,
+    ) : SignupCommand
+
+    /** A new sign-up for [identifier], whose last code timed out, and a code for it the way [delivery] says. */
+    data class ReplaceExpiredCode(val identifier: SignupIdentifier, val delivery: PhoneDeliveryMethod?) : SignupCommand
 
     /** Checks the [code] the user typed. A live credential, so [toString] leaves it out. */
     data class Verify(val code: String) : SignupCommand {
@@ -193,7 +234,7 @@ internal sealed interface SignupCommand {
 /** What the host must do, once; sign-up never navigates. */
 internal sealed interface SignupEffect {
 
-    /** The account exists, or the email already had one: the credentials go to the app. */
+    /** The account exists, or the identifier already had one: the credentials go to the app. */
     data class Authenticated(val credentials: Credentials) : SignupEffect {
         override fun toString(): String = "Authenticated"
     }
@@ -213,6 +254,7 @@ internal data class SignupUpdate(
 internal val SignupState.isBusy: Boolean
     get() = when (this) {
         is SignupState.Entry -> isSubmitting
+        is SignupState.Delivery -> isSubmitting
         is SignupState.Code -> phase != CodePhase.Ready
         SignupState.Creating -> true
         else -> false

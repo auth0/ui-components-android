@@ -25,6 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import com.auth0.universalcomponents.R
@@ -107,19 +111,30 @@ internal fun FlowStatusScreen(
                     tint = icon.tint,
                 )
             }
-            Text(
-                text = title,
-                style = typography.titleLarge.copy(fontWeight = FontWeight.Normal),
-                color = colors.textBold,
-                textAlign = TextAlign.Center,
-            )
-            if (description != null) {
+            // Nothing on this screen takes the focus, so a screen reader would stay silent about an outcome. The title and
+            // what it means are read as one line as soon as the screen appears, as an inline error is.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(dimensions.spacingMd),
+            ) {
                 Text(
-                    text = description,
-                    style = typography.bodySmall,
-                    color = colors.textDefault,
+                    text = title,
+                    modifier = Modifier.semantics { heading() },
+                    style = typography.titleLarge.copy(fontWeight = FontWeight.Normal),
+                    color = colors.textBold,
                     textAlign = TextAlign.Center,
                 )
+                if (description != null) {
+                    Text(
+                        text = description,
+                        style = typography.bodySmall,
+                        color = colors.textDefault,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             if (actionTitle != null && onAction != null) {
                 FlowPrimaryButton(title = actionTitle, onClick = onAction)

@@ -175,12 +175,20 @@
     <!-- Embedded sign-up. The words are the iOS SDK's. Words that are the same as the login's are not repeated here. -->
     <string name="embedded_signup_title">Sign up</string>
     <string name="embedded_signup_code_sent_to">Sent to %1$s</string>
+    <string name="embedded_signup_code_called">Called %1$s</string>
+    <string name="embedded_signup_delivery_title">Choose how to get your code</string>
+    <string name="embedded_signup_delivery_subtitle">We’ll send a code to %1$s</string>
+    <string name="embedded_signup_delivery_label">How do you want to receive the code?</string>
+    <string name="embedded_signup_delivery_text">Text message</string>
+    <string name="embedded_signup_delivery_voice">Voice call</string>
     <string name="embedded_signup_start_over">Start over</string>
     <string name="embedded_signup_unavailable_title">Sign-up isn\'t available</string>
     <string name="embedded_signup_unavailable_message">This app can\'t create accounts right now.</string>
     <string name="embedded_signup_error_title">Sign-up couldn\'t be completed.</string>
     <string name="embedded_signup_error_invalid_code">Invalid code. Please double check your code that was sent to your email.</string>
     <string name="embedded_signup_error_code_expired">This code has expired. Please start again.</string>
+    <string name="embedded_signup_error_invalid_code_phone">Invalid code. Please double check your code that was sent to your phone.</string>
+    <string name="embedded_signup_error_code_expired_phone">The code expired. Send a new one to continue.</string>
     <string name="embedded_signup_error_too_many_wrong_codes">Too many incorrect codes. Please start again.</string>
     <string name="embedded_signup_error_too_many_codes_requested">Too many codes were requested. Please start again later.</string>
     <string name="embedded_signup_error_denied">We couldn\'t create your account. Please try again later.</string>

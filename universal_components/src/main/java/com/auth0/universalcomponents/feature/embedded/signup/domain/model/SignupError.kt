@@ -22,6 +22,8 @@ internal sealed interface SignupError {
 
     data object InvalidEmail : Fixable
 
+    data object InvalidPhone : Fixable
+
     data object InvalidCode : Fixable
 
     /** The server offered no way to send a code. */
@@ -31,6 +33,7 @@ internal sealed interface SignupError {
 
     data object TooManyWrongCodes : Fatal
 
+    /** Ends the sign-up, except on a phone's code screen ([SignupKind.recoversExpiredCode]), which asks for a new code. */
     data object CodeExpired : Fatal
 
     data object TooManyCodesRequested : Fatal

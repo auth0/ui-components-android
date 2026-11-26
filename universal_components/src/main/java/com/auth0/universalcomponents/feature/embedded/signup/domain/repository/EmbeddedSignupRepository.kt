@@ -1,5 +1,6 @@
 package com.auth0.universalcomponents.feature.embedded.signup.domain.repository
 
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.domain.network.EmptyResult
 import com.auth0.universalcomponents.domain.network.Result
@@ -29,8 +30,20 @@ internal interface EmbeddedSignupRepository {
      */
     suspend fun identify(identifier: SignupIdentifier): Result<SignupChallenge, SignupFailure>
 
-    /** Sends the code [challenge] stands for. Sending it again is the same call. */
-    suspend fun sendCode(challenge: SignupChallenge): EmptyResult<SignupFailure>
+    /**
+     * Sends the code [challenge] stands for, the way given: [delivery] is null for an email, which is only ever emailed,
+     * and for a phone one of [SignupChallenge.deliveries]. Sending it again is the same call.
+     */
+    suspend fun sendCode(challenge: SignupChallenge, delivery: PhoneDeliveryMethod?): EmptyResult<SignupFailure>
+
+    /**
+     * A new code for [identifier] once the last one timed out, which ended the server's sign-up with it: opens a new
+     * sign-up, identifies it again and sends the code, the way given. Returns the fresh challenge.
+     */
+    suspend fun replaceExpiredCode(
+        identifier: SignupIdentifier,
+        delivery: PhoneDeliveryMethod?,
+    ): Result<SignupChallenge, SignupFailure>
 
     /** Checks a code the user received. A wrong one fails with [SignupError.InvalidCode] and keeps the session. */
     suspend fun verify(code: String): Result<SignupProgress, SignupFailure>

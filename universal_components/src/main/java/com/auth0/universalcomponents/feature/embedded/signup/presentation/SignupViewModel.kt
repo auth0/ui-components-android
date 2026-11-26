@@ -73,10 +73,19 @@ internal class SignupViewModel(
             }
 
             is SignupCommand.SendCode -> launchWork {
-                val sent = repository.sendCode(command.challenge)
+                val sent = repository.sendCode(command.challenge, command.delivery)
                 onOutcome(
                     sent.asOutcome(SignupOutcome::RequestFailed) {
-                        SignupOutcome.CodeSent(command.identifier, command.challenge)
+                        SignupOutcome.CodeSent(command.identifier, command.challenge, command.delivery)
+                    },
+                )
+            }
+
+            is SignupCommand.ReplaceExpiredCode -> launchWork {
+                val replaced = repository.replaceExpiredCode(command.identifier, command.delivery)
+                onOutcome(
+                    replaced.asOutcome(SignupOutcome::RequestFailed) {
+                        SignupOutcome.CodeSent(command.identifier, it, command.delivery)
                     },
                 )
             }

@@ -12,14 +12,16 @@ import com.auth0.universalcomponents.feature.embedded.signup.domain.model.Signup
 // The server's own words, which the SDK has no reason of its own for. `error_description` is the only thing that tells
 // them apart, and it is read here and nowhere else. The server's text is never shown in sign-up.
 private const val INVALID_EMAIL = "invalid_email"
+private const val INVALID_PHONE = "invalid_phone"
 private const val TOO_MANY_RESEND_ATTEMPTS = "too_many_resend_attempts"
 
 /**
  * What a "not finished yet" answer says about what the user typed, or null when it is just the next menu. A wrong
- * email arrives as a plain continuation with no reason, so only its description tells it apart.
+ * email or phone number arrives as a plain continuation with no reason, so only its description tells it apart.
  */
 internal fun StepAnswer.Next.toSignupFailure(): SignupFailure? = when {
     reason == Reason.NONE && description == INVALID_EMAIL -> SignupFailure(SignupError.InvalidEmail)
+    reason == Reason.NONE && description == INVALID_PHONE -> SignupFailure(SignupError.InvalidPhone)
     reason in INVALID_CODE_REASONS -> SignupFailure(SignupError.InvalidCode)
     else -> null
 }

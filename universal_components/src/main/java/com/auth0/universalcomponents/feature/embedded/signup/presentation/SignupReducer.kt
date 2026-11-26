@@ -1,8 +1,10 @@
 package com.auth0.universalcomponents.feature.embedded.signup.presentation
 
+import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupError
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupIdentifier
+import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupKind
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupNext
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupProgress
 
@@ -21,6 +23,7 @@ internal class SignupReducer {
         SignupIntent.Start -> if (state == SignupState.Idle) open() else SignupUpdate(state)
         is SignupIntent.SubmitIdentifier -> submitIdentifier(state, intent.identifier)
         is SignupIntent.SubmitCode -> submitCode(state, intent.code)
+        is SignupIntent.ChooseDelivery -> chooseDelivery(state, intent.delivery)
         SignupIntent.Resend -> resend(state)
         SignupIntent.Retry -> retry(state)
         SignupIntent.Back -> goBack(state)
@@ -68,22 +71,38 @@ internal class SignupReducer {
     }
 
     private fun submitCode(state: SignupState, code: String): SignupUpdate {
-        if (state !is SignupState.Code || state.phase != CodePhase.Ready || code.isBlank()) return SignupUpdate(state)
+        if (state !is SignupState.Code || !state.acceptsCode || code.isBlank()) return SignupUpdate(state)
         return SignupUpdate(
             state.copy(phase = CodePhase.Verifying, error = null),
             listOf(SignupCommand.Verify(code)),
         )
     }
 
-    /** Only once the wait is over, and not while something else is on its way. */
+    /** Only a way the number takes, and not while the code is on its way. */
+    private fun chooseDelivery(state: SignupState, delivery: PhoneDeliveryMethod): SignupUpdate {
+        if (state !is SignupState.Delivery || state.isSubmitting || delivery !in state.challenge.deliveries) {
+            return SignupUpdate(state)
+        }
+        return SignupUpdate(
+            state.copy(isSubmitting = true, error = null),
+            listOf(SignupCommand.SendCode(state.identifier, state.challenge, delivery)),
+        )
+    }
+
+    /**
+     * Only once the wait is over, and not while something else is on its way. The code goes the way the last one went.
+     * A code that timed out ended the server's sign-up with it, so a new one starts it over for the same identifier.
+     */
     private fun resend(state: SignupState): SignupUpdate {
         if (state !is SignupState.Code || state.phase != CodePhase.Ready || state.resendSecondsLeft > 0) {
             return SignupUpdate(state)
         }
-        return SignupUpdate(
-            state.copy(phase = CodePhase.Resending, error = null),
-            listOf(SignupCommand.SendCode(state.identifier, state.challenge)),
-        )
+        val command = if (state.isExpired) {
+            SignupCommand.ReplaceExpiredCode(state.identifier, state.delivery)
+        } else {
+            SignupCommand.SendCode(state.identifier, state.challenge, state.delivery)
+        }
+        return SignupUpdate(state.copy(phase = CodePhase.Resending, error = null), listOf(command))
     }
 
     /** Only from the error screen, and it does what that screen's retry says: nothing to return to opens again. */
@@ -97,14 +116,19 @@ internal class SignupReducer {
     }
 
     /**
-     * Ignored while something is on its way. The code screen goes back to the entry, with what was typed and nothing
-     * sent; anywhere else leaves, because a verified identifier can't be changed, so there is nothing to go back to.
+     * Ignored while something is on its way. The code screen, and the one that asks how to get the code, go back to the
+     * entry, with what was typed and nothing sent; anywhere else leaves, because a verified identifier can't be
+     * changed, so there is nothing to go back to.
      */
     private fun goBack(state: SignupState): SignupUpdate = when {
         state.isBusy -> SignupUpdate(state)
-        state is SignupState.Code -> SignupUpdate(SignupState.Entry(state.identifier.kind, state.identifier.value))
+        state is SignupState.Code -> backToEntry(state.identifier)
+        state is SignupState.Delivery -> backToEntry(state.identifier)
         else -> SignupUpdate(state, effect = SignupEffect.Exit)
     }
+
+    private fun backToEntry(identifier: SignupIdentifier) =
+        SignupUpdate(SignupState.Entry(identifier.kind, identifier.value))
 
     // endregion
 
@@ -126,22 +150,43 @@ internal class SignupReducer {
         },
     )
 
-    /** The identifier is accepted: the code goes out at once, with the spinner kept on Continue. */
+    /**
+     * The identifier is accepted. A number that takes more than one way to get a code asks first how the user wants it;
+     * otherwise the code goes out at once, with the spinner kept on Continue.
+     */
     private fun identified(state: SignupState, outcome: SignupOutcome.Identified): SignupUpdate {
         if (state !is SignupState.Entry || !state.isSubmitting || state.kind != outcome.identifier.kind) {
             return SignupUpdate(state)
         }
-        return SignupUpdate(state, listOf(SignupCommand.SendCode(outcome.identifier, outcome.challenge)))
+        val challenge = outcome.challenge
+        if (challenge.deliveries.size > 1) return SignupUpdate(SignupState.Delivery(outcome.identifier, challenge))
+        return SignupUpdate(
+            state,
+            listOf(SignupCommand.SendCode(outcome.identifier, challenge, challenge.firstDelivery)),
+        )
     }
 
     private fun codeSent(state: SignupState, outcome: SignupOutcome.CodeSent): SignupUpdate = when {
         // The first code: on to the code screen, with the wait before another starting.
         state is SignupState.Entry && state.isSubmitting && state.kind == outcome.identifier.kind ->
-            codeScreen(SignupState.Code(outcome.identifier, outcome.challenge))
+            codeScreen(SignupState.Code(outcome.identifier, outcome.challenge, outcome.delivery))
 
-        // A resend: the same screen, with its error gone and the wait starting again.
+        // The first code, sent the way the user chose.
+        state is SignupState.Delivery && state.isSubmitting && state.identifier == outcome.identifier ->
+            codeScreen(SignupState.Code(outcome.identifier, outcome.challenge, outcome.delivery))
+
+        // A resend: the same screen, with its error gone and the wait starting again. After a timeout the challenge is a
+        // new one, and the code is no longer expired.
         state is SignupState.Code && state.phase == CodePhase.Resending && state.identifier == outcome.identifier ->
-            codeScreen(state.copy(phase = CodePhase.Ready, error = null, resendSecondsLeft = RESEND_WAIT_SECONDS))
+            codeScreen(
+                state.copy(
+                    challenge = outcome.challenge,
+                    phase = CodePhase.Ready,
+                    error = null,
+                    resendSecondsLeft = RESEND_WAIT_SECONDS,
+                    isExpired = false,
+                ),
+            )
 
         else -> SignupUpdate(state)
     }
@@ -151,7 +196,7 @@ internal class SignupReducer {
     private fun verified(state: SignupState, progress: SignupProgress): SignupUpdate {
         if (state !is SignupState.Code || state.phase != CodePhase.Verifying) return SignupUpdate(state)
         return when (progress) {
-            // The email already had an account, so the server signed that user in.
+            // An account already existed for the identifier, so the server signed that user in.
             is SignupProgress.SignedIn -> authenticated(progress.credentials)
             is SignupProgress.Continue -> when (val next = progress.next) {
                 // Only when it is the same kind again is what was typed kept.
@@ -174,19 +219,29 @@ internal class SignupReducer {
         SignupUpdate(SignupState.Authenticated, effect = SignupEffect.Authenticated(credentials))
 
     /**
-     * A request from the entry or the code screen failed. What the user can fix stays on that screen with the message
-     * under the field; what ends the sign-up goes full screen with "Start over"; anything else goes full screen with
-     * "Try again", which returns to the screen as it was.
+     * A request from the entry, delivery or code screen failed. What the user can fix stays on that screen with the
+     * message under the field; what ends the sign-up goes full screen with "Start over"; anything else goes full screen
+     * with "Try again", which returns to the screen as it was. The exception is a phone's code that timed out: the code
+     * screen stays, and only a new code helps.
      */
     private fun requestFailed(state: SignupState, error: SignupError): SignupUpdate = when {
         state is SignupState.Entry && state.isSubmitting -> {
             val settled = state.copy(isSubmitting = false, error = null)
-            failOn(error, settled) { state.copy(isSubmitting = false, error = it) }
+            failOn(error, state.kind, settled) { state.copy(isSubmitting = false, error = it) }
+        }
+
+        state is SignupState.Delivery && state.isSubmitting -> {
+            val settled = state.copy(isSubmitting = false, error = null)
+            failOn(error, state.identifier.kind, settled) { state.copy(isSubmitting = false, error = it) }
         }
 
         state is SignupState.Code && state.phase != CodePhase.Ready -> {
             val settled = state.copy(phase = CodePhase.Ready, error = null)
-            failOn(error, settled) { state.copy(phase = CodePhase.Ready, error = it) }
+            if (error == SignupError.CodeExpired && state.identifier.kind.recoversExpiredCode) {
+                SignupUpdate(settled.copy(isExpired = true, resendSecondsLeft = 0))
+            } else {
+                failOn(error, state.identifier.kind, settled) { state.copy(phase = CodePhase.Ready, error = it) }
+            }
         }
 
         else -> SignupUpdate(state)
@@ -194,13 +249,14 @@ internal class SignupReducer {
 
     private inline fun failOn(
         error: SignupError,
+        kind: SignupKind,
         settled: SignupState,
         stay: (SignupError.Fixable) -> SignupState,
     ): SignupUpdate = SignupUpdate(
         when (error) {
             is SignupError.Fixable -> stay(error)
-            is SignupError.Transient -> SignupState.Failed(error, SignupRetry.ReturnTo(settled))
-            else -> SignupState.Failed(error)
+            is SignupError.Transient -> SignupState.Failed(error, SignupRetry.ReturnTo(settled), kind)
+            else -> SignupState.Failed(error, kind = kind)
         },
     )
 
@@ -222,6 +278,10 @@ internal class SignupReducer {
     }
 
     // endregion
+
+    /** A code may be checked: nothing is on its way, and this one hasn't timed out (only a new one helps then). */
+    private val SignupState.Code.acceptsCode: Boolean
+        get() = phase == CodePhase.Ready && !isExpired
 
     /** The code screen whose resend wait is running: the one on show, or the one an error screen will return to. */
     private val SignupState.waitingCode: SignupState.Code?

@@ -180,13 +180,15 @@ private fun CountryChip(country: Country, enabled: Boolean, onClick: () -> Unit)
 }
 
 /**
- * Splits an E.164 [phone] into its country and the number after the dial code: the longest dial code that fits, and
- * [fallback] when several share it (+1 is shared by many). A [phone] with no `+` is taken as typed, in [fallback].
+ * Splits an E.164 [phone] into its country and the number after the dial code: the longest dial code that fits. When
+ * several countries share it (+1 is shared by many), [fallback] if it is one of them, else the United States, else the
+ * first listed, as on iOS. A [phone] with no `+` is taken as typed, in [fallback].
  */
-private fun splitPhone(phone: String, fallback: Country): Pair<Country, String> {
+internal fun splitPhone(phone: String, fallback: Country): Pair<Country, String> {
     val matches = Country.countries.filter { phone.startsWith(it.phoneCode) }
     val longest = matches.maxOfOrNull { it.phoneCode.length } ?: return fallback to phone.filter(Char::isDigit)
     val sharing = matches.filter { it.phoneCode.length == longest }
-    val country = if (fallback in sharing) fallback else sharing.first()
+    val country = listOfNotNull(fallback, Country.forIso(FALLBACK_COUNTRY_ISO)).firstOrNull { it in sharing }
+        ?: sharing.first()
     return country to phone.removePrefix(country.phoneCode)
 }
