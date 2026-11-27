@@ -7,8 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -23,13 +26,13 @@ import com.auth0.universalcomponents.feature.embedded.presentation.screens.Login
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginPhoneScreen
 import com.auth0.universalcomponents.feature.embedded.presentation.screens.LoginSuccessScreen
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupChallenge
-import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupError
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupIdentifier
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupKind
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.forDisplay
 import com.auth0.universalcomponents.feature.mfachallenge.presentation.screens.NO_CONTEXTUAL_ALTERNATES
 import com.auth0.universalcomponents.presentation.ui.flow.FlowErrorScreen
 import com.auth0.universalcomponents.presentation.ui.flow.FlowLoadingScreen
+import com.auth0.universalcomponents.presentation.ui.mfa.phone.Country
 import com.auth0.universalcomponents.presentation.ui.utils.ObserveAsEvents
 import com.auth0.universalcomponents.presentation.ui.utils.stepTransition
 import com.auth0.universalcomponents.utils.findActivity
@@ -70,6 +73,10 @@ internal fun SignupHost(
     val onBack: () -> Unit = remember(viewModel) { { viewModel.send(SignupIntent.Back) } }
     BackHandler(onBack = onBack)
 
+    // The state keeps only the number, and several countries share a dial code (+1), so on Edit or Try again the phone
+    // screen would pick one of them itself. The host remembers the country the number was typed with, as the login does.
+    var typedCountry by rememberSaveable { mutableIntStateOf(NO_COUNTRY) }
+
     LoginScreenFrame(
         onBack = onBack,
         modifier = modifier,
@@ -85,7 +92,14 @@ internal fun SignupHost(
             modifier = Modifier.fillMaxSize(),
             label = "signupState",
         ) { shown ->
-            SignupScreen(shown, send, onBack, onLogIn)
+            SignupScreen(
+                state = shown,
+                send = send,
+                onBack = onBack,
+                onLogIn = onLogIn,
+                typedCountry = Country.countries.getOrNull(typedCountry),
+                onCountryTyped = { typedCountry = Country.countries.indexOf(it) },
+            )
         }
     }
 }
@@ -111,6 +125,8 @@ private fun SignupScreen(
     send: (SignupIntent) -> Unit,
     onBack: () -> Unit,
     onLogIn: (() -> Unit)?,
+    typedCountry: Country?,
+    onCountryTyped: (Country) -> Unit,
 ) {
     when (state) {
         // Drawn alike, so the first frame, before Start, is already the spinner.
@@ -126,14 +142,17 @@ private fun SignupScreen(
                 onContinue = { send(SignupIntent.SubmitIdentifier(SignupIdentifier(state.kind, it))) },
             )
 
-            // The screen takes the country back out of the number, as it does for the login.
             SignupKind.Phone -> LoginPhoneScreen(
                 phone = state.value,
+                country = typedCountry.keptFor(state.value),
                 isLoading = state.isSubmitting,
                 errorMessage = state.error?.text(state.kind),
                 isEntry = true,
                 role = EntryRole.SignUp(onLogIn),
-                onContinue = { number, _ -> send(SignupIntent.SubmitIdentifier(SignupIdentifier(state.kind, number))) },
+                onContinue = { number, country ->
+                    onCountryTyped(country)
+                    send(SignupIntent.SubmitIdentifier(SignupIdentifier(state.kind, number)))
+                },
             )
         }
 
@@ -160,7 +179,11 @@ private fun SignupScreen(
             isLoading = state.phase == CodePhase.Verifying,
             isResending = state.phase == CodePhase.Resending,
             resendSecondsLeft = state.resendSecondsLeft,
-            errorMessage = state.shownError?.text(state.identifier.kind),
+            errorMessage = if (state.showsExpired) {
+                stringResource(R.string.embedded_signup_error_code_expired_phone)
+            } else {
+                state.error?.text(state.identifier.kind)
+            },
             needsNewCode = state.isExpired,
             onVerify = { send(SignupIntent.SubmitCode(it)) },
             onEdit = onBack,
@@ -178,7 +201,7 @@ private fun SignupScreen(
 
         is SignupState.Failed -> FlowErrorScreen(
             onRetry = { send(SignupIntent.Retry) },
-            message = state.error.text(state.kind),
+            message = state.error.text(),
             title = stringResource(R.string.embedded_signup_error_title),
             // With nothing to go back to the sign-up is over, and only a new one helps.
             actionTitle = stringResource(
@@ -188,6 +211,16 @@ private fun SignupScreen(
     }
 }
 
+/** No country has been typed with yet. */
+private const val NO_COUNTRY = -1
+
+/**
+ * The country the number was typed with, while the field holds that number (it starts with the country's dial code);
+ * otherwise null, and the phone screen picks one from the number itself.
+ */
+internal fun Country?.keptFor(number: String): Country? =
+    this?.takeIf { number.isNotEmpty() && number.startsWith(it.phoneCode) }
+
 /**
  * Where the code goes, to show: the number as the server hid it, with every hidden digit drawn alike, else what the user
  * typed (an email always, since the server hides nothing there).
@@ -195,11 +228,11 @@ private fun SignupScreen(
 internal fun SignupChallenge.shownFor(typed: SignupIdentifier): String = sentTo?.forDisplay() ?: typed.value
 
 /**
- * What the code screen shows under the field: the error of the last request, else that the code expired. The expired
- * line is gone while a new code is on its way, as on iOS, and back if that fails and the user tries again.
+ * The code screen says the code expired, when no other error is shown. The line is gone while a new code is on its way,
+ * as on iOS, and back if that fails and the user tries again.
  */
-internal val SignupState.Code.shownError: SignupError?
-    get() = error ?: SignupError.CodeExpired.takeIf { isExpired && phase == CodePhase.Ready }
+internal val SignupState.Code.showsExpired: Boolean
+    get() = isExpired && error == null && phase == CodePhase.Ready
 
 /** The hidden digits of a number the server hid are drawn alike only with the font's contextual alternates off. */
 private val SignupChallenge.fontFeatures: String?

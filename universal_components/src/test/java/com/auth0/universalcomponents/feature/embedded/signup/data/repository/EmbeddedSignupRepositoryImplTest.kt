@@ -355,6 +355,81 @@ class EmbeddedSignupRepositoryImplTest {
 
     // endregion
 
+    // region a session that ended
+
+    @Test
+    fun `identify - after a code timed out - opens a new sign-up first, so Edit then Continue works`() = runTest {
+        phoneSignup()
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(EmbeddedAuthError.ChallengeExpired)
+        repository.open()
+        // The SDK closes its session with the expired code.
+        assertThat(repository.verify(CODE).failure().error).isEqualTo(SignupError.CodeExpired)
+
+        val identified = repository.identify(PHONE_NUMBER)
+
+        assertThat(identified).isInstanceOf(Result.Success::class.java)
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+        verify(exactly = 2) { client.signup() }
+        verifyOrder {
+            client.verifyOtp(CODE, OtpType.OOB)
+            client.authorize(CONNECTION, any(), any(), any())
+            client.signup()
+            client.identify(NUMBER, IdentifierType.PHONE)
+        }
+    }
+
+    @Test
+    fun `identify - after a failure that leaves the session - does not open again`() = runTest {
+        phoneSignup()
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(EmbeddedAuthError.Network)
+        repository.open()
+        repository.verify(CODE)
+
+        repository.identify(PHONE_NUMBER)
+
+        verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+    }
+
+    @Test
+    fun `identify - after a wrong code, which the user can fix - does not open again`() = runTest {
+        phoneSignup()
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns
+            step(NextAction.IdentifyPhone, reason = Reason.INVALID_CODE)
+        repository.open()
+        repository.verify(CODE)
+
+        repository.identify(PHONE_NUMBER)
+
+        verify(exactly = 1) { client.authorize(CONNECTION, any(), any(), any()) }
+    }
+
+    @Test
+    fun `identify - after opening failed - opens again, since there is no session to use`() = runTest {
+        phoneSignup()
+        every { client.authorize(CONNECTION, any(), any(), any()) } returnsMany
+            listOf(failingWith(EmbeddedAuthError.Network), step(signup(PHONE to true)))
+        assertThat(repository.open().failure().error).isEqualTo(SignupError.Network)
+
+        val identified = repository.identify(PHONE_NUMBER)
+
+        assertThat(identified).isInstanceOf(Result.Success::class.java)
+        verify(exactly = 2) { client.authorize(CONNECTION, any(), any(), any()) }
+    }
+
+    @Test
+    fun `identify - the new sign-up is no longer offered - fails as unavailable and identifies nothing`() = runTest {
+        phoneSignup()
+        every { client.verifyOtp(CODE, OtpType.OOB) } returns failingWith(EmbeddedAuthError.ChallengeExpired)
+        repository.open()
+        repository.verify(CODE)
+        every { client.authorize(CONNECTION, any(), any(), any()) } returns step(NextAction.IdentifyPhone)
+
+        assertThat(repository.identify(PHONE_NUMBER).failure().error).isEqualTo(SignupError.Unavailable)
+        verify(exactly = 0) { client.identify(any(), any()) }
+    }
+
+    // endregion
+
     // region replaceExpiredCode
 
     /** A sign-up that requires a phone, which takes texts and calls. */

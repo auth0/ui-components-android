@@ -94,14 +94,9 @@ internal sealed interface SignupState {
 
     /**
      * The sign-up couldn't go on, for [error], which is never one the user can fix on a field. [retry] says what
-     * "Try again" does; null means the sign-up is over and only "Start over" follows. [kind] picks the words of the few
-     * errors that name what is being verified: the one the user was on, and the email's before anything is entered.
+     * "Try again" does; null means the sign-up is over and only "Start over" follows.
      */
-    data class Failed(
-        val error: SignupError,
-        val retry: SignupRetry? = null,
-        val kind: SignupKind = SignupKind.Email,
-    ) : SignupState
+    data class Failed(val error: SignupError, val retry: SignupRetry? = null) : SignupState
 }
 
 /** What is on its way for the code screen on show; only one at a time. */

@@ -47,6 +47,14 @@ internal class EmbeddedSignupRepositoryImpl(
     /** The kinds the sign-up being run requires, so each menu asks for those first. Read and set only under [oneAtATime]. */
     private var required: List<SignupKind> = emptyList()
 
+    /**
+     * The SDK has ended its session, so the next step would find none: it does so on every failure but a continuation, a
+     * network error or a server error. Set by a failure that ends the sign-up, and by opening until the new one is open.
+     * [identifyAs] then opens a new sign-up first, as it must after a code timed out and the user chose Edit. Read and set
+     * only under [oneAtATime].
+     */
+    private var sessionEnded = false
+
     override suspend fun open(): Result<SignupNext, SignupFailure> = oneAtATime.withLock { openSignup() }
 
     override suspend fun identify(identifier: SignupIdentifier): Result<SignupChallenge, SignupFailure> =
@@ -98,6 +106,8 @@ internal class EmbeddedSignupRepositoryImpl(
     // The steps below run under [oneAtATime], held by the public function that called them.
 
     private suspend fun openSignup(): Result<SignupNext, SignupFailure> {
+        // Authorizing replaces the SDK's session, so until the new one is open there is none to rely on.
+        sessionEnded = true
         if (connection.isBlank()) return failed(SignupFailure(SignupError.ConnectionMissing))
         val offered = when (val authorized = menuAfter { authorize(connection, capabilities = CAPABILITIES) }) {
             is Result.Error -> return authorized
@@ -110,11 +120,18 @@ internal class EmbeddedSignupRepositoryImpl(
         required = offered.required
         return when (val menu = menuAfter { signup() }) {
             is Result.Error -> menu
-            is Result.Success -> Result.Success(menu.data.toSignupMenu(required).next)
+            is Result.Success -> {
+                sessionEnded = false
+                Result.Success(menu.data.toSignupMenu(required).next)
+            }
         }
     }
 
     private suspend fun identifyAs(identifier: SignupIdentifier): Result<SignupChallenge, SignupFailure> {
+        if (sessionEnded) {
+            val opened = openSignup()
+            if (opened is Result.Error) return opened
+        }
         val type = identifier.kind.identifierType
         return when (val menu = menuAfter { identify(identifier.value, type) }) {
             is Result.Error -> menu
@@ -149,6 +166,8 @@ internal class EmbeddedSignupRepositoryImpl(
     /** Every failure is logged with its cause, then handed on. */
     private fun failed(failure: SignupFailure): Result.Error<SignupFailure> {
         Logger.w(TAG, "Sign-up step failed: ${failure.error}", failure.cause)
+        // A failure that ends the sign-up took the SDK's session with it; one the user can fix, or retry, did not.
+        if (failure.error is SignupError.Fatal) sessionEnded = true
         return Result.Error(failure)
     }
 

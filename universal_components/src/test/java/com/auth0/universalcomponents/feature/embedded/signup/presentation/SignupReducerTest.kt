@@ -836,7 +836,7 @@ class SignupReducerTest {
         )
 
         assertThat(failed.state).isEqualTo(
-            SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(delivery()), SignupKind.Phone),
+            SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(delivery())),
         )
         assertThat(reducer.handleIntent(failed.state, SignupIntent.Retry).state).isEqualTo(delivery())
     }
@@ -852,13 +852,13 @@ class SignupReducerTest {
     }
 
     @Test
-    fun `request failed - the sign-up ends from a phone screen - the error screen uses the phone's words`() {
+    fun `request failed - the sign-up ends from a phone screen - goes full screen, with only Start over`() {
         val update = reducer.handleOutcome(
             phoneEntry(isSubmitting = true),
             SignupOutcome.RequestFailed(SignupError.TooManyAttempts),
         )
 
-        assertThat(update.state).isEqualTo(SignupState.Failed(SignupError.TooManyAttempts, kind = SignupKind.Phone))
+        assertThat(update.state).isEqualTo(SignupState.Failed(SignupError.TooManyAttempts))
     }
 
     @Test
@@ -942,14 +942,14 @@ class SignupReducerTest {
 
         val expired = phoneCode(isExpired = true, secondsLeft = 0)
         assertThat(failed.state)
-            .isEqualTo(SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(expired), SignupKind.Phone))
+            .isEqualTo(SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(expired)))
         assertThat(reducer.handleIntent(failed.state, SignupIntent.Retry).state).isEqualTo(expired)
     }
 
     @Test
     fun `seconds pass - on an expired code, or the error screen over it - nothing counts down`() {
         val expired = phoneCode(isExpired = true, secondsLeft = 0)
-        val failed = SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(expired), SignupKind.Phone)
+        val failed = SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(expired))
 
         listOf(expired, failed).forEach { state ->
             val update = reducer.handleSecondsPassed(state, seconds = 1)
@@ -960,23 +960,33 @@ class SignupReducerTest {
     }
 
     @Test
-    fun `request failed - the sign-up ends from the choice - the error screen uses the phone's words`() {
+    fun `request failed - the sign-up ends from the choice - goes full screen, with only Start over`() {
         val update = reducer.handleOutcome(
             delivery(isSubmitting = true),
             SignupOutcome.RequestFailed(SignupError.TooManyAttempts),
         )
 
-        assertThat(update.state).isEqualTo(SignupState.Failed(SignupError.TooManyAttempts, kind = SignupKind.Phone))
+        assertThat(update.state).isEqualTo(SignupState.Failed(SignupError.TooManyAttempts))
     }
 
     @Test
-    fun `shown error - an expired code says so, until a new one is on its way`() {
+    fun `an expired code - is said so on the code screen, until a new one is on its way`() {
         val expired = phoneCode(isExpired = true, secondsLeft = 0)
 
-        assertThat(expired.shownError).isEqualTo(SignupError.CodeExpired)
-        assertThat(expired.copy(phase = CodePhase.Resending).shownError).isNull()
-        assertThat(expired.copy(error = SignupError.CodeNotSent).shownError).isEqualTo(SignupError.CodeNotSent)
-        assertThat(phoneCode().shownError).isNull()
+        assertThat(expired.showsExpired).isTrue()
+        assertThat(expired.copy(phase = CodePhase.Resending).showsExpired).isFalse()
+        assertThat(expired.copy(error = SignupError.CodeNotSent).showsExpired).isFalse()
+        assertThat(phoneCode().showsExpired).isFalse()
+    }
+
+    @Test
+    fun `request failed - a code reported expired off the code screen - ends the sign-up, with only Start over`() {
+        listOf(delivery(isSubmitting = true), phoneEntry(isSubmitting = true)).forEach { state ->
+            val update = reducer.handleOutcome(state, SignupOutcome.RequestFailed(SignupError.CodeExpired))
+
+            assertThat(update.state).isEqualTo(SignupState.Failed(SignupError.CodeExpired))
+            assertThat((update.state as SignupState.Failed).retry).isNull()
+        }
     }
 
     @Test
@@ -1053,7 +1063,7 @@ class SignupReducerTest {
             SignupCommand.SendCode(PHONE, BOTH_WAYS, PhoneDeliveryMethod.TEXT),
             SignupCommand.ReplaceExpiredCode(PHONE, PhoneDeliveryMethod.TEXT),
             SignupOutcome.Identified(PHONE, BOTH_WAYS),
-            SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(typed), SignupKind.Phone),
+            SignupState.Failed(SignupError.Network, SignupRetry.ReturnTo(typed)),
         ).forEach { assertThat(it.toString()).doesNotContain(NUMBER) }
     }
 
