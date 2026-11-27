@@ -4,7 +4,6 @@ import com.auth0.android.embedded.authorize.PhoneDeliveryMethod
 import com.auth0.android.result.Credentials
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupError
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupIdentifier
-import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupKind
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupNext
 import com.auth0.universalcomponents.feature.embedded.signup.domain.model.SignupProgress
 
@@ -227,12 +226,12 @@ internal class SignupReducer {
     private fun requestFailed(state: SignupState, error: SignupError): SignupUpdate = when {
         state is SignupState.Entry && state.isSubmitting -> {
             val settled = state.copy(isSubmitting = false, error = null)
-            failOn(error, state.kind, settled) { state.copy(isSubmitting = false, error = it) }
+            failOn(error, settled) { state.copy(isSubmitting = false, error = it) }
         }
 
         state is SignupState.Delivery && state.isSubmitting -> {
             val settled = state.copy(isSubmitting = false, error = null)
-            failOn(error, state.identifier.kind, settled) { state.copy(isSubmitting = false, error = it) }
+            failOn(error, settled) { state.copy(isSubmitting = false, error = it) }
         }
 
         state is SignupState.Code && state.phase != CodePhase.Ready -> {
@@ -240,7 +239,7 @@ internal class SignupReducer {
             if (error == SignupError.CodeExpired && state.identifier.kind.recoversExpiredCode) {
                 SignupUpdate(settled.copy(isExpired = true, resendSecondsLeft = 0))
             } else {
-                failOn(error, state.identifier.kind, settled) { state.copy(phase = CodePhase.Ready, error = it) }
+                failOn(error, settled) { state.copy(phase = CodePhase.Ready, error = it) }
             }
         }
 
@@ -249,14 +248,13 @@ internal class SignupReducer {
 
     private inline fun failOn(
         error: SignupError,
-        kind: SignupKind,
         settled: SignupState,
         stay: (SignupError.Fixable) -> SignupState,
     ): SignupUpdate = SignupUpdate(
         when (error) {
             is SignupError.Fixable -> stay(error)
-            is SignupError.Transient -> SignupState.Failed(error, SignupRetry.ReturnTo(settled), kind)
-            else -> SignupState.Failed(error, kind = kind)
+            is SignupError.Transient -> SignupState.Failed(error, SignupRetry.ReturnTo(settled))
+            else -> SignupState.Failed(error)
         },
     )
 

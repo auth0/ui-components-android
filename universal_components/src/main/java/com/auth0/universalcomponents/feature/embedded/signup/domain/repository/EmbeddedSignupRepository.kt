@@ -26,7 +26,9 @@ internal interface EmbeddedSignupRepository {
 
     /**
      * Tells the server what the new account is identified by and returns the code it will send. Nothing is sent to
-     * the user yet. Fails with [SignupError.CodeNotSent] when the server offers no way to send one.
+     * the user yet. Fails with [SignupError.CodeNotSent] when the server offers no way to send one. When the last
+     * failure ended the sign-up (a code that timed out, say) it opens a new one first, so editing the number and
+     * continuing works as a new sign-up would.
      */
     suspend fun identify(identifier: SignupIdentifier): Result<SignupChallenge, SignupFailure>
 
